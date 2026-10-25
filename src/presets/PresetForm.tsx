@@ -7,10 +7,13 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
+import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
+import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { createPreset, getMeta, updatePreset } from '../api/client'
@@ -28,6 +31,7 @@ export interface PresetFormProps {
   onSaved: (preset: PresetView) => void
 }
 
+const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
 const NOT_AVAILABLE = ' (not available)'
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
@@ -46,6 +50,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const touched = useRef(new Set<keyof FormValues>())
   const { values, setKeys } = state
   const editing = preset !== undefined
+  const hive = /^\d+$/.test(values.maxReplicas.trim()) && Number(values.maxReplicas) > 1
 
   useEffect(() => {
     let cancelled = false
@@ -83,7 +88,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'env' | 'initScripts'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -190,6 +195,36 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {text('memLimit', 'Memory limit')}
           </Box>
           {text('hookUrl', 'Pre-discard webhook URL')}
+          {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
+          {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
+          {text('compactIdle', 'Auto-compact idle seconds')}
+          {text('compactInstructions', 'Auto-compact instructions')}
+          {text('compactMinTokens', 'Auto-compact min context tokens')}
+          {text('systemAppend', 'System append', { multiline: true })}
+          {text('restartPrompt', 'Restart continue prompt')}
+          {text('turnStall', 'Turn stall seconds')}
+          {text('maxRestarts', 'Max restarts')}
+          {text('turnMax', 'Turn max seconds')}
+          <FormControl size="small" fullWidth>
+            <InputLabel id="agent-commands-label">Agent commands</InputLabel>
+            <Select
+              labelId="agent-commands-label"
+              label="Agent commands"
+              multiple
+              value={values.agentCommands}
+              onChange={(e) => set('agentCommands', typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              renderValue={(v) => v.join(', ')}
+            >
+              {AGENT_COMMANDS.map((c) => (
+                <MenuItem key={c} value={c}>{c}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {text('permAllow', 'Permissions allow', { help: 'Comma separated' })}
+          {text('permDeny', 'Permissions deny', { help: 'Comma separated' })}
+          {text('hooks', 'Hooks', { multiline: true, help: 'Command hooks run with the agent\'s credentials.' })}
+          {text('mcpServers', 'MCP servers', { multiline: true })}
+          {text('plugins', 'Plugins', { multiline: true })}
         </Box>
       </DialogContent>
       <DialogActions>
