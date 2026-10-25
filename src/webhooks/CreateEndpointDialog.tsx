@@ -138,7 +138,7 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
           helperText={`Jinja2, optional; default prompt when empty. Variables: ${PLACEHOLDERS.map((p) => `{{ ${p} }}`).join(', ')}. Filter: from_json.`}
           slotProps={{ htmlInput: { style: { fontFamily: 'monospace' } } }} fullWidth
         />
-        {filterFields ? <FiltersEditor type={type} fields={filterFields} value={filters} onChange={setFilters} /> : <FormError error={metaError as never} />}
+        {filterFields ? <FiltersEditor type={type} fields={filterFields} value={filters} onChange={(f) => { setFilters(f); clearPreview() }} /> : <FormError error={metaError as never} />}
         <TextField
           label="Example JSON" multiline minRows={4} value={example}
           onChange={(e) => { setExample(e.target.value); setExampleTouched(true) }}

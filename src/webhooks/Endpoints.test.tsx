@@ -342,6 +342,22 @@ describe('filters', () => {
     expect(screen.getByText('Passes the filters')).toBeTruthy()
   })
 
+  test('clears the preview result when a filter rule changes', async () => {
+    api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app', filters: { passed: true, reason: null } })
+    const u = userEvent.setup()
+    mountCreate()
+    await u.click(screen.getByLabelText('Prompt template'))
+    await u.paste('Review {{ repo }}')
+    await addDenyRule(u, 'author', 'bob')
+    await u.click(screen.getByRole('button', { name: 'Preview' }))
+    expect(await screen.findByText('Passes the filters')).toBeTruthy()
+    expect(screen.getByText('Review acme/app')).toBeTruthy()
+    await u.click(within(screen.getByRole('region', { name: /^Deny/ })).getByLabelText('Values'))
+    await u.paste('x')
+    expect(screen.queryByText('Passes the filters')).toBeNull()
+    expect(screen.queryByText('Review acme/app')).toBeNull()
+  })
+
   test('does not mount the editor until the meta is loaded', async () => {
     let resolve!: (m: typeof META) => void
     api.getMeta.mockReturnValue(new Promise((r) => { resolve = r }))
