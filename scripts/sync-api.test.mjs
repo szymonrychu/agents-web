@@ -80,3 +80,23 @@ test("knows the webhooks backend and records agents-webhook", () => {
   assert.equal(readFileSync(join(proj, "openapi/webhooks.json"), "utf8"), doc);
   assert.equal(readFileSync(join(proj, "openapi/webhooks.source"), "utf8"), `agents-webhook ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the schedules backend and records agents-schedule", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "schedules", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/schedules.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/schedules.source"), "utf8"), `agents-schedule ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("reads schedules from the sibling agents-schedule checkout by default", () => {
+  const doc = '{"openapi":"3.1.0","paths":{"/schedules/api/v1/schedules":{}}}\n';
+  const parent = mkdtempSync(join(tmpdir(), "sync-parent-"));
+  const src = makeSource(doc, join(parent, "agents-schedule"));
+  const proj = makeProject(join(parent, "agents-web"));
+  const r = run(proj, "schedules");
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/schedules.source"), "utf8"), `agents-schedule ${git(src, "rev-parse", "HEAD")}\n`);
+});
