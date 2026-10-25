@@ -78,3 +78,8 @@ export function backendBase(id: string): string {
   if (!b) throw new ConfigError(`backend "${id}" is not configured`);
   return b.basePath;
 }
+
+/** The active runtime configuration (the default until loadConfig succeeds). */
+export function getConfig(): RuntimeConfig {
+  return current;
+}
