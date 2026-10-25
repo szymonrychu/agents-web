@@ -62,6 +62,20 @@ describe('defaults', () => {
     expect((screen.getByLabelText('Enabled') as HTMLInputElement).checked).toBe(true)
   })
 
+  test('defaults: falls back to a short zone list when Intl.supportedValuesOf is missing', async () => {
+    const orig = Intl.supportedValuesOf
+    // @ts-expect-error simulating a runtime without the API
+    Intl.supportedValuesOf = undefined
+    try {
+      mount()
+      expect(screen.getByRole('combobox', { name: 'Timezone' }).textContent).toBe('Europe/Warsaw')
+      await userEvent.setup().click(screen.getByRole('combobox', { name: 'Timezone' }))
+      expect(await screen.findByRole('option', { name: 'UTC' })).toBeTruthy()
+    } finally {
+      Intl.supportedValuesOf = orig
+    }
+  })
+
   test('defaults come from the schedule when editing', async () => {
     mount(sched())
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('nightly')

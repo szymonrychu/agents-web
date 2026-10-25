@@ -33,8 +33,10 @@ const FIELD_OF_CODE: Record<string, Field> = {
   unknown_preset: 'preset',
 }
 
+const FALLBACK_ZONES = ['UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo']
+
 const timezones = (): string[] => {
-  const zones = Intl.supportedValuesOf('timeZone')
+  const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : FALLBACK_ZONES
   return zones.includes(DEFAULT_TIMEZONE) ? zones : [DEFAULT_TIMEZONE, ...zones]
 }
 
@@ -140,7 +142,7 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
       />
       <FormControlLabel control={<Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />} label="Enabled" />
       <FormError error={formError as never} />
-      <Stack direction="row" spacing={1} justifyContent="flex-end">
+      <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
         <Button onClick={onCancel}>Cancel</Button>
         <Button variant="contained" onClick={() => void submit()} disabled={!valid || busy}>Save</Button>
       </Stack>
