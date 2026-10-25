@@ -17,9 +17,9 @@ import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { createPreset, getMeta, updatePreset } from '../api/client'
-import type { ClusterSpec, Meta, PresetView } from '../api/client'
-import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../clusters/clusterSpecForm'
-import type { FormState, FormValues } from '../clusters/clusterSpecForm'
+import type { SessionSpec, Meta, PresetView } from '../api/client'
+import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import type { FormState, FormValues } from '../sessions/sessionSpecForm'
 
 export interface PresetFormProps {
   open: boolean
@@ -35,7 +35,7 @@ const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-s
 const NOT_AVAILABLE = ' (not available)'
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
-  const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<ClusterSpec>
+  const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
   if (preset) return stateFromPreset(meta, preset.name, stored(preset))
   if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), stored(copyOf))
   return stateFromPreset(meta, '', {})
@@ -109,7 +109,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setBusy(true)
     setServerError(null)
     try {
-      const body = { name: values.name, spec: toPresetSpec(values, setKeys) as ClusterSpec }
+      const body = { name: values.name, spec: toPresetSpec(values, setKeys) as SessionSpec }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError(e instanceof Error ? e.message : String(e))
@@ -140,7 +140,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {serverError && <Alert severity="error" variant="outlined">{serverError}</Alert>}
           {text('name', 'Name', { disabled: preset?.is_default === true })}
           {text('replicas', 'Replicas')}
-          {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the cluster a hive' })}
+          {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the session a hive' })}
           <FormControlLabel control={<Switch checked={values.static} onChange={(e) => set('static', e.target.checked)} />} label="Static (scaling disabled)" />
           {errors.static && <FormHelperText error>{errors.static}</FormHelperText>}
           {meta && meta.models.length > 0 ? dropdown('model', 'Model', meta.models, 'default') : text('model', 'Model')}
@@ -182,7 +182,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <Box>
               <Button size="small" onClick={() => set('initScripts', [...values.initScripts, ''])}>Add init script</Button>
             </Box>
-            <FormHelperText>Runs once when a cluster starts, in the shared workdir; agents can read and edit it; edits apply to the next cluster.</FormHelperText>
+            <FormHelperText>Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.</FormHelperText>
           </Box>
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}

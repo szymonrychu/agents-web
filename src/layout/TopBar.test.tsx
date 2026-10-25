@@ -2,27 +2,27 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { ClusterView } from '../api/client'
-import type { ClusterEntry } from '../ribbon/useClusters'
+import type { SessionView } from '../api/client'
+import type { SessionEntry } from '../ribbon/useSessions'
 import { theme } from '../theme'
 import { TopBar } from './TopBar'
 
 afterEach(cleanup)
 
-const cluster = (id: string, slug: string, state: ClusterView['summary']['state'], pct: number | null): ClusterEntry => ({
-  cluster: { created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as ClusterView['spec'], status: {}, summary: { auto_compact_pct: 80, context_pct_max: pct, failed: 0, queued: 0, ready: 1, replicas: 1, state } } as ClusterView,
+const session = (id: string, slug: string, state: SessionView['summary']['state'], pct: number | null): SessionEntry => ({
+  session: { created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: { auto_compact_pct: 80, context_pct_max: pct, failed: 0, queued: 0, ready: 1, replicas: 1, state } } as SessionView,
   agents: {},
 })
-const CLUSTERS = [cluster('c1', 'alpha', 'working', 40), cluster('c2', 'bravo', 'waiting', 90)]
+const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { clusters: CLUSTERS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onInitScripts: vi.fn(), settingsCategories: [], ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onInitScripts: vi.fn(), settingsCategories: [], ...over }
   render(<ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider>)
   return props
 }
 
 describe('TopBar', () => {
-  test('tabs_one_per_cluster_in_slug_order', () => {
+  test('tabs_one_per_session_in_slug_order', () => {
     const { onSelect } = setup()
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((t) => t.textContent)).toEqual(['alpha1/140%', 'bravo1/190%'])
@@ -38,9 +38,9 @@ describe('TopBar', () => {
   })
 
   test('tab shows hook failed mark and ready count', () => {
-    const failed = cluster('c3', 'charlie', 'error', null)
-    failed.cluster = { ...failed.cluster, status: { discard_hook_failed: true }, summary: { ...failed.cluster.summary, ready: 2, replicas: 3 } } as ClusterView
-    setup({ clusters: [...CLUSTERS, failed] })
+    const failed = session('c3', 'charlie', 'error', null)
+    failed.session = { ...failed.session, status: { discard_hook_failed: true }, summary: { ...failed.session.summary, ready: 2, replicas: 3 } } as SessionView
+    setup({ sessions: [...SESSIONS, failed] })
     const tabs = screen.getAllByRole('tab')
     expect(within(tabs[2]).getByText('2/3')).toBeTruthy()
     expect(within(tabs[2]).getByLabelText('discard hook failed')).toBeTruthy()
@@ -49,9 +49,9 @@ describe('TopBar', () => {
   })
 
   test('tab_shows_preset_name', () => {
-    const named = cluster('c3', 'charlie', 'working', 10)
-    named.cluster = { ...named.cluster, preset_id: 'p1', preset_name: 'Big box' } as ClusterView
-    setup({ clusters: [...CLUSTERS, named] })
+    const named = session('c3', 'charlie', 'working', 10)
+    named.session = { ...named.session, preset_id: 'p1', preset_name: 'Big box' } as SessionView
+    setup({ sessions: [...SESSIONS, named] })
     const tabs = screen.getAllByRole('tab')
     expect(within(tabs[2]).getByText('Big box')).toBeTruthy()
     expect(tabs[2].textContent).toContain('charlie')
@@ -61,26 +61,28 @@ describe('TopBar', () => {
 
   test('tab_actions_offer_init_scripts_then_discard', () => {
     const { onDiscard } = setup()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cluster actions' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const items = screen.getAllByRole('menuitem')
     expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Discard'])
     expect(screen.queryByText('Edit')).toBeNull()
     fireEvent.click(items[1])
-    expect(onDiscard).toHaveBeenCalledWith(CLUSTERS[0].cluster)
+    expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
   })
 
   test('init scripts menu item calls onInitScripts', () => {
     const { onInitScripts, onDiscard } = setup()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cluster actions' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Init scripts' }))
-    expect(onInitScripts).toHaveBeenCalledWith(CLUSTERS[0].cluster)
+    expect(onInitScripts).toHaveBeenCalledWith(SESSIONS[0].session)
     expect(onDiscard).not.toHaveBeenCalled()
   })
 
-  test('new_cluster_button', () => {
-    const { onNew } = setup()
-    fireEvent.click(screen.getByRole('button', { name: 'New cluster' }))
+  test('new session button', () => {
+    const { onNew } = setup({ sessions: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'New session' }))
     expect(onNew).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(screen.getByText('No sessions yet')).toBeTruthy()
   })
 
   test('hamburger_lists_sessions_and_selects', () => {

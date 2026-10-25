@@ -1,4 +1,4 @@
-/** The three-panel workspace of one cluster: files, chat and terminal side by side with draggable separators. */
+/** The three-panel workspace of one session: files, chat and terminal side by side with draggable separators. */
 import CloseFullscreen from '@mui/icons-material/CloseFullscreen'
 import FilterNone from '@mui/icons-material/FilterNone'
 import Minimize from '@mui/icons-material/Minimize'
@@ -19,7 +19,7 @@ import { loadJson, saveJson } from './storage'
 import { useLayout } from './useLayout'
 
 export interface WorkspaceProps {
-  clusterId: string
+  sessionId: string
   files: ReactNode
   chat: ReactNode
   terminal: ReactNode
@@ -29,7 +29,7 @@ const TITLES: Record<PanelName, string> = { files: 'Files', chat: 'Chat', termin
 /** Width in pixels of a minimized panel's strip. */
 const STRIP_WIDTH = 40
 
-const layoutKey = (clusterId: string) => `layout:${clusterId}`
+const layoutKey = (sessionId: string) => `layout:${sessionId}`
 
 /** The library's inline `flex-basis: auto` beats a stylesheet flex shorthand, so the size is also passed as an inline style. */
 const DIVIDER_WIDTH = 2
@@ -174,26 +174,26 @@ function Desktop({ layout, onLayout, slots }: { layout: PanelLayout; onLayout: (
   )
 }
 
-function ClusterWorkspace({ clusterId, files, chat, terminal }: WorkspaceProps) {
-  const key = layoutKey(clusterId)
+function SessionWorkspace({ sessionId, files, chat, terminal }: WorkspaceProps) {
+  const key = layoutKey(sessionId)
   const [layout, setLayout] = useState<PanelLayout>(() => parseLayout(loadJson<unknown>(key, null)))
   const layoutClass = useLayout()
   useEffect(() => saveJson(key, serialiseLayout(layout)), [key, layout])
   const slots = { files, chat, terminal }
   return (
-    <Box data-testid="workspace" data-cluster={clusterId} sx={{ height: '100%', minHeight: 0 }}>
+    <Box data-testid="workspace" data-session={sessionId} sx={{ height: '100%', minHeight: 0 }}>
       {layoutClass === 'phone' ? <Phone slots={slots} /> : <Desktop layout={layout} onLayout={setLayout} slots={slots} />}
     </Box>
   )
 }
 
 /**
- * The workspace of one cluster. Its layout is kept per cluster in the browser and restored when the cluster is shown again.
- * @param clusterId - the cluster whose layout is stored under `orch:layout:<clusterId>`.
+ * The workspace of one session. Its layout is kept per session in the browser and restored when the session is shown again.
+ * @param sessionId - the session whose layout is stored under `orch:layout:<sessionId>`.
  * @param files - slot for the filesystem panel.
  * @param chat - slot for the chat panel.
  * @param terminal - slot for the terminal panel.
  */
 export function Workspace(props: WorkspaceProps) {
-  return <ClusterWorkspace key={props.clusterId} {...props} />
+  return <SessionWorkspace key={props.sessionId} {...props} />
 }

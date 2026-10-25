@@ -14,7 +14,7 @@ const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), ge
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], caps: { max_clusters: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -277,19 +277,26 @@ describe('PresetForm', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('model gone not allowed')
   })
 
-  test('cluster_edit_path_retired', () => {
+  test('edit_path_retired', () => {
     const tracked = execFileSync('git', ['ls-files', 'src/clusters/ClusterForm.tsx', 'src/clusters/ClusterForm.test.tsx'], { encoding: 'utf8' })
     expect(tracked).toBe('')
     const client = readFileSync('src/api/client.ts', 'utf8')
     expect(client).not.toContain('patchCluster')
     expect(client).not.toContain('PatchCluster')
   })
+  test('help texts name the session', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByText('More than 1 makes the session a hive')).toBeTruthy()
+    expect(screen.getByText('Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.')).toBeTruthy()
+  })
+
   test('max replicas renders, validates bounds and maps only when set', { timeout: 15000 }, async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open onClose={vi.fn()} onSaved={vi.fn()} />)
     await ready()
     expect(field('Max replicas').value).toBe('')
-    expect(screen.getByText('More than 1 makes the cluster a hive')).toBeTruthy()
+    expect(screen.getByText('More than 1 makes the session a hive')).toBeTruthy()
     await replace('Name', 'a')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
@@ -327,7 +334,7 @@ describe('PresetForm', () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
-    expect(screen.getByText('Runs once when a cluster starts, in the shared workdir; agents can read and edit it; edits apply to the next cluster.')).toBeTruthy()
+    expect(screen.getByText('Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.')).toBeTruthy()
     await replace('Name', 'a')
     await userEvent.click(button('Add init script'))
     await userEvent.click(button('Add init script'))

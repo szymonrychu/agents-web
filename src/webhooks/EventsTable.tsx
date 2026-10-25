@@ -33,7 +33,7 @@ export function EventsTable({ events }: EventsTableProps) {
     <Table size="small">
       <TableHead>
         <TableRow>
-          {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Cluster'].map((h) => (
+          {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Session'].map((h) => (
             <TableCell key={h}>{h}</TableCell>
           ))}
         </TableRow>
@@ -56,7 +56,7 @@ export function EventsTable({ events }: EventsTableProps) {
                 <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
                 <Routing event={e} />
               </TableCell>
-              <TableCell>{e.cluster_slug}</TableCell>
+              <TableCell>{e.session_slug ?? e.session_id}</TableCell>
             </TableRow>
           )
         })}

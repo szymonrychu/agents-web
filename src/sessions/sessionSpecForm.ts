@@ -1,5 +1,5 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
-import type { ClusterSpec, Meta } from '../api/client'
+import type { SessionSpec, Meta } from '../api/client'
 
 export interface EnvRow {
   key: string
@@ -98,7 +98,7 @@ export function setKeyOf(field: keyof FormValues): SetKey | null {
  * Form state for a stored preset spec: the stored value for every stored key, the /meta default
  * (`blankValues(meta)`) for every other field; only the stored keys are set. A stored null counts as not stored.
  */
-export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<ClusterSpec>): FormState {
+export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<SessionSpec>): FormState {
   const values = { ...blankValues(meta), name }
   const setKeys = new Set<SetKey>()
   const text = (key: SetKey, field: 'model' | 'effort' | 'workdir' | 'pvcSize' | 'hookUrl' | 'image', stored: string | null | undefined) => {
@@ -296,10 +296,10 @@ function pairs(cpu: string, memory: string): Record<string, string> {
 }
 
 /**
- * Maps validated form values to a sparse preset spec: only the set fields, as ClusterSpec keys.
+ * Maps validated form values to a sparse preset spec: only the set fields, as SessionSpec keys.
  * A set field that is empty is omitted (clearing means unset), so no key is ever null.
  */
-export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<ClusterSpec> {
+export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<SessionSpec> {
   const spec: Record<string, unknown> = {}
   const str = (s: string): string | undefined => (s.trim() === '' ? undefined : s.trim())
   const int = (s: string): number | undefined => (s.trim() === '' ? undefined : Number(s))
@@ -328,7 +328,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
-  return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<ClusterSpec>
+  return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<SessionSpec>
 }
 
 /** The sparse wrapper settings object: only set, non-empty fields. */

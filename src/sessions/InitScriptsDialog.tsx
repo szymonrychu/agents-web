@@ -1,4 +1,4 @@
-/** Cluster init scripts: how the cluster was initialised (run state, log tail, paths) and an editor for the next cluster. */
+/** Session init scripts: how the session was initialised (run state, log tail, paths) and an editor for the next session. */
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -11,18 +11,18 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { getInitScripts, putInitScripts } from '../api/client'
-import type { ClusterView, InitScriptsView } from '../api/client'
+import type { SessionView, InitScriptsView } from '../api/client'
 import { TOKENS } from '../theme'
-import { initScriptErrors } from './clusterSpecForm'
+import { initScriptErrors } from './sessionSpecForm'
 
 export interface InitScriptsDialogProps {
   open: boolean
-  cluster: ClusterView
+  session: SessionView
   onClose: () => void
 }
 
 function RunState({ status }: { status: InitScriptsView['status'] }) {
-  if (!status) return <Typography color="text.secondary">No run recorded for this cluster.</Typography>
+  if (!status) return <Typography color="text.secondary">No run recorded for this session.</Typography>
   const detail = [
     status.exit_code != null ? `exit code ${status.exit_code}` : null,
     status.reason ? `reason: ${status.reason}` : null,
@@ -42,7 +42,7 @@ function RunState({ status }: { status: InitScriptsView['status'] }) {
   )
 }
 
-export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogProps) {
+export function InitScriptsDialog({ open, session, onClose }: InitScriptsDialogProps) {
   const [view, setView] = useState<InitScriptsView | null>(null)
   const [scripts, setScripts] = useState<string[]>([])
   const [errors, setErrors] = useState<(string | undefined)[] | undefined>()
@@ -53,7 +53,7 @@ export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogP
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    getInitScripts(cluster.id)
+    getInitScripts(session.id)
       .then((v) => {
         if (cancelled) return
         setView(v)
@@ -65,7 +65,7 @@ export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogP
     return () => {
       cancelled = true
     }
-  }, [open, cluster.id])
+  }, [open, session.id])
 
   const change = (next: string[]) => {
     setScripts(next)
@@ -80,7 +80,7 @@ export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogP
     setError(null)
     setSaving(true)
     try {
-      const v = await putInitScripts(cluster.id, scripts)
+      const v = await putInitScripts(session.id, scripts)
       setView(v)
       setScripts([...v.scripts])
       setSaved(v)
@@ -93,7 +93,7 @@ export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogP
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Init scripts - {cluster.slug}</DialogTitle>
+      <DialogTitle>Init scripts - {session.slug}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {error && <Alert severity="error">{error}</Alert>}
         {view && (
@@ -125,7 +125,7 @@ export function InitScriptsDialog({ open, cluster, onClose }: InitScriptsDialogP
             </Box>
             {saved && (
               <Alert severity="success">
-                <div>Saved. Applies to the next cluster</div>
+                <div>Saved. Applies to the next session</div>
                 {saved.preset_updated && saved.preset_name && <div>Preset {saved.preset_name} updated</div>}
               </Alert>
             )}

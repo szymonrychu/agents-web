@@ -10,7 +10,7 @@ function setup(open = true) {
   const onConfirm = vi.fn()
   const onCancel = vi.fn()
   render(
-    <ConfirmDialog open={open} title="Discard cluster?" body="This cannot be undone." confirmLabel="Discard" onConfirm={onConfirm} onCancel={onCancel} />,
+    <ConfirmDialog open={open} title="Discard session?" body="This cannot be undone." confirmLabel="Discard" onConfirm={onConfirm} onCancel={onCancel} />,
   )
   return { onConfirm, onCancel }
 }
@@ -47,13 +47,13 @@ describe('ConfirmDialog', () => {
 
   test('shows title and body', () => {
     setup()
-    expect(screen.getByText('Discard cluster?')).toBeTruthy()
+    expect(screen.getByText('Discard session?')).toBeTruthy()
     expect(screen.getByText('This cannot be undone.')).toBeTruthy()
   })
 
   test('closed renders nothing', () => {
     setup(false)
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.queryByText('Discard cluster?')).toBeNull()
+    expect(screen.queryByText('Discard session?')).toBeNull()
   })
 })

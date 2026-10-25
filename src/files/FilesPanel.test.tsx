@@ -24,7 +24,7 @@ type Entry = FileListing['entries'][number]
 const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z' })
 const listing = (path: string, entries: Entry[], next_offset: number | null = null): FileListing => ({
   agent_id: 'a1',
-  cluster_id: 'c1',
+  session_id: 'c1',
   entries,
   next_offset,
   path,
@@ -32,7 +32,7 @@ const listing = (path: string, entries: Entry[], next_offset: number | null = nu
 })
 const content = (path: string, over: Partial<FileContent>): FileContent => ({
   agent_id: 'a1',
-  cluster_id: 'c1',
+  session_id: 'c1',
   content: null,
   kind: 'text',
   mime: null,
@@ -51,14 +51,14 @@ function serve(dirs: Record<string, FileListing | (() => FileListing)>) {
   })
 }
 
-const mount = (clusterId = 'c1') =>
+const mount = (sessionId = 'c1') =>
   render(
     <ThemeProvider theme={theme}>
-      <FilesPanel clusterId={clusterId} />
+      <FilesPanel sessionId={sessionId} />
     </ThemeProvider>,
   )
 
-/** A cluster event as the SSE stream delivers it. */
+/** A session event as the SSE stream delivers it. */
 const emit = (type: string, data: Record<string, unknown>) =>
   act(async () => {
     stream.opened[stream.opened.length - 1].opts.onEvent({ id: 1, type, data }, { type, id: '1' })
@@ -154,7 +154,7 @@ describe('FilesPanel', () => {
       mount()
       await screen.findByText('src')
       expect(stream.opened).toHaveLength(1)
-      expect(stream.opened[0].url).toBe('/api/v1/clusters/c1/events/stream')
+      expect(stream.opened[0].url).toBe('/api/v1/sessions/c1/events/stream')
       expect([...(stream.opened[0].opts.eventNames ?? [])].sort()).toEqual(['tool_call', 'tool_result'])
       expect(stream.opened[0].opts.afterId).toBeUndefined()
     })
@@ -342,7 +342,7 @@ describe('FilesPanel', () => {
     test('recovers from a 409 root without a click', async () => {
       let up = false
       api.listFiles.mockImplementation(async () => {
-        if (!up) throw new ApiError(409, 'agent_not_ready', 'no agent of the cluster is ready')
+        if (!up) throw new ApiError(409, 'agent_not_ready', 'no agent of the session is ready')
         return listing('', [entry('fresh.txt')])
       })
       mount()
@@ -434,21 +434,21 @@ describe('FilesPanel', () => {
     expect(stream.opened).toHaveLength(1)
     expect(stream.close).not.toHaveBeenCalled()
 
-    // A cluster change swaps the subscription.
+    // A session change swaps the subscription.
     view.rerender(
       <ThemeProvider theme={theme}>
-        <FilesPanel clusterId="c2" />
+        <FilesPanel sessionId="c2" />
       </ThemeProvider>,
     )
     await waitFor(() => expect(stream.opened).toHaveLength(2))
-    expect(stream.opened[1].url).toBe('/api/v1/clusters/c2/events/stream')
+    expect(stream.opened[1].url).toBe('/api/v1/sessions/c2/events/stream')
     expect(stream.close).toHaveBeenCalledTimes(1)
 
     view.unmount()
     expect(stream.close).toHaveBeenCalledTimes(2)
   })
 
-  test('preview_dropped_on_cluster_change', async () => {
+  test('preview_dropped_on_session_change', async () => {
     serve({ '': listing('', [entry('a.txt')]) })
     api.readFile.mockResolvedValue(content('a.txt', { content: 'one' }))
     const view = mount()
@@ -456,7 +456,7 @@ describe('FilesPanel', () => {
     await screen.findByTestId('file-preview-text')
     view.rerender(
       <ThemeProvider theme={theme}>
-        <FilesPanel clusterId="c2" />
+        <FilesPanel sessionId="c2" />
       </ThemeProvider>,
     )
     await waitFor(() => expect(screen.queryByTestId('file-preview-text')).toBeNull())

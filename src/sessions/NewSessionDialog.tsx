@@ -1,4 +1,4 @@
-/** New cluster dialog: choose a preset and optionally name the cluster; the server snapshots the preset's spec. */
+/** New session dialog: choose a preset and optionally name the session; the server snapshots the preset's spec. */
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -9,19 +9,19 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import { createCluster, listPresets } from '../api/client'
-import type { ClusterView, CreateCluster, PresetView } from '../api/client'
-import { MAX_SLUG } from './clusterSpecForm'
+import { createSession, listPresets } from '../api/client'
+import type { SessionView, CreateSession, PresetView } from '../api/client'
+import { MAX_SLUG } from './sessionSpecForm'
 
-export interface NewClusterDialogProps {
+export interface NewSessionDialogProps {
   open: boolean
   onClose: () => void
-  onCreated: (cluster: ClusterView) => void
+  onCreated: (session: SessionView) => void
 }
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
-function DialogBody({ onClose, onCreated }: Omit<NewClusterDialogProps, 'open'>) {
+function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>) {
   const [presets, setPresets] = useState<PresetView[]>([])
   const [presetId, setPresetId] = useState('')
   const [slug, setSlug] = useState('')
@@ -50,8 +50,8 @@ function DialogBody({ onClose, onCreated }: Omit<NewClusterDialogProps, 'open'>)
     setBusy(true)
     setError(null)
     try {
-      const body: CreateCluster = slug === '' ? { preset_id: presetId } : { preset_id: presetId, slug }
-      onCreated(await createCluster(body))
+      const body: CreateSession = slug === '' ? { preset_id: presetId } : { preset_id: presetId, slug }
+      onCreated(await createSession(body))
     } catch (e) {
       setError(message(e))
     } finally {
@@ -61,7 +61,7 @@ function DialogBody({ onClose, onCreated }: Omit<NewClusterDialogProps, 'open'>)
 
   return (
     <>
-      <DialogTitle>New cluster</DialogTitle>
+      <DialogTitle>New session</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {error && <Alert severity="error" variant="outlined">{error}</Alert>}
@@ -90,12 +90,12 @@ function DialogBody({ onClose, onCreated }: Omit<NewClusterDialogProps, 'open'>)
 }
 
 /**
- * @param props see NewClusterDialogProps.
+ * @param props see NewSessionDialogProps.
  * @returns the dialog element; its body remounts on every open so it reloads the presets and starts fresh.
  */
-export function NewClusterDialog({ open, ...rest }: NewClusterDialogProps) {
+export function NewSessionDialog({ open, ...rest }: NewSessionDialogProps) {
   return (
-    <Dialog open={open} onClose={rest.onClose} fullWidth maxWidth="xs" aria-label="New cluster">
+    <Dialog open={open} onClose={rest.onClose} fullWidth maxWidth="xs" aria-label="New session">
       <DialogBody {...rest} />
     </Dialog>
   )

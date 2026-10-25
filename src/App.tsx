@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { ChatView } from './chat/ChatView'
-import { DiscardClusterDialog } from './clusters/DiscardClusterDialog'
-import { InitScriptsDialog } from './clusters/InitScriptsDialog'
-import { NewClusterDialog } from './clusters/NewClusterDialog'
+import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
+import { InitScriptsDialog } from './sessions/InitScriptsDialog'
+import { NewSessionDialog } from './sessions/NewSessionDialog'
 import { FilesPanel } from './files/FilesPanel'
-import type { ClusterView } from './api/client'
+import type { SessionView } from './api/client'
 import { TopBar } from './layout/TopBar'
 import { Workspace } from './layout/Workspace'
-import { sortedAgents, useClusters } from './ribbon/useClusters'
+import { sortedAgents, useSessions } from './ribbon/useSessions'
 import { menuEntries } from './backends/registry'
 import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
@@ -18,26 +18,26 @@ import { TOKENS } from './theme'
 export const APP_NAME = 'Agent Orchestrator';
 
 export default function App() {
-  const { state, clusters, select } = useClusters()
+  const { state, sessions, select } = useSessions()
   const [creating, setCreating] = useState(false)
-  // The main area shows the selected cluster or a settings page; no router.
-  const [view, setView] = useState<string>('cluster')
-  const [discarding, setDiscarding] = useState<ClusterView | null>(null)
-  const [initScripts, setInitScripts] = useState<ClusterView | null>(null)
-  // The first cluster by slug is selected until a tab is chosen, and again when the chosen one disappears.
-  const selectedId = state.selectedId !== null && state.selectedId in state.clusters ? state.selectedId : (clusters[0]?.cluster.id ?? null)
-  const selected = selectedId === null ? null : state.clusters[selectedId]
+  // The main area shows the selected session or a settings page; no router.
+  const [view, setView] = useState<string>('session')
+  const [discarding, setDiscarding] = useState<SessionView | null>(null)
+  const [initScripts, setInitScripts] = useState<SessionView | null>(null)
+  // The first session by slug is selected until a tab is chosen, and again when the chosen one disappears.
+  const selectedId = state.selectedId !== null && state.selectedId in state.sessions ? state.selectedId : (sessions[0]?.session.id ?? null)
+  const selected = selectedId === null ? null : state.sessions[selectedId]
   const config = getConfig()
   const entries = useMemo(() => menuEntries(config), [config])
   const openEntry = entries.find((e) => e.id === view)
   const show = (id: string) => {
-    setView('cluster')
+    setView('session')
     select(id)
   }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
       <TopBar
-        clusters={clusters}
+        sessions={sessions}
         selectedId={selectedId}
         onSelect={show}
         onNew={() => setCreating(true)}
@@ -52,23 +52,23 @@ export default function App() {
           </Box>
         )}
         {openEntry ? (
-          openEntry.render(() => setView('cluster'), show)
+          openEntry.render(() => setView('session'), show)
         ) : selected ? (
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <Workspace
-              clusterId={selected.cluster.id}
-              files={<FilesPanel clusterId={selected.cluster.id} />}
-              chat={<ChatView cluster={selected.cluster} agents={sortedAgents(selected)} />}
-              terminal={<TerminalPanel cluster={selected.cluster} agents={sortedAgents(selected)} />}
+              sessionId={selected.session.id}
+              files={<FilesPanel sessionId={selected.session.id} />}
+              chat={<ChatView session={selected.session} agents={sortedAgents(selected)} />}
+              terminal={<TerminalPanel session={selected.session} agents={sortedAgents(selected)} />}
             />
           </Box>
         ) : (
-          state.loaded && !state.error && <Typography color="text.secondary">No clusters yet</Typography>
+          state.loaded && !state.error && <Typography color="text.secondary">No sessions yet</Typography>
         )}
       </Box>
-      <NewClusterDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
-      {initScripts && <InitScriptsDialog open cluster={initScripts} onClose={() => setInitScripts(null)} />}
-      {discarding && <DiscardClusterDialog open cluster={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
+      <NewSessionDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
+      {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
+      {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
     </Box>
   )
 }

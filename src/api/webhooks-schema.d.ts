@@ -259,10 +259,6 @@ export interface components {
             action: string | null;
             /** Author */
             author: string | null;
-            /** Cluster Id */
-            cluster_id: string | null;
-            /** Cluster Slug */
-            cluster_slug: string | null;
             /** Dedup Key */
             dedup_key: string;
             /** Deliveries */
@@ -298,6 +294,10 @@ export interface components {
             received_at: string;
             /** Repo */
             repo: string | null;
+            /** Session Id */
+            session_id: string | null;
+            /** Session Slug */
+            session_slug: string | null;
             /** Source */
             source: string;
             /** Started At */
@@ -324,10 +324,6 @@ export interface components {
             action: string | null;
             /** Author */
             author: string | null;
-            /** Cluster Id */
-            cluster_id: string | null;
-            /** Cluster Slug */
-            cluster_slug: string | null;
             /** Dedup Key */
             dedup_key: string;
             /** Deliveries */
@@ -359,6 +355,10 @@ export interface components {
             received_at: string;
             /** Repo */
             repo: string | null;
+            /** Session Id */
+            session_id: string | null;
+            /** Session Slug */
+            session_slug: string | null;
             /** Source */
             source: string;
             /** Started At */

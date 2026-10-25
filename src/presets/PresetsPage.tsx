@@ -1,4 +1,4 @@
-/** Settings > Presets: the stored ClusterSpec templates, with create, edit, copy and delete. */
+/** Settings > Presets: the stored SessionSpec templates, with create, edit, copy and delete. */
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -102,7 +102,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete preset ${deleting?.name ?? ''}?`}
-        body="Clusters already created from it keep their own copy of the spec."
+        body="Sessions already created from it keep their own copy of the spec."
         confirmLabel="Delete"
         onConfirm={() => deleting && void confirmDelete(deleting)}
         onCancel={() => setDeleting(null)}

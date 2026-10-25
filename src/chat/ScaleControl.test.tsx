@@ -2,25 +2,25 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { ApiError, type ClusterView } from '../api/client'
+import { ApiError, type SessionView } from '../api/client'
 import { theme } from '../theme'
 import { ScaleControl } from './ScaleControl'
 
-const scaleCluster = vi.hoisted(() => vi.fn())
-vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), scaleCluster }))
+const scaleSession = vi.hoisted(() => vi.fn())
+vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), scaleSession }))
 
 afterEach(() => {
-  scaleCluster.mockReset()
+  scaleSession.mockReset()
   cleanup()
 })
 
 const view = (replicas: number, max: number, isStatic = false) =>
-  ({ id: 'c1', max_replicas: max, static: isStatic, spec: { replicas, max_replicas: max, static: isStatic } }) as unknown as ClusterView
+  ({ id: 'c1', max_replicas: max, static: isStatic, spec: { replicas, max_replicas: max, static: isStatic } }) as unknown as SessionView
 
-const mount = (c: ClusterView) =>
+const mount = (c: SessionView) =>
   render(
     <ThemeProvider theme={theme}>
-      <ScaleControl cluster={c} />
+      <ScaleControl session={c} />
     </ThemeProvider>,
   )
 
@@ -29,13 +29,13 @@ const remove = () => screen.getByRole('button', { name: 'Remove an agent' })
 
 describe('ScaleControl', () => {
   test('posts scale one up or down', async () => {
-    scaleCluster.mockResolvedValue({})
+    scaleSession.mockResolvedValue({})
     mount(view(2, 4))
     expect(screen.getByText('2 of 4 agents')).toBeTruthy()
     await act(async () => fireEvent.click(add()))
-    expect(scaleCluster).toHaveBeenLastCalledWith('c1', { replicas: 3 })
+    expect(scaleSession).toHaveBeenLastCalledWith('c1', { replicas: 3 })
     await act(async () => fireEvent.click(remove()))
-    expect(scaleCluster).toHaveBeenLastCalledWith('c1', { replicas: 1 })
+    expect(scaleSession).toHaveBeenLastCalledWith('c1', { replicas: 1 })
   })
 
   test('buttons disabled at bounds and in flight', async () => {
@@ -47,7 +47,7 @@ describe('ScaleControl', () => {
     expect((add() as HTMLButtonElement).disabled).toBe(true)
     m.unmount()
     let done!: () => void
-    scaleCluster.mockReturnValue(new Promise<void>((r) => (done = r)))
+    scaleSession.mockReturnValue(new Promise<void>((r) => (done = r)))
     mount(view(2, 3))
     await act(async () => fireEvent.click(add()))
     expect((add() as HTMLButtonElement).disabled).toBe(true)
@@ -56,7 +56,7 @@ describe('ScaleControl', () => {
     expect((add() as HTMLButtonElement).disabled).toBe(false)
   })
 
-  test('static and alone clusters', async () => {
+  test('static and alone sessions', async () => {
     const { container, unmount } = mount(view(1, 1))
     expect(container.textContent).toBe('')
     unmount()
@@ -64,15 +64,15 @@ describe('ScaleControl', () => {
     expect(screen.getByText('2 of 4 agents')).toBeTruthy()
     expect((add() as HTMLButtonElement).disabled).toBe(true)
     expect((remove() as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText('Static cluster: scaling is off')).toBeTruthy()
+    expect(screen.getByLabelText('Static session: scaling is off')).toBeTruthy()
   })
 
   test('shows errors inline', async () => {
-    scaleCluster.mockRejectedValueOnce(new ApiError(409, 'busy', 'cluster is busy'))
+    scaleSession.mockRejectedValueOnce(new ApiError(409, 'busy', 'session is busy'))
     mount(view(2, 4))
     await act(async () => fireEvent.click(add()))
-    expect(screen.getByRole('alert').textContent).toBe('cluster is busy')
-    scaleCluster.mockRejectedValueOnce(new ApiError(409, 'leader_would_leave', 'leader is agent 2'))
+    expect(screen.getByRole('alert').textContent).toBe('session is busy')
+    scaleSession.mockRejectedValueOnce(new ApiError(409, 'leader_would_leave', 'leader is agent 2'))
     await act(async () => fireEvent.click(remove()))
     expect(screen.getByRole('alert').textContent).toBe('leader is agent 2 Make another agent leader first.')
   })

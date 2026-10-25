@@ -1,4 +1,4 @@
-/** Lazily loaded file tree of one cluster: a cache of directory listings keyed by relative path ("" is the workdir root). */
+/** Lazily loaded file tree of one session: a cache of directory listings keyed by relative path ("" is the workdir root). */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError } from '../api/client'
 import { listFiles } from '../api/files'
@@ -57,7 +57,7 @@ function append(entries: FileEntry[], page: FileEntry[]): FileEntry[] {
 const sameEntries = (a: FileEntry[], b: FileEntry[]): boolean =>
   a.length === b.length && a.every((e, i) => e.name === b[i].name && e.type === b[i].type && e.size === b[i].size && e.mtime === b[i].mtime)
 
-export function useFileTree(clusterId: string): FileTree {
+export function useFileTree(sessionId: string): FileTree {
   const [state, setState] = useState<TreeState>(initial)
   const ref = useRef(state)
   const epoch = useRef(0)
@@ -75,10 +75,10 @@ export function useFileTree(clusterId: string): FileTree {
     [update],
   )
 
-  // The cluster id changing is the epoch boundary: everything from the previous cluster is dropped.
-  const [shown, setShown] = useState(clusterId)
-  if (shown !== clusterId) {
-    setShown(clusterId)
+  // The session id changing is the epoch boundary: everything from the previous session is dropped.
+  const [shown, setShown] = useState(sessionId)
+  if (shown !== sessionId) {
+    setShown(sessionId)
     setState(initial())
   }
 
@@ -101,7 +101,7 @@ export function useFileTree(clusterId: string): FileTree {
         let entries = mode === 'more' ? (dir?.entries ?? []) : []
         let offset: number | undefined = mode === 'more' ? (dir?.nextOffset ?? undefined) : undefined
         for (;;) {
-          const page = offset === undefined ? await listFiles(clusterId, path) : await listFiles(clusterId, path, offset)
+          const page = offset === undefined ? await listFiles(sessionId, path) : await listFiles(sessionId, path, offset)
           if (!live()) return
           entries = offset === undefined ? page.entries : append(entries, page.entries)
           offset = page.next_offset ?? undefined
@@ -129,7 +129,7 @@ export function useFileTree(clusterId: string): FileTree {
         patchDir(path, (d) => ({ ...d, loading: false, error: missing ? null : errorText(e) }), path === '' ? { missing } : undefined)
       })
     },
-    [clusterId, patchDir],
+    [sessionId, patchDir],
   )
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export function useFileTree(clusterId: string): FileTree {
     return () => {
       epoch.current += 1
     }
-  }, [clusterId, load])
+  }, [sessionId, load])
 
   const expand = useCallback(
     (path: string) => {

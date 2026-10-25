@@ -1,4 +1,4 @@
-/** Queued, verifying and failed messages of a cluster, with Cancel and Retry; hidden when empty. */
+/** Queued, verifying and failed messages of a session, with Cancel and Retry; hidden when empty. */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -20,22 +20,22 @@ function detail(m: MessageView): string | null {
   return null
 }
 
-export function QueueStrip({ clusterId }: { clusterId: string }) {
-  const [shown, setShown] = useState<{ clusterId: string; messages: MessageView[] }>({ clusterId, messages: [] })
+export function QueueStrip({ sessionId }: { sessionId: string }) {
+  const [shown, setShown] = useState<{ sessionId: string; messages: MessageView[] }>({ sessionId, messages: [] })
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<number | null>(null)
   const latest = useRef(0)
 
   const refresh = useCallback(() => {
     const mine = ++latest.current
-    listMessages(clusterId, { status: QUEUE_STATUSES })
+    listMessages(sessionId, { status: QUEUE_STATUSES })
       .then((messages) => {
-        if (latest.current === mine) setShown({ clusterId, messages })
+        if (latest.current === mine) setShown({ sessionId, messages })
       })
       .catch((e: unknown) => {
         if (latest.current === mine) setError(errorText(e))
       })
-  }, [clusterId])
+  }, [sessionId])
 
   useEffect(() => {
     const token = latest
@@ -43,14 +43,14 @@ export function QueueStrip({ clusterId }: { clusterId: string }) {
     const stream = openStream(statusStreamUrl(), {
       eventNames: ['message_status'],
       onEvent: (data) => {
-        if ((data as { cluster_id?: string } | null)?.cluster_id === clusterId) refresh()
+        if ((data as { session_id?: string } | null)?.session_id === sessionId) refresh()
       },
     })
     return () => {
       token.current++
       stream.close()
     }
-  }, [clusterId, refresh])
+  }, [sessionId, refresh])
 
   const act = (call: () => Promise<unknown>) => {
     setError(null)
@@ -58,7 +58,7 @@ export function QueueStrip({ clusterId }: { clusterId: string }) {
     call().then(refresh, (e: unknown) => setError(errorText(e)))
   }
 
-  const messages = shown.clusterId === clusterId ? shown.messages : []
+  const messages = shown.sessionId === sessionId ? shown.messages : []
   if (messages.length === 0 && !error) return null
   return (
     <Box sx={{ py: 1, borderTop: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>

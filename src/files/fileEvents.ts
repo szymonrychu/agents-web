@@ -1,4 +1,4 @@
-/** Maps cluster events to file tree refreshes: a finished write refreshes its parent directory, a shell result refreshes the expanded tree. */
+/** Maps session events to file tree refreshes: a finished write refreshes its parent directory, a shell result refreshes the expanded tree. */
 
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit'])
 const BASH_TOOL = 'Bash'
@@ -43,7 +43,7 @@ function relativeInRoot(filePath: string, root: string): string {
   return filePath.slice(root.replace(/\/+$/, '').length + 1)
 }
 
-/** @param row - a cluster event as delivered by the event stream: { type, data: { name | tool_name, tool_input | input } }. */
+/** @param row - a session event as delivered by the event stream: { type, data: { name | tool_name, tool_input | input } }. */
 export function createFileEvents(targets: FileEventTargets, bashMs: number = BASH_REFRESH_MS): FileEvents {
   let cooling: ReturnType<typeof setTimeout> | null = null
   let pending = false
