@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { ChatView } from './chat/ChatView'
@@ -27,7 +27,8 @@ export default function App() {
   // The first cluster by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.clusters ? state.selectedId : (clusters[0]?.cluster.id ?? null)
   const selected = selectedId === null ? null : state.clusters[selectedId]
-  const entries = menuEntries(getConfig())
+  const config = getConfig()
+  const entries = useMemo(() => menuEntries(config), [config])
   const openEntry = entries.find((e) => e.id === view)
   const show = (id: string) => {
     setView('cluster')

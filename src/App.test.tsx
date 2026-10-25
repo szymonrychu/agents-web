@@ -211,6 +211,18 @@ describe('App', () => {
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
 
+  test('unregistered_backend_warns_once_across_rerenders', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'ghost', label: 'G', basePath: '/ghost' }]
+    await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    fireEvent.click(tabs()[1])
+    emit('snapshot', { clusters: [{ cluster: cluster('c9', 'omega'), agents: [] }] })
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('ghost'))).toHaveLength(1)
+    warn.mockRestore()
+  })
+
   test('presets_from_settings_menu', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
