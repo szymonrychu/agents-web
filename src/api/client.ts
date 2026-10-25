@@ -1,4 +1,5 @@
 /** Typed access to /api/v1, derived from the generated OpenAPI schema. */
+import { backendBase } from '../config/backends';
 import type { components } from './schema';
 
 type S = components['schemas'];
@@ -37,7 +38,8 @@ export class ApiError extends Error {
   }
 }
 
-export const BASE = '/api/v1';
+/** The orchestrator base path, read at call time from the runtime config. */
+export const base = () => backendBase('orchestrator');
 
 async function toError(res: Response): Promise<ApiError> {
   let code = 'http_error';
@@ -62,7 +64,7 @@ export function query(params: Record<string, string | number | undefined>): stri
 }
 
 export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${base()}${path}`, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -127,5 +129,5 @@ export const listEvents = (clusterId: string, opts: EventsQuery = {}) =>
 
 export const getMeta = () => request<Meta>('GET', '/meta');
 
-export const eventStreamUrl = (clusterId: string) => `${BASE}/clusters/${id(clusterId)}/events/stream`;
-export const statusStreamUrl = () => `${BASE}/stream`;
+export const eventStreamUrl = (clusterId: string) => `${base()}/clusters/${id(clusterId)}/events/stream`;
+export const statusStreamUrl = () => `${base()}/stream`;

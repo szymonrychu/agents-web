@@ -1,5 +1,5 @@
 /** Typed access to the shell terminal API and the attach socket URL. */
-import { BASE, request } from './client'
+import { base, request } from './client'
 import type { components } from './schema'
 
 export type TerminalView = components['schemas']['TerminalView']
@@ -21,4 +21,4 @@ export const deleteTerminal = (agentId: string, terminalId: string) =>
 
 /** The attach WebSocket of one shell, on the page's own host and scheme. */
 export const terminalSocketUrl = (agentId: string, terminalId: string) =>
-  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${BASE}/agents/${id(agentId)}/terminals/${id(terminalId)}/attach`
+  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${base()}/agents/${id(agentId)}/terminals/${id(terminalId)}/attach`
