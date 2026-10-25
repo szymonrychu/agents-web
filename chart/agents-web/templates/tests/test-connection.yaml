@@ -27,6 +27,6 @@ spec:
       command: ['sh', '-c']
       args:
         - >-
-          wget -qO- {{ include "agents-web.fullname" . }}:{{ .Values.service.port }}/healthz &&
-          wget -qO- {{ include "agents-web.fullname" . }}:{{ .Values.service.port }}/config.json
+          wget -qO- {{ include "agents-web.fullname" . }}-test:{{ .Values.test.port }}/healthz &&
+          wget -qO- {{ include "agents-web.fullname" . }}-test:{{ .Values.test.port }}/config.json
   restartPolicy: Never
