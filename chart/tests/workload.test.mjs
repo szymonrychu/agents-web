@@ -75,3 +75,15 @@ test('imagePullSecrets from values and from global', () => {
   const both = pod(render('imagePullSecrets=[{"name":"a"}]', 'global={"imagePullSecrets":[{"name":"g"}]}')).imagePullSecrets;
   assert.deepEqual(both.map((s) => s.name).sort(), ['a', 'g']);
 });
+
+test('imagePullSecrets listed in values and global render once, on the deployment and the test pod', () => {
+  const sets = ['imagePullSecrets=[{"name":"regcred"}]', 'global={"imagePullSecrets":[{"name":"regcred"}]}'];
+  assert.deepEqual(pod(render(...sets)).imagePullSecrets, [{ name: 'regcred' }]);
+  const r = spawnSync(
+    'helm',
+    ['template', 'rel', chart, '--set', 'image.tag=x', ...sets.flatMap((s) => ['--set-json', s]), '--show-only', 'templates/tests/test-connection.yaml'],
+    { encoding: 'utf8' },
+  );
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(parseAllDocuments(r.stdout)[0].toJS().spec.imagePullSecrets, [{ name: 'regcred' }]);
+});

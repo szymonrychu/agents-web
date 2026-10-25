@@ -33,10 +33,17 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/* imagePullSecrets from values plus global, rendered as a list or nothing. */}}
+{{/* imagePullSecrets from values plus global, deduplicated by name, rendered as a list or nothing. */}}
 {{- define "agents-web.imagePullSecrets" -}}
 {{- $g := ((.Values.global | default dict).imagePullSecrets) | default list }}
-{{- $all := concat ($.Values.imagePullSecrets | default list) $g }}
+{{- $seen := dict }}
+{{- $all := list }}
+{{- range concat ($.Values.imagePullSecrets | default list) $g }}
+{{- if not (hasKey $seen .name) }}
+{{- $_ := set $seen .name true }}
+{{- $all = append $all . }}
+{{- end }}
+{{- end }}
 {{- if $all }}
 imagePullSecrets:
   {{- toYaml $all | nindent 2 }}
