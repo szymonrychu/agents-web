@@ -28,7 +28,7 @@ Static UI (nginx) with a runtime `config.json` and an optional Ingress on `/`.
 Contract `agents-web-url-layout`: all services share one host.
 
 - The UI (this chart) owns `/`.
-- agent-orchestrator owns `/api`.
+- agents-orchestrator owns `/api`.
 - Each later service owns exactly one prefix `/<prefix>/`, with its UI-facing API at `/<prefix>/api/v1`. The prefixes `webhooks` and `schedules` are reserved.
 - Only one Ingress of the host carries the cert-manager annotations; the others reference the same TLS secret.
 

@@ -1,5 +1,5 @@
 /**
- * Nomenclature guard (design D12): the orchestrator's unit is the session. Every tracked file under src/, its path
+ * Nomenclature guard (design D12): the orchestrator's unit is the session. Every tracked file in the repo except the dated history files, its path
  * included and this guard among them, must not name the retired unit or the retired project, except for the literal
  * phrases below: Kubernetes objects (ALLOWED) and the old names that retirement tests pin as gone (RETIRED).
  */
@@ -7,7 +7,10 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 
-const GUARDED = ['src']
+/** Dated history keeps the names it was written under. */
+const HISTORY = ['MEMORY.md', 'CHANGELOG.md']
+
+const GUARDED = ['.']
 
 /** Kubernetes, CNPG or kind phrases, never the orchestrator's unit. */
 const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info']
@@ -31,11 +34,13 @@ const unit = 'clu' + 'ster'
 
 const tracked = (...paths: string[]) => execFileSync('git', ['ls-files', '--', ...paths], { encoding: 'utf8' }).split('\n').filter(Boolean)
 
+const guardedFiles = (paths: string[]) => tracked(...paths).filter((file) => !HISTORY.includes(file))
+
 const offends = (text: string) => FORBIDDEN.test([...ALLOWED, ...RETIRED].reduce((rest, phrase) => rest.split(phrase).join(''), text))
 
 /** `path:line: text` for every offending line, and `path` alone for an offending file name. */
 function offenders(paths: string[]): string[] {
-  return tracked(...paths).flatMap((file) => [
+  return guardedFiles(paths).flatMap((file) => [
     ...(offends(file) ? [file] : []),
     ...readFileSync(file, 'utf8').split('\n').flatMap((line, i) => (offends(line) ? [`${file}:${i + 1}: ${line.trim()}`] : [])),
   ])
@@ -43,9 +48,10 @@ function offenders(paths: string[]): string[] {
 
 describe('nomenclature', () => {
   test('the guard covers all of src, the webhooks UI included', () => {
-    const guarded = tracked(...GUARDED)
-    expect(guarded).toEqual(tracked('src'))
-    for (const file of ['src/App.tsx', 'src/nomenclature.test.ts', 'src/chat/Composer.tsx', 'src/api/client.ts', 'src/webhooks/EventsTable.tsx', 'src/webhooks/WebhooksPage.test.tsx', 'src/api/webhooks-schema.d.ts']) {
+    const guarded = guardedFiles(GUARDED)
+    expect(guarded).toEqual(tracked().filter((file) => !HISTORY.includes(file)))
+    expect(guarded).not.toContain('MEMORY.md')
+    for (const file of ['README.md', 'chart/agents-web/README.md', 'chart/agents-web/values.yaml', 'src/App.tsx', 'src/nomenclature.test.ts', 'src/chat/Composer.tsx', 'src/api/client.ts', 'src/webhooks/EventsTable.tsx', 'src/webhooks/WebhooksPage.test.tsx', 'src/api/webhooks-schema.d.ts']) {
       expect(guarded, file).toContain(file)
     }
   })
