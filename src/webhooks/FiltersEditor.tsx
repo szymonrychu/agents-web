@@ -100,7 +100,7 @@ export function FiltersEditor({ type, fields, value, onChange }: FiltersEditorPr
         const rules = value[side]
         const headingId = `filters-${side}-heading`
         return (
-          <Box key={side} component="section" aria-labelledby={headingId} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box key={side} component="section" aria-labelledby={headingId} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Typography id={headingId} variant="subtitle2">{title}</Typography>
             {rules.map((rule, i) => (
               <RuleRow
