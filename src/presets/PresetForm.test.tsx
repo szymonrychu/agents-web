@@ -453,4 +453,43 @@ describe('PresetForm', () => {
     }
     expect(api.createPreset).not.toHaveBeenCalled()
   })
+
+  test('reuse running agent row renders off by default with its help text', { timeout: 15000 }, async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(field('Reuse running agent').checked).toBe(false)
+    expect(screen.getByText('Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one')).toBeTruthy()
+  })
+
+  test('reuse running agent switched on saves reuse_running_agent true', { timeout: 15000 }, async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'r')
+    await userEvent.click(field('Reuse running agent'))
+    expect(field('Reuse running agent').checked).toBe(true)
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.reuse_running_agent).toBe(true)
+  })
+
+  test('reuse running agent stored on a preset loads on and round-trips', { timeout: 15000 }, async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { reuse_running_agent: true } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Reuse running agent').checked).toBe(true)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ reuse_running_agent: true })
+  })
+
+  test('reuse running agent untouched keeps the spec sparse', { timeout: 15000 }, async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 's')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('reuse_running_agent')
+  })
 })
