@@ -1,0 +1,7 @@
+apiVersion: v2
+name: agents-web
+description: Static web UI for the agent orchestrator, served by nginx
+type: application
+version: 0.1.0
+# appVersion is set by CI at release time.
+appVersion: "0.0.0"

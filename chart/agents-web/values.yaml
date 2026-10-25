@@ -1,0 +1,44 @@
+image:
+  repository: harbor.szymonrichert.pl/containers/agents-web
+  # Required: the render fails while this is empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Merged with global.imagePullSecrets.
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+
+service:
+  type: ClusterIP
+  port: 8080
