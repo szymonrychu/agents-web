@@ -3,16 +3,16 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import type { ClusterView, InitScriptsView } from '../api/client'
+import type { SessionView, InitScriptsView } from '../api/client'
 import { theme } from '../theme'
 import { InitScriptsDialog } from './InitScriptsDialog'
 
 const api = vi.hoisted(() => ({ getInitScripts: vi.fn(), putInitScripts: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
-const cluster = { id: 'c-1', slug: 'alpha', spec: {}, status: {} } as unknown as ClusterView
+const cluster = { id: 'c-1', slug: 'alpha', spec: {}, status: {} } as unknown as SessionView
 const view = (o: Partial<InitScriptsView> = {}): InitScriptsView => ({
-  cluster_id: 'c-1', edited_since_run: false, log_path: '/w/.agent-init/log', preset_id: 'p-1', preset_name: 'dev', preset_updated: false,
+  session_id: 'c-1', edited_since_run: false, log_path: '/w/.agent-init/log', preset_id: 'p-1', preset_name: 'dev', preset_updated: false,
   script_path: '/w/.agent-init/scripts', scripts: ['echo one'], status: { scripts_hash: 'h', state: 'succeeded', exit_code: 0, started_at: '2026-01-01T00:00:00Z', finished_at: '2026-01-01T00:01:00Z', log_tail: 'tail line' }, ...o,
 })
 const wrap = () => render(<ThemeProvider theme={theme}><InitScriptsDialog open cluster={cluster} onClose={vi.fn()} /></ThemeProvider>)

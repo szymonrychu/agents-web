@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { ApiError } from '../api/client'
-import type { AgentView, ClusterView } from '../api/client'
+import type { AgentView, SessionView } from '../api/client'
 import { createTerminal, deleteTerminal, listTerminals, terminalSocketUrl } from '../api/terminals'
 import type { TerminalView } from '../api/terminals'
 import { TOKENS } from '../theme'
@@ -20,7 +20,7 @@ import type { TerminalStatus } from './terminalSocket'
 import { XtermView } from './XtermView'
 
 export interface TerminalPanelProps {
-  cluster: ClusterView
+  cluster: SessionView
   /** The cluster's live agents ordered by ordinal. */
   agents: AgentView[]
 }

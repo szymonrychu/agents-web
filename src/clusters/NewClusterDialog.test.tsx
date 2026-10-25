@@ -4,17 +4,17 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
-import type { ClusterView, PresetView } from '../api/client'
+import type { SessionView, PresetView } from '../api/client'
 import { theme } from '../theme'
 import { MAX_SLUG } from './clusterSpecForm'
 import { NewClusterDialog } from './NewClusterDialog'
 
-const api = vi.hoisted(() => ({ listPresets: vi.fn(), createCluster: vi.fn() }))
+const api = vi.hoisted(() => ({ listPresets: vi.fn(), createSession: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, updated_at: '2026-01-01T00:00:00Z' })
 const PRESETS = [preset('p-big', 'Big box'), preset('p-def', 'Default', true), preset('p-small', 'Small')]
-const created = { id: 'c-1', slug: 'default' } as ClusterView
+const created = { id: 'c-1', slug: 'default' } as SessionView
 
 const wrap = (el: React.ReactElement) => render(<ThemeProvider theme={theme}>{el}</ThemeProvider>)
 const create = () => screen.getByRole('button', { name: 'Create' }) as HTMLButtonElement
@@ -44,13 +44,13 @@ describe('NewClusterDialog', () => {
   })
 
   test('sends_preset_id_and_optional_slug', async () => {
-    api.createCluster.mockResolvedValue(created)
+    api.createSession.mockResolvedValue(created)
     const onCreated = vi.fn()
     wrap(<NewClusterDialog open onClose={vi.fn()} onCreated={onCreated} />)
     await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
     await userEvent.click(create())
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created))
-    expect(api.createCluster).toHaveBeenLastCalledWith({ preset_id: 'p-def' })
+    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-def' })
 
     await userEvent.click(presetSelect())
     await userEvent.click(screen.getByRole('option', { name: 'Small' }))
@@ -59,11 +59,11 @@ describe('NewClusterDialog', () => {
     await userEvent.paste('my-slug')
     await userEvent.click(create())
     await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(2))
-    expect(api.createCluster).toHaveBeenLastCalledWith({ preset_id: 'p-small', slug: 'my-slug' })
+    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-small', slug: 'my-slug' })
   })
 
   test('shows_server_error_and_blocks_long_slug', async () => {
-    api.createCluster.mockRejectedValue(new ApiError(422, 'invalid_spec', 'preset "Default": replicas exceeds the cap'))
+    api.createSession.mockRejectedValue(new ApiError(422, 'invalid_spec', 'preset "Default": replicas exceeds the cap'))
     const onCreated = vi.fn()
     const onClose = vi.fn()
     wrap(<NewClusterDialog open onClose={onClose} onCreated={onCreated} />)

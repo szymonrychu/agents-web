@@ -9,14 +9,14 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import { createCluster, listPresets } from '../api/client'
-import type { ClusterView, CreateCluster, PresetView } from '../api/client'
+import { createSession, listPresets } from '../api/client'
+import type { SessionView, CreateSession, PresetView } from '../api/client'
 import { MAX_SLUG } from './clusterSpecForm'
 
 export interface NewClusterDialogProps {
   open: boolean
   onClose: () => void
-  onCreated: (cluster: ClusterView) => void
+  onCreated: (cluster: SessionView) => void
 }
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -50,8 +50,8 @@ function DialogBody({ onClose, onCreated }: Omit<NewClusterDialogProps, 'open'>)
     setBusy(true)
     setError(null)
     try {
-      const body: CreateCluster = slug === '' ? { preset_id: presetId } : { preset_id: presetId, slug }
-      onCreated(await createCluster(body))
+      const body: CreateSession = slug === '' ? { preset_id: presetId } : { preset_id: presetId, slug }
+      onCreated(await createSession(body))
     } catch (e) {
       setError(message(e))
     } finally {

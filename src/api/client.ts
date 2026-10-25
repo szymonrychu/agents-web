@@ -3,9 +3,10 @@ import { backendBase } from '../config/backends';
 import type { components } from './schema';
 
 type S = components['schemas'];
-export type ClusterView = S['ClusterView'];
-export type ClusterSpec = S['ClusterSpec'];
-export type CreateCluster = S['CreateCluster'];
+export type SessionView = S['SessionView'];
+export type SessionSummary = S['SessionSummary'];
+export type SessionSpec = S['SessionSpec'];
+export type CreateSession = S['CreateSession'];
 export type AgentView = S['AgentView'];
 export type MessageView = S['MessageView'];
 export type MessageAccepted = S['MessageAccepted'];
@@ -80,15 +81,15 @@ export async function requestAt<T>(basePath: string, method: string, path: strin
 
 const id = encodeURIComponent;
 
-export const listClusters = () => request<ClusterView[]>('GET', '/clusters');
-export const getCluster = (clusterId: string) => request<ClusterView>('GET', `/clusters/${id(clusterId)}`);
+export const listSessions = () => request<SessionView[]>('GET', '/sessions');
+export const getSession = (sessionId: string) => request<SessionView>('GET', `/sessions/${id(sessionId)}`);
 /** Body: exactly one of `spec` or `preset_id` (the server answers 422 otherwise); `slug` is optional with a preset. */
-export const createCluster = (body: CreateCluster) => request<ClusterView>('POST', '/clusters', body);
-/** Discards the cluster; takes no purge parameter. */
-export const deleteCluster = (clusterId: string) => request<ClusterView>('DELETE', `/clusters/${id(clusterId)}`);
-export const getInitScripts = (clusterId: string) => request<InitScriptsView>('GET', `/clusters/${id(clusterId)}/init-scripts`);
-export const putInitScripts = (clusterId: string, scripts: string[]) =>
-  request<InitScriptsView>('PUT', `/clusters/${id(clusterId)}/init-scripts`, { scripts });
+export const createSession = (body: CreateSession) => request<SessionView>('POST', '/sessions', body);
+/** Discards the session; takes no purge parameter. */
+export const deleteSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}`);
+export const getInitScripts = (sessionId: string) => request<InitScriptsView>('GET', `/sessions/${id(sessionId)}/init-scripts`);
+export const putInitScripts = (sessionId: string, scripts: string[]) =>
+  request<InitScriptsView>('PUT', `/sessions/${id(sessionId)}/init-scripts`, { scripts });
 export const listPresets = () => request<PresetView[]>('GET', '/presets');
 export const getPreset = (presetId: string) => request<PresetView>('GET', `/presets/${id(presetId)}`);
 export const createPreset = (body: PresetIn) => request<PresetView>('POST', '/presets', body);
@@ -97,13 +98,13 @@ export const deletePreset = (presetId: string) => request<void>('DELETE', `/pres
 /** Copies a preset; the server names the copy when `body.name` is absent. */
 export const copyPreset = (presetId: string, body?: CopyPreset) => request<PresetView>('POST', `/presets/${id(presetId)}/copy`, body);
 
-export const listAgents = (clusterId: string) =>
-  request<AgentView[]>('GET', `/clusters/${id(clusterId)}/agents`);
+export const listAgents = (sessionId: string) =>
+  request<AgentView[]>('GET', `/sessions/${id(sessionId)}/agents`);
 
-export const postMessage = (clusterId: string, body: PostMessage) =>
-  request<MessageAccepted>('POST', `/clusters/${id(clusterId)}/messages`, body);
-export const listMessages = (clusterId: string, opts: { status?: string; limit?: number } = {}) =>
-  request<MessageView[]>('GET', `/clusters/${id(clusterId)}/messages${query(opts)}`);
+export const postMessage = (sessionId: string, body: PostMessage) =>
+  request<MessageAccepted>('POST', `/sessions/${id(sessionId)}/messages`, body);
+export const listMessages = (sessionId: string, opts: { status?: string; limit?: number } = {}) =>
+  request<MessageView[]>('GET', `/sessions/${id(sessionId)}/messages${query(opts)}`);
 export const getMessage = (messageId: string) => request<MessageView>('GET', `/messages/${id(messageId)}`);
 export const cancelMessage = (messageId: string) => request<void>('DELETE', `/messages/${id(messageId)}`);
 export const retryMessage = (messageId: string) =>
@@ -111,14 +112,14 @@ export const retryMessage = (messageId: string) =>
 
 export const agentCommand = (agentId: string, command: AgentCommand) =>
   request<CommandAccepted>('POST', `/agents/${id(agentId)}/${command}`);
-export const makeLeader = (clusterId: string, agentId: string) =>
-  request<S['LeadershipRequested']>('POST', `/clusters/${id(clusterId)}/leader`, { agent_id: agentId });
-/** Sets spec.replicas in place; the cluster view follows from the status stream. */
-export const scaleCluster = (clusterId: string, body: ScaleRequest) =>
-  request<ScaleResult>('POST', `/clusters/${id(clusterId)}/scale`, body);
+export const makeLeader = (sessionId: string, agentId: string) =>
+  request<S['LeadershipRequested']>('POST', `/sessions/${id(sessionId)}/leader`, { agent_id: agentId });
+/** Sets spec.replicas in place; the session view follows from the status stream. */
+export const scaleSession = (sessionId: string, body: ScaleRequest) =>
+  request<ScaleResult>('POST', `/sessions/${id(sessionId)}/scale`, body);
 export const getCommand = (commandId: string) => request<CommandView>('GET', `/commands/${id(commandId)}`);
-export const postCheck = (clusterId: string, body: PostCheck) =>
-  request<CheckAccepted>('POST', `/clusters/${id(clusterId)}/checks`, body);
+export const postCheck = (sessionId: string, body: PostCheck) =>
+  request<CheckAccepted>('POST', `/sessions/${id(sessionId)}/checks`, body);
 export const getCheck = (checkId: string) => request<CheckView>('GET', `/checks/${id(checkId)}`);
 
 export interface EventsQuery {
@@ -128,10 +129,10 @@ export interface EventsQuery {
   agent_id?: string;
   types?: string;
 }
-export const listEvents = (clusterId: string, opts: EventsQuery = {}) =>
-  request<EventsPage>('GET', `/clusters/${id(clusterId)}/events${query({ ...opts })}`);
+export const listEvents = (sessionId: string, opts: EventsQuery = {}) =>
+  request<EventsPage>('GET', `/sessions/${id(sessionId)}/events${query({ ...opts })}`);
 
 export const getMeta = () => request<Meta>('GET', '/meta');
 
-export const eventStreamUrl = (clusterId: string) => `${base()}/clusters/${id(clusterId)}/events/stream`;
+export const eventStreamUrl = (sessionId: string) => `${base()}/sessions/${id(sessionId)}/events/stream`;
 export const statusStreamUrl = () => `${base()}/stream`;

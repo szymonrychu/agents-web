@@ -6,7 +6,7 @@ import { DiscardClusterDialog } from './clusters/DiscardClusterDialog'
 import { InitScriptsDialog } from './clusters/InitScriptsDialog'
 import { NewClusterDialog } from './clusters/NewClusterDialog'
 import { FilesPanel } from './files/FilesPanel'
-import type { ClusterView } from './api/client'
+import type { SessionView } from './api/client'
 import { TopBar } from './layout/TopBar'
 import { Workspace } from './layout/Workspace'
 import { sortedAgents, useClusters } from './ribbon/useClusters'
@@ -22,8 +22,8 @@ export default function App() {
   const [creating, setCreating] = useState(false)
   // The main area shows the selected cluster or a settings page; no router.
   const [view, setView] = useState<string>('cluster')
-  const [discarding, setDiscarding] = useState<ClusterView | null>(null)
-  const [initScripts, setInitScripts] = useState<ClusterView | null>(null)
+  const [discarding, setDiscarding] = useState<SessionView | null>(null)
+  const [initScripts, setInitScripts] = useState<SessionView | null>(null)
   // The first cluster by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.clusters ? state.selectedId : (clusters[0]?.cluster.id ?? null)
   const selected = selectedId === null ? null : state.clusters[selectedId]

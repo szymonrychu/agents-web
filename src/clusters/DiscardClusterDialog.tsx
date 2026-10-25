@@ -3,20 +3,20 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { deleteCluster, getMeta } from '../api/client'
-import type { ClusterView, Meta } from '../api/client'
+import { deleteSession, getMeta } from '../api/client'
+import type { SessionView, Meta } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 
 /** Mount it per discard (state starts fresh); the typed slug is not reset between opens. */
 export interface DiscardClusterDialogProps {
   open: boolean
-  cluster: ClusterView
+  cluster: SessionView
   onClose: () => void
   onDiscarded: () => void
 }
 
 /** What the pre-discard export goes to, or null when no hook applies. */
-export function hookTarget(cluster: ClusterView, meta: Meta | null): string | null {
+export function hookTarget(cluster: SessionView, meta: Meta | null): string | null {
   if (cluster.spec.discard_hook_url) return cluster.spec.discard_hook_url
   return meta && meta.discard_hook !== 'none' ? `the configured ${meta.discard_hook} hook` : null
 }
@@ -47,7 +47,7 @@ export function DiscardClusterDialog({ open, cluster, onClose, onDiscarded }: Di
   async function discard() {
     setError(null)
     try {
-      await deleteCluster(cluster.id)
+      await deleteSession(cluster.id)
       onDiscarded()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

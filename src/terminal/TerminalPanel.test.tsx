@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
-import type { AgentView, ClusterView } from '../api/client'
+import type { AgentView, SessionView } from '../api/client'
 import type { TerminalView } from '../api/terminals'
 import { terminalTheme, theme } from '../theme'
 import { TerminalPanel } from './TerminalPanel'
@@ -110,12 +110,12 @@ class FakeResizeObserver {
   }
 }
 
-const CLUSTER = { id: 'c1', slug: 'alpha' } as ClusterView
+const CLUSTER = { id: 'c1', slug: 'alpha' } as SessionView
 const agent = (id: string, ordinal: number, ready = true): AgentView =>
   ({ id, ordinal, pod_name: `alpha-${ordinal}`, ready, gone: false, state: 'idle', peers: 0, context: null, current_turn_id: null, free_since: null }) as AgentView
 const AGENTS = [agent('a0', 0, false), agent('a1', 1), agent('a2', 2)]
 const shell = (terminal_id: string, agent_id = 'a1', alive = true): TerminalView => ({
-  agent_id, alive, attached: false, cluster_id: 'c1', cols: 80, created_at: '2026-10-23T00:00:00Z', exit_code: alive ? null : 0, pod_name: `alpha-${agent_id.slice(1)}`, rows: 24, terminal_id,
+  agent_id, alive, attached: false, session_id: 'c1', cols: 80, created_at: '2026-10-23T00:00:00Z', exit_code: alive ? null : 0, pod_name: `alpha-${agent_id.slice(1)}`, rows: 24, terminal_id,
 })
 
 function mount(agents = AGENTS) {
@@ -360,7 +360,7 @@ describe('TerminalPanel', () => {
     api.listTerminals.mockResolvedValueOnce({ terminals: [], unavailable_agents: [] })
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={{ id: 'c2', slug: 'beta' } as ClusterView} agents={[]} />
+        <TerminalPanel cluster={{ id: 'c2', slug: 'beta' } as SessionView} agents={[]} />
       </ThemeProvider>,
     )
     await waitFor(() => expect(tabs()).toHaveLength(0))

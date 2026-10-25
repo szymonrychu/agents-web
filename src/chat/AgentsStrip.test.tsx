@@ -2,8 +2,9 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { AgentView, ClusterView } from '../api/client'
-import { actionFromEvent, clustersReducer, initialState } from '../ribbon/useClusters'
+import type { AgentView, SessionView } from '../api/client'
+import { statusEventFromFrame } from '../api/stream'
+import { clustersReducer, initialState } from '../ribbon/useClusters'
 import { theme } from '../theme'
 import { AgentsStrip } from './AgentsStrip'
 import { formatAge } from './agentAge'
@@ -125,10 +126,10 @@ describe('AgentsStrip', () => {
   })
 
   test('leader_changed frame moves the badge and context percent is shown per agent', () => {
-    const cluster = { id: 'c1', slug: 'alpha', hive: true, leader_agent_id: 'a0', leader_epoch: 1 } as unknown as ClusterView
+    const cluster = { id: 'c1', slug: 'alpha', hive: true, leader_agent_id: 'a0', leader_epoch: 1 } as unknown as SessionView
     const a0 = agent('a0', 0, { leader: true, context_pct: 41 })
     const a1 = agent('a1', 1, { context_pct: 63 })
-    let state = clustersReducer(initialState, { type: 'snapshot', clusters: [{ cluster, agents: [a0, a1] }] })
+    let state = clustersReducer(initialState, { type: 'snapshot', sessions: [{ session: cluster, agents: [a0, a1] }] })
     const view = () => {
       const e = state.clusters.c1
       return (
@@ -141,7 +142,7 @@ describe('AgentsStrip', () => {
     expect(within(screen.getByTestId('agent-row-alpha-0')).getByText('leader')).toBeTruthy()
     expect(within(screen.getByTestId('agent-row-alpha-0')).getByText('41%')).toBeTruthy()
     expect(within(screen.getByTestId('agent-row-alpha-1')).getByText('63%')).toBeTruthy()
-    const action = actionFromEvent('leader_changed', { cluster_id: 'c1', agent_id: 'a1', epoch: 2 })
+    const action = statusEventFromFrame('leader_changed', { session_id: 'c1', agent_id: 'a1', epoch: 2 })
     expect(action).not.toBeNull()
     state = clustersReducer(state, action!)
     rerender(view())

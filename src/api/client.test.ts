@@ -1,7 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, copyPreset, createCluster, createPreset, deleteCluster, deletePreset, getPreset, listEvents, listPresets, retryMessage, updatePreset } from './client';
+import {
+  ApiError,
+  copyPreset,
+  createPreset,
+  createSession,
+  deletePreset,
+  deleteSession,
+  getInitScripts,
+  getPreset,
+  getSession,
+  listAgents,
+  listEvents,
+  listMessages,
+  listPresets,
+  listSessions,
+  makeLeader,
+  postCheck,
+  postMessage,
+  putInitScripts,
+  retryMessage,
+  scaleSession,
+  updatePreset,
+} from './client';
+import { listFiles, readFile } from './files';
+import { listTerminals, terminalSocketUrl } from './terminals';
 import { loadConfig, resetConfig } from '../config/backends';
-import { terminalSocketUrl } from './terminals';
 import { eventStreamUrl, statusStreamUrl } from './client';
 
 afterEach(() => {
@@ -14,15 +37,15 @@ describe('client', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
-        new Response(JSON.stringify({ error: { code: 'not_found', message: 'cluster' } }), { status: 404 }),
+        new Response(JSON.stringify({ error: { code: 'session_deleting', message: 'session is being discarded' } }), { status: 409 }),
       ),
     );
-    await expect(deleteCluster('x')).rejects.toMatchObject({
-      status: 404,
-      code: 'not_found',
-      message: 'cluster',
+    await expect(deleteSession('x')).rejects.toMatchObject({
+      status: 409,
+      code: 'session_deleting',
+      message: 'session is being discarded',
     });
-    await expect(deleteCluster('x')).rejects.toBeInstanceOf(ApiError);
+    await expect(deleteSession('x')).rejects.toBeInstanceOf(ApiError);
   });
 
   it('builds query strings and sends discard without parameters', async () => {
@@ -30,12 +53,54 @@ describe('client', () => {
     vi.stubGlobal('fetch', f);
     await listEvents('c1', { after_id: 4, limit: 10 });
     await retryMessage('m1');
-    await deleteCluster('c1');
+    await deleteSession('c1');
     const calls = f.mock.calls as unknown as Array<[string, RequestInit]>;
-    expect(calls[0][0]).toBe('/api/v1/clusters/c1/events?after_id=4&limit=10');
+    expect(calls[0][0]).toBe('/api/v1/sessions/c1/events?after_id=4&limit=10');
     expect(calls[1][0]).toBe('/api/v1/messages/m1/retry');
-    expect(calls[2][0]).toBe('/api/v1/clusters/c1');
+    expect(calls[2][0]).toBe('/api/v1/sessions/c1');
     expect(calls[2][1].method).toBe('DELETE');
+  });
+
+  it('session routes', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await listSessions();
+    await getSession('s 1');
+    await createSession({ preset_id: 'p1' });
+    await deleteSession('s1');
+    await getInitScripts('s1');
+    await putInitScripts('s1', ['echo']);
+    await listAgents('s1');
+    await postMessage('s1', { text: 'hi' });
+    await listMessages('s1', { status: 'queued' });
+    await makeLeader('s1', 'a1');
+    await scaleSession('s1', { replicas: 2 });
+    await postCheck('s1', { command: 'true' });
+    await listEvents('s1');
+    await listFiles('s1', 'src');
+    await readFile('s1', 'a.txt');
+    await listTerminals('s1');
+    const calls = f.mock.calls as unknown as Array<[string, RequestInit]>;
+    expect(calls.map(([url, init]) => `${init.method} ${url}`)).toEqual([
+      'GET /api/v1/sessions',
+      'GET /api/v1/sessions/s%201',
+      'POST /api/v1/sessions',
+      'DELETE /api/v1/sessions/s1',
+      'GET /api/v1/sessions/s1/init-scripts',
+      'PUT /api/v1/sessions/s1/init-scripts',
+      'GET /api/v1/sessions/s1/agents',
+      'POST /api/v1/sessions/s1/messages',
+      'GET /api/v1/sessions/s1/messages?status=queued',
+      'POST /api/v1/sessions/s1/leader',
+      'POST /api/v1/sessions/s1/scale',
+      'POST /api/v1/sessions/s1/checks',
+      'GET /api/v1/sessions/s1/events',
+      'GET /api/v1/sessions/s1/files?path=src',
+      'GET /api/v1/sessions/s1/files/content?path=a.txt',
+      'GET /api/v1/sessions/s1/terminals',
+    ]);
+    expect(eventStreamUrl('s1')).toBe('/api/v1/sessions/s1/events/stream');
+    expect(calls.every(([url]) => !url.includes('/clusters'))).toBe(true);
   });
 });
 
@@ -50,7 +115,7 @@ describe('preset client', () => {
     await deletePreset('p1');
     await copyPreset('p1');
     await copyPreset('p1', { name: 'dup' });
-    await createCluster({ preset_id: 'p1', slug: 's' });
+    await createSession({ preset_id: 'p1', slug: 's' });
     const calls = f.mock.calls as unknown as Array<[string, RequestInit]>;
     expect(calls.map(([url, init]) => `${init.method} ${url}`)).toEqual([
       'GET /api/v1/presets',
@@ -60,7 +125,7 @@ describe('preset client', () => {
       'DELETE /api/v1/presets/p1',
       'POST /api/v1/presets/p1/copy',
       'POST /api/v1/presets/p1/copy',
-      'POST /api/v1/clusters',
+      'POST /api/v1/sessions',
     ]);
     expect(calls[5][1].body).toBeUndefined();
     expect(calls[6][1].body).toBe('{"name":"dup"}');
@@ -77,7 +142,7 @@ describe('configured base path', () => {
     vi.stubGlobal('location', { protocol: 'https:', host: 'ui.example' });
     await listPresets();
     expect((f.mock.calls as unknown as Array<[string]>)[0][0]).toBe('/orch/api/v1/presets');
-    expect(eventStreamUrl('c1')).toBe('/orch/api/v1/clusters/c1/events/stream');
+    expect(eventStreamUrl('c1')).toBe('/orch/api/v1/sessions/c1/events/stream');
     expect(statusStreamUrl()).toBe('/orch/api/v1/stream');
     expect(terminalSocketUrl('a1', 't1')).toBe('wss://ui.example/orch/api/v1/agents/a1/terminals/t1/attach');
   });

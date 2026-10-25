@@ -11,13 +11,13 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { getInitScripts, putInitScripts } from '../api/client'
-import type { ClusterView, InitScriptsView } from '../api/client'
+import type { SessionView, InitScriptsView } from '../api/client'
 import { TOKENS } from '../theme'
 import { initScriptErrors } from './clusterSpecForm'
 
 export interface InitScriptsDialogProps {
   open: boolean
-  cluster: ClusterView
+  cluster: SessionView
   onClose: () => void
 }
 

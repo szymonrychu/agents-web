@@ -6,10 +6,10 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { ApiError, scaleCluster, type ClusterView } from '../api/client'
+import { ApiError, scaleSession, type SessionView } from '../api/client'
 import { TOKENS } from '../theme'
 
-export function ScaleControl({ cluster }: { cluster: ClusterView }) {
+export function ScaleControl({ cluster }: { cluster: SessionView }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<{ clusterId: string; text: string } | null>(null)
   const replicas = cluster.spec.replicas
@@ -20,7 +20,7 @@ export function ScaleControl({ cluster }: { cluster: ClusterView }) {
     setBusy(true)
     setError(null)
     try {
-      await scaleCluster(cluster.id, { replicas: target })
+      await scaleSession(cluster.id, { replicas: target })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const hint = e instanceof ApiError && e.code === 'leader_would_leave' ? ' Make another agent leader first.' : ''

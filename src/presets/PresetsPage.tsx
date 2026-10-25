@@ -1,4 +1,4 @@
-/** Settings > Presets: the stored ClusterSpec templates, with create, edit, copy and delete. */
+/** Settings > Presets: the stored SessionSpec templates, with create, edit, copy and delete. */
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'

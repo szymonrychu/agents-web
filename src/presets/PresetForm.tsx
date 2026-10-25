@@ -17,7 +17,7 @@ import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { createPreset, getMeta, updatePreset } from '../api/client'
-import type { ClusterSpec, Meta, PresetView } from '../api/client'
+import type { SessionSpec, Meta, PresetView } from '../api/client'
 import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../clusters/clusterSpecForm'
 import type { FormState, FormValues } from '../clusters/clusterSpecForm'
 
@@ -35,7 +35,7 @@ const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-s
 const NOT_AVAILABLE = ' (not available)'
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
-  const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<ClusterSpec>
+  const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
   if (preset) return stateFromPreset(meta, preset.name, stored(preset))
   if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), stored(copyOf))
   return stateFromPreset(meta, '', {})
@@ -109,7 +109,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setBusy(true)
     setServerError(null)
     try {
-      const body = { name: values.name, spec: toPresetSpec(values, setKeys) as ClusterSpec }
+      const body = { name: values.name, spec: toPresetSpec(values, setKeys) as SessionSpec }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError(e instanceof Error ? e.message : String(e))

@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { AgentView, ClusterView } from '../api/client'
+import type { AgentView, SessionView } from '../api/client'
 import { AgentsStrip } from './AgentsStrip'
 import { ChatLog } from './ChatLog'
 import { Composer } from './Composer'
@@ -14,13 +14,13 @@ import { useClusterChat } from './useClusterChat'
 import { TOKENS } from '../theme'
 
 /** status is a free-form dict: read status.drain.waiting defensively (absent when no drain). */
-function drainWaiting(cluster: ClusterView): number[] {
+function drainWaiting(cluster: SessionView): number[] {
   const drain = (cluster.status as Record<string, unknown> | null | undefined)?.drain as { waiting?: unknown } | null | undefined
   return Array.isArray(drain?.waiting) ? drain.waiting.filter((n): n is number => typeof n === 'number') : []
 }
 
 export interface ChatViewProps {
-  cluster: ClusterView
+  cluster: SessionView
   agents: AgentView[]
   /** Live window size; defaults to the production MAX_ITEMS. */
   maxItems?: number

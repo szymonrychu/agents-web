@@ -2,15 +2,15 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { ClusterView } from '../api/client'
+import type { SessionView } from '../api/client'
 import type { ClusterEntry } from '../ribbon/useClusters'
 import { theme } from '../theme'
 import { TopBar } from './TopBar'
 
 afterEach(cleanup)
 
-const cluster = (id: string, slug: string, state: ClusterView['summary']['state'], pct: number | null): ClusterEntry => ({
-  cluster: { created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as ClusterView['spec'], status: {}, summary: { auto_compact_pct: 80, context_pct_max: pct, failed: 0, queued: 0, ready: 1, replicas: 1, state } } as ClusterView,
+const cluster = (id: string, slug: string, state: SessionView['summary']['state'], pct: number | null): ClusterEntry => ({
+  cluster: { created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: { auto_compact_pct: 80, context_pct_max: pct, failed: 0, queued: 0, ready: 1, replicas: 1, state } } as SessionView,
   agents: {},
 })
 const CLUSTERS = [cluster('c1', 'alpha', 'working', 40), cluster('c2', 'bravo', 'waiting', 90)]
@@ -39,7 +39,7 @@ describe('TopBar', () => {
 
   test('tab shows hook failed mark and ready count', () => {
     const failed = cluster('c3', 'charlie', 'error', null)
-    failed.cluster = { ...failed.cluster, status: { discard_hook_failed: true }, summary: { ...failed.cluster.summary, ready: 2, replicas: 3 } } as ClusterView
+    failed.cluster = { ...failed.cluster, status: { discard_hook_failed: true }, summary: { ...failed.cluster.summary, ready: 2, replicas: 3 } } as SessionView
     setup({ clusters: [...CLUSTERS, failed] })
     const tabs = screen.getAllByRole('tab')
     expect(within(tabs[2]).getByText('2/3')).toBeTruthy()
@@ -50,7 +50,7 @@ describe('TopBar', () => {
 
   test('tab_shows_preset_name', () => {
     const named = cluster('c3', 'charlie', 'working', 10)
-    named.cluster = { ...named.cluster, preset_id: 'p1', preset_name: 'Big box' } as ClusterView
+    named.cluster = { ...named.cluster, preset_id: 'p1', preset_name: 'Big box' } as SessionView
     setup({ clusters: [...CLUSTERS, named] })
     const tabs = screen.getAllByRole('tab')
     expect(within(tabs[2]).getByText('Big box')).toBeTruthy()

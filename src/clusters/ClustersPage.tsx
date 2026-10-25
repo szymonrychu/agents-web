@@ -7,8 +7,8 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
-import { listClusters } from '../api/client'
-import type { ClusterView } from '../api/client'
+import { listSessions } from '../api/client'
+import type { SessionView } from '../api/client'
 import { TOKENS } from '../theme'
 import { DiscardClusterDialog } from './DiscardClusterDialog'
 import { NewClusterDialog } from './NewClusterDialog'
@@ -33,9 +33,9 @@ export function timeLeft(closesAt: string | null, now = Date.now()): string {
 }
 
 export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
-  const [clusters, setClusters] = useState<ClusterView[]>([])
+  const [clusters, setClusters] = useState<SessionView[]>([])
   const [creating, setCreating] = useState(false)
-  const [discarding, setDiscarding] = useState<ClusterView | null>(null)
+  const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Bumped after every create or discard; the effect below refetches the list.
@@ -44,7 +44,7 @@ export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
 
   useEffect(() => {
     let cancelled = false
-    listClusters()
+    listSessions()
       .then((list) => {
         if (cancelled) return
         setClusters([...list].sort((a, b) => a.slug.localeCompare(b.slug)))

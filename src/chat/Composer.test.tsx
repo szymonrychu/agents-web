@@ -28,7 +28,7 @@ const agent = (ordinal: number): AgentView =>
 const agents = [agent(0), agent(1)]
 
 const msg = (over: Partial<MessageView>): MessageView =>
-  ({ id: 1, agent_id: null, attempts: 0, cluster_id: 'c1', created_at: '2026-01-01T00:00:00Z', dispatched_at: null, error: null, max_attempts: 5, next_attempt_at: null, status: 'queued', target_agent_id: null, text: 'hello', turn: null, turn_id: null, ...over }) as MessageView
+  ({ id: 1, agent_id: null, attempts: 0, session_id: 'c1', created_at: '2026-01-01T00:00:00Z', dispatched_at: null, error: null, max_attempts: 5, next_attempt_at: null, status: 'queued', target_agent_id: null, text: 'hello', turn: null, turn_id: null, ...over }) as MessageView
 
 const wrap = (ui: React.ReactNode) => render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
 
@@ -91,7 +91,7 @@ describe('Composer', () => {
 
   test('shows api error', async () => {
     const { ApiError } = await vi.importActual<typeof import('../api/client')>('../api/client')
-    api.postMessage.mockRejectedValue(new ApiError(409, 'cluster_deleting', 'cluster is being discarded'))
+    api.postMessage.mockRejectedValue(new ApiError(409, 'session_deleting', 'cluster is being discarded'))
     wrap(<Composer clusterId="c1" agents={agents} deleting={false} />)
     fireEvent.change(input(), { target: { value: 'x' } })
     fireEvent.keyDown(input(), { key: 'Enter' })
@@ -118,9 +118,9 @@ describe('QueueStrip', () => {
     await waitFor(() => expect(api.listMessages).toHaveBeenCalledTimes(1))
     expect(container.textContent).toBe('')
     api.listMessages.mockResolvedValue([msg({ text: 'late' })])
-    act(() => stream.opened[0].onEvent({ cluster_id: 'other', queued: 1, failed: 0 }, { type: 'message_status', id: '' }))
+    act(() => stream.opened[0].onEvent({ session_id: 'other', queued: 1, failed: 0 }, { type: 'message_status', id: '' }))
     expect(api.listMessages).toHaveBeenCalledTimes(1)
-    act(() => stream.opened[0].onEvent({ cluster_id: 'c1', queued: 1, failed: 0 }, { type: 'message_status', id: '' }))
+    act(() => stream.opened[0].onEvent({ session_id: 'c1', queued: 1, failed: 0 }, { type: 'message_status', id: '' }))
     expect(await screen.findByText('late')).toBeTruthy()
   })
 

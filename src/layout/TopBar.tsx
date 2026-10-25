@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography'
 import { ContextGauge } from '../ribbon/ContextGauge'
 import { StateMark } from '../ribbon/stateMark'
 import type { ClusterEntry } from '../ribbon/useClusters'
-import type { ClusterView } from '../api/client'
+import type { SessionView } from '../api/client'
 import { TOKENS } from '../theme'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
@@ -27,14 +27,14 @@ export interface TopBarProps {
   selectedId: string | null
   onSelect: (id: string) => void
   onNew: () => void
-  onInitScripts: (cluster: ClusterView) => void
-  onDiscard: (cluster: ClusterView) => void
+  onInitScripts: (cluster: SessionView) => void
+  onDiscard: (cluster: SessionView) => void
   settingsCategories: SettingsCategory[]
 }
 
 interface ActionsMenu {
   anchor: HTMLElement
-  cluster: ClusterView
+  cluster: SessionView
 }
 
 export function TopBar({ clusters, selectedId, onSelect, onNew, onInitScripts, onDiscard, settingsCategories }: TopBarProps) {

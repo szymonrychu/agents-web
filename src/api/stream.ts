@@ -1,4 +1,5 @@
 /** EventSource wrapper: tracks the last event id, reconnects with capped exponential backoff. */
+import type { AgentView, SessionView } from './client';
 
 export interface StreamInfo {
   type: string;
@@ -78,4 +79,38 @@ export function openStream(url: string, opts: StreamOptions): Stream {
       source?.close();
     },
   };
+}
+
+/** Named frames of the /api/v1/stream status stream. */
+export const STATUS_EVENTS = ['snapshot', 'session_status', 'agent_status', 'leader_changed', 'message_status', 'session_removed'] as const;
+
+/** One decoded status stream frame. */
+export type StatusEvent =
+  | { type: 'snapshot'; sessions: { session: SessionView; agents: AgentView[] }[] }
+  | { type: 'session_status'; session: SessionView }
+  | { type: 'agent_status'; sessionId: string; agent: AgentView }
+  | { type: 'leader_changed'; sessionId: string; agentId: string; epoch: number }
+  | { type: 'message_status'; sessionId: string; queued: number; failed: number }
+  | { type: 'session_removed'; sessionId: string };
+
+/** Maps one status stream frame to its event; null for frames the app ignores. */
+export function statusEventFromFrame(type: string, data: unknown): StatusEvent | null {
+  const d = data as Record<string, unknown> | null;
+  if (d === null || typeof d !== 'object') return null;
+  switch (type) {
+    case 'snapshot':
+      return { type: 'snapshot', sessions: d.sessions as { session: SessionView; agents: AgentView[] }[] };
+    case 'session_status':
+      return { type: 'session_status', session: d.session as SessionView };
+    case 'agent_status':
+      return { type: 'agent_status', sessionId: d.session_id as string, agent: d.agent as AgentView };
+    case 'leader_changed':
+      return { type: 'leader_changed', sessionId: d.session_id as string, agentId: d.agent_id as string, epoch: d.epoch as number };
+    case 'message_status':
+      return { type: 'message_status', sessionId: d.session_id as string, queued: d.queued as number, failed: d.failed as number };
+    case 'session_removed':
+      return { type: 'session_removed', sessionId: d.session_id as string };
+    default:
+      return null;
+  }
 }

@@ -43,7 +43,7 @@ export function QueueStrip({ clusterId }: { clusterId: string }) {
     const stream = openStream(statusStreamUrl(), {
       eventNames: ['message_status'],
       onEvent: (data) => {
-        if ((data as { cluster_id?: string } | null)?.cluster_id === clusterId) refresh()
+        if ((data as { session_id?: string } | null)?.session_id === clusterId) refresh()
       },
     })
     return () => {

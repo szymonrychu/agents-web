@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openStream } from './stream';
+import { STATUS_EVENTS, openStream, statusEventFromFrame } from './stream';
 
 class FakeSource {
   static all: FakeSource[] = [];
@@ -111,5 +111,48 @@ describe('openStream', () => {
     last().onerror?.();
     vi.advanceTimersByTime(60000);
     expect(FakeSource.all).toHaveLength(2);
+  });
+});
+
+describe('status stream', () => {
+  it('session events', () => {
+    expect(STATUS_EVENTS).toEqual(['snapshot', 'session_status', 'agent_status', 'leader_changed', 'message_status', 'session_removed']);
+    const got: unknown[] = [];
+    openStream('/stream', {
+      onEvent: (d, info) => got.push(statusEventFromFrame(info.type, d)),
+      eventNames: [...STATUS_EVENTS],
+      eventSource: ctor,
+    });
+    expect([...last().listeners.keys()]).toEqual([...STATUS_EVENTS]);
+    last().listeners.get('session_status')?.({ data: '{"session":{"id":"s1"}}', lastEventId: '' });
+    last().listeners.get('session_removed')?.({ data: '{"session_id":"s1"}', lastEventId: '' });
+    expect(got).toEqual([
+      { type: 'session_status', session: { id: 's1' } },
+      { type: 'session_removed', sessionId: 's1' },
+    ]);
+    expect(statusEventFromFrame('snapshot', { sessions: [{ session: { id: 's1' }, agents: [] }] })).toEqual({
+      type: 'snapshot',
+      sessions: [{ session: { id: 's1' }, agents: [] }],
+    });
+    expect(statusEventFromFrame('agent_status', { session_id: 's1', agent: { id: 'a1' } })).toEqual({
+      type: 'agent_status',
+      sessionId: 's1',
+      agent: { id: 'a1' },
+    });
+    expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 2 })).toEqual({
+      type: 'leader_changed',
+      sessionId: 's1',
+      agentId: 'a1',
+      epoch: 2,
+    });
+    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 1, failed: 0 })).toEqual({
+      type: 'message_status',
+      sessionId: 's1',
+      queued: 1,
+      failed: 0,
+    });
+    expect(statusEventFromFrame('cluster_status', { cluster: { id: 's1' } })).toBeNull();
+    expect(statusEventFromFrame('cluster_removed', { cluster_id: 's1' })).toBeNull();
+    expect(statusEventFromFrame('session_status', null)).toBeNull();
   });
 });

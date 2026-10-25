@@ -24,7 +24,7 @@ type Entry = FileListing['entries'][number]
 const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z' })
 const listing = (path: string, entries: Entry[], next_offset: number | null = null): FileListing => ({
   agent_id: 'a1',
-  cluster_id: 'c1',
+  session_id: 'c1',
   entries,
   next_offset,
   path,
@@ -32,7 +32,7 @@ const listing = (path: string, entries: Entry[], next_offset: number | null = nu
 })
 const content = (path: string, over: Partial<FileContent>): FileContent => ({
   agent_id: 'a1',
-  cluster_id: 'c1',
+  session_id: 'c1',
   content: null,
   kind: 'text',
   mime: null,
@@ -154,7 +154,7 @@ describe('FilesPanel', () => {
       mount()
       await screen.findByText('src')
       expect(stream.opened).toHaveLength(1)
-      expect(stream.opened[0].url).toBe('/api/v1/clusters/c1/events/stream')
+      expect(stream.opened[0].url).toBe('/api/v1/sessions/c1/events/stream')
       expect([...(stream.opened[0].opts.eventNames ?? [])].sort()).toEqual(['tool_call', 'tool_result'])
       expect(stream.opened[0].opts.afterId).toBeUndefined()
     })
@@ -441,7 +441,7 @@ describe('FilesPanel', () => {
       </ThemeProvider>,
     )
     await waitFor(() => expect(stream.opened).toHaveLength(2))
-    expect(stream.opened[1].url).toBe('/api/v1/clusters/c2/events/stream')
+    expect(stream.opened[1].url).toBe('/api/v1/sessions/c2/events/stream')
     expect(stream.close).toHaveBeenCalledTimes(1)
 
     view.unmount()

@@ -11,9 +11,9 @@ const id = encodeURIComponent
 export const createTerminal = (agentId: string, size: { rows?: number; cols?: number } = {}) =>
   request<TerminalView>('POST', `/agents/${id(agentId)}/terminals`, size)
 
-/** Every shell of the cluster's ready agents; failing agents come back in `unavailable_agents`. */
-export const listTerminals = (clusterId: string) =>
-  request<TerminalList>('GET', `/clusters/${id(clusterId)}/terminals`)
+/** Every shell of the session's ready agents; failing agents come back in `unavailable_agents`. */
+export const listTerminals = (sessionId: string) =>
+  request<TerminalList>('GET', `/sessions/${id(sessionId)}/terminals`)
 
 /** Closes one shell. */
 export const deleteTerminal = (agentId: string, terminalId: string) =>
