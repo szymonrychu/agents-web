@@ -9,8 +9,9 @@
     "test": "vitest run",
     "lint": "eslint src --max-warnings 0",
     "fmt": "eslint src --fix",
-    "gen:api": "openapi-typescript ../openapi.json -o src/api/schema.d.ts",
-    "check:api": "openapi-typescript ../openapi.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts"
+    "gen:api": "openapi-typescript openapi/orchestrator.json -o src/api/schema.d.ts",
+    "check:api": "openapi-typescript openapi/orchestrator.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts",
+    "sync:api": "node scripts/sync-api.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
