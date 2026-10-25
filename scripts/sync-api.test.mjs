@@ -60,3 +60,13 @@ test("refuses an unknown backend id with exit 2", () => {
   const r = run(proj, "nope", "--from", src);
   assert.equal(r.status, 2);
 });
+
+test("knows the webhooks backend and records agents-webhook", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "webhooks", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/webhooks.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/webhooks.source"), "utf8"), `agents-webhook ${git(src, "rev-parse", "HEAD")}\n`);
+});

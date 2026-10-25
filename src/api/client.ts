@@ -63,8 +63,12 @@ export function query(params: Record<string, string | number | undefined>): stri
   return s ? `?${s}` : '';
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${base()}${path}`, {
+export const request = <T>(method: string, path: string, body?: unknown): Promise<T> =>
+  requestAt<T>(base(), method, path, body);
+
+/** Like `request`, against another backend's base path. */
+export async function requestAt<T>(basePath: string, method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${basePath}${path}`, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

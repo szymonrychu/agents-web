@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 // backend id -> repo name and default sibling checkout. Fixed map only.
 const BACKENDS = {
   orchestrator: { repo: "agent-orchestrator", sibling: "../agent-orchestrator" },
+  webhooks: { repo: "agents-webhook", sibling: "../agents-webhook" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
