@@ -16,11 +16,19 @@ const api = vi.hoisted(() => ({
   deleteEndpoint: vi.fn(),
   listEndpoints: vi.fn(),
   previewTemplate: vi.fn(),
+  getMeta: vi.fn(),
 }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 const client = vi.hoisted(() => ({ listPresets: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...client }))
 
+const META = {
+  filter_fields: {
+    'github-pr': ['author', 'labels', 'source_branch'],
+    'gitlab-mr': ['author', 'labels', 'target_branch'],
+    'grafana-alert': ['labels', 'title', 'body'],
+  },
+}
 const PASSWORD = 'pw-secret-0123456789'
 const view = (over: Partial<EndpointView> = {}): EndpointView =>
   ({
@@ -35,6 +43,7 @@ const apiError = (status: number, code: string, message: string) => new ApiError
 beforeEach(() => {
   Object.values(api).forEach((m) => m.mockReset())
   client.listPresets.mockReset()
+  api.getMeta.mockResolvedValue(META)
   client.listPresets.mockResolvedValue([
     { id: 'p1', name: 'Default preset', is_default: true },
     { id: 'p2', name: 'Other preset', is_default: false },
@@ -263,5 +272,82 @@ describe('rotate and delete', () => {
     await u.click(within(dlg).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(api.deleteEndpoint).toHaveBeenCalledWith('1'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+})
+
+describe('filters', () => {
+  const addDenyRule = async (u: ReturnType<typeof userEvent.setup>, field: string, value: string) => {
+    await u.click(await screen.findByRole('button', { name: 'Add deny rule' }))
+    const deny = screen.getByRole('region', { name: /^Deny/ })
+    await u.click(within(deny).getByRole('combobox', { name: 'Field' }))
+    await u.click(await screen.findByRole('option', { name: field }))
+    await u.click(within(deny).getByLabelText('Values'))
+    await u.paste(value)
+  }
+
+  test('sends filters on create', async () => {
+    api.createEndpoint.mockResolvedValue(created())
+    const u = userEvent.setup()
+    const { onCreated } = mountCreate()
+    await pickPreset(u, 'Default preset')
+    await addDenyRule(u, 'author', 'dependabot')
+    await u.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
+    expect(api.createEndpoint).toHaveBeenCalledWith({
+      type: 'github-pr', preset_id: 'p1',
+      filters: { allow: [], deny: [{ field: 'author', match: 'equals', values: ['dependabot'] }] },
+    })
+  })
+
+  test('offers the meta fields of the type', async () => {
+    const u = userEvent.setup()
+    mountCreate()
+    await u.click(await screen.findByRole('button', { name: 'Add allow rule' }))
+    await u.click(screen.getByRole('combobox', { name: 'Field' }))
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['author', 'labels', 'source_branch'])
+    await u.keyboard('{Escape}')
+    await u.click(screen.getByRole('combobox', { name: 'Type' }))
+    await u.click(await screen.findByRole('option', { name: 'GitLab MR' }))
+    await u.click(screen.getByRole('combobox', { name: 'Field' }))
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['author', 'labels', 'target_branch'])
+  })
+
+  test('previews filters without a template', async () => {
+    api.previewTemplate.mockResolvedValue({ prompt: null, filters: { passed: false, reason: 'deny rule author matched' } })
+    const u = userEvent.setup()
+    mountCreate()
+    const button = screen.getByRole('button', { name: 'Preview' }) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    await addDenyRule(u, 'author', 'alice')
+    expect(button.disabled).toBe(false)
+    await u.click(button)
+    expect(await screen.findByText(/Ignored: deny rule author matched/)).toBeTruthy()
+    const example = screen.getByLabelText('Example JSON') as HTMLTextAreaElement
+    expect(api.previewTemplate).toHaveBeenCalledWith({
+      type: 'github-pr', example: JSON.parse(example.value),
+      filters: { allow: [], deny: [{ field: 'author', match: 'equals', values: ['alice'] }] },
+    })
+    expect(screen.queryByText('Rendered prompt')).toBeNull()
+  })
+
+  test('shows passes the filters', async () => {
+    api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app', filters: { passed: true, reason: null } })
+    const u = userEvent.setup()
+    mountCreate()
+    await u.click(screen.getByLabelText('Prompt template'))
+    await u.paste('Review {{ repo }}')
+    await addDenyRule(u, 'author', 'bob')
+    await u.click(screen.getByRole('button', { name: 'Preview' }))
+    expect(await screen.findByText('Review acme/app')).toBeTruthy()
+    expect(screen.getByText('Passes the filters')).toBeTruthy()
+  })
+
+  test('does not mount the editor until the meta is loaded', async () => {
+    let resolve!: (m: typeof META) => void
+    api.getMeta.mockReturnValue(new Promise((r) => { resolve = r }))
+    mountCreate()
+    expect(screen.queryByRole('button', { name: 'Add deny rule' })).toBeNull()
+    resolve(META)
+    expect(await screen.findByRole('button', { name: 'Add deny rule' })).toBeTruthy()
   })
 })
