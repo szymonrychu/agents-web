@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks/api/v1/endpoints/{id}/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Filters */
+        put: operations["put_filters_webhooks_api_v1_endpoints__id__filters_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhooks/api/v1/endpoints/{id}/rotate": {
         parameters: {
             query?: never;
@@ -152,7 +169,7 @@ export interface paths {
         put?: never;
         /**
          * Preview Template
-         * @description Render a template against an example payload; nothing is stored.
+         * @description Render a template and/or evaluate filters against an example; nothing is stored.
          */
         post: operations["preview_template_webhooks_api_v1_templates_preview_post"];
         delete?: never;
@@ -177,6 +194,7 @@ export interface components {
             created_at: string;
             /** Credentials Rotated At */
             credentials_rotated_at: string | null;
+            filters: components["schemas"]["Filters"];
             /** Id */
             id: number;
             /** Password */
@@ -196,6 +214,7 @@ export interface components {
         };
         /** EndpointIn */
         EndpointIn: {
+            filters?: components["schemas"]["Filters"] | null;
             /** Password */
             password?: string | null;
             /** Preset Id */
@@ -218,6 +237,7 @@ export interface components {
             created_at: string;
             /** Credentials Rotated At */
             credentials_rotated_at: string | null;
+            filters: components["schemas"]["Filters"];
             /** Id */
             id: number;
             /** Preset Id */
@@ -359,6 +379,39 @@ export interface components {
             /** Url */
             url: string | null;
         };
+        /** FilterResult */
+        FilterResult: {
+            /** Passed */
+            passed: boolean;
+            /** Reason */
+            reason: string | null;
+        };
+        /** FilterRule */
+        FilterRule: {
+            /** Field */
+            field: string;
+            /**
+             * Match
+             * @default equals
+             * @enum {string}
+             */
+            match: "equals" | "regex";
+            /** Values */
+            values: string[];
+        };
+        /** Filters */
+        Filters: {
+            /**
+             * Allow
+             * @default []
+             */
+            allow: components["schemas"]["FilterRule"][];
+            /**
+             * Deny
+             * @default []
+             */
+            deny: components["schemas"]["FilterRule"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -381,6 +434,10 @@ export interface components {
         };
         /** Meta */
         Meta: {
+            /** Filter Fields */
+            filter_fields: {
+                [key: string]: string[];
+            };
             /** Ingest Path Prefix */
             ingest_path_prefix: string;
             limits: components["schemas"]["Limits"];
@@ -393,15 +450,17 @@ export interface components {
         PreviewIn: {
             /** Example */
             example: unknown;
+            filters?: components["schemas"]["Filters"] | null;
             /** Template */
-            template: string;
+            template?: string | null;
             /** Type */
             type: string;
         };
         /** PreviewOut */
         PreviewOut: {
+            filters: components["schemas"]["FilterResult"] | null;
             /** Prompt */
-            prompt: string;
+            prompt: string | null;
         };
         /** RotateIn */
         RotateIn: {
@@ -544,6 +603,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_filters_webhooks_api_v1_endpoints__id__filters_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Filters"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointView"];
+                };
             };
             /** @description Validation Error */
             422: {

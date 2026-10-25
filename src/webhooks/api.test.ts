@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { loadConfig, resetConfig } from '../config/backends';
-import { createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, previewTemplate, rotateEndpoint } from './api';
+import { createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, previewTemplate, rotateEndpoint, setEndpointFilters } from './api';
 
 const BASE = '/webhooks/api/v1';
 let f: ReturnType<typeof vi.fn>;
@@ -60,6 +60,16 @@ describe('webhooks api', () => {
   it('previews a template against an example payload', async () => {
     await previewTemplate({ template: '{{ repo }}', type: 'github-pr', example: { a: 1 } });
     expect(call()).toMatchObject({ url: `${BASE}/templates/preview`, method: 'POST', body: '{"template":"{{ repo }}","type":"github-pr","example":{"a":1}}' });
+  });
+  it('previews filters without a template', async () => {
+    const filters = { allow: [{ field: 'repo', match: 'equals' as const, values: ['a/b'] }], deny: [] };
+    await previewTemplate({ type: 'github-pr', example: { a: 1 }, filters });
+    expect(call()).toMatchObject({ url: `${BASE}/templates/preview`, method: 'POST', body: JSON.stringify({ type: 'github-pr', example: { a: 1 }, filters }) });
+  });
+  it('replaces endpoint filters', async () => {
+    const filters = { allow: [], deny: [{ field: 'author', match: 'regex' as const, values: ['bot.*'] }] };
+    await setEndpointFilters('a/b c', filters);
+    expect(call()).toMatchObject({ url: `${BASE}/endpoints/a%2Fb%20c/filters`, method: 'PUT', body: JSON.stringify(filters) });
   });
   it('surfaces the backend error shape', async () => {
     f.mockImplementation(async () => new Response(JSON.stringify({ error: { code: 'conflict', message: 'dup' } }), { status: 409 }));
