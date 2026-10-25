@@ -12,7 +12,7 @@
     "gen:api": "openapi-typescript openapi/orchestrator.json -o src/api/schema.d.ts",
     "check:api": "openapi-typescript openapi/orchestrator.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts",
     "sync:api": "node scripts/sync-api.mjs",
-    "test:chart": "node --test chart/tests/",
+    "test:chart": "node --test 'chart/tests/*.test.mjs'",
     "lint:chart": "helm lint chart/agents-web --set image.tag=ci"
   },
   "dependencies": {
