@@ -1,6 +1,7 @@
 import { isValidElement } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { SessionsPage } from '../sessions/SessionsPage'
+import { SchedulesPage } from '../schedules/SchedulesPage'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -31,6 +32,29 @@ describe('menuEntries', () => {
   test('webhooks_sits_between_sessions_and_presets_only_when_configured', () => {
     expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).toEqual(['sessions', 'webhooks', 'presets'])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('webhooks')
+  })
+
+  test('schedules order', () => {
+    expect(menuEntries(config('orchestrator', 'webhooks', 'schedules')).map((e) => [e.id, e.order])).toEqual([
+      ['sessions', 10],
+      ['webhooks', 20],
+      ['schedules', 30],
+      ['presets', 40],
+    ])
+  })
+
+  test('schedules hidden', () => {
+    expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).not.toContain('schedules')
+  })
+
+  test('schedules render', () => {
+    const schedules = menuEntries(config('schedules')).find((e) => e.id === 'schedules')
+    expect(schedules).toMatchObject({ label: 'Schedules', order: 30, backend: 'schedules' })
+    const onBack = vi.fn()
+    const openSession = vi.fn()
+    const page = schedules!.render(onBack, openSession)
+    expect(isValidElement(page) && page.type).toBe(SchedulesPage)
+    expect(isValidElement<{ onBack: unknown; onOpenSession: unknown }>(page) && page.props).toEqual({ onBack, onOpenSession: openSession })
   })
 
   test('filters_by_configured_backends', () => {

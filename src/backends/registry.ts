@@ -12,6 +12,7 @@ import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
 import { SessionsPage } from '../sessions/SessionsPage'
 import { webhooksMenu } from '../webhooks/menu'
+import { schedulesMenu } from '../schedules/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -29,6 +30,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
   ],
   webhooks: [webhooksMenu],
+  schedules: [schedulesMenu],
 }
 
 export function menuEntries(config: RuntimeConfig): MenuEntry[] {

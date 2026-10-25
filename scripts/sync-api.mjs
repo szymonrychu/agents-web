@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 const BACKENDS = {
   orchestrator: { repo: "agents-orchestrator", sibling: "../agents-orchestrator" },
   webhooks: { repo: "agents-webhook", sibling: "../agents-webhook" },
+  schedules: { repo: "agents-schedule", sibling: "../agents-schedule" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
