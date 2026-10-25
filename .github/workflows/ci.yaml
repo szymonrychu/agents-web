@@ -34,7 +34,7 @@ jobs:
         run: docker build -t agents-web:ci .
       - name: Smoke test
         run: bash scripts/image-smoke.sh agents-web:ci
-      - uses: regclient/actions/regctl-installer@main
+      - uses: regclient/actions/regctl-installer@dd58ad94f76adb73d8ac1bf75ed25f01545d5b32 # main as of 2026-10-25
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Login to Harbor
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - uses: regclient/actions/regctl-installer@main
+      - uses: regclient/actions/regctl-installer@dd58ad94f76adb73d8ac1bf75ed25f01545d5b32 # main as of 2026-10-25
       - name: Compute version
         run: |
           SHA7="${GITHUB_SHA::7}"
@@ -108,7 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - uses: regclient/actions/regctl-installer@main
+      - uses: regclient/actions/regctl-installer@dd58ad94f76adb73d8ac1bf75ed25f01545d5b32 # main as of 2026-10-25
       - name: Compute version
         run: |
           SHA7="${GITHUB_SHA::7}"
