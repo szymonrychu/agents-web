@@ -787,6 +787,8 @@ export interface components {
              */
             replicas: number;
             resources?: components["schemas"]["Resources"] | null;
+            /** Reuse Running Agent */
+            reuse_running_agent?: boolean | null;
             /**
              * Static
              * @default false
