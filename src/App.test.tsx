@@ -204,10 +204,11 @@ describe('App', () => {
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
     await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
     mount()
+    const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
-    expect(await within(screen.getByRole('main')).findByText('second page')).toBeTruthy()
+    expect(await within(main).findByText('second page')).toBeTruthy()
   })
 
   test('presets_from_settings_menu', async () => {
