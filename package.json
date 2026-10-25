@@ -9,8 +9,11 @@
     "test": "vitest run",
     "lint": "eslint src --max-warnings 0",
     "fmt": "eslint src --fix",
-    "gen:api": "openapi-typescript ../openapi.json -o src/api/schema.d.ts",
-    "check:api": "openapi-typescript ../openapi.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts"
+    "gen:api": "openapi-typescript openapi/orchestrator.json -o src/api/schema.d.ts",
+    "check:api": "openapi-typescript openapi/orchestrator.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts",
+    "sync:api": "node scripts/sync-api.mjs",
+    "test:chart": "node --test 'chart/tests/*.test.mjs'",
+    "lint:chart": "helm lint chart/agents-web --set image.tag=ci"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -40,6 +43,7 @@
     "typescript": "~5.9.0",
     "typescript-eslint": "^8.72.0",
     "vite": "~8.3.5",
-    "vitest": "~5.0.5"
+    "vitest": "~5.0.5",
+    "yaml": "^2.9.1"
   }
 }

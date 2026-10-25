@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, copyPreset, createCluster, createPreset, deleteCluster, deletePreset, getPreset, listEvents, listPresets, retryMessage, updatePreset } from './client';
+import { loadConfig, resetConfig } from '../config/backends';
+import { terminalSocketUrl } from './terminals';
+import { eventStreamUrl, statusStreamUrl } from './client';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetConfig();
+});
 
 describe('client', () => {
   it('throws ApiError parsed from the error shape', async () => {
@@ -59,5 +65,20 @@ describe('preset client', () => {
     expect(calls[5][1].body).toBeUndefined();
     expect(calls[6][1].body).toBe('{"name":"dup"}');
     expect(calls[7][1].body).toBe('{"preset_id":"p1","slug":"s"}');
+  });
+});
+
+describe('configured base path', () => {
+  it('request, stream and socket URLs follow /orch/api/v1', async () => {
+    const cfg = { backends: [{ id: 'orchestrator', label: 'O', basePath: '/orch/api/v1' }] };
+    await loadConfig((async () => new Response(JSON.stringify(cfg))) as unknown as typeof fetch);
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    vi.stubGlobal('location', { protocol: 'https:', host: 'ui.example' });
+    await listPresets();
+    expect((f.mock.calls as unknown as Array<[string]>)[0][0]).toBe('/orch/api/v1/presets');
+    expect(eventStreamUrl('c1')).toBe('/orch/api/v1/clusters/c1/events/stream');
+    expect(statusStreamUrl()).toBe('/orch/api/v1/stream');
+    expect(terminalSocketUrl('a1', 't1')).toBe('wss://ui.example/orch/api/v1/agents/a1/terminals/t1/attach');
   });
 });

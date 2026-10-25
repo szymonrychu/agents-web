@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, ClusterView, Meta, PresetView } from './api/client'
 import type { StreamOptions } from './api/stream'
 import App from './App'
+import { BACKEND_MENUS } from './backends/registry'
+import { loadConfig, resetConfig } from './config/backends'
 import { theme } from './theme'
 
 const api = vi.hoisted(() => ({ listClusters: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createCluster: vi.fn(), deleteCluster: vi.fn() }))
@@ -83,6 +85,8 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  resetConfig()
+  delete BACKEND_MENUS.second
   vi.unstubAllGlobals()
   vi.clearAllMocks()
 })
@@ -187,6 +191,36 @@ describe('App', () => {
     expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
+  })
+
+  test('second_backend_entry_only_when_configured', async () => {
+    BACKEND_MENUS.second = [{ id: 'second', label: 'Second', order: 50, backend: 'second', render: () => <p>second page</p> }]
+    const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
+    const first = mount()
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets'])
+    first.unmount()
+    cleanup()
+    const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
+    await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
+    mount()
+    const main = screen.getByRole('main')
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets', 'Second'])
+    fireEvent.click(settings().getByRole('button', { name: 'Second' }))
+    expect(await within(main).findByText('second page')).toBeTruthy()
+  })
+
+  test('unregistered_backend_warns_once_across_rerenders', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'ghost', label: 'G', basePath: '/ghost' }]
+    await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    fireEvent.click(tabs()[1])
+    emit('snapshot', { clusters: [{ cluster: cluster('c9', 'omega'), agents: [] }] })
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('ghost'))).toHaveLength(1)
+    warn.mockRestore()
   })
 
   test('presets_from_settings_menu', async () => {

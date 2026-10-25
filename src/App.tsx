@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { ChatView } from './chat/ChatView'
@@ -10,7 +10,8 @@ import type { ClusterView } from './api/client'
 import { TopBar } from './layout/TopBar'
 import { Workspace } from './layout/Workspace'
 import { sortedAgents, useClusters } from './ribbon/useClusters'
-import { PresetsPage } from './presets/PresetsPage'
+import { menuEntries } from './backends/registry'
+import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
 import { TOKENS } from './theme'
 
@@ -20,12 +21,15 @@ export default function App() {
   const { state, clusters, select } = useClusters()
   const [creating, setCreating] = useState(false)
   // The main area shows the selected cluster or a settings page; no router.
-  const [view, setView] = useState<'cluster' | 'presets'>('cluster')
+  const [view, setView] = useState<string>('cluster')
   const [discarding, setDiscarding] = useState<ClusterView | null>(null)
   const [initScripts, setInitScripts] = useState<ClusterView | null>(null)
   // The first cluster by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.clusters ? state.selectedId : (clusters[0]?.cluster.id ?? null)
   const selected = selectedId === null ? null : state.clusters[selectedId]
+  const config = getConfig()
+  const entries = useMemo(() => menuEntries(config), [config])
+  const openEntry = entries.find((e) => e.id === view)
   const show = (id: string) => {
     setView('cluster')
     select(id)
@@ -39,7 +43,7 @@ export default function App() {
         onNew={() => setCreating(true)}
         onInitScripts={setInitScripts}
         onDiscard={setDiscarding}
-        settingsCategories={[{ id: 'presets', label: 'Presets', onOpen: () => setView('presets') }]}
+        settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
         {state.error && (
@@ -47,8 +51,8 @@ export default function App() {
             {state.error}
           </Box>
         )}
-        {view === 'presets' ? (
-          <PresetsPage onBack={() => setView('cluster')} />
+        {openEntry ? (
+          openEntry.render(() => setView('cluster'))
         ) : selected ? (
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <Workspace
