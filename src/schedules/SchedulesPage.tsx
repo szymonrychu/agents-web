@@ -16,7 +16,7 @@ import { listPresets } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, RunStatusChip, usePoll } from '../triggers'
-import type { RunStatus } from '../triggers'
+import type { FormErrorValue, RunStatus } from '../triggers'
 import { deleteSchedule, listSchedules, runScheduleNow, updateSchedule } from './api'
 import type { ScheduleView } from './api'
 import { ScheduleForm } from './ScheduleForm'
@@ -42,7 +42,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
   const [runKeys, setRunKeys] = useState<Record<string, number>>({})
   const [form, setForm] = useState<FormTarget>(null)
   const [deleting, setDeleting] = useState<ScheduleView | null>(null)
-  const [actionError, setActionError] = useState<unknown>(null)
+  const [actionError, setActionError] = useState<FormErrorValue>(null)
 
   useEffect(() => {
     listPresets().then((ps) => setPresetNames(Object.fromEntries(ps.map((p) => [p.id, p.name]))), () => {})
@@ -54,7 +54,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
       await work()
       await refresh()
     } catch (e) {
-      setActionError(e)
+      setActionError(e instanceof Error ? e : String(e))
     }
   }
   const toggle = (s: ScheduleView) =>
@@ -90,10 +90,10 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
         <Button variant="contained" onClick={() => setForm('new')}>New schedule</Button>
       </Box>
       <FormError error={error} />
-      <FormError error={actionError as never} />
+      <FormError error={actionError} />
       {data && schedules.length === 0 ? (
         <Typography color="text.secondary">
-          No schedules yet. A schedule starts an agent cluster from a preset on a cron timetable, sending it a prompt each time it fires.
+          No schedules yet. A schedule starts an agent session from a preset on a cron timetable, sending it a prompt each time it fires.
         </Typography>
       ) : (
         <Table size="small">
