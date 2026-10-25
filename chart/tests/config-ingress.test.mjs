@@ -105,3 +105,22 @@ test('helm test pod GETs /healthz and /config.json', () => {
   assert.match(r.stdout, /rel-agents-web:8080\/healthz/);
   assert.match(r.stdout, /rel-agents-web:8080\/config\.json/);
 });
+
+test('helm test pod is pinned, hardened and pulls with the same secrets', () => {
+  const r = spawnSync(
+    'helm',
+    ['template', 'rel', chart, '--set', 'image.tag=x', '--set-json', 'imagePullSecrets=[{"name":"reg"}]', '--set-json', 'global={"imagePullSecrets":[{"name":"g"}]}', '--show-only', 'templates/tests/test-connection.yaml'],
+    { encoding: 'utf8' },
+  );
+  assert.equal(r.status, 0, r.stderr);
+  const p = parseAllDocuments(r.stdout)[0].toJS();
+  const c = p.spec.containers[0];
+  assert.equal(c.image, 'busybox:1.37.0');
+  assert.deepEqual(p.spec.imagePullSecrets, [{ name: 'reg' }, { name: 'g' }]);
+  assert.equal(p.spec.securityContext.runAsNonRoot, true);
+  assert.equal(p.spec.securityContext.runAsUser, 65534);
+  assert.equal(p.spec.securityContext.seccompProfile.type, 'RuntimeDefault');
+  assert.equal(c.securityContext.allowPrivilegeEscalation, false);
+  assert.equal(c.securityContext.readOnlyRootFilesystem, true);
+  assert.deepEqual(c.securityContext.capabilities.drop, ['ALL']);
+});
