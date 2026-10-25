@@ -22,3 +22,11 @@ Serving rules (the same as the orchestrator's former SPA mount, plus `/healthz` 
 - `/`, `/index.html` and every other unknown path return `index.html` with `Cache-Control: no-cache`.
 
 Smoke test: `bash scripts/image-smoke.sh agents-web:smoke` runs the image on a free local port (read-only root, tmpfs `/tmp`), once with the default `config.json` and once with a mounted override, checks every rule above and exits 1 naming the failed case. It needs docker and curl.
+
+## Release
+
+CI (`.github/workflows/ci.yaml`) runs on every pull request, push to main and `v*` tag: `web` (lint, test, build, `check:api`), `images` (docker build and `scripts/image-smoke.sh`) and `chart` (`mise run lint:chart`, `mise run test:chart`).
+
+- A push to main publishes the image `harbor.szymonrichert.pl/containers/agents-web:<sha7>` (regctl, 50 MB chunks to stay under the Cloudflare 413 limit) and the chart `oci://harbor.szymonrichert.pl/charts/agents-web` at version `<Chart.version>-main.<sha7>` (app version `<sha7>`). An already published version is refused.
+- A tag `vX.Y.Z` publishes the chart at `X.Y.Z`. The tag must equal `version` in `chart/agents-web/Chart.yaml` and the image for that commit's `<sha7>` must already exist in Harbor, so tag a commit main CI has built.
+- Required repo secrets: `HARBOR_USERNAME` and `HARBOR_PASSWORD` (a Harbor robot account with push rights to `containers` and `charts`). Set with `gh secret set HARBOR_USERNAME -R szymonrychu/agents-web`.

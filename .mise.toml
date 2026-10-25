@@ -1,14 +1,28 @@
 [tools]
 node = "24.20.0"
+helm = "4.2.4"
+shellcheck = "0.11.0"
 
 [tasks.test]
 description = "Run test"
 run = "npm test"
 
 [tasks.lint]
-description = "Run lint"
-run = "npm run lint"
+description = "Run lint (eslint and shellcheck)"
+run = ["npm run lint", "shellcheck --severity=error scripts/*.sh"]
 
 [tasks.fmt]
 description = "Run fmt"
 run = "npm run fmt"
+
+[tasks."test:chart"]
+description = "Run the chart tests"
+run = "npm run test:chart"
+
+[tasks."lint:chart"]
+description = "Lint the helm chart"
+run = "npm run lint:chart"
+
+[tasks."smoke:image"]
+description = "Build the image and smoke test it"
+run = "docker build -t agents-web:smoke . && bash scripts/image-smoke.sh agents-web:smoke"
