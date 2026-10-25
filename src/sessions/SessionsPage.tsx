@@ -1,4 +1,4 @@
-/** Settings > Clusters: every cluster with its state and autoclose time left; open, new and discard. */
+/** Settings > Sessions: every session with its state and autoclose time left; open, new and discard; an empty state when there is none. */
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -10,13 +10,13 @@ import Typography from '@mui/material/Typography'
 import { listSessions } from '../api/client'
 import type { SessionView } from '../api/client'
 import { TOKENS } from '../theme'
-import { DiscardClusterDialog } from './DiscardClusterDialog'
-import { NewClusterDialog } from './NewClusterDialog'
+import { DiscardSessionDialog } from './DiscardSessionDialog'
+import { NewSessionDialog } from './NewSessionDialog'
 
-export interface ClustersPageProps {
+export interface SessionsPageProps {
   onBack: () => void
-  /** Selects the cluster and returns to the cluster view. */
-  onOpen: (clusterId: string) => void
+  /** Selects the session and returns to its workspace. */
+  onOpen: (sessionId: string) => void
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -32,11 +32,12 @@ export function timeLeft(closesAt: string | null, now = Date.now()): string {
   return `${d > 0 ? `${d}d ` : ''}${d > 0 || h > 0 ? `${h}h ` : ''}${m}m left`
 }
 
-export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
-  const [clusters, setClusters] = useState<SessionView[]>([])
+export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
+  const [sessions, setSessions] = useState<SessionView[]>([])
   const [creating, setCreating] = useState(false)
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   // Bumped after every create or discard; the effect below refetches the list.
   const [version, setVersion] = useState(0)
@@ -47,8 +48,9 @@ export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
     listSessions()
       .then((list) => {
         if (cancelled) return
-        setClusters([...list].sort((a, b) => a.slug.localeCompare(b.slug)))
+        setSessions([...list].sort((a, b) => a.slug.localeCompare(b.slug)))
         setError(null)
+        setLoaded(true)
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(message(e))
@@ -62,12 +64,13 @@ export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Clusters</Typography>
-        <Button variant="outlined" onClick={() => setCreating(true)}>New cluster</Button>
+        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Sessions</Typography>
+        <Button variant="outlined" onClick={() => setCreating(true)}>New session</Button>
       </Box>
       {error && <Alert severity="error" variant="outlined">{error}</Alert>}
+      {loaded && !error && sessions.length === 0 && <Typography color="text.secondary">No sessions yet</Typography>}
       <List disablePadding>
-        {clusters.map((c) => (
+        {sessions.map((c) => (
           <ListItem
             key={c.id}
             divider
@@ -89,7 +92,7 @@ export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
           </ListItem>
         ))}
       </List>
-      <NewClusterDialog
+      <NewSessionDialog
         open={creating}
         onClose={() => setCreating(false)}
         onCreated={() => {
@@ -98,9 +101,9 @@ export function ClustersPage({ onBack, onOpen }: ClustersPageProps) {
         }}
       />
       {discarding && (
-        <DiscardClusterDialog
+        <DiscardSessionDialog
           open
-          cluster={discarding}
+          session={discarding}
           onClose={() => setDiscarding(null)}
           onDiscarded={() => {
             setDiscarding(null)

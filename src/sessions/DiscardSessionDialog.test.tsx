@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView, Meta } from '../api/client'
 import { theme } from '../theme'
-import { DiscardClusterDialog } from './DiscardClusterDialog'
+import { DiscardSessionDialog } from './DiscardSessionDialog'
 
 const api = vi.hoisted(() => ({ deleteSession: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
@@ -33,13 +33,13 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('DiscardClusterDialog', () => {
+describe('DiscardSessionDialog', () => {
   test('discard requires typed slug', async () => {
     api.deleteSession.mockResolvedValue(existing())
     const onDiscarded = vi.fn()
-    wrap(<DiscardClusterDialog open cluster={existing()} onClose={vi.fn()} onDiscarded={onDiscarded} />)
+    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={onDiscarded} />)
     expect(screen.getByText(/workspace PVC/)).toBeTruthy()
-    expect(screen.getByText(/whole chat history/)).toBeTruthy()
+    expect(screen.getByText(/the session's whole chat history/)).toBeTruthy()
     expect(screen.getByText(/no undo/i)).toBeTruthy()
     expect(button('Discard').disabled).toBe(true)
     await userEvent.type(field('Type the slug to confirm'), 'alph')
@@ -53,15 +53,15 @@ describe('DiscardClusterDialog', () => {
 
   test('discard names the export hook', async () => {
     api.getMeta.mockResolvedValue(meta({ discard_hook: 'url' }))
-    wrap(<DiscardClusterDialog open cluster={existing({ discard_hook_url: 'https://hook.example/x' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing({ discard_hook_url: 'https://hook.example/x' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(await screen.findByText(/exported to https:\/\/hook\.example\/x first/)).toBeTruthy()
     expect(screen.getByText(/failing hook holds the discard/)).toBeTruthy()
     cleanup()
-    wrap(<DiscardClusterDialog open cluster={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(await screen.findByText(/exported to the configured url hook first/)).toBeTruthy()
     cleanup()
     api.getMeta.mockResolvedValue(meta())
-    wrap(<DiscardClusterDialog open cluster={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     await waitFor(() => expect(api.getMeta).toHaveBeenCalledTimes(3))
     expect(screen.queryByText(/exported to/)).toBeNull()
   })

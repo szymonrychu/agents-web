@@ -18,8 +18,8 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { createPreset, getMeta, updatePreset } from '../api/client'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
-import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../clusters/clusterSpecForm'
-import type { FormState, FormValues } from '../clusters/clusterSpecForm'
+import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import type { FormState, FormValues } from '../sessions/sessionSpecForm'
 
 export interface PresetFormProps {
   open: boolean

@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { SessionView, PresetView } from '../api/client'
 import { theme } from '../theme'
-import { MAX_SLUG } from './clusterSpecForm'
-import { NewClusterDialog } from './NewClusterDialog'
+import { MAX_SLUG } from './sessionSpecForm'
+import { NewSessionDialog } from './NewSessionDialog'
 
 const api = vi.hoisted(() => ({ listPresets: vi.fn(), createSession: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
@@ -27,9 +27,9 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('NewClusterDialog', () => {
+describe('NewSessionDialog', () => {
   test('preselects_default_and_only_preset_and_slug', async () => {
-    wrap(<NewClusterDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
     await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
     expect(api.listPresets).toHaveBeenCalledTimes(1)
     await userEvent.click(presetSelect())
@@ -37,7 +37,8 @@ describe('NewClusterDialog', () => {
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
     expect(screen.getByText(/generated from the preset name/i)).toBeTruthy()
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('dialog', { name: 'New session' })
+    expect(within(dialog).getByRole('heading', { name: 'New session' })).toBeTruthy()
     expect(within(dialog).getAllByRole('textbox').length + within(dialog).getAllByRole('combobox').length).toBe(2)
     expect(slug().value).toBe('')
     expect(within(dialog).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cancel', 'Create'])
@@ -46,7 +47,7 @@ describe('NewClusterDialog', () => {
   test('sends_preset_id_and_optional_slug', async () => {
     api.createSession.mockResolvedValue(created)
     const onCreated = vi.fn()
-    wrap(<NewClusterDialog open onClose={vi.fn()} onCreated={onCreated} />)
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={onCreated} />)
     await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
     await userEvent.click(create())
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created))
@@ -66,7 +67,7 @@ describe('NewClusterDialog', () => {
     api.createSession.mockRejectedValue(new ApiError(422, 'invalid_spec', 'preset "Default": replicas exceeds the cap'))
     const onCreated = vi.fn()
     const onClose = vi.fn()
-    wrap(<NewClusterDialog open onClose={onClose} onCreated={onCreated} />)
+    wrap(<NewSessionDialog open onClose={onClose} onCreated={onCreated} />)
     await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
     await userEvent.click(create())
     const alert = await screen.findByRole('alert')
@@ -87,7 +88,7 @@ describe('NewClusterDialog', () => {
 
   test('shows_preset_list_load_error', async () => {
     api.listPresets.mockRejectedValue(new ApiError(500, 'boom', 'cannot list presets'))
-    wrap(<NewClusterDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
     expect((await screen.findByRole('alert')).textContent).toContain('cannot list presets')
     expect(create().disabled).toBe(true)
   })

@@ -17,7 +17,7 @@ vi.mock('./api/terminals', async (orig) => ({ ...(await orig<typeof import('./ap
 vi.mock('./api/stream', async (orig) => ({
   ...(await orig<typeof import('./api/stream')>()),
   openStream: (_url: string, opts: StreamOptions) => {
-    // The chat view opens its own stream; keep the cluster status stream.
+    // The chat view opens its own stream; keep the session status stream.
     if (opts.eventNames?.includes('session_status')) stream.opts = opts
     return { close: stream.close }
   },
@@ -42,7 +42,7 @@ function setViewport(width: number) {
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
   auto_compact_pct: 80, context_pct_max: 40, failed: 0, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
 })
-const cluster = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
+const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
   ({ created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
 const agent = (id: string, ordinal: number): AgentView => ({
   context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy',
@@ -79,7 +79,7 @@ beforeEach(() => {
   localStorage.clear()
   setViewport(1400)
   stream.opts = null
-  api.listSessions.mockResolvedValue([cluster('c2', 'beta', { state: 'waiting', ready: 1, replicas: 1, context_pct_max: 10 }), cluster('c1', 'alpha')])
+  api.listSessions.mockResolvedValue([session('c2', 'beta', { state: 'waiting', ready: 1, replicas: 1, context_pct_max: 10 }), session('c1', 'alpha')])
   api.listAgents.mockImplementation(async (id: string) => (id === 'c1' ? [agent('a0', 0), agent('a1', 1)] : []))
   api.getMeta.mockResolvedValue(meta())
   api.listPresets.mockResolvedValue(PRESETS)
@@ -108,7 +108,7 @@ describe('App', () => {
     expect(screen.queryByTestId('cluster-row-alpha')).toBeNull()
   })
 
-  test('only_active_cluster_workspace_mounted', async () => {
+  test('only_active_session_workspace_mounted', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const workspaces = () => screen.queryAllByTestId('workspace').map((w) => w.getAttribute('data-cluster'))
@@ -152,15 +152,15 @@ describe('App', () => {
     expect(selectedTab()?.textContent).toContain('alpha')
     expect(within(screen.getByRole('main')).getByRole('heading', { name: 'alpha' })).toBeTruthy()
     emit('session_removed', { session_id: 'c1' })
-    expect(await screen.findByText('No clusters yet')).toBeTruthy()
-    emit('session_status', { session: cluster('c0', 'aaa') })
+    expect(await screen.findByText('No sessions yet')).toBeTruthy()
+    emit('session_status', { session: session('c0', 'aaa') })
     await waitFor(() => expect(selectedTab()?.textContent).toContain('aaa'))
   })
 
-  test('empty_state_keeps_new_cluster_button', async () => {
+  test('empty_state_keeps_new_session_button', async () => {
     api.listSessions.mockResolvedValue([])
     mount()
-    expect(await screen.findByText('No clusters yet')).toBeTruthy()
+    expect(await screen.findByText('No sessions yet')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'New cluster' })).toBeTruthy()
   })
 
@@ -168,18 +168,18 @@ describe('App', () => {
     api.listSessions.mockRejectedValue(new Error('boom'))
     mount()
     expect((await screen.findByRole('alert')).textContent).toContain('boom')
-    expect(screen.queryByText('No clusters yet')).toBeNull()
+    expect(screen.queryByText('No sessions yet')).toBeNull()
   })
 
   test('applies_stream_deltas_to_tabs', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
-    emit('session_status', { session: cluster('c1', 'alpha', { state: 'waiting', context_pct_max: 77 }) })
+    emit('session_status', { session: session('c1', 'alpha', { state: 'waiting', context_pct_max: 77 }) })
     expect(within(tabs()[0]).getByRole('img', { name: 'state waiting' })).toBeTruthy()
     expect(within(tabs()[0]).getByLabelText('context 77%')).toBeTruthy()
-    emit('session_status', { session: cluster('c3', 'gamma', { state: 'booting', ready: 0 }) })
+    emit('session_status', { session: session('c3', 'gamma', { state: 'booting', ready: 0 }) })
     expect(tabs().map((t) => t.textContent?.match(/^[a-z]+/)?.[0])).toEqual(['alpha', 'beta', 'gamma'])
-    emit('snapshot', { sessions: [{ session: cluster('c9', 'omega'), agents: [] }] })
+    emit('snapshot', { sessions: [{ session: session('c9', 'omega'), agents: [] }] })
     expect(tabs().map((t) => t.textContent?.match(/^[a-z]+/)?.[0])).toEqual(['omega'])
   })
 
@@ -189,7 +189,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -199,7 +199,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -207,7 +207,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets', 'Second'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -219,20 +219,20 @@ describe('App', () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(tabs()[1])
-    emit('snapshot', { sessions: [{ session: cluster('c9', 'omega'), agents: [] }] })
+    emit('snapshot', { sessions: [{ session: session('c9', 'omega'), agents: [] }] })
     expect(warn.mock.calls.filter((c) => String(c[0]).includes('ghost'))).toHaveLength(1)
     warn.mockRestore()
   })
 
-  test('clusters entry', async () => {
+  test('sessions entry', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
-    fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Clusters' }))
-    expect(await within(main).findByRole('heading', { name: 'Clusters' })).toBeTruthy()
-    // Open selects that cluster and returns to the cluster view.
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets'])
+    fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Sessions' }))
+    expect(await within(main).findByRole('heading', { name: 'Sessions' })).toBeTruthy()
+    // Open selects that session and returns to its workspace.
     fireEvent.click(await within(main).findByRole('button', { name: 'Open beta' }))
     await waitFor(() => expect(within(main).getByRole('heading', { name: 'beta' })).toBeTruthy())
     expect(selectedTab()?.textContent).toContain('beta')
@@ -273,7 +273,7 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByLabelText('Slug')).toBeNull())
     expect(api.createSession).not.toHaveBeenCalled()
 
-    const created = { ...cluster('c5', 'zeta'), preset_id: 'p-default', preset_name: 'Default' }
+    const created = { ...session('c5', 'zeta'), preset_id: 'p-default', preset_name: 'Default' }
     api.createSession.mockResolvedValue(created)
     fireEvent.click(screen.getByRole('button', { name: 'New cluster' }))
     const slug = (await screen.findByLabelText('Slug')) as HTMLInputElement
