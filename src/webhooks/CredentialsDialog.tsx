@@ -18,7 +18,7 @@ function hint(type: string): string {
   if (type === 'grafana-alert') {
     return 'In Grafana, add a webhook contact point with this URL and enter the username and password in its basic auth fields.'
   }
-  return 'Use https://<user>:<password>@<host>/webhook/<suffix> as the webhook URL in GitHub or GitLab (user and password from below).'
+  return 'Use https://<user>:<password>@<host>/webhook/<suffix> as the webhook URL in GitHub or GitLab (user and password from below). Set "Content type: application/json" (GitHub defaults to application/x-www-form-urlencoded, which is not parsed).'
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {

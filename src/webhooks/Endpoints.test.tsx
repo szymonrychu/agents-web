@@ -179,6 +179,11 @@ describe('credentials dialog', () => {
     expect(screen.queryByText(PASSWORD)).toBeNull()
   })
 
+  test.each(['github-pr', 'github-issue'])('create hint for %s names the JSON content type', (type) => {
+    render(wrap(<CredentialsDialog endpoint={created({ type })} onClose={() => {}} />))
+    expect(screen.getByText(/Content type: application\/json/)).toBeTruthy()
+  })
+
   test('create copy buttons write to the clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     const u = userEvent.setup()
