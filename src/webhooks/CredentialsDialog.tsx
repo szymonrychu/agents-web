@@ -36,7 +36,7 @@ export function CredentialsDialog({ endpoint, onClose }: CredentialsDialogProps)
     <Dialog open={endpoint !== null} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Endpoint credentials</DialogTitle>
       {endpoint && (
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography color="warning.main">The password is shown only now. Rotate the credentials to get a new one.</Typography>
           <Row label="URL" value={endpoint.url} mono />
           <Row label="Username" value={endpoint.username} mono />
