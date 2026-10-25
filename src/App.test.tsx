@@ -197,14 +197,14 @@ describe('App', () => {
     BACKEND_MENUS.second = [{ id: 'second', label: 'Second', order: 50, backend: 'second', render: () => <p>second page</p> }]
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
-    fireEvent.click(screen.getByRole('button', { name: /menu/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
     await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
     mount()
-    fireEvent.click(screen.getByRole('button', { name: /menu/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(screen.getByRole('main')).findByText('second page')).toBeTruthy()
