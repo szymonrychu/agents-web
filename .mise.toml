@@ -1,0 +1,14 @@
+[tools]
+node = "24.20.0"
+
+[tasks.test]
+description = "Run test"
+run = "npm test"
+
+[tasks.lint]
+description = "Run lint"
+run = "npm run lint"
+
+[tasks.fmt]
+description = "Run fmt"
+run = "npm run fmt"
