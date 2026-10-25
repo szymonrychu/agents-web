@@ -12,24 +12,24 @@ afterEach(() => {
 })
 
 describe('menuEntries', () => {
-  test('default_orchestrator_has_presets_at_40', () => {
-    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['presets', 40]])
+  test('default_orchestrator_has_clusters_at_10_and_presets_at_40', () => {
+    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['clusters', 10], ['presets', 40]])
   })
 
   test('filters_by_configured_backends', () => {
     BACKEND_MENUS.extra = [entry('x', 'Extra', 5, 'extra')]
-    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['presets'])
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'presets'])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['clusters', 'presets'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'clusters', 'presets'])
   })
 
   test('orders_by_order_then_label', () => {
     BACKEND_MENUS.extra = [entry('b', 'Beta', 40, 'extra'), entry('a', 'Alpha', 40, 'extra'), entry('z', 'Zed', 1, 'extra')]
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'a', 'b', 'presets'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'clusters', 'a', 'b', 'presets'])
   })
 
   test('warns_once_for_unregistered_id', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['presets'])
+    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['clusters', 'presets'])
     expect(warn).toHaveBeenCalledTimes(1)
     expect(String(warn.mock.calls[0][0])).toContain('other')
   })

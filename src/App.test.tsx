@@ -188,7 +188,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -198,7 +198,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -206,7 +206,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Presets', 'Second'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -221,6 +221,20 @@ describe('App', () => {
     emit('snapshot', { clusters: [{ cluster: cluster('c9', 'omega'), agents: [] }] })
     expect(warn.mock.calls.filter((c) => String(c[0]).includes('ghost'))).toHaveLength(1)
     warn.mockRestore()
+  })
+
+  test('clusters entry', async () => {
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    const main = screen.getByRole('main')
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Clusters', 'Presets'])
+    fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Clusters' }))
+    expect(await within(main).findByRole('heading', { name: 'Clusters' })).toBeTruthy()
+    // Open selects that cluster and returns to the cluster view.
+    fireEvent.click(await within(main).findByRole('button', { name: 'Open beta' }))
+    await waitFor(() => expect(within(main).getByRole('heading', { name: 'beta' })).toBeTruthy())
+    expect(selectedTab()?.textContent).toContain('beta')
   })
 
   test('presets_from_settings_menu', async () => {

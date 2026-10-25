@@ -10,6 +10,7 @@
  */
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
+import { ClustersPage } from '../clusters/ClustersPage'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -17,11 +18,13 @@ export interface MenuEntry {
   label: string
   order: number
   backend: string
-  render(onBack: () => void): ReactNode
+  /** `openCluster` selects a cluster and returns to the cluster view. */
+  render(onBack: () => void, openCluster: (clusterId: string) => void): ReactNode
 }
 
 export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   orchestrator: [
+    { id: 'clusters', label: 'Clusters', order: 10, backend: 'orchestrator', render: (onBack, openCluster) => createElement(ClustersPage, { onBack, onOpen: openCluster }) },
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
   ],
 }

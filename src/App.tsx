@@ -52,7 +52,7 @@ export default function App() {
           </Box>
         )}
         {openEntry ? (
-          openEntry.render(() => setView('cluster'))
+          openEntry.render(() => setView('cluster'), show)
         ) : selected ? (
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <Workspace
