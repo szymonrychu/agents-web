@@ -33,7 +33,7 @@ const PASSWORD = 'pw-secret-0123456789'
 const view = (over: Partial<EndpointView> = {}): EndpointView =>
   ({
     id: 1, suffix: 'abc', url: 'https://h.example/webhook/abc', type: 'github-pr', preset_id: 'p1', prompt_template: null,
-    username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, ...over,
+    username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: { allow: [], deny: [] }, ...over,
   }) as EndpointView
 const created = (over: Partial<EndpointCreated> = {}): EndpointCreated => ({ ...view(), password: PASSWORD, ...over }) as EndpointCreated
 

@@ -7,7 +7,7 @@ import { theme } from '../theme'
 import type { EndpointView, EventView } from './api'
 import { WebhooksPage } from './WebhooksPage'
 
-const api = vi.hoisted(() => ({ listEvents: vi.fn(), listEndpoints: vi.fn() }))
+const api = vi.hoisted(() => ({ listEvents: vi.fn(), listEndpoints: vi.fn(), getMeta: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
 const ev = (id: number, over: Partial<EventView> = {}): EventView =>
@@ -16,7 +16,10 @@ const ev = (id: number, over: Partial<EventView> = {}): EventView =>
     status: 'new', reason: null, cluster_slug: null, endpoint_id: 1, endpoint_suffix: 'gh-main', type: 'github',
     update_of: null, duplicate_of: null, received_at: '2026-10-25T10:00:00Z', ...over,
   }) as EventView
-const endpoint = (id: number, suffix: string): EndpointView => ({ id, suffix, type: 'github' }) as EndpointView
+const endpoint = (id: number, suffix: string): EndpointView => ({
+  id, suffix, type: 'github', url: `https://h.example/webhook/${suffix}`, preset_id: 'p1', prompt_template: null, username: `user${id}`,
+  created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: { allow: [], deny: [] },
+})
 
 const mount = () => render(<ThemeProvider theme={theme}><WebhooksPage onBack={() => {}} /></ThemeProvider>)
 const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0) })
@@ -25,6 +28,8 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   api.listEvents.mockReset()
   api.listEndpoints.mockReset()
+  api.getMeta.mockReset()
+  api.getMeta.mockResolvedValue({ filter_fields: { github: ['author'] } })
   api.listEndpoints.mockResolvedValue([endpoint(1, 'gh-main'), endpoint(2, 'gl')])
 })
 afterEach(() => {

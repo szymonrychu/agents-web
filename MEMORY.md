@@ -4,6 +4,7 @@ Lessons that outlive a session. Newest first.
 
 ## 2026-10-25
 
+- endpoint filters are edited in `FiltersDialog`, opened by the "Filters (n)" button of each endpoints-list row, and saved through `PUT /endpoints/{id}/filters` (only filters are editable: recreating an endpoint would change its URL and credentials). The field catalogue comes from `GET /meta` (`filter_fields[type]`) and the UI never validates RE2 patterns itself, because JavaScript regex is not RE2 and the backend's 422 is authoritative. The Filters button stays disabled until the type's fields are loaded, since `FiltersEditor` drops every rule whose field is not listed and a save would then erase the stored rules.
 - imported frontend/ from agent-orchestrator b7906aa355a91fa51ddd5e6e2d62df63c23f6744 with history (git subtree split); agent-orchestrator/frontend is frozen from this commit until frontend-decoupling deletes it.
 
 ## 2026-10-24
