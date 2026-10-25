@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agents-web.fullname" . }}-test
+  labels:
+    {{- include "agents-web.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.test.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: direct
+  selector:
+    {{- include "agents-web.selectorLabels" . | nindent 4 }}

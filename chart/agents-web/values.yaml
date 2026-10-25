@@ -44,7 +44,8 @@ service:
   port: 8080
 
 # Runtime config served as /config.json (same rules as src/config/backends.ts:parseConfig):
-# each entry needs id, label and basePath (starting with "/"), and one entry must have id "orchestrator".
+# each entry needs a unique id matching ^[a-z][a-z0-9-]*$, a non-empty label and a basePath that starts
+# with "/", does not end with "/" and contains none of "//", "://", "?", "#"; one entry must have id "orchestrator".
 backends:
   - id: orchestrator
     label: Orchestrator
@@ -69,6 +70,8 @@ ingress:
     #   hosts:
     #     - chart-example.local
 
-# Image of the `helm test` pod.
+# The `helm test` pod. It reaches nginx through its own Service (numeric targetPort 8080), so an
+# injected auth sidecar on the main Service does not redirect it. `port` is that Service's port.
 test:
+  port: 8080
   image: busybox:1.37.0

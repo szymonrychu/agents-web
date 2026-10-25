@@ -56,12 +56,13 @@ imagePullSecrets:
 {{- range $i, $b := .Values.backends }}
 {{- $at := printf "backends[%d]" $i }}
 {{- if not (kindIs "map" $b) }}{{ fail (printf "%s must be a map with id, label and basePath" $at) }}{{ end }}
-{{- if not $b.id }}{{ fail (printf "%s: id is required" $at) }}{{ end }}
-{{- if not $b.label }}{{ fail (printf "%s (%s): label is required" $at $b.id) }}{{ end }}
-{{- if not $b.basePath }}{{ fail (printf "%s (%s): basePath is required" $at $b.id) }}{{ end }}
-{{- if not (hasPrefix "/" $b.basePath) }}{{ fail (printf "%s (%s): basePath %q must start with \"/\"" $at $b.id $b.basePath) }}{{ end }}
+{{- if not (and (kindIs "string" $b.id) (regexMatch "^[a-z][a-z0-9-]*$" $b.id)) }}{{ fail (printf "%s.id must match ^[a-z][a-z0-9-]*$" $at) }}{{ end }}
+{{- if hasKey $seen $b.id }}{{ fail (printf "%s.id %q is repeated" $at $b.id) }}{{ end }}
+{{- if not (and (kindIs "string" $b.label) $b.label) }}{{ fail (printf "%s.label must be a non-empty string" $at) }}{{ end }}
+{{- if not (and (kindIs "string" $b.basePath) (hasPrefix "/" $b.basePath)) }}{{ fail (printf "%s.basePath must start with \"/\", not end with \"/\" and contain none of \"//\", \"://\", \"?\", \"#\"" $at) }}{{ end }}
+{{- if or (hasSuffix "/" $b.basePath) (contains "//" $b.basePath) (contains "://" $b.basePath) (contains "?" $b.basePath) (contains "#" $b.basePath) }}{{ fail (printf "%s.basePath must start with \"/\", not end with \"/\" and contain none of \"//\", \"://\", \"?\", \"#\"" $at) }}{{ end }}
 {{- $_ := set $seen $b.id true }}
 {{- end }}
-{{- if not (hasKey $seen "orchestrator") }}{{ fail "backends must include an entry with id \"orchestrator\"" }}{{ end }}
+{{- if not (hasKey $seen "orchestrator") }}{{ fail "backends must include id \"orchestrator\"" }}{{ end }}
 {{- dict "backends" .Values.backends | toJson }}
 {{- end }}

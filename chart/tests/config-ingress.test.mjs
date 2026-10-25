@@ -41,6 +41,15 @@ for (const [name, backends, re] of [
   ['missing basePath', [orch, { id: 'schedules', label: 'S' }], /backends\[1\].*basePath/],
   ['basePath without slash', [{ ...orch, basePath: 'api/v1' }], /backends\[0\].*basePath.*start with/],
   ['no orchestrator', [sched], /orchestrator/],
+  ['basePath with trailing slash', [{ ...orch, basePath: '/api/v1/' }], /backends\[0\]\.basePath must start with "\/", not end with "\/"/],
+  ['basePath with //', [{ ...orch, basePath: '/api//v1' }], /backends\[0\]\.basePath/],
+  ['basePath with ://', [{ ...orch, basePath: '/x://y' }], /backends\[0\]\.basePath/],
+  ['basePath with ?', [{ ...orch, basePath: '/api?x' }], /backends\[0\]\.basePath/],
+  ['basePath with #', [{ ...orch, basePath: '/api#x' }], /backends\[0\]\.basePath/],
+  ['id with uppercase', [orch, { ...sched, id: 'Schedules' }], /backends\[1\]\.id must match/],
+  ['id starting with a digit', [orch, { ...sched, id: '1s' }], /backends\[1\]\.id must match/],
+  ['id with underscore', [orch, { ...sched, id: 's_x' }], /backends\[1\]\.id must match/],
+  ['duplicate id', [orch, sched, sched], /backends\[2\]\.id "schedules" is repeated/],
 ]) {
   test(`refuses ${name}`, () => {
     const r = helm(`backends=${JSON.stringify(backends)}`);
@@ -98,12 +107,24 @@ test('ingress renders hosts, paths, tls and source-range annotations', () => {
   ]);
 });
 
+test('helm test pod bypasses the auth sidecar: direct Service with numeric targetPort 8080', () => {
+  const docs = render();
+  const direct = docs.find((d) => d.kind === 'Service' && d.metadata.name === 'rel-agents-web-test');
+  assert.ok(direct, 'rel-agents-web-test Service');
+  assert.equal(direct.spec.ports[0].port, 8080);
+  assert.equal(direct.spec.ports[0].targetPort, 8080);
+  assert.deepEqual(direct.spec.selector, kind(docs, 'Deployment').spec.selector.matchLabels);
+  const custom = render('test={"image":"busybox:1.37.0","port":9090}').find((d) => d.metadata.name === 'rel-agents-web-test');
+  assert.equal(custom.spec.ports[0].port, 9090);
+  assert.equal(custom.spec.ports[0].targetPort, 8080);
+});
+
 test('helm test pod GETs /healthz and /config.json', () => {
   const r = spawnSync('helm', ['template', 'rel', chart, '--set', 'image.tag=x', '--show-only', 'templates/tests/test-connection.yaml'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /helm.sh\/hook": test/);
-  assert.match(r.stdout, /rel-agents-web:8080\/healthz/);
-  assert.match(r.stdout, /rel-agents-web:8080\/config\.json/);
+  assert.match(r.stdout, /rel-agents-web-test:8080\/healthz/);
+  assert.match(r.stdout, /rel-agents-web-test:8080\/config\.json/);
 });
 
 test('helm test pod is pinned, hardened and pulls with the same secrets', () => {
