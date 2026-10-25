@@ -2,13 +2,12 @@
  * Nomenclature guard (design D12): the orchestrator's unit is the session. Every tracked file under src/, its path
  * included and this guard among them, must not name the retired unit or the retired project, except for the literal
  * phrases below: Kubernetes objects (ALLOWED) and the old names that retirement tests pin as gone (RETIRED).
- * The webhooks UI is excluded until web-webhooks-session-fields renames it.
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 
-const GUARDED = ['src', ':(exclude)src/webhooks', ':(exclude)src/api/webhooks-schema.d.ts']
+const GUARDED = ['src']
 
 /** Kubernetes, CNPG or kind phrases, never the orchestrator's unit. */
 const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info']
@@ -43,12 +42,12 @@ function offenders(paths: string[]): string[] {
 }
 
 describe('nomenclature', () => {
-  test('the guard covers src but the webhooks UI', () => {
+  test('the guard covers all of src, the webhooks UI included', () => {
     const guarded = tracked(...GUARDED)
-    for (const file of ['src/App.tsx', 'src/App.test.tsx', 'src/nomenclature.test.ts', 'src/chat/Composer.tsx', 'src/api/client.ts', 'src/presets/PresetForm.tsx']) {
+    expect(guarded).toEqual(tracked('src'))
+    for (const file of ['src/App.tsx', 'src/nomenclature.test.ts', 'src/chat/Composer.tsx', 'src/api/client.ts', 'src/webhooks/EventsTable.tsx', 'src/webhooks/WebhooksPage.test.tsx', 'src/api/webhooks-schema.d.ts']) {
       expect(guarded, file).toContain(file)
     }
-    expect(guarded.filter((file) => file.startsWith('src/webhooks/') || file === 'src/api/webhooks-schema.d.ts')).toEqual([])
   })
 
   test('guarded paths name the unit session only', () => {

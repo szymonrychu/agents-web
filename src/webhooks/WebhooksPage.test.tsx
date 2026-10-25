@@ -13,7 +13,7 @@ vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), .
 const ev = (id: number, over: Partial<EventView> = {}): EventView =>
   ({
     id, kind: 'issue', repo: 'acme/app', number: id + 100, title: `Title ${id}`, url: `https://gh/acme/app/issues/${id + 100}`,
-    status: 'new', reason: null, cluster_slug: null, endpoint_id: 1, endpoint_suffix: 'gh-main', type: 'github',
+    status: 'new', reason: null, session_id: null, session_slug: null, endpoint_id: 1, endpoint_suffix: 'gh-main', type: 'github',
     update_of: null, duplicate_of: null, received_at: '2026-10-25T10:00:00Z', ...over,
   }) as EventView
 const endpoint = (id: number, suffix: string): EndpointView => ({
@@ -38,9 +38,9 @@ afterEach(() => {
 })
 
 describe('WebhooksPage rows', () => {
-  test('rows show endpoint, kind, repo, title, status chip with reason and cluster', async () => {
+  test('rows show endpoint, kind, repo, title, status chip with reason and session', async () => {
     api.listEvents.mockResolvedValue([
-      ev(3, { status: 'handled', cluster_slug: 'agent-x', reason: 'ok done' }),
+      ev(3, { status: 'handled', session_id: 'sid-3', session_slug: 'agent-x', reason: 'ok done' }),
       ev(2, { status: 'ignored', reason: 'not mine', update_of: 7 }),
       ev(1, { duplicate_of: 5 }),
     ])
@@ -56,6 +56,15 @@ describe('WebhooksPage rows', () => {
     expect(screen.getByLabelText('ignored: not mine')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'update of #7' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'duplicate of #5' })).toBeTruthy()
+  })
+
+  test('events show the session', async () => {
+    api.listEvents.mockResolvedValue([ev(3, { status: 'handled', session_id: 'sid-3', session_slug: 'agent-x' }), ev(2, { session_id: 'sid-2', session_slug: null })])
+    mount()
+    await flush()
+    expect(screen.getByRole('columnheader', { name: 'Session' })).toBeTruthy()
+    expect(within(screen.getByText('Title 3').closest('tr')!).getByText('agent-x')).toBeTruthy()
+    expect(within(screen.getByText('Title 2').closest('tr')!).getByText('sid-2')).toBeTruthy()
   })
 })
 
