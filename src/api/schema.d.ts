@@ -694,6 +694,15 @@ export interface components {
             /** State */
             state: string;
         };
+        /** AutoCompact */
+        AutoCompact: {
+            /** Idle Seconds */
+            idle_seconds?: number | null;
+            /** Instructions */
+            instructions?: string | null;
+            /** Min Context Tokens */
+            min_context_tokens?: number | null;
+        };
         /** CheckAccepted */
         CheckAccepted: {
             /** Check Id */
@@ -734,6 +743,8 @@ export interface components {
             } | null;
             /** Auto Compact Pct */
             auto_compact_pct?: number | null;
+            /** Autoclose After Seconds */
+            autoclose_after_seconds?: number | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Effort */
@@ -752,6 +763,8 @@ export interface components {
              * @default []
              */
             init_scripts: string[];
+            /** Leader Lease Seconds */
+            leader_lease_seconds?: number | null;
             /**
              * Max Attempts
              * @default 5
@@ -784,6 +797,7 @@ export interface components {
              * @default workdir
              */
             workdir: string;
+            wrapper?: components["schemas"]["WrapperSettings"] | null;
         };
         /** ClusterSummary */
         ClusterSummary: {
@@ -807,6 +821,8 @@ export interface components {
         };
         /** ClusterView */
         ClusterView: {
+            /** Closes At */
+            closes_at: string | null;
             /**
              * Created At
              * Format: date-time
@@ -832,6 +848,10 @@ export interface components {
             leader_agent_id: string | null;
             /** Leader Epoch */
             leader_epoch: number | null;
+            /** Leader Reason */
+            leader_reason: string | null;
+            /** Leader Since */
+            leader_since: string | null;
             /** Max Replicas */
             max_replicas: number;
             /** Observed Generation */
@@ -855,6 +875,32 @@ export interface components {
         CommandAccepted: {
             /** Command Id */
             command_id: number;
+        };
+        /** CommandHook */
+        CommandHook: {
+            /** Blocking */
+            blocking?: boolean | null;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            } | null;
+            /** Interval Seconds */
+            interval_seconds?: number | null;
+            /** Matcher */
+            matcher?: string | null;
+            /** On Error */
+            on_error?: ("allow" | "deny") | null;
+            /** Run */
+            run: string;
+            /** Timeout Seconds */
+            timeout_seconds?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "command";
+            /** When */
+            when?: ("busy" | "always") | null;
         };
         /** CommandView */
         CommandView: {
@@ -1146,6 +1192,43 @@ export interface components {
              */
             agent_id: string;
         };
+        /** Marketplace */
+        Marketplace: {
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+        };
+        /** McpRemote */
+        McpRemote: {
+            /** Headers */
+            headers?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "http" | "sse";
+            /** Url */
+            url: string;
+        };
+        /** McpStdio */
+        McpStdio: {
+            /** Args */
+            args?: string[] | null;
+            /** Command */
+            command: string;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "stdio";
+        };
         /** Me */
         Me: {
             /**
@@ -1302,6 +1385,29 @@ export interface components {
             requests: {
                 [key: string]: string;
             };
+        };
+        /** Permissions */
+        Permissions: {
+            /** Allow */
+            allow?: string[] | null;
+            /** Deny */
+            deny?: string[] | null;
+        };
+        /** PluginInstall */
+        PluginInstall: {
+            /** Plugin */
+            plugin: string;
+            /** Required */
+            required?: boolean | null;
+            /** Scope */
+            scope?: ("user" | "project" | "local") | null;
+        };
+        /** Plugins */
+        Plugins: {
+            /** Install */
+            install?: components["schemas"]["PluginInstall"][] | null;
+            /** Marketplaces */
+            marketplaces?: components["schemas"]["Marketplace"][] | null;
         };
         /** PostCheck */
         PostCheck: {
@@ -1464,6 +1570,65 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WebhookHook */
+        WebhookHook: {
+            /** Blocking */
+            blocking?: boolean | null;
+            /** Headers */
+            headers?: {
+                [key: string]: string;
+            } | null;
+            /** Interval Seconds */
+            interval_seconds?: number | null;
+            /** Matcher */
+            matcher?: string | null;
+            /** On Error */
+            on_error?: ("allow" | "deny") | null;
+            /** Retries */
+            retries?: number | null;
+            /** Secret */
+            secret?: string | null;
+            /** Timeout Seconds */
+            timeout_seconds?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "webhook";
+            /** Url */
+            url: string;
+            /** When */
+            when?: ("busy" | "always") | null;
+        };
+        /**
+         * WrapperSettings
+         * @description Typed claude-code-wrapper settings a cluster may carry (create-time only).
+         */
+        WrapperSettings: {
+            /** Agent Commands */
+            agent_commands?: ("compact" | "context" | "mcp" | "reload-plugins" | "reload-skills")[] | null;
+            auto_compact?: components["schemas"]["AutoCompact"] | null;
+            /** Hooks */
+            hooks?: {
+                [key: string]: (components["schemas"]["CommandHook"] | components["schemas"]["WebhookHook"])[];
+            } | null;
+            /** Max Restarts */
+            max_restarts?: number | null;
+            /** Mcp Servers */
+            mcp_servers?: {
+                [key: string]: components["schemas"]["McpStdio"] | components["schemas"]["McpRemote"];
+            } | null;
+            permissions?: components["schemas"]["Permissions"] | null;
+            plugins?: components["schemas"]["Plugins"] | null;
+            /** Restart Continue Prompt */
+            restart_continue_prompt?: string | null;
+            /** System Append */
+            system_append?: string | null;
+            /** Turn Max Seconds */
+            turn_max_seconds?: number | null;
+            /** Turn Stall Seconds */
+            turn_stall_seconds?: number | null;
         };
     };
     responses: never;
