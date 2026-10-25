@@ -36,10 +36,10 @@ function Slot({ name }: { name: string }) {
   return <div data-testid={`slot-${name}`}>{name} content</div>
 }
 
-function mount(clusterId = 'c1') {
+function mount(sessionId = 'c1') {
   return render(
     <ThemeProvider theme={theme}>
-      <Workspace clusterId={clusterId} files={<Slot name="files" />} chat={<Slot name="chat" />} terminal={<Slot name="terminal" />} />
+      <Workspace sessionId={sessionId} files={<Slot name="files" />} chat={<Slot name="chat" />} terminal={<Slot name="terminal" />} />
     </ThemeProvider>,
   )
 }
@@ -159,7 +159,7 @@ describe('Workspace', () => {
     expect(stored()).toEqual({ sizes: [25, 45, 30], collapsed: [], before: null })
   })
 
-  test('layout_persists_per_cluster', () => {
+  test('layout_persists_per_session', () => {
     const first = mount('c1')
     click('Minimize Terminal')
     expect(stored('c1').collapsed).toEqual(['terminal'])

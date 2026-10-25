@@ -1,22 +1,38 @@
 /**
- * Nomenclature guard (design D12): the orchestrator's unit is the session. Every tracked file under the
- * guarded paths, its path included, must not name a cluster or the agent-orchestrator project, except for
- * the literal phrases below that name Kubernetes clusters. Each rename task widens GUARDED, red first.
+ * Nomenclature guard (design D12): the orchestrator's unit is the session. Every tracked file under src/, its path
+ * included and this guard among them, must not name the retired unit or the retired project, except for the literal
+ * phrases below: Kubernetes objects (ALLOWED) and the old names that retirement tests pin as gone (RETIRED).
+ * The webhooks UI is excluded until web-webhooks-session-fields renames it.
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 
-const GUARDED = ['src/sessions', 'src/backends']
+const GUARDED = ['src', ':(exclude)src/webhooks', ':(exclude)src/api/webhooks-schema.d.ts']
 
-/** Kubernetes, CNPG or kind cluster phrases, never the orchestrator's unit. */
+/** Kubernetes, CNPG or kind phrases, never the orchestrator's unit. */
 const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info']
 
-const FORBIDDEN = /cluster|agent[-_]orchestrator/i
+/** Old names exactly as the retirement tests that pin them as gone spell them. */
+const RETIRED = [
+  "statusEventFromFrame('cluster_status', { cluster: { id: 's1' } })",
+  "statusEventFromFrame('cluster_removed', { cluster_id: 's1' })",
+  "!url.includes('/clusters')",
+  "'src/clusters/ClusterForm.tsx'",
+  "'src/clusters/ClusterForm.test.tsx'",
+  "not.toContain('patchCluster')",
+  "not.toContain('PatchCluster')",
+  "'./ribbon/ClusterRow.tsx'",
+]
+
+const FORBIDDEN = /c[l]uster|agent[-_]orchestrator/i
+
+/** The retired unit, spelled so that this guard does not name it. */
+const unit = 'clu' + 'ster'
 
 const tracked = (...paths: string[]) => execFileSync('git', ['ls-files', '--', ...paths], { encoding: 'utf8' }).split('\n').filter(Boolean)
 
-const offends = (text: string) => FORBIDDEN.test(ALLOWED.reduce((rest, phrase) => rest.split(phrase).join(''), text))
+const offends = (text: string) => FORBIDDEN.test([...ALLOWED, ...RETIRED].reduce((rest, phrase) => rest.split(phrase).join(''), text))
 
 /** `path:line: text` for every offending line, and `path` alone for an offending file name. */
 function offenders(paths: string[]): string[] {
@@ -27,22 +43,28 @@ function offenders(paths: string[]): string[] {
 }
 
 describe('nomenclature', () => {
-  test('every guarded path is tracked', () => {
-    for (const path of GUARDED) expect(tracked(path), path).not.toEqual([])
+  test('the guard covers src but the webhooks UI', () => {
+    const guarded = tracked(...GUARDED)
+    for (const file of ['src/App.tsx', 'src/App.test.tsx', 'src/nomenclature.test.ts', 'src/chat/Composer.tsx', 'src/api/client.ts', 'src/presets/PresetForm.tsx']) {
+      expect(guarded, file).toContain(file)
+    }
+    expect(guarded.filter((file) => file.startsWith('src/webhooks/') || file === 'src/api/webhooks-schema.d.ts')).toEqual([])
   })
 
   test('guarded paths name the unit session only', () => {
     expect(offenders(GUARDED)).toEqual([])
   })
 
-  test('kubernetes phrases are allowed, the unit is not', () => {
-    expect(offends('svc.cluster.local and a ClusterIP')).toBe(false)
-    expect(offends('New Cluster')).toBe(true)
-    expect(offends('agent_orchestrator')).toBe(true)
-    expect(offends('a cluster.local Cluster')).toBe(true)
+  test('kubernetes phrases and retirement pins are allowed, the unit is not', () => {
+    expect(offends(`svc.${unit}.local and a ClusterIP`)).toBe(false)
+    expect(offends(`New ${unit}`)).toBe(true)
+    expect(offends('agent' + '_orchestrator')).toBe(true)
+    expect(offends(`a ${unit}.local ${unit.toUpperCase()}`)).toBe(true)
+    expect(offends(`expect(client).not.toContain('patch${unit[0].toUpperCase()}${unit.slice(1)}')`)).toBe(false)
+    expect(offends(`patch${unit[0].toUpperCase()}${unit.slice(1)}(id)`)).toBe(true)
   })
 
-  test('the clusters directory is retired', () => {
-    expect(tracked('src/clusters')).toEqual([])
+  test('the retired unit directory is untracked', () => {
+    expect(tracked(`src/${unit}s`)).toEqual([])
   })
 })

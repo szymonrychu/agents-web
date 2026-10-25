@@ -37,7 +37,7 @@ vi.mock("../api/client", async (orig) => ({
 }));
 vi.mock("../api/stream", () => ({
   openStream: (url: string, opts: StreamOptions) => {
-    // Record only the chat event stream; the queue strip's cluster status stream is covered in Composer.test.tsx.
+    // Record only the chat event stream; the queue strip's session status stream is covered in Composer.test.tsx.
     if (!url.includes("/events/")) return { close: vi.fn() };
     stream.opened.push({ url, opts });
     return { close: stream.close };
@@ -69,7 +69,7 @@ vi.mock("react-virtuoso", () => ({
   },
 }));
 
-const cluster = {
+const session = {
   id: "c1",
   slug: "alpha",
   desired: "active",
@@ -109,10 +109,10 @@ const ev = (
 const text = (id: number, t: string, agent_id = "a0") =>
   ev(id, "assistant_text", { text: t }, agent_id);
 
-function mount(c: SessionView = cluster, maxItems?: number) {
+function mount(c: SessionView = session, maxItems?: number) {
   return render(
     <ThemeProvider theme={theme}>
-      <ChatView cluster={c} agents={agents} maxItems={maxItems} />
+      <ChatView session={c} agents={agents} maxItems={maxItems} />
     </ThemeProvider>,
   );
 }
@@ -194,7 +194,7 @@ describe("ChatLog", () => {
     api.listEvents.mockImplementationOnce(
       () => new Promise((r) => (resolveOld = r)),
     );
-    const other = { ...cluster, id: "c2", slug: "beta" } as SessionView;
+    const other = { ...session, id: "c2", slug: "beta" } as SessionView;
     const view = mount();
     api.listEvents.mockResolvedValueOnce({
       events: [text(9, "from beta")],
@@ -203,7 +203,7 @@ describe("ChatLog", () => {
     });
     view.rerender(
       <ThemeProvider theme={theme}>
-        <ChatView cluster={other} agents={agents} />
+        <ChatView session={other} agents={agents} />
       </ThemeProvider>,
     );
     await screen.findByText("from beta");
@@ -278,7 +278,7 @@ describe("ChatLog", () => {
       has_more_before: false,
       next_after_id: 20,
     });
-    mount(cluster, 20);
+    mount(session, 20);
     await screen.findByText("e20");
     expect(screen.getByText("Start of history")).toBeTruthy();
     const start = virtuosoProps.last!.firstItemIndex;

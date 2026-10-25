@@ -1,4 +1,4 @@
-/** Message input of one cluster: Enter sends, Shift+Enter is a newline, target is any free agent or one ordinal. */
+/** Message input of one session: Enter sends, Shift+Enter is a newline, target is any free agent or one ordinal. */
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Alert from '@mui/material/Alert'
@@ -12,14 +12,14 @@ import type { AgentView } from '../api/client'
 import { TOKENS } from '../theme'
 
 export interface ComposerProps {
-  clusterId: string
+  sessionId: string
   agents: AgentView[]
   deleting: boolean
 }
 
 const ANY = ''
 
-export function Composer({ clusterId, agents, deleting }: ComposerProps) {
+export function Composer({ sessionId, agents, deleting }: ComposerProps) {
   const [text, setText] = useState('')
   const [target, setTarget] = useState(ANY)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +32,7 @@ export function Composer({ clusterId, agents, deleting }: ComposerProps) {
     if (!canSend) return
     setSending(true)
     setError(null)
-    postMessage(clusterId, chosen === ANY ? { text } : { text, target_agent_id: chosen })
+    postMessage(sessionId, chosen === ANY ? { text } : { text, target_agent_id: chosen })
       .then(() => setText(''))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSending(false))
@@ -56,7 +56,7 @@ export function Composer({ clusterId, agents, deleting }: ComposerProps) {
           maxRows={8}
           fullWidth
           size="small"
-          placeholder="Message the cluster"
+          placeholder="Message the session"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}

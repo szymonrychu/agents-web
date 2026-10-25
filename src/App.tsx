@@ -9,7 +9,7 @@ import { FilesPanel } from './files/FilesPanel'
 import type { SessionView } from './api/client'
 import { TopBar } from './layout/TopBar'
 import { Workspace } from './layout/Workspace'
-import { sortedAgents, useClusters } from './ribbon/useClusters'
+import { sortedAgents, useSessions } from './ribbon/useSessions'
 import { menuEntries } from './backends/registry'
 import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
@@ -18,15 +18,15 @@ import { TOKENS } from './theme'
 export const APP_NAME = 'Agent Orchestrator';
 
 export default function App() {
-  const { state, clusters, select } = useClusters()
+  const { state, sessions, select } = useSessions()
   const [creating, setCreating] = useState(false)
   // The main area shows the selected session or a settings page; no router.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
   // The first session by slug is selected until a tab is chosen, and again when the chosen one disappears.
-  const selectedId = state.selectedId !== null && state.selectedId in state.clusters ? state.selectedId : (clusters[0]?.cluster.id ?? null)
-  const selected = selectedId === null ? null : state.clusters[selectedId]
+  const selectedId = state.selectedId !== null && state.selectedId in state.sessions ? state.selectedId : (sessions[0]?.session.id ?? null)
+  const selected = selectedId === null ? null : state.sessions[selectedId]
   const config = getConfig()
   const entries = useMemo(() => menuEntries(config), [config])
   const openEntry = entries.find((e) => e.id === view)
@@ -37,7 +37,7 @@ export default function App() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
       <TopBar
-        clusters={clusters}
+        sessions={sessions}
         selectedId={selectedId}
         onSelect={show}
         onNew={() => setCreating(true)}
@@ -56,10 +56,10 @@ export default function App() {
         ) : selected ? (
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <Workspace
-              clusterId={selected.cluster.id}
-              files={<FilesPanel clusterId={selected.cluster.id} />}
-              chat={<ChatView cluster={selected.cluster} agents={sortedAgents(selected)} />}
-              terminal={<TerminalPanel cluster={selected.cluster} agents={sortedAgents(selected)} />}
+              sessionId={selected.session.id}
+              files={<FilesPanel sessionId={selected.session.id} />}
+              chat={<ChatView session={selected.session} agents={sortedAgents(selected)} />}
+              terminal={<TerminalPanel session={selected.session} agents={sortedAgents(selected)} />}
             />
           </Box>
         ) : (

@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, SessionView } from '../api/client'
 import { statusEventFromFrame } from '../api/stream'
-import { clustersReducer, initialState } from '../ribbon/useClusters'
+import { sessionsReducer, initialState } from '../ribbon/useSessions'
 import { theme } from '../theme'
 import { AgentsStrip } from './AgentsStrip'
 import { formatAge } from './agentAge'
@@ -22,7 +22,7 @@ const agent = (id: string, ordinal: number, o: Partial<AgentView> = {}): AgentVi
   context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', ...o,
 })
 
-function mount(agents: AgentView[], selected: string[] = [], onToggle: (id: string) => void = () => {}, hive?: { clusterId: string; leaderEpoch: number | null }, scale: { replicas?: number; drainWaiting?: number[] } = {}) {
+function mount(agents: AgentView[], selected: string[] = [], onToggle: (id: string) => void = () => {}, hive?: { sessionId: string; leaderEpoch: number | null }, scale: { replicas?: number; drainWaiting?: number[] } = {}) {
   return render(
     <ThemeProvider theme={theme}>
       <AgentsStrip agents={agents} selected={selected} onToggle={onToggle} autoCompactPct={80} hive={hive} replicas={scale.replicas} drainWaiting={scale.drainWaiting} />
@@ -97,9 +97,9 @@ describe('AgentsStrip', () => {
     expect(onDisk).toContain('./AgentsStrip.tsx')
   })
 
-  test('leader badge shows on the leader with the epoch tooltip and is absent on alone clusters', () => {
+  test('leader badge shows on the leader with the epoch tooltip and is absent on alone sessions', () => {
     const agents = [agent('a0', 0, { leader: true }), agent('a1', 1)]
-    mount(agents, [], () => {}, { clusterId: 'c1', leaderEpoch: 7 })
+    mount(agents, [], () => {}, { sessionId: 'c1', leaderEpoch: 7 })
     const badge = screen.getByText('leader')
     expect(badge.getAttribute('title')).toBe('leader epoch 7')
     expect(within(screen.getByTestId('agent-row-alpha-0')).getByText('leader')).toBeTruthy()
@@ -112,7 +112,7 @@ describe('AgentsStrip', () => {
 
   test('make leader calls the leader route for a non-leader agent and shows an error inline on failure', async () => {
     makeLeader.mockResolvedValueOnce({ request_id: 1 }).mockRejectedValueOnce(new Error('not a member'))
-    mount([agent('a0', 0, { leader: true }), agent('a1', 1)], [], () => {}, { clusterId: 'c1', leaderEpoch: 1 })
+    mount([agent('a0', 0, { leader: true }), agent('a1', 1)], [], () => {}, { sessionId: 'c1', leaderEpoch: 1 })
     expect(screen.getAllByRole('button', { name: /make leader/i })).toHaveLength(1)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /make leader/i }))
@@ -126,15 +126,15 @@ describe('AgentsStrip', () => {
   })
 
   test('leader_changed frame moves the badge and context percent is shown per agent', () => {
-    const cluster = { id: 'c1', slug: 'alpha', hive: true, leader_agent_id: 'a0', leader_epoch: 1 } as unknown as SessionView
+    const session = { id: 'c1', slug: 'alpha', hive: true, leader_agent_id: 'a0', leader_epoch: 1 } as unknown as SessionView
     const a0 = agent('a0', 0, { leader: true, context_pct: 41 })
     const a1 = agent('a1', 1, { context_pct: 63 })
-    let state = clustersReducer(initialState, { type: 'snapshot', sessions: [{ session: cluster, agents: [a0, a1] }] })
+    let state = sessionsReducer(initialState, { type: 'snapshot', sessions: [{ session, agents: [a0, a1] }] })
     const view = () => {
-      const e = state.clusters.c1
+      const e = state.sessions.c1
       return (
         <ThemeProvider theme={theme}>
-          <AgentsStrip agents={Object.values(e.agents)} selected={[]} onToggle={() => {}} hive={{ clusterId: 'c1', leaderEpoch: e.cluster.leader_epoch }} />
+          <AgentsStrip agents={Object.values(e.agents)} selected={[]} onToggle={() => {}} hive={{ sessionId: 'c1', leaderEpoch: e.session.leader_epoch }} />
         </ThemeProvider>
       )
     }
@@ -144,7 +144,7 @@ describe('AgentsStrip', () => {
     expect(within(screen.getByTestId('agent-row-alpha-1')).getByText('63%')).toBeTruthy()
     const action = statusEventFromFrame('leader_changed', { session_id: 'c1', agent_id: 'a1', epoch: 2 })
     expect(action).not.toBeNull()
-    state = clustersReducer(state, action!)
+    state = sessionsReducer(state, action!)
     rerender(view())
     expect(within(screen.getByTestId('agent-row-alpha-1')).getByText('leader')).toBeTruthy()
     expect(within(screen.getByTestId('agent-row-alpha-0')).queryByText('leader')).toBeNull()

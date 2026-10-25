@@ -1,4 +1,4 @@
-/** Chat state of one cluster: newest page on open, older pages on demand, live follow, epoch guard on switch. */
+/** Chat state of one session: newest page on open, older pages on demand, live follow, epoch guard on switch. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { eventStreamUrl, listEvents } from '../api/client'
 import { openStream } from '../api/stream'
@@ -22,7 +22,7 @@ const STREAM_EVENTS = [
   'gap',
 ]
 
-export interface ClusterChat {
+export interface SessionChat {
   items: ChatItem[]
   loading: boolean
   loadingOlder: boolean
@@ -45,7 +45,7 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
  * @param ordinals agent id to ordinal, used to tag rows.
  * @param maxItems live window size; injectable so tests can use a small window.
  */
-export function useClusterChat(clusterId: string, ordinals: Readonly<Record<string, number>>, maxItems: number = MAX_ITEMS): ClusterChat {
+export function useSessionChat(sessionId: string, ordinals: Readonly<Record<string, number>>, maxItems: number = MAX_ITEMS): SessionChat {
   const fresh = (): Loaded => ({ chat: emptyChat(ordinals), hasMoreBefore: false, loading: true, loadingOlder: false, error: null })
   const [loaded, setLoaded] = useState<Loaded>(fresh)
   const epoch = useRef(0)
@@ -70,10 +70,10 @@ export function useClusterChat(clusterId: string, ordinals: Readonly<Record<stri
     maxItemsRef.current = maxItems
   }, [maxItems])
 
-  // The cluster id changing is the epoch boundary: everything from the previous cluster is dropped.
-  const [shownCluster, setShownCluster] = useState(clusterId)
-  if (shownCluster !== clusterId) {
-    setShownCluster(clusterId)
+  // The session id changing is the epoch boundary: everything from the previous session is dropped.
+  const [shownSession, setShownSession] = useState(sessionId)
+  if (shownSession !== sessionId) {
+    setShownSession(sessionId)
     setLoaded(fresh())
   }
 
@@ -85,14 +85,14 @@ export function useClusterChat(clusterId: string, ordinals: Readonly<Record<stri
     busyOlder.current = false
     moreBefore.current = false
     let stream: { close: () => void } | null = null
-    listEvents(clusterId, { limit: PAGE_SIZE })
+    listEvents(sessionId, { limit: PAGE_SIZE })
       .then((page) => {
         if (!current()) return
         const rows = page.events as unknown as EventRow[]
         oldestId.current = rows.length ? rows[0].id : null
         moreBefore.current = page.has_more_before
         setLoaded({ chat: applyEvents(emptyChat(ordinalsRef.current), rows), hasMoreBefore: page.has_more_before, loading: false, loadingOlder: false, error: null })
-        stream = openStream(eventStreamUrl(clusterId), {
+        stream = openStream(eventStreamUrl(sessionId), {
           eventNames: STREAM_EVENTS,
           afterId: page.next_after_id ?? (rows.length ? rows[rows.length - 1].id : 0),
           onEvent: (data) => {
@@ -114,7 +114,7 @@ export function useClusterChat(clusterId: string, ordinals: Readonly<Record<stri
       active = false
       stream?.close()
     }
-  }, [clusterId])
+  }, [sessionId])
 
   const loadOlder = useCallback(() => {
     const mine = epoch.current
@@ -122,7 +122,7 @@ export function useClusterChat(clusterId: string, ordinals: Readonly<Record<stri
     if (busyOlder.current || !moreBefore.current || before === null) return
     busyOlder.current = true
     setLoaded((s) => ({ ...s, loadingOlder: true }))
-    listEvents(clusterId, { limit: PAGE_SIZE, before_id: before })
+    listEvents(sessionId, { limit: PAGE_SIZE, before_id: before })
       .then((page) => {
         if (epoch.current !== mine) return
         const rows = page.events as unknown as EventRow[]
@@ -136,7 +136,7 @@ export function useClusterChat(clusterId: string, ordinals: Readonly<Record<stri
       .finally(() => {
         if (epoch.current === mine) busyOlder.current = false
       })
-  }, [clusterId])
+  }, [sessionId])
 
   return useMemo(
     () => ({ items: loaded.chat.items, loading: loaded.loading, loadingOlder: loaded.loadingOlder, hasMoreBefore: loaded.hasMoreBefore, error: loaded.error, loadOlder }),

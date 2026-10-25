@@ -140,7 +140,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {serverError && <Alert severity="error" variant="outlined">{serverError}</Alert>}
           {text('name', 'Name', { disabled: preset?.is_default === true })}
           {text('replicas', 'Replicas')}
-          {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the cluster a hive' })}
+          {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the session a hive' })}
           <FormControlLabel control={<Switch checked={values.static} onChange={(e) => set('static', e.target.checked)} />} label="Static (scaling disabled)" />
           {errors.static && <FormHelperText error>{errors.static}</FormHelperText>}
           {meta && meta.models.length > 0 ? dropdown('model', 'Model', meta.models, 'default') : text('model', 'Model')}
@@ -182,7 +182,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <Box>
               <Button size="small" onClick={() => set('initScripts', [...values.initScripts, ''])}>Add init script</Button>
             </Box>
-            <FormHelperText>Runs once when a cluster starts, in the shared workdir; agents can read and edit it; edits apply to the next cluster.</FormHelperText>
+            <FormHelperText>Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.</FormHelperText>
           </Box>
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}

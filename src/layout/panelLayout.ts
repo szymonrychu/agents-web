@@ -1,5 +1,5 @@
 /**
- * Pure layout state of one cluster workspace: three panel sizes (percent) and which panels are minimized.
+ * Pure layout state of one session workspace: three panel sizes (percent) and which panels are minimized.
  * Every function returns a new layout, or the same object when the request changes nothing.
  */
 export const PANELS = ['files', 'chat', 'terminal'] as const

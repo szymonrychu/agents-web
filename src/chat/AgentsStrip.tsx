@@ -1,4 +1,4 @@
-/** Agents of a cluster in the chat header: state, free-since age and own gauge; clicking one narrows the log to it. */
+/** Agents of a session in the chat header: state, free-since age and own gauge; clicking one narrows the log to it. */
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,11 +17,11 @@ export interface AgentsStripProps {
   selected: readonly string[]
   onToggle: (agentId: string) => void
   autoCompactPct?: number
-  /** Set for hive clusters only: enables the leader badge and the Make leader action. Alone clusters omit it. */
-  hive?: { clusterId: string; leaderEpoch: number | null }
-  /** cluster.spec.replicas: agents at or above it are leaving. */
+  /** Set for hive sessions only: enables the leader badge and the Make leader action. Alone sessions omit it. */
+  hive?: { sessionId: string; leaderEpoch: number | null }
+  /** session.spec.replicas: agents at or above it are leaving. */
   replicas?: number
-  /** Ordinals of leaving agents still finishing a turn (cluster.status.drain.waiting). */
+  /** Ordinals of leaving agents still finishing a turn (session.status.drain.waiting). */
   drainWaiting?: readonly number[]
 }
 
@@ -29,11 +29,11 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
-  const onMakeLeader = async (clusterId: string, agentId: string) => {
+  const onMakeLeader = async (sessionId: string, agentId: string) => {
     setError(null)
     setPending(agentId)
     try {
-      await makeLeader(clusterId, agentId)
+      await makeLeader(sessionId, agentId)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -98,7 +98,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
             <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} />
           </ButtonBase>
           {hive && !a.leader && (
-            <Button size="small" disabled={pending === a.id} onClick={() => void onMakeLeader(hive.clusterId, a.id)}>
+            <Button size="small" disabled={pending === a.id} onClick={() => void onMakeLeader(hive.sessionId, a.id)}>
               Make leader
             </Button>
           )}

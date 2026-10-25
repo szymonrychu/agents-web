@@ -110,7 +110,7 @@ class FakeResizeObserver {
   }
 }
 
-const CLUSTER = { id: 'c1', slug: 'alpha' } as SessionView
+const SESSION = { id: 'c1', slug: 'alpha' } as SessionView
 const agent = (id: string, ordinal: number, ready = true): AgentView =>
   ({ id, ordinal, pod_name: `alpha-${ordinal}`, ready, gone: false, state: 'idle', peers: 0, context: null, current_turn_id: null, free_since: null }) as AgentView
 const AGENTS = [agent('a0', 0, false), agent('a1', 1), agent('a2', 2)]
@@ -121,7 +121,7 @@ const shell = (terminal_id: string, agent_id = 'a1', alive = true): TerminalView
 function mount(agents = AGENTS) {
   return render(
     <ThemeProvider theme={theme}>
-      <TerminalPanel cluster={CLUSTER} agents={agents} />
+      <TerminalPanel session={SESSION} agents={agents} />
     </ThemeProvider>,
   )
 }
@@ -353,14 +353,14 @@ describe('TerminalPanel', () => {
     expect(xterm.terminals[1].writes).toContain(replay)
   })
 
-  test('cluster_change_lists_that_clusters_shells', async () => {
+  test('session_change_lists_that_sessions_shells', async () => {
     api.listTerminals.mockResolvedValueOnce({ terminals: [shell('aaaaaa111')], unavailable_agents: [] })
     const view = mount()
     await waitFor(() => expect(tabs()).toHaveLength(1))
     api.listTerminals.mockResolvedValueOnce({ terminals: [], unavailable_agents: [] })
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={{ id: 'c2', slug: 'beta' } as SessionView} agents={[]} />
+        <TerminalPanel session={{ id: 'c2', slug: 'beta' } as SessionView} agents={[]} />
       </ThemeProvider>,
     )
     await waitFor(() => expect(tabs()).toHaveLength(0))
@@ -377,7 +377,7 @@ describe('TerminalPanel', () => {
     // a status delta that leaves the ready set alone does not list again
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={CLUSTER} agents={AGENTS.map((a) => ({ ...a }))} />
+        <TerminalPanel session={SESSION} agents={AGENTS.map((a) => ({ ...a }))} />
       </ThemeProvider>,
     )
     await flush()
@@ -386,7 +386,7 @@ describe('TerminalPanel', () => {
     api.listTerminals.mockResolvedValueOnce({ terminals: [shell('aaaaaa111'), shell('dddddd444', 'a0')], unavailable_agents: ['a2'] })
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={CLUSTER} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2)]} />
+        <TerminalPanel session={SESSION} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2)]} />
       </ThemeProvider>,
     )
     await waitFor(() => expect(tabs()).toHaveLength(2))
@@ -398,7 +398,7 @@ describe('TerminalPanel', () => {
     api.listTerminals.mockResolvedValueOnce({ terminals: [shell('aaaaaa111'), shell('dddddd444', 'a0')], unavailable_agents: [] })
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={CLUSTER} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2, false)]} />
+        <TerminalPanel session={SESSION} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2, false)]} />
       </ThemeProvider>,
     )
     await waitFor(() => expect(screen.queryByTestId('terminal-unavailable')).toBeNull())
@@ -414,7 +414,7 @@ describe('TerminalPanel', () => {
     api.listTerminals.mockReturnValueOnce(new Promise((r) => (resolveList = r)))
     view.rerender(
       <ThemeProvider theme={theme}>
-        <TerminalPanel cluster={CLUSTER} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2)]} />
+        <TerminalPanel session={SESSION} agents={[agent('a0', 0), agent('a1', 1), agent('a2', 2)]} />
       </ThemeProvider>,
     )
     await flush()

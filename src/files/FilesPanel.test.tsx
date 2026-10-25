@@ -51,14 +51,14 @@ function serve(dirs: Record<string, FileListing | (() => FileListing)>) {
   })
 }
 
-const mount = (clusterId = 'c1') =>
+const mount = (sessionId = 'c1') =>
   render(
     <ThemeProvider theme={theme}>
-      <FilesPanel clusterId={clusterId} />
+      <FilesPanel sessionId={sessionId} />
     </ThemeProvider>,
   )
 
-/** A cluster event as the SSE stream delivers it. */
+/** A session event as the SSE stream delivers it. */
 const emit = (type: string, data: Record<string, unknown>) =>
   act(async () => {
     stream.opened[stream.opened.length - 1].opts.onEvent({ id: 1, type, data }, { type, id: '1' })
@@ -342,7 +342,7 @@ describe('FilesPanel', () => {
     test('recovers from a 409 root without a click', async () => {
       let up = false
       api.listFiles.mockImplementation(async () => {
-        if (!up) throw new ApiError(409, 'agent_not_ready', 'no agent of the cluster is ready')
+        if (!up) throw new ApiError(409, 'agent_not_ready', 'no agent of the session is ready')
         return listing('', [entry('fresh.txt')])
       })
       mount()
@@ -434,10 +434,10 @@ describe('FilesPanel', () => {
     expect(stream.opened).toHaveLength(1)
     expect(stream.close).not.toHaveBeenCalled()
 
-    // A cluster change swaps the subscription.
+    // A session change swaps the subscription.
     view.rerender(
       <ThemeProvider theme={theme}>
-        <FilesPanel clusterId="c2" />
+        <FilesPanel sessionId="c2" />
       </ThemeProvider>,
     )
     await waitFor(() => expect(stream.opened).toHaveLength(2))
@@ -448,7 +448,7 @@ describe('FilesPanel', () => {
     expect(stream.close).toHaveBeenCalledTimes(2)
   })
 
-  test('preview_dropped_on_cluster_change', async () => {
+  test('preview_dropped_on_session_change', async () => {
     serve({ '': listing('', [entry('a.txt')]) })
     api.readFile.mockResolvedValue(content('a.txt', { content: 'one' }))
     const view = mount()
@@ -456,7 +456,7 @@ describe('FilesPanel', () => {
     await screen.findByTestId('file-preview-text')
     view.rerender(
       <ThemeProvider theme={theme}>
-        <FilesPanel clusterId="c2" />
+        <FilesPanel sessionId="c2" />
       </ThemeProvider>,
     )
     await waitFor(() => expect(screen.queryByTestId('file-preview-text')).toBeNull())

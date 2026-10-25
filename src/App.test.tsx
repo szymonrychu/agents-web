@@ -105,13 +105,13 @@ describe('App', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
     expect(screen.queryByTestId('ribbon-aside')).toBeNull()
     expect(screen.queryByTestId('ribbon-drawer')).toBeNull()
-    expect(screen.queryByTestId('cluster-row-alpha')).toBeNull()
+    expect(screen.queryByTestId('session-row-alpha')).toBeNull()
   })
 
   test('only_active_session_workspace_mounted', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
-    const workspaces = () => screen.queryAllByTestId('workspace').map((w) => w.getAttribute('data-cluster'))
+    const workspaces = () => screen.queryAllByTestId('workspace').map((w) => w.getAttribute('data-session'))
     expect(workspaces()).toEqual(['c1'])
     const main = screen.getByRole('main')
     expect(within(main).getByRole('button', { name: 'Minimize Files' })).toBeTruthy()
@@ -136,7 +136,7 @@ describe('App', () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     expect(screen.getByRole('button', { name: 'Open menu' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'New cluster' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
     expect(screen.queryByRole('complementary')).toBeNull()
   })
 
@@ -161,7 +161,7 @@ describe('App', () => {
     api.listSessions.mockResolvedValue([])
     mount()
     expect(await screen.findByText('No sessions yet')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'New cluster' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
   })
 
   test('list_error_is_shown', async () => {
@@ -266,7 +266,7 @@ describe('App', () => {
   test('create_and_discard_from_top_bar', { timeout: 15000 }, async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
-    fireEvent.click(screen.getByRole('button', { name: 'New cluster' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New session' }))
     expect(await screen.findByRole('combobox', { name: 'Preset' })).toBeTruthy()
     expect(screen.queryByLabelText('Max attempts')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -275,7 +275,7 @@ describe('App', () => {
 
     const created = { ...session('c5', 'zeta'), preset_id: 'p-default', preset_name: 'Default' }
     api.createSession.mockResolvedValue(created)
-    fireEvent.click(screen.getByRole('button', { name: 'New cluster' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New session' }))
     const slug = (await screen.findByLabelText('Slug')) as HTMLInputElement
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Preset' }).textContent).toBe('Default'))
     fireEvent.change(slug, { target: { value: 'zeta' } })
@@ -286,7 +286,7 @@ describe('App', () => {
     expect(selectedTab()?.textContent).toContain('Default')
     await waitFor(() => expect(screen.queryByLabelText('Slug')).toBeNull())
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cluster actions' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Discard' }))
     expect(await screen.findByLabelText('Type the slug to confirm')).toBeTruthy()
   })
@@ -294,7 +294,7 @@ describe('App', () => {
   test('no_edit_entry_point', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cluster actions' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Discard'])
     expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
@@ -308,6 +308,6 @@ describe('ribbon retirement', () => {
     for (const gone of ['./ribbon/Ribbon.tsx', './ribbon/ClusterRow.tsx', './ribbon/Ribbon.test.tsx', './layout/Shell.tsx']) {
       expect(onDisk).not.toContain(gone)
     }
-    expect(onDisk).toContain('./ribbon/useClusters.ts')
+    expect(onDisk).toContain('./ribbon/useSessions.ts')
   })
 })

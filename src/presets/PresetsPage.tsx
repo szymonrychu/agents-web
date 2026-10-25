@@ -102,7 +102,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete preset ${deleting?.name ?? ''}?`}
-        body="Clusters already created from it keep their own copy of the spec."
+        body="Sessions already created from it keep their own copy of the spec."
         confirmLabel="Delete"
         onConfirm={() => deleting && void confirmDelete(deleting)}
         onCancel={() => setDeleting(null)}

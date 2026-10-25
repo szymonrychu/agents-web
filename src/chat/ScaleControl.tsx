@@ -1,4 +1,4 @@
-/** Grow or shrink a cluster within its cap; the count follows the status stream, never an optimistic update. */
+/** Grow or shrink a session within its cap; the count follows the status stream, never an optimistic update. */
 import { useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -9,22 +9,22 @@ import Typography from '@mui/material/Typography'
 import { ApiError, scaleSession, type SessionView } from '../api/client'
 import { TOKENS } from '../theme'
 
-export function ScaleControl({ cluster }: { cluster: SessionView }) {
+export function ScaleControl({ session }: { session: SessionView }) {
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<{ clusterId: string; text: string } | null>(null)
-  const replicas = cluster.spec.replicas
-  const max = cluster.max_replicas
+  const [error, setError] = useState<{ sessionId: string; text: string } | null>(null)
+  const replicas = session.spec.replicas
+  const max = session.max_replicas
   if (max <= 1) return null
-  const isStatic = cluster.static
+  const isStatic = session.static
   const go = async (target: number) => {
     setBusy(true)
     setError(null)
     try {
-      await scaleSession(cluster.id, { replicas: target })
+      await scaleSession(session.id, { replicas: target })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const hint = e instanceof ApiError && e.code === 'leader_would_leave' ? ' Make another agent leader first.' : ''
-      setError({ clusterId: cluster.id, text: msg + hint })
+      setError({ sessionId: session.id, text: msg + hint })
     } finally {
       setBusy(false)
     }
@@ -39,12 +39,12 @@ export function ScaleControl({ cluster }: { cluster: SessionView }) {
       </IconButton>
     </Box>
   )
-  const shownError = error && error.clusterId === cluster.id ? error.text : null
+  const shownError = error && error.sessionId === session.id ? error.text : null
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography sx={{ fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' }}>{`${replicas} of ${max} agents`}</Typography>
-        {isStatic ? <Tooltip title="Static cluster: scaling is off">{buttons}</Tooltip> : buttons}
+        {isStatic ? <Tooltip title="Static session: scaling is off">{buttons}</Tooltip> : buttons}
       </Box>
       {shownError ? (
         <Typography role="alert" sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: 'error.main' }}>

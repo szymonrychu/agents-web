@@ -1,4 +1,4 @@
-/** Terminal panel: one tab per interactive shell of the cluster, each an xterm.js screen on a chosen agent pod. */
+/** Terminal panel: one tab per interactive shell of the session, each an xterm.js screen on a chosen agent pod. */
 import Add from '@mui/icons-material/Add'
 import Close from '@mui/icons-material/Close'
 import Box from '@mui/material/Box'
@@ -20,8 +20,8 @@ import type { TerminalStatus } from './terminalSocket'
 import { XtermView } from './XtermView'
 
 export interface TerminalPanelProps {
-  cluster: SessionView
-  /** The cluster's live agents ordered by ordinal. */
+  session: SessionView
+  /** The session's live agents ordered by ordinal. */
   agents: AgentView[]
 }
 
@@ -45,12 +45,12 @@ function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
-/** Keyed by cluster, so a cluster change closes the old sockets and lists the new cluster's shells from scratch. */
-export function TerminalPanel({ cluster, agents }: TerminalPanelProps) {
-  return <ClusterTerminals key={cluster.id} clusterId={cluster.id} agents={agents} />
+/** Keyed by session, so a session change closes the old sockets and lists the new session's shells from scratch. */
+export function TerminalPanel({ session, agents }: TerminalPanelProps) {
+  return <SessionTerminals key={session.id} sessionId={session.id} agents={agents} />
 }
 
-function ClusterTerminals({ clusterId, agents }: { clusterId: string; agents: AgentView[] }) {
+function SessionTerminals({ sessionId, agents }: { sessionId: string; agents: AgentView[] }) {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [active, setActive] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -61,10 +61,10 @@ function ClusterTerminals({ clusterId, agents }: { clusterId: string; agents: Ag
   // The listing covers ready agents only: it is repeated whenever that set changes, so shells of a late agent show up.
   const readyKey = agents.filter((a) => a.ready).map((a) => a.id).sort().join(',')
 
-  // Shells outlive the panel (tab switches, reloads): reopen every alive one of the cluster.
+  // Shells outlive the panel (tab switches, reloads): reopen every alive one of the session.
   useEffect(() => {
     let live = true
-    listTerminals(clusterId).then(
+    listTerminals(sessionId).then(
       (list) => {
         if (!live) return
         setError(null)
@@ -81,7 +81,7 @@ function ClusterTerminals({ clusterId, agents }: { clusterId: string; agents: Ag
     return () => {
       live = false
     }
-  }, [clusterId, readyKey])
+  }, [sessionId, readyKey])
 
   const preselected = agents.find((a) => a.ready)?.id
 

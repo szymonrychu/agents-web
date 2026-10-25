@@ -1,4 +1,4 @@
-/** Filesystem panel: the cluster's shared workdir as a lazily loaded tree with a read-only file preview. */
+/** Filesystem panel: the session's shared workdir as a lazily loaded tree with a read-only file preview. */
 import Folder from '@mui/icons-material/Folder'
 import FolderOpen from '@mui/icons-material/FolderOpen'
 import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined'
@@ -31,7 +31,7 @@ type PreviewState =
   | { state: 'loaded'; file: FileContent }
   | { state: 'error'; message: string }
   | { state: 'other' }
-type Preview = PreviewState & { path: string; clusterId: string }
+type Preview = PreviewState & { path: string; sessionId: string }
 
 const noteSx = { fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' } as const
 const preSx = { m: 0, fontFamily: MONO_FONT, fontSize: `${TOKENS.fontSizes.sm / 16}rem`, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: 'text.primary' } as const
@@ -82,12 +82,12 @@ function PreviewBody({ preview }: { preview: PreviewState }) {
   }
 }
 
-export function FilesPanel({ clusterId }: { clusterId: string }) {
-  const tree = useFileTree(clusterId)
+export function FilesPanel({ sessionId }: { sessionId: string }) {
+  const tree = useFileTree(sessionId)
   const { state, setExpanded, loadMore, refresh, refreshExpanded, pollExpanded, isLoaded, root } = tree
   const [stored, setPreview] = useState<Preview | null>(null)
-  // A preview belongs to the cluster it was opened in: a cluster switch drops it.
-  const preview = stored?.clusterId === clusterId ? stored : null
+  // A preview belongs to the session it was opened in: a session switch drops it.
+  const preview = stored?.sessionId === sessionId ? stored : null
   const previewToken = useRef(0)
   const previewRef = useRef(preview)
   useEffect(() => {
@@ -97,17 +97,17 @@ export function FilesPanel({ clusterId }: { clusterId: string }) {
   const openFile = useCallback(
     (path: string) => {
       const token = ++previewToken.current
-      setPreview((p) => (p?.clusterId === clusterId && p.path === path && p.state === 'loaded' ? p : { path, clusterId, state: 'loading' }))
-      readFile(clusterId, path).then(
+      setPreview((p) => (p?.sessionId === sessionId && p.path === path && p.state === 'loaded' ? p : { path, sessionId, state: 'loading' }))
+      readFile(sessionId, path).then(
         (file) => {
-          if (previewToken.current === token) setPreview({ path, clusterId, state: 'loaded', file })
+          if (previewToken.current === token) setPreview({ path, sessionId, state: 'loaded', file })
         },
         (e: unknown) => {
-          if (previewToken.current === token) setPreview({ path, clusterId, state: 'error', message: errorText(e) })
+          if (previewToken.current === token) setPreview({ path, sessionId, state: 'error', message: errorText(e) })
         },
       )
     },
-    [clusterId],
+    [sessionId],
   )
 
   // Live tail of tool events (no history replay): a finished write refreshes its parent directory (and refetches an open preview of the file), a shell result the expanded tree.
@@ -122,12 +122,12 @@ export function FilesPanel({ clusterId }: { clusterId: string }) {
         if (p && p.path === path && p.state !== 'other') openFile(path)
       },
     })
-    const stream = openStream(eventStreamUrl(clusterId), { eventNames: WATCHED_EVENTS, onEvent: (data) => events.handle(data), onOpen: pollExpanded })
+    const stream = openStream(eventStreamUrl(sessionId), { eventNames: WATCHED_EVENTS, onEvent: (data) => events.handle(data), onOpen: pollExpanded })
     return () => {
       stream.close()
       events.dispose()
     }
-  }, [clusterId, root, isLoaded, refresh, refreshExpanded, pollExpanded, openFile])
+  }, [sessionId, root, isLoaded, refresh, refreshExpanded, pollExpanded, openFile])
 
   // Safety net for writers the hooks never see (terminal shells, check jobs) and for a tree that loaded in error: poll while the tab is visible, plus one pass on return.
   useEffect(() => {
@@ -180,7 +180,7 @@ export function FilesPanel({ clusterId }: { clusterId: string }) {
     if (type === 'file' || type === 'symlink') openFile(path)
     else if (type === 'other') {
       previewToken.current += 1
-      setPreview({ path, clusterId, state: 'other' })
+      setPreview({ path, sessionId, state: 'other' })
     }
   }
 
