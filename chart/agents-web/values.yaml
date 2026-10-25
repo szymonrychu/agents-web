@@ -42,3 +42,29 @@ readinessProbe:
 service:
   type: ClusterIP
   port: 8080
+
+# Runtime config served as /config.json (same rules as src/config/backends.ts:parseConfig):
+# each entry needs id, label and basePath (starting with "/"), and one entry must have id "orchestrator".
+backends:
+  - id: orchestrator
+    label: Orchestrator
+    basePath: /api/v1
+
+# The UI owns "/" of the host. See README "URL layout".
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Source CIDRs the ingress refuses (ingress-nginx denylist annotation when non-empty).
+  denySourceRanges: []
+  # Source CIDRs the ingress admits (ingress-nginx allow-list annotation when non-empty).
+  allowSourceRanges: []
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
