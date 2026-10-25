@@ -112,3 +112,9 @@ test("chart-version.sh: mismatched tag is refused", () => {
 test("chart-version.sh: other refs publish nothing", () => {
   assert.equal(run("branch", "feature", "0123456789abcdef").status, 2);
 });
+
+test("every regctl-installer use is pinned to a 40-hex commit SHA", () => {
+  const uses = Object.values(wf.jobs).flatMap((j) => (j.steps ?? []).map((s) => s.uses ?? "")).filter((u) => /regctl-installer/.test(u));
+  assert.ok(uses.length >= 3);
+  for (const u of uses) assert.match(u, /^regclient\/actions\/regctl-installer@[0-9a-f]{40}$/);
+});
