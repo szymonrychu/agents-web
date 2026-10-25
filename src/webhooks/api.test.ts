@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { loadConfig, resetConfig } from '../config/backends';
-import { createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, rotateEndpoint } from './api';
+import { createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, previewTemplate, rotateEndpoint } from './api';
 
 const BASE = '/webhooks/api/v1';
 let f: ReturnType<typeof vi.fn>;
@@ -56,6 +56,10 @@ describe('webhooks api', () => {
     f.mockClear();
     await getMeta();
     expect(call()).toMatchObject({ url: `${BASE}/meta`, method: 'GET' });
+  });
+  it('previews a template against an example payload', async () => {
+    await previewTemplate({ template: '{{ repo }}', type: 'github-pr', example: { a: 1 } });
+    expect(call()).toMatchObject({ url: `${BASE}/templates/preview`, method: 'POST', body: '{"template":"{{ repo }}","type":"github-pr","example":{"a":1}}' });
   });
   it('surfaces the backend error shape', async () => {
     f.mockImplementation(async () => new Response(JSON.stringify({ error: { code: 'conflict', message: 'dup' } }), { status: 409 }));

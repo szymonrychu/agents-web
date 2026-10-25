@@ -11,6 +11,8 @@ export type RotateIn = S['RotateIn'];
 export type EventView = S['EventView'];
 export type EventDetail = S['EventDetail'];
 export type WebhookMeta = S['Meta'];
+export type PreviewIn = S['PreviewIn'];
+export type PreviewOut = S['PreviewOut'];
 
 const id = encodeURIComponent;
 const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('webhooks'), method, path, body);
@@ -33,3 +35,5 @@ export const listEvents = (opts: EventsQuery = {}) =>
   req<EventView[]>('GET', `/events${query({ status: opts.status, endpoint_id: opts.endpointId, limit: opts.limit, before_id: opts.beforeId })}`);
 export const getEvent = (eventId: string) => req<EventDetail>('GET', `/events/${id(eventId)}`);
 export const getMeta = () => req<WebhookMeta>('GET', '/meta');
+/** Renders a Jinja2 prompt template against an example payload; nothing is stored. */
+export const previewTemplate = (body: PreviewIn) => req<PreviewOut>('POST', '/templates/preview', body);

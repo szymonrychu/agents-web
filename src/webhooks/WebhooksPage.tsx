@@ -9,6 +9,10 @@ import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { listEndpoints, listEvents } from './api'
 import type { EndpointView, EventView } from './api'
+import type { EndpointCreated } from './api'
+import { CreateEndpointDialog } from './CreateEndpointDialog'
+import { CredentialsDialog } from './CredentialsDialog'
+import { EndpointsList } from './EndpointsList'
 import { EventsTable } from './EventsTable'
 
 export interface WebhooksPageProps {
@@ -26,13 +30,17 @@ export function WebhooksPage({ onBack }: WebhooksPageProps) {
   const [older, setOlder] = useState<EventView[]>([])
   const [exhausted, setExhausted] = useState(false)
   const [olderError, setOlderError] = useState<Error>()
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [creating, setCreating] = useState(false)
+  const [credentials, setCredentials] = useState<EndpointCreated | null>(null)
 
   const filter = { status: status || undefined, endpointId: endpointId || undefined }
   const { data, error } = usePoll(() => listEvents({ ...filter, limit: PAGE }), 5000, [status, endpointId])
 
   useEffect(() => {
     listEndpoints().then(setEndpoints, () => setEndpoints([]))
-  }, [])
+  }, [refreshKey])
+  const refresh = () => setRefreshKey((k) => k + 1)
   const resetPaging = () => {
     setOlder([])
     setExhausted(false)
@@ -62,6 +70,19 @@ export function WebhooksPage({ onBack }: WebhooksPageProps) {
         <Button onClick={onBack}>Back</Button>
         <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Webhooks</Typography>
       </Box>
+      <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography component="h2" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.md }}>Endpoints</Typography>
+          <Button variant="contained" onClick={() => setCreating(true)}>New endpoint</Button>
+        </Box>
+        <EndpointsList refreshKey={refreshKey} onChanged={refresh} onCreate={() => setCreating(true)} />
+      </Box>
+      <CreateEndpointDialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        onCreated={(created) => { setCreating(false); setCredentials(created); refresh() }}
+      />
+      <CredentialsDialog endpoint={credentials} onClose={() => setCredentials(null)} />
       <Box sx={{ display: 'flex', gap: 2 }}>
         <TextField select size="small" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); resetPaging() }} sx={{ minWidth: 160 }}>
           <MenuItem value={ALL}>all</MenuItem>
