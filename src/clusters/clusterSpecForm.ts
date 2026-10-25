@@ -27,14 +27,35 @@ export interface FormValues {
   memRequest: string
   memLimit: string
   hookUrl: string
+  leaderLease: string
+  autocloseAfter: string
+  compactIdle: string
+  compactInstructions: string
+  compactMinTokens: string
+  systemAppend: string
+  restartPrompt: string
+  turnStall: string
+  maxRestarts: string
+  turnMax: string
+  agentCommands: string[]
+  /** Comma list. */
+  permAllow: string
+  permDeny: string
+  /** JSON text, empty means unset. */
+  hooks: string
+  mcpServers: string
+  plugins: string
   /** Not editable in the form; carried so an edit does not drop a stored image. */
   image: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[] }
+
+type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'hooks' | 'mcpServers' | 'plugins'
+const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -60,6 +81,8 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
+    leaderLease: '', autocloseAfter: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
   }
 }
 
@@ -81,7 +104,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<C
     values[field] = stored
     setKeys.add(key)
   }
-  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact', stored: number | null | undefined) => {
+  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter', stored: number | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = String(stored)
     setKeys.add(key)
@@ -123,6 +146,44 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<C
   }
   text('hookUrl', 'hookUrl', spec.discard_hook_url)
   text('image', 'image', spec.image)
+  num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
+  num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
+  const w = spec.wrapper
+  if (w) {
+    const wtext = (field: WrapperField & keyof FormValues, stored: string | number | null | undefined) => {
+      if (stored === null || stored === undefined) return
+      ;(values as Record<string, unknown>)[field] = String(stored)
+      setKeys.add(field)
+    }
+    wtext('compactIdle', w.auto_compact?.idle_seconds)
+    wtext('compactInstructions', w.auto_compact?.instructions)
+    wtext('compactMinTokens', w.auto_compact?.min_context_tokens)
+    wtext('systemAppend', w.system_append)
+    wtext('restartPrompt', w.restart_continue_prompt)
+    wtext('turnStall', w.turn_stall_seconds)
+    wtext('maxRestarts', w.max_restarts)
+    wtext('turnMax', w.turn_max_seconds)
+    if (w.agent_commands) {
+      values.agentCommands = [...w.agent_commands]
+      setKeys.add('agentCommands')
+    }
+    if (w.permissions?.allow) {
+      values.permAllow = w.permissions.allow.join(', ')
+      setKeys.add('permAllow')
+    }
+    if (w.permissions?.deny) {
+      values.permDeny = w.permissions.deny.join(', ')
+      setKeys.add('permDeny')
+    }
+    const wjson = (field: (typeof JSON_FIELDS)[number], stored: unknown) => {
+      if (stored === null || stored === undefined) return
+      values[field] = JSON.stringify(stored, null, 2)
+      setKeys.add(field)
+    }
+    wjson('hooks', w.hooks)
+    wjson('mcpServers', w.mcp_servers)
+    wjson('plugins', w.plugins)
+  }
   return { values, setKeys }
 }
 
@@ -156,7 +217,7 @@ export function hookUrlError(text: string): string | undefined {
   }
 }
 
-export function anyMcpError(text: string): string | undefined {
+export function jsonObjectError(text: string): string | undefined {
   if (text.trim() === '') return undefined
   try {
     const v: unknown = JSON.parse(text)
@@ -165,6 +226,8 @@ export function anyMcpError(text: string): string | undefined {
     return 'Must be valid JSON'
   }
 }
+
+export const anyMcpError = jsonObjectError
 
 /** Per-script errors mirroring the server (at most 20, each non-empty after trim and at most 16384 characters); undefined when all are fine. */
 export function initScriptErrors(scripts: string[]): (string | undefined)[] | undefined {
@@ -197,6 +260,15 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   e.autoCompact = v.autoCompact.trim() === '' ? undefined : intIn(v.autoCompact, 1, 100, 'Auto-compact percent')
   e.anyMcp = anyMcpError(v.anyMcp)
   e.hookUrl = hookUrlError(v.hookUrl)
+  e.leaderLease = v.leaderLease.trim() === '' ? undefined : intIn(v.leaderLease, 60, 604800, 'Leader lease seconds')
+  e.autocloseAfter = v.autocloseAfter.trim() === '' ? undefined : intIn(v.autocloseAfter, 1, 2592000, 'Autoclose after seconds')
+  e.compactMinTokens = v.compactMinTokens.trim() === '' ? undefined : intIn(v.compactMinTokens, 0, Number.MAX_SAFE_INTEGER, 'Min context tokens')
+  e.maxRestarts = v.maxRestarts.trim() === '' ? undefined : intIn(v.maxRestarts, 0, 10, 'Max restarts')
+  e.compactIdle = nonNegative(v.compactIdle, 'Auto-compact idle seconds')
+  e.turnStall = nonNegative(v.turnStall, 'Turn stall seconds')
+  e.turnMax = nonNegative(v.turnMax, 'Turn max seconds')
+  e.systemAppend = v.systemAppend.length > 16384 ? 'System append must be at most 16384 characters' : undefined
+  for (const f of JSON_FIELDS) e[f] = jsonObjectError(v[f])
   const envErrors = v.env.map((r) => envKeyError(r.key, v.env))
   if (envErrors.some(Boolean)) e.env = envErrors
   const scriptErrors = initScriptErrors(v.initScripts)
@@ -204,6 +276,11 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   for (const k of Object.keys(e) as (keyof FormErrors)[]) if (e[k] === undefined) delete e[k]
   return e
 }
+
+const nonNegative = (text: string, what: string): string | undefined =>
+  text.trim() === '' ? undefined : /^\d+(\.\d+)?$/.test(text.trim()) ? undefined : `${what} must be a number of 0 or more`
+
+const csv = (text: string): string[] => text.split(',').map((s) => s.trim()).filter(Boolean)
 
 function pairs(cpu: string, memory: string): Record<string, string> {
   const out: Record<string, string> = {}
@@ -240,5 +317,40 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   }
   if (setKeys.has('hookUrl')) spec.discard_hook_url = str(v.hookUrl)
   if (setKeys.has('image')) spec.image = str(v.image)
+  if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
+  if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  const wrapper = wrapperFromValues(v, setKeys)
+  if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<ClusterSpec>
+}
+
+/** The sparse wrapper settings object: only set, non-empty fields. */
+function wrapperFromValues(v: FormValues, setKeys: ReadonlySet<SetKey>): Record<string, unknown> {
+  const w: Record<string, unknown> = {}
+  const has = (k: WrapperField) => setKeys.has(k)
+  const str = (s: string): string | undefined => (s.trim() === '' ? undefined : s.trim())
+  const num = (s: string): number | undefined => (s.trim() === '' ? undefined : Number(s))
+  const group = (entries: [string, unknown][]) => Object.fromEntries(entries.filter(([, x]) => x !== undefined))
+  const compact = group([
+    ['idle_seconds', has('compactIdle') ? num(v.compactIdle) : undefined],
+    ['instructions', has('compactInstructions') ? str(v.compactInstructions) : undefined],
+    ['min_context_tokens', has('compactMinTokens') ? num(v.compactMinTokens) : undefined],
+  ])
+  const allow = has('permAllow') ? csv(v.permAllow) : []
+  const deny = has('permDeny') ? csv(v.permDeny) : []
+  const json = (k: (typeof JSON_FIELDS)[number]) => (has(k) && v[k].trim() !== '' ? (JSON.parse(v[k]) as unknown) : undefined)
+  Object.assign(w, group([
+    ['auto_compact', Object.keys(compact).length > 0 ? compact : undefined],
+    ['system_append', has('systemAppend') ? str(v.systemAppend) : undefined],
+    ['restart_continue_prompt', has('restartPrompt') ? str(v.restartPrompt) : undefined],
+    ['turn_stall_seconds', has('turnStall') ? num(v.turnStall) : undefined],
+    ['max_restarts', has('maxRestarts') ? num(v.maxRestarts) : undefined],
+    ['turn_max_seconds', has('turnMax') ? num(v.turnMax) : undefined],
+    ['agent_commands', has('agentCommands') && v.agentCommands.length > 0 ? [...v.agentCommands] : undefined],
+    ['permissions', allow.length + deny.length > 0 ? group([['allow', allow.length > 0 ? allow : undefined], ['deny', deny.length > 0 ? deny : undefined]]) : undefined],
+    ['hooks', json('hooks')],
+    ['mcp_servers', json('mcpServers')],
+    ['plugins', json('plugins')],
+  ]))
+  return w
 }
