@@ -13,6 +13,9 @@ export type EventDetail = S['EventDetail'];
 export type WebhookMeta = S['Meta'];
 export type PreviewIn = S['PreviewIn'];
 export type PreviewOut = S['PreviewOut'];
+export type Filters = S['Filters'];
+export type FilterRule = S['FilterRule'];
+export type FilterResult = S['FilterResult'];
 
 const id = encodeURIComponent;
 const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('webhooks'), method, path, body);
@@ -23,6 +26,9 @@ export const createEndpoint = (body: EndpointIn) => req<EndpointCreated>('POST',
 /** Issues a new one-time password for the endpoint. */
 export const rotateEndpoint = (endpointId: string, body?: RotateIn) =>
   req<EndpointCreated>('POST', `/endpoints/${id(endpointId)}/rotate`, body);
+/** Replaces the endpoint's allow/deny filters wholesale. */
+export const setEndpointFilters = (endpointId: string, filters: Filters) =>
+  req<EndpointView>('PUT', `/endpoints/${id(endpointId)}/filters`, filters);
 export const deleteEndpoint = (endpointId: string) => req<void>('DELETE', `/endpoints/${id(endpointId)}`);
 
 export interface EventsQuery {
@@ -35,5 +41,5 @@ export const listEvents = (opts: EventsQuery = {}) =>
   req<EventView[]>('GET', `/events${query({ status: opts.status, endpoint_id: opts.endpointId, limit: opts.limit, before_id: opts.beforeId })}`);
 export const getEvent = (eventId: string) => req<EventDetail>('GET', `/events/${id(eventId)}`);
 export const getMeta = () => req<WebhookMeta>('GET', '/meta');
-/** Renders a Jinja2 prompt template against an example payload; nothing is stored. */
+/** Renders a Jinja2 prompt template and/or evaluates filters against an example payload; nothing is stored. */
 export const previewTemplate = (body: PreviewIn) => req<PreviewOut>('POST', '/templates/preview', body);

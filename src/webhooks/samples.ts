@@ -10,14 +10,15 @@ export const TYPES: { value: string; label: string }[] = [
 const github = (key: 'pull_request' | 'issue', title: string) => ({
   action: 'opened',
   repository: { full_name: 'acme/app' },
-  [key]: { number: 7, title, body: 'Details of the change.', html_url: `https://github.com/acme/app/${key === 'issue' ? 'issues' : 'pull'}/7`, user: { login: 'alice' } },
+  [key]: { number: 7, title, body: 'Details of the change.', html_url: `https://github.com/acme/app/${key === 'issue' ? 'issues' : 'pull'}/7`, user: { login: 'alice' }, labels: [{ name: 'bug' }], ...(key === 'pull_request' ? { head: { ref: 'feature/retry' }, base: { ref: 'main' } } : {}) },
   sender: { login: 'alice' },
 })
 const gitlab = (kind: 'merge_request' | 'issue', title: string) => ({
   object_kind: kind,
   project: { path_with_namespace: 'acme/app' },
   user: { username: 'alice' },
-  object_attributes: { iid: 7, title, description: 'Details of the change.', action: 'open', url: `https://gitlab.com/acme/app/-/${kind === 'issue' ? 'issues' : 'merge_requests'}/7` },
+  labels: [{ title: 'bug' }],
+  object_attributes: { iid: 7, title, description: 'Details of the change.', action: 'open', url: `https://gitlab.com/acme/app/-/${kind === 'issue' ? 'issues' : 'merge_requests'}/7`, ...(kind === 'merge_request' ? { source_branch: 'feature/retry', target_branch: 'main' } : {}) },
 })
 
 const SAMPLES: Record<string, unknown> = {
@@ -29,7 +30,7 @@ const SAMPLES: Record<string, unknown> = {
     status: 'firing',
     title: '[FIRING:1] HighErrorRate',
     message: 'Error rate above 5%',
-    commonLabels: { alertname: 'HighErrorRate', severity: 'critical' },
+    commonLabels: { alertname: 'HighErrorRate', env: 'prod', severity: 'critical' },
     alerts: [{ status: 'firing', labels: { alertname: 'HighErrorRate' }, generatorURL: 'https://grafana.example/alerting/1' }],
   },
 }

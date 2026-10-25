@@ -1,5 +1,5 @@
 /** Create-endpoint dialog: type, preset, optional suffix, credentials and a Jinja2 prompt template with preview. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -12,8 +12,9 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { FormError, PresetSelect } from '../triggers'
-import { createEndpoint, previewTemplate } from './api'
-import type { EndpointCreated, EndpointIn } from './api'
+import { createEndpoint, getMeta, previewTemplate } from './api'
+import type { EndpointCreated, EndpointIn, FilterResult, Filters, WebhookMeta } from './api'
+import { EMPTY_FILTERS, FiltersEditor } from './FiltersEditor'
 import { sampleFor, TYPES } from './samples'
 
 export interface CreateEndpointDialogProps {
@@ -37,10 +38,25 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
   const [template, setTemplate] = useState('')
   const [example, setExample] = useState(sampleFor(TYPES[0].value))
   const [exampleTouched, setExampleTouched] = useState(false)
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const [meta, setMeta] = useState<WebhookMeta | null>(null)
+  const [metaError, setMetaError] = useState<unknown>(null)
   const [rendered, setRendered] = useState<string | null>(null)
+  const [filterResult, setFilterResult] = useState<FilterResult | null>(null)
   const [previewError, setPreviewError] = useState<unknown>(null)
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    getMeta().then((m) => { if (live) setMeta(m) }, (e) => { if (live) setMetaError(e) })
+    return () => { live = false }
+  }, [])
+
+  // The editor drops rules whose field is not in `fields`, so it mounts only once the type's fields are known.
+  const filterFields = meta?.filter_fields[type]
+  const hasRules = filters.allow.length > 0 || filters.deny.length > 0
+  const clearPreview = () => { setRendered(null); setFilterResult(null) }
 
   const suffixError = suffix !== '' && !SUFFIX.test(suffix) ? 'Use 1-128 letters, digits, dot, underscore, tilde or hyphen' : undefined
   const passwordError = withCreds && password !== '' && password.length < MIN_PASSWORD ? `At least ${MIN_PASSWORD} characters` : undefined
@@ -49,11 +65,11 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
   const changeType = (next: string) => {
     setType(next)
     if (!exampleTouched) setExample(sampleFor(next))
-    setRendered(null)
+    clearPreview()
   }
 
   const preview = async () => {
-    setRendered(null)
+    clearPreview()
     setPreviewError(null)
     let parsed: unknown
     try {
@@ -63,7 +79,13 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
       return
     }
     try {
-      setRendered((await previewTemplate({ template, type, example: parsed })).prompt)
+      const out = await previewTemplate({
+        type, example: parsed,
+        ...(template.trim() ? { template } : {}),
+        ...(hasRules ? { filters } : {}),
+      })
+      setRendered(out.prompt)
+      setFilterResult(out.filters)
     } catch (e) {
       setPreviewError(e)
     }
@@ -77,6 +99,7 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
       if (password) body.password = password
     }
     if (template.trim()) body.prompt_template = template
+    if (hasRules) body.filters = filters
     setBusy(true)
     setError(null)
     try {
@@ -111,20 +134,26 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
           </>
         )}
         <TextField
-          label="Prompt template" multiline minRows={4} value={template} onChange={(e) => { setTemplate(e.target.value); setRendered(null) }}
+          label="Prompt template" multiline minRows={4} value={template} onChange={(e) => { setTemplate(e.target.value); clearPreview() }}
           helperText={`Jinja2, optional; default prompt when empty. Variables: ${PLACEHOLDERS.map((p) => `{{ ${p} }}`).join(', ')}. Filter: from_json.`}
           slotProps={{ htmlInput: { style: { fontFamily: 'monospace' } } }} fullWidth
         />
+        {filterFields ? <FiltersEditor type={type} fields={filterFields} value={filters} onChange={setFilters} /> : <FormError error={metaError as never} />}
         <TextField
           label="Example JSON" multiline minRows={4} value={example}
           onChange={(e) => { setExample(e.target.value); setExampleTouched(true) }}
-          helperText="A sample webhook payload to check how the template renders"
+          helperText="A sample webhook payload to check how the template renders and whether the filters pass"
           slotProps={{ htmlInput: { style: { fontFamily: 'monospace' } } }} fullWidth
         />
         <Box>
-          <Button variant="outlined" onClick={() => void preview()} disabled={!template.trim()}>Preview</Button>
+          <Button variant="outlined" onClick={() => void preview()} disabled={!template.trim() && !hasRules}>Preview</Button>
         </Box>
         <FormError error={previewError as never} />
+        {filterResult && (
+          <Typography variant="body2" color={filterResult.passed ? 'success.main' : 'warning.main'}>
+            {filterResult.passed ? 'Passes the filters' : `Ignored: ${filterResult.reason ?? 'filtered out'}`}
+          </Typography>
+        )}
         {rendered !== null && (
           <Box>
             <Typography variant="caption" color="text.secondary">Rendered prompt</Typography>
