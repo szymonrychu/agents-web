@@ -11,6 +11,7 @@
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
 import { ClustersPage } from '../clusters/ClustersPage'
+import { webhooksMenu } from '../webhooks/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -27,6 +28,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'clusters', label: 'Clusters', order: 10, backend: 'orchestrator', render: (onBack, openCluster) => createElement(ClustersPage, { onBack, onOpen: openCluster }) },
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
   ],
+  webhooks: [webhooksMenu],
 }
 
 export function menuEntries(config: RuntimeConfig): MenuEntry[] {

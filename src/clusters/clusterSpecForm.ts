@@ -29,6 +29,8 @@ export interface FormValues {
   hookUrl: string
   leaderLease: string
   autocloseAfter: string
+  /** Trigger events for the same item go to the agent still running for it. */
+  reuseRunningAgent: boolean
   compactIdle: string
   compactInstructions: string
   compactMinTokens: string
@@ -55,7 +57,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -81,7 +83,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
   }
 }
@@ -148,6 +150,10 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<C
   text('image', 'image', spec.image)
   num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
   num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
+  if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
+    values.reuseRunningAgent = spec.reuse_running_agent
+    setKeys.add('reuseRunningAgent')
+  }
   const w = spec.wrapper
   if (w) {
     const wtext = (field: WrapperField & keyof FormValues, stored: string | number | null | undefined) => {
@@ -319,6 +325,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('image')) spec.image = str(v.image)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<ClusterSpec>
