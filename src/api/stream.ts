@@ -89,7 +89,7 @@ export type StatusEvent =
   | { type: 'snapshot'; sessions: { session: SessionView; agents: AgentView[] }[] }
   | { type: 'session_status'; session: SessionView }
   | { type: 'agent_status'; sessionId: string; agent: AgentView }
-  | { type: 'leader_changed'; sessionId: string; agentId: string; epoch: number }
+  | { type: 'leader_changed'; sessionId: string; agentId: string; epoch: number; reason: string | null }
   | { type: 'message_status'; sessionId: string; queued: number; failed: number }
   | { type: 'session_removed'; sessionId: string };
 
@@ -105,7 +105,7 @@ export function statusEventFromFrame(type: string, data: unknown): StatusEvent |
     case 'agent_status':
       return { type: 'agent_status', sessionId: d.session_id as string, agent: d.agent as AgentView };
     case 'leader_changed':
-      return { type: 'leader_changed', sessionId: d.session_id as string, agentId: d.agent_id as string, epoch: d.epoch as number };
+      return { type: 'leader_changed', sessionId: d.session_id as string, agentId: d.agent_id as string, epoch: d.epoch as number, reason: (d.reason as string | null | undefined) ?? null };
     case 'message_status':
       return { type: 'message_status', sessionId: d.session_id as string, queued: d.queued as number, failed: d.failed as number };
     case 'session_removed':

@@ -62,7 +62,7 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
       const prev = state.sessions[action.sessionId]
       if (!prev) return state
       const agents = Object.fromEntries(Object.entries(prev.agents).map(([id, a]) => [id, { ...a, leader: id === action.agentId }]))
-      const session = { ...prev.session, leader_agent_id: action.agentId, leader_epoch: action.epoch }
+      const session = { ...prev.session, leader_agent_id: action.agentId, leader_epoch: action.epoch, leader_reason: action.reason }
       return { ...state, sessions: { ...state.sessions, [action.sessionId]: { session, agents } } }
     }
     case 'message_status': {

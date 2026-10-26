@@ -74,6 +74,6 @@ describe('ScaleControl', () => {
     expect(screen.getByRole('alert').textContent).toBe('session is busy')
     scaleSession.mockRejectedValueOnce(new ApiError(409, 'leader_would_leave', 'leader is agent 2'))
     await act(async () => fireEvent.click(remove()))
-    expect(screen.getByRole('alert').textContent).toBe('leader is agent 2 Make another agent leader first.')
+    expect(screen.getByRole('alert').textContent).toBe('leader is agent 2 No ready agent that stays can take over leadership.')
   })
 })
