@@ -164,6 +164,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sessions the caller's session may message (superleaders, or all for a superleader) */
+        get: operations["sessions_list_agent_v1_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/sessions/{slug}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a message to the leader of another session (leader only)
+         * @description Checks in the order of D7; a refusal queues nothing. The limits are advisory: the
+         *     counts and the insert are not one atomic step (D10).
+         */
+        post: operations["session_send_agent_v1_sessions__slug__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agent_id}/compact": {
         parameters: {
             query?: never;
@@ -1199,6 +1237,7 @@ export interface components {
             discard_hook: "none" | "command" | "url";
             /** Efforts */
             efforts: string[];
+            kube_access: components["schemas"]["MetaKubeAccess"];
             /** Models */
             models: string[];
         };
@@ -1246,6 +1285,11 @@ export interface components {
             storage_class: string;
             /** Workdir */
             workdir: string;
+        };
+        /** MetaKubeAccess */
+        MetaKubeAccess: {
+            /** Available */
+            available: boolean;
         };
         /** MetaResources */
         MetaResources: {
@@ -1373,6 +1417,32 @@ export interface components {
              */
             session_id: string;
         };
+        /** SessionMessageIn */
+        SessionMessageIn: {
+            /** Text */
+            text: string;
+        };
+        /** SessionMessageQueued */
+        SessionMessageQueued: {
+            /** Message Id */
+            message_id: number;
+        };
+        /** SessionPeer */
+        SessionPeer: {
+            /** Leader Present */
+            leader_present: boolean;
+            /** Preset Name */
+            preset_name: string | null;
+            /** Slug */
+            slug: string;
+            /** Superleader */
+            superleader: boolean;
+        };
+        /** SessionPeers */
+        SessionPeers: {
+            /** Sessions */
+            sessions: components["schemas"]["SessionPeer"][];
+        };
         /** SessionSpec */
         SessionSpec: {
             /** Any Mcp Config */
@@ -1402,6 +1472,8 @@ export interface components {
              * @default []
              */
             init_scripts: string[];
+            /** Kube Access */
+            kube_access?: boolean | null;
             /** Leader Lease Seconds */
             leader_lease_seconds?: number | null;
             /**
@@ -1428,6 +1500,8 @@ export interface components {
             resources?: components["schemas"]["Resources"] | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
+            /** Session Messaging */
+            session_messaging?: boolean | null;
             /**
              * Static
              * @default false
@@ -1991,6 +2065,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScaleResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sessions_list_agent_v1_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionPeers"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_send_agent_v1_sessions__slug__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionMessageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionMessageQueued"];
                 };
             };
             /** @description Validation Error */
