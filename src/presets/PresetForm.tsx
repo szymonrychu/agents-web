@@ -17,6 +17,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
+import { parseDotenv } from '../sessions/dotenv'
 import { createPreset, getMeta, updatePreset } from '../api/client'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
 import { CACHE_KEY_RESERVED_PREFIX, copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
@@ -56,6 +57,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pasteText, setPasteText] = useState<string | null>(null)
+  const [pasteErrors, setPasteErrors] = useState<string[]>([])
   const touched = useRef(new Set<keyof FormValues>())
   const { values, setKeys } = state
   const editing = preset !== undefined
@@ -113,6 +116,28 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   )
   const setEnv = (index: number, patch: Partial<{ key: string; value: string }>) => set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
 
+  const closePaste = () => {
+    setPasteText(null)
+    setPasteErrors([])
+  }
+  const applyPaste = () => {
+    const { pairs, errors: parseErrors } = parseDotenv(pasteText ?? '')
+    if (parseErrors.length > 0) {
+      setPasteErrors(parseErrors.map((e) => `line ${e.line}: ${e.message}`))
+      return
+    }
+    if (pairs.length > 0) {
+      const rows = values.env.map((r) => ({ ...r }))
+      for (const pair of pairs) {
+        const existing = rows.find((r) => r.key === pair.key)
+        if (existing) existing.value = pair.value
+        else rows.push({ ...pair })
+      }
+      set('env', rows.filter((r) => r.key !== '' || r.value !== ''))
+    }
+    closePaste()
+  }
+
   const setScript = (index: number, value: string) => set('initScripts', values.initScripts.map((s, i) => (i === index ? value : s)))
 
   async function submit() {
@@ -166,9 +191,30 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                 <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
               </Box>
             ))}
-            <Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
               <Button size="small" onClick={() => set('env', [...values.env, { key: '', value: '' }])}>Add env</Button>
+              <Button size="small" onClick={() => setPasteText('')} disabled={pasteText !== null}>Paste .env</Button>
             </Box>
+            {pasteText !== null && (
+              <Box role="group" aria-label="Paste .env" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <TextField
+                  size="small"
+                  label="Paste .env contents"
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  error={pasteErrors.length > 0}
+                  helperText={pasteErrors.length > 0 ? pasteErrors.map((m) => <span key={m} style={{ display: 'block' }}>{m}</span>) : undefined}
+                  multiline
+                  minRows={4}
+                  fullWidth
+                  slotProps={{ input: { sx: { fontFamily: 'monospace' } } }}
+                />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" variant="outlined" onClick={applyPaste}>Apply</Button>
+                  <Button size="small" onClick={closePaste}>Cancel</Button>
+                </Box>
+              </Box>
+            )}
           </Box>
           {text('anyMcp', 'any-mcp config', { multiline: true })}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
