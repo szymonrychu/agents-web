@@ -831,4 +831,74 @@ describe('PresetForm', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec).toEqual({ cache: { exclude: ['a'] } })
   })
+
+  describe('any-mcp plugins', () => {
+    const GITHUB = 'github.com/acme/tools//plugins/jira?ref=v1.2'
+    const GITLAB = 'git::https://gitlab.example.com/team/plugins.git?ref=main'
+    const rows = () => screen.queryAllByLabelText(/^any-mcp plugin \d+$/) as HTMLInputElement[]
+
+    test('any-mcp plugins sparse by default', { timeout: 15000 }, async () => {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      expect(rows()).toHaveLength(0)
+      expect(button('Add any-mcp plugin')).toBeTruthy()
+      await replace('Name', 'plain')
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+      expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('any_mcp_sources')
+    })
+
+    test('any-mcp plugins add rows and save', { timeout: 20000 }, async () => {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await replace('Name', 'with plugins')
+      await userEvent.click(button('Add any-mcp plugin'))
+      expect(rows()).toHaveLength(1)
+      await userEvent.click(button('Add any-mcp plugin'))
+      expect(rows()).toHaveLength(2)
+      for (const input of rows()) expect(input.tagName).toBe('INPUT')
+      await paste('any-mcp plugin 1', `  ${GITHUB} `)
+      await paste('any-mcp plugin 2', GITLAB)
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+      expect(api.createPreset.mock.calls[0][0].spec.any_mcp_sources).toEqual([GITHUB, GITLAB])
+    })
+
+    test('any-mcp plugins remove rows', { timeout: 20000 }, async () => {
+      api.updatePreset.mockResolvedValue(preset())
+      const third = 'github.com/acme/other'
+      wrap(<PresetForm open preset={preset({ spec: { replicas: 2, any_mcp_sources: [GITHUB, GITLAB, third] } as PresetView['spec'] })} {...noop} />)
+      await ready()
+      await userEvent.click(button('Remove any-mcp plugin 2'))
+      expect(rows().map((r) => r.value)).toEqual([GITHUB, third])
+      await userEvent.click(button('Remove any-mcp plugin 2'))
+      await userEvent.click(button('Remove any-mcp plugin 1'))
+      expect(rows()).toHaveLength(0)
+      await userEvent.click(button('Save'))
+      await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+      expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
+    })
+
+    test('any-mcp plugins validate and load', { timeout: 20000 }, async () => {
+      api.updatePreset.mockResolvedValue(preset())
+      wrap(<PresetForm open preset={preset({ spec: { any_mcp_sources: [GITHUB, GITLAB] } as PresetView['spec'] })} {...noop} />)
+      await ready()
+      expect(rows().map((r) => r.value)).toEqual([GITHUB, GITLAB])
+      await userEvent.click(button('Add any-mcp plugin'))
+      expect(screen.getByText('plugin source is empty')).toBeTruthy()
+      expect(button('Save').disabled).toBe(true)
+      await paste('any-mcp plugin 3', './local/plugin')
+      expect(screen.getByText(/^plugin source '\.\/local\/plugin': only https git sources are allowed/)).toBeTruthy()
+      expect(field('any-mcp plugin 3').getAttribute('aria-invalid')).toBe('true')
+      expect(field('any-mcp plugin 1').getAttribute('aria-invalid')).toBe('false')
+      expect(button('Save').disabled).toBe(true)
+      await replace('any-mcp plugin 3', 'github.com/acme/third')
+      expect(button('Save').disabled).toBe(false)
+      await userEvent.click(button('Save'))
+      await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+      expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ any_mcp_sources: [GITHUB, GITLAB, 'github.com/acme/third'] })
+    })
+  })
 })

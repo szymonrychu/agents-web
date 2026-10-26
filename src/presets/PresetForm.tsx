@@ -1,5 +1,6 @@
 /** Preset editor (new, edit, copy): /meta defaults for unset fields, sparse saving, inline validation, server 409 and 422 shown in an Alert. */
 import { useEffect, useRef, useState } from 'react'
+import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -102,7 +103,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -139,6 +140,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     closePaste()
   }
 
+  const setSource = (index: number, value: string) => set('anyMcpSources', values.anyMcpSources.map((s, i) => (i === index ? value : s)))
   const setScript = (index: number, value: string) => set('initScripts', values.initScripts.map((s, i) => (i === index ? value : s)))
 
   async function submit() {
@@ -218,6 +220,30 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             )}
           </Box>
           {text('anyMcp', 'any-mcp config', { multiline: true })}
+          <Box role="group" aria-label="any-mcp plugins" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FormLabel>any-mcp plugins</FormLabel>
+              <IconButton size="small" aria-label="Add any-mcp plugin" onClick={() => set('anyMcpSources', [...values.anyMcpSources, ''])}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            {values.anyMcpSources.map((source, i) => (
+              <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                <TextField
+                  size="small"
+                  label={`any-mcp plugin ${i + 1}`}
+                  placeholder="github.com/<owner>/<repo>[//<subdir>][?ref=<ref>]"
+                  value={source}
+                  onChange={(e) => setSource(i, e.target.value)}
+                  error={Boolean(errors.anyMcpSources?.[i])}
+                  helperText={errors.anyMcpSources?.[i]}
+                  fullWidth
+                />
+                <IconButton size="small" aria-label={`Remove any-mcp plugin ${i + 1}`} onClick={() => set('anyMcpSources', values.anyMcpSources.filter((_, j) => j !== i))}>x</IconButton>
+              </Box>
+            ))}
+            <FormHelperText>Plugin sources, a repo or a dir in a repo at a git ref: github.com/&lt;owner&gt;/&lt;repo&gt;[//&lt;subdir&gt;][?ref=&lt;ref&gt;] or git::https://&lt;host&gt;/&lt;path&gt;[//&lt;subdir&gt;][?ref=&lt;ref&gt;]</FormHelperText>
+          </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {values.initScripts.map((script, i) => (
               <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
