@@ -279,6 +279,34 @@ describe('PresetForm', () => {
       expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ A: 'new', B: 'keep', C: '3', D: '4' })
     })
 
+    test('a pasted key replaces only the first of duplicate rows', async () => {
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await userEvent.click(button('Add env'))
+      await userEvent.click(button('Add env'))
+      await paste('Env key 1', 'A')
+      await paste('Env value 1', '1')
+      await paste('Env key 2', 'A')
+      await paste('Env value 2', '2')
+      await openPaste('A=new')
+      await userEvent.click(button('Apply'))
+      expect(field('Env value 1').value).toBe('new')
+      expect(field('Env value 2').value).toBe('2')
+      expect(screen.queryByLabelText('Env key 3')).toBeNull()
+    })
+
+    test('a paste-only edit marks env set so the sparse spec carries it', async () => {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await paste('Name', 'sparse')
+      await openPaste('X=1')
+      await userEvent.click(button('Apply'))
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', spec: { env: { X: '1' } } })
+    })
+
     test('drops empty rows on a merge', async () => {
       wrap(<PresetForm open {...noop} />)
       await ready()
