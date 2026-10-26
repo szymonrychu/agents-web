@@ -10,6 +10,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
+import FormLabel from '@mui/material/FormLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -18,7 +19,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { createPreset, getMeta, updatePreset } from '../api/client'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
-import { copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { FormState, FormValues } from '../sessions/sessionSpecForm'
 
 export interface PresetFormProps {
@@ -34,10 +35,18 @@ export interface PresetFormProps {
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
 const NOT_AVAILABLE = ' (not available)'
 
+const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
+
+/** The copy's spec: a preset-derived cache key belongs to the source, the copy derives its own. */
+function copiedSpec(source: PresetView): Partial<SessionSpec> {
+  const spec = stored(source)
+  if (!spec.cache?.key?.startsWith(CACHE_KEY_RESERVED_PREFIX)) return spec
+  return { ...spec, cache: { ...spec.cache, key: null } }
+}
+
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
-  const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
   if (preset) return stateFromPreset(meta, preset.name, stored(preset))
-  if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), stored(copyOf))
+  if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), copiedSpec(copyOf))
   return stateFromPreset(meta, '', {})
 }
 
@@ -79,7 +88,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     }
   }, [source])
 
-  const errors = validate(values, meta)
+  const errors = validate(values, meta, stored(preset).cache?.key)
+  const cacheAvailable = meta?.cache.available === true
   const invalid = Object.keys(errors).length > 0
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
@@ -88,7 +98,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'cacheEnabled' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -200,6 +210,35 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <Box>
             <FormControlLabel control={<Switch checked={values.reuseRunningAgent} onChange={(e) => set('reuseRunningAgent', e.target.checked)} />} label="Reuse running agent" />
             <FormHelperText>Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one</FormHelperText>
+          </Box>
+          <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }} disabled={!cacheAvailable}>
+            <FormLabel component="legend">Workspace cache</FormLabel>
+            <FormControlLabel control={<Switch checked={values.cacheEnabled} onChange={(e) => set('cacheEnabled', e.target.checked)} />} label="Cache the workspace in S3" disabled={!cacheAvailable} />
+            {meta && !cacheAvailable && <FormHelperText>Workspace cache is not configured on the orchestrator</FormHelperText>}
+            <TextField
+              size="small"
+              label="Cache key"
+              placeholder="derived from the preset"
+              value={values.cacheKey}
+              onChange={(e) => set('cacheKey', e.target.value)}
+              error={Boolean(errors.cacheKey)}
+              helperText={errors.cacheKey ?? 'Same key, same cache: sessions sharing a key share the workspace (last save wins)'}
+              disabled={!cacheAvailable || !values.cacheEnabled}
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              size="small"
+              label="Exclude (one glob per line)"
+              value={values.cacheExclude}
+              onChange={(e) => set('cacheExclude', e.target.value)}
+              error={Boolean(errors.cacheExclude)}
+              helperText={errors.cacheExclude}
+              disabled={!cacheAvailable || !values.cacheEnabled}
+              multiline
+              minRows={2}
+              fullWidth
+            />
           </Box>
           {text('compactIdle', 'Auto-compact idle seconds')}
           {text('compactInstructions', 'Auto-compact instructions')}

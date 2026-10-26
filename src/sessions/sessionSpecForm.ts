@@ -49,6 +49,12 @@ export interface FormValues {
   plugins: string
   /** Not editable in the form; carried so an edit does not drop a stored image. */
   image: string
+  /** Workspace cache in S3; the spec carries `cache` only when this is on. */
+  cacheEnabled: boolean
+  /** Empty means the server derives the key from the preset. */
+  cacheKey: string
+  /** One glob per line, relative to the workdir. */
+  cacheExclude: string
 }
 
 export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[] }
@@ -57,7 +63,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -74,6 +80,11 @@ export const MAX_NAME = 40
 export const MAX_INIT_SCRIPTS = 20
 export const MAX_INIT_SCRIPT_CHARS = 16384
 const COPY_SUFFIX = ' copy'
+const CACHE_KEY = /^[a-z0-9][a-z0-9._-]{0,62}$/
+/** Cache keys in this prefix are derived by the server from a preset id; a caller may not pick one. */
+export const CACHE_KEY_RESERVED_PREFIX = 'preset-'
+export const MAX_CACHE_EXCLUDE = 50
+export const MAX_CACHE_EXCLUDE_CHARS = 256
 
 export function blankValues(meta: Meta | null): FormValues {
   const d = meta?.defaults
@@ -85,12 +96,14 @@ export function blankValues(meta: Meta | null): FormValues {
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
+    cacheEnabled: false, cacheKey: '', cacheExclude: '',
   }
 }
 
 /** The set-key that owns a form field. */
 export function setKeyOf(field: keyof FormValues): SetKey | null {
   if (field === 'name') return null
+  if (field === 'cacheEnabled' || field === 'cacheKey' || field === 'cacheExclude') return 'cache'
   return field === 'cpuRequest' || field === 'cpuLimit' || field === 'memRequest' || field === 'memLimit' ? 'resources' : field
 }
 
@@ -153,6 +166,12 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
     values.reuseRunningAgent = spec.reuse_running_agent
     setKeys.add('reuseRunningAgent')
+  }
+  if (spec.cache) {
+    values.cacheEnabled = true
+    values.cacheKey = spec.cache.key ?? ''
+    values.cacheExclude = (spec.cache.exclude ?? []).join('\n')
+    setKeys.add('cache')
   }
   const w = spec.wrapper
   if (w) {
@@ -246,6 +265,32 @@ export function initScriptErrors(scripts: string[]): (string | undefined)[] | un
   return errors.some(Boolean) ? errors : undefined
 }
 
+/**
+ * Cache key rules of the server; empty is fine (the server derives the key from the preset).
+ * `storedKey` is the key the edited preset already carries, the one reserved key the server accepts back.
+ */
+export function cacheKeyError(key: string, storedKey?: string | null): string | undefined {
+  const k = key.trim()
+  if (k === '') return undefined
+  if (!CACHE_KEY.test(k)) return "Cache key: lowercase letters, digits, '.', '_' and '-', at most 63"
+  if (k.startsWith(CACHE_KEY_RESERVED_PREFIX) && k !== storedKey) return `cache.key prefix ${CACHE_KEY_RESERVED_PREFIX} is reserved for preset-derived keys`
+  return undefined
+}
+
+/** The exclude globs of the text: one per line, trimmed, blank lines dropped. */
+export const cacheExcludeLines = (text: string): string[] => text.split('\n').map((l) => l.trim()).filter(Boolean)
+
+/** Exclude rules of the server: at most 50 globs, each at most 256 characters, relative, no `..` segment. */
+export function cacheExcludeError(text: string): string | undefined {
+  const lines = cacheExcludeLines(text)
+  if (lines.length > MAX_CACHE_EXCLUDE) return `Exclude: at most ${MAX_CACHE_EXCLUDE} globs`
+  for (const [i, line] of lines.entries()) {
+    if (line.length > MAX_CACHE_EXCLUDE_CHARS) return `Exclude line ${i + 1}: at most ${MAX_CACHE_EXCLUDE_CHARS} characters`
+    if (line.startsWith('/') || line.split('/').includes('..')) return `Exclude line ${i + 1}: must be relative with no '..' segment`
+  }
+  return undefined
+}
+
 export function nameError(name: string): string | undefined {
   if (name === '') return 'Name is required'
   if (name.length > MAX_NAME) return `Name must be at most ${MAX_NAME} characters`
@@ -254,8 +299,11 @@ export function nameError(name: string): string | undefined {
   return undefined
 }
 
-/** Inline errors; an empty field is never an error because clearing a field means unset. */
-export function validate(v: FormValues, meta: Meta | null): FormErrors {
+/**
+ * Inline errors; an empty field is never an error because clearing a field means unset.
+ * `storedCacheKey` is the cache key of the preset being edited (accepted back even in the reserved prefix).
+ */
+export function validate(v: FormValues, meta: Meta | null, storedCacheKey?: string | null): FormErrors {
   const e: FormErrors = {}
   e.name = nameError(v.name)
   e.replicas = v.replicas.trim() === '' ? undefined : intIn(v.replicas, 1, meta?.caps.max_replicas ?? 16, 'Replicas')
@@ -279,6 +327,10 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   if (envErrors.some(Boolean)) e.env = envErrors
   const scriptErrors = initScriptErrors(v.initScripts)
   if (scriptErrors) e.initScripts = scriptErrors
+  if (v.cacheEnabled) {
+    e.cacheKey = cacheKeyError(v.cacheKey, storedCacheKey)
+    e.cacheExclude = cacheExcludeError(v.cacheExclude)
+  }
   for (const k of Object.keys(e) as (keyof FormErrors)[]) if (e[k] === undefined) delete e[k]
   return e
 }
@@ -326,6 +378,10 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
+  if (setKeys.has('cache') && v.cacheEnabled) {
+    const exclude = cacheExcludeLines(v.cacheExclude)
+    spec.cache = { ...(v.cacheKey.trim() !== '' && { key: v.cacheKey.trim() }), ...(exclude.length > 0 && { exclude }) }
+  }
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<SessionSpec>
