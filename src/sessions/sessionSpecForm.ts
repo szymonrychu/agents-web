@@ -1,5 +1,6 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
 import type { SessionSpec, Meta } from '../api/client'
+import { pluginSourceError } from '../presets/pluginSource'
 
 export interface EnvRow {
   key: string
@@ -19,6 +20,8 @@ export interface FormValues {
   pvcSize: string
   env: EnvRow[]
   anyMcp: string
+  /** any-mcp plugin sources, one per row, in order. */
+  anyMcpSources: string[]
   initScripts: string[]
   maxAttempts: string
   autoCompact: string
@@ -61,13 +64,13 @@ export interface FormValues {
   cacheExclude: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[] }
 
 type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'hooks' | 'mcpServers' | 'plugins'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -94,7 +97,7 @@ export function blankValues(meta: Meta | null): FormValues {
   const d = meta?.defaults
   return {
     name: '', replicas: d ? String(d.replicas) : '', maxReplicas: '', static: false, model: d?.model ?? '', effort: d?.effort ?? '', peers: true, workdir: d?.workdir ?? 'workdir',
-    pvcSize: d?.pvc_size ?? '', env: [], anyMcp: d && Object.keys(d.any_mcp_config).length > 0 ? JSON.stringify(d.any_mcp_config, null, 2) : '', initScripts: [],
+    pvcSize: d?.pvc_size ?? '', env: [], anyMcp: d && Object.keys(d.any_mcp_config).length > 0 ? JSON.stringify(d.any_mcp_config, null, 2) : '', anyMcpSources: [], initScripts: [],
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
@@ -149,6 +152,10 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.any_mcp_config) {
     values.anyMcp = JSON.stringify(spec.any_mcp_config, null, 2)
     setKeys.add('anyMcp')
+  }
+  if (spec.any_mcp_sources) {
+    values.anyMcpSources = [...spec.any_mcp_sources]
+    setKeys.add('anyMcpSources')
   }
   if (spec.init_scripts) {
     values.initScripts = [...spec.init_scripts]
@@ -339,6 +346,8 @@ export function validate(v: FormValues, meta: Meta | null, storedCacheKey?: stri
   if (envErrors.some(Boolean)) e.env = envErrors
   const scriptErrors = initScriptErrors(v.initScripts)
   if (scriptErrors) e.initScripts = scriptErrors
+  const sourceErrors = v.anyMcpSources.map(pluginSourceError)
+  if (sourceErrors.some(Boolean)) e.anyMcpSources = sourceErrors
   if (v.cacheEnabled) {
     e.cacheKey = cacheKeyError(v.cacheKey, storedCacheKey)
     e.cacheExclude = cacheExcludeError(v.cacheExclude)
@@ -377,6 +386,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('pvcSize')) spec.pvc_size = str(v.pvcSize)
   if (setKeys.has('env') && v.env.length > 0) spec.env = Object.fromEntries(v.env.map((r) => [r.key, r.value]))
   if (setKeys.has('anyMcp') && v.anyMcp.trim() !== '') spec.any_mcp_config = JSON.parse(v.anyMcp) as Record<string, unknown>
+  if (setKeys.has('anyMcpSources') && v.anyMcpSources.length > 0) spec.any_mcp_sources = v.anyMcpSources.map((s) => s.trim())
   if (setKeys.has('initScripts')) spec.init_scripts = [...v.initScripts]
   if (setKeys.has('maxAttempts')) spec.max_attempts = int(v.maxAttempts)
   if (setKeys.has('autoCompact')) spec.auto_compact_pct = int(v.autoCompact)
