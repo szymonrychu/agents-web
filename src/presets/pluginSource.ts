@@ -61,6 +61,16 @@ function remoteProblem(rest: string, location: RegExp): string | undefined {
   return (s === -1 ? undefined : subdirProblem(beforeQuery.slice(s + 2))) ?? (q === -1 ? undefined : refProblem(rest.slice(q + 1)))
 }
 
+/** The source with everything before the userinfo `@` of a git::https authority replaced by `***`, or undefined without userinfo. */
+function redactedCredentials(text: string): string | undefined {
+  if (!text.startsWith(HTTPS_GIT)) return undefined
+  const rest = text.slice(HTTPS_GIT.length)
+  const slash = rest.search(/[/?]/)
+  const authority = slash === -1 ? rest : rest.slice(0, slash)
+  const at = authority.lastIndexOf('@')
+  return at === -1 ? undefined : `${HTTPS_GIT}***${rest.slice(at)}`
+}
+
 function problem(text: string): string | undefined {
   if (REMOTE_PREFIXES.some((p) => text.startsWith(p)) && BLANK_OR_CONTROL.test(text)) return 'a remote source may not contain whitespace or control characters'
   if (CONTROL.test(text)) return 'a source may not contain control characters'
@@ -76,6 +86,8 @@ function problem(text: string): string | undefined {
 export function pluginSourceError(text: string): string | undefined {
   const source = text.trim()
   if (source === '') return 'plugin source is empty'
+  const redacted = redactedCredentials(source)
+  if (redacted !== undefined) return `plugin source '${redacted}': credentials in the URL are not allowed`
   const p = problem(source)
   return p === undefined ? undefined : `plugin source '${source}': ${p}`
 }

@@ -81,6 +81,22 @@ describe('pluginSourceError', () => {
     expect(pluginSourceError(text)).toMatch(problem)
   })
 
+  it.each([
+    ['git::https://user@github.com/o/r.git', 'user'],
+    ['git::https://user:pass@github.com/o/r.git', 'pass'],
+    ['git::https://:s3cr3ttoken@github.com/o/r.git?ref=main', 's3cr3ttoken'],
+    ['git::https://u:p@a@github.com/o/r', 'u:p'],
+  ])('refuses credentials in the URL without echoing them: %j', (text, secret) => {
+    const message = pluginSourceError(text)
+    expect(message).toMatch(/: credentials in the URL are not allowed$/)
+    expect(message).toMatch(/^plugin source 'git::https:\/\/\*\*\*@/)
+    expect(message).not.toContain(secret)
+  })
+
+  it('does not treat an @ after the host as credentials', () => {
+    expect(pluginSourceError('git::https://github.com/o/r//sub@x?ref=v1')).toBeUndefined()
+  })
+
   it('names the source in every message', () => {
     expect(pluginSourceError('github.com/o/r?depth=1')).toBe("plugin source 'github.com/o/r?depth=1': unsupported query key 'depth', only ref is allowed")
   })
