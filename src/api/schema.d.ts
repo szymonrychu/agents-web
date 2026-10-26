@@ -1189,6 +1189,7 @@ export interface components {
             agent_image: string;
             /** Agent Images */
             agent_images: string[];
+            cache: components["schemas"]["MetaCache"];
             caps: components["schemas"]["MetaCaps"];
             defaults: components["schemas"]["MetaDefaults"];
             /**
@@ -1200,6 +1201,13 @@ export interface components {
             efforts: string[];
             /** Models */
             models: string[];
+        };
+        /** MetaCache */
+        MetaCache: {
+            /** Available */
+            available: boolean;
+            /** Max Bytes */
+            max_bytes: number;
         };
         /** MetaCaps */
         MetaCaps: {
@@ -1375,6 +1383,7 @@ export interface components {
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
+            cache?: components["schemas"]["WorkspaceCache"] | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Effort */
@@ -1602,6 +1611,16 @@ export interface components {
             url: string;
             /** When */
             when?: ("busy" | "always") | null;
+        };
+        /** WorkspaceCache */
+        WorkspaceCache: {
+            /**
+             * Exclude
+             * @default []
+             */
+            exclude: string[];
+            /** Key */
+            key?: string | null;
         };
         /**
          * WrapperSettings
