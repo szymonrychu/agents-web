@@ -31,6 +31,10 @@ export interface FormValues {
   autocloseAfter: string
   /** Trigger events for the same item go to the agent still running for it. */
   reuseRunningAgent: boolean
+  /** Superleader: the session's leader can message the leaders of all sessions; the spec carries it only when on. */
+  sessionMessaging: boolean
+  /** Agents get read-write access to every namespace and resource; the spec carries it only when on. */
+  kubeAccess: boolean
   compactIdle: string
   compactInstructions: string
   compactMinTokens: string
@@ -63,7 +67,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -94,7 +98,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheKey: '', cacheExclude: '',
   }
@@ -166,6 +170,14 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
     values.reuseRunningAgent = spec.reuse_running_agent
     setKeys.add('reuseRunningAgent')
+  }
+  if (spec.session_messaging) {
+    values.sessionMessaging = true
+    setKeys.add('sessionMessaging')
+  }
+  if (spec.kube_access) {
+    values.kubeAccess = true
+    setKeys.add('kubeAccess')
   }
   if (spec.cache) {
     values.cacheEnabled = true
@@ -378,6 +390,8 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
+  if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
+  if (setKeys.has('kubeAccess') && v.kubeAccess) spec.kube_access = true
   if (setKeys.has('cache') && v.cacheEnabled) {
     const exclude = cacheExcludeLines(v.cacheExclude)
     spec.cache = { ...(v.cacheKey.trim() !== '' && { key: v.cacheKey.trim() }), ...(exclude.length > 0 && { exclude }) }
