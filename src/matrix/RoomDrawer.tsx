@@ -37,6 +37,8 @@ export function RoomDrawer({ roomId, onClose, onChanged }: RoomDrawerProps) {
 function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => void }) {
   const [room, setRoom] = useState<RoomDetail>()
   const [rule, setRule] = useState<RuleView>()
+  const [rulesLoaded, setRulesLoaded] = useState(false)
+  const [rulesError, setRulesError] = useState<Error>()
   const [preset, setPreset] = useState('')
   const [trigger, setTrigger] = useState('')
   const [error, setError] = useState<Error>()
@@ -57,8 +59,15 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   useEffect(() => {
     let cancelled = false
     listRules().then((rules) => {
-      if (!cancelled) setRule([...rules.allow, ...rules.deny].find((r) => r.kind === 'room' && r.value === roomId))
-    }, () => !cancelled && setRule(undefined))
+      if (cancelled) return
+      setRule([...rules.allow, ...rules.deny].find((r) => r.kind === 'room' && r.value === roomId))
+      setRulesLoaded(true)
+      setRulesError(undefined)
+    }, (e: unknown) => {
+      if (cancelled) return
+      setRulesLoaded(false)
+      setRulesError(e instanceof Error ? e : new Error(String(e)))
+    })
     return () => { cancelled = true }
   }, [roomId, reload])
 
@@ -95,7 +104,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
     }
   }
 
-  const locked = room ? room.kind === 'infrastructure' || room.encrypted : true
+  const locked = room ? room.kind === 'infrastructure' || room.encrypted || !rulesLoaded : true
   const verb = pending === 'allow' ? 'Allow' : pending === 'deny' ? 'Deny' : 'Remove'
 
   return (
@@ -104,10 +113,10 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography component="h2" variant="h6">{room.name ?? room.alias ?? room.room_id}</Typography>
           <Typography variant="body2" color="text.secondary">{room.room_id}</Typography>
-          <FormError error={error} />
+          <FormError error={error ?? rulesError} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <AccessChip access={room.access} />
-            {rule ? (
+            {rulesLoaded && rule ? (
               <Button color="warning" onClick={() => setPending('remove')}>Remove rule</Button>
             ) : (
               <>

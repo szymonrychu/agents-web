@@ -157,6 +157,21 @@ describe('ChatsPage', () => {
     expect(api.deleteRule).toHaveBeenCalledWith(9)
   })
 
+  test('surfaces a rules load failure and offers no rule actions', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    api.listRules.mockRejectedValue(Object.assign(new Error('rules down'), { code: 'unavailable' }))
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    expect(within(drawer).getByText(/unavailable: rules down/)).toBeTruthy()
+    for (const name of ['Allow room', 'Deny room']) {
+      expect((within(drawer).getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+    }
+    expect(within(drawer).queryByRole('button', { name: 'Remove rule' })).toBeNull()
+  })
+
   test('shows recent messages', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     api.listRoomMessages.mockImplementation(async (_id: string, o: { beforeId?: string } = {}) =>
