@@ -2,6 +2,7 @@ import { isValidElement } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { SessionsPage } from '../sessions/SessionsPage'
 import { SchedulesPage } from '../schedules/SchedulesPage'
+import { ChatsPage } from '../matrix/ChatsPage'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -54,6 +55,23 @@ describe('menuEntries', () => {
     const openSession = vi.fn()
     const page = schedules!.render(onBack, openSession)
     expect(isValidElement(page) && page.type).toBe(SchedulesPage)
+    expect(isValidElement<{ onBack: unknown; onOpenSession: unknown }>(page) && page.props).toEqual({ onBack, onOpenSession: openSession })
+  })
+
+  test('lists Chats only with the matrix backend', () => {
+    expect(menuEntries(config('orchestrator', 'schedules', 'matrix')).map((e) => [e.id, e.order])).toEqual([
+      ['sessions', 10],
+      ['schedules', 30],
+      ['chats', 35],
+      ['presets', 40],
+    ])
+    expect(menuEntries(config('orchestrator', 'schedules')).map((e) => e.id)).not.toContain('chats')
+    const chats = menuEntries(config('matrix')).find((e) => e.id === 'chats')
+    expect(chats).toMatchObject({ label: 'Chats', order: 35, backend: 'matrix' })
+    const onBack = vi.fn()
+    const openSession = vi.fn()
+    const page = chats!.render(onBack, openSession)
+    expect(isValidElement(page) && page.type).toBe(ChatsPage)
     expect(isValidElement<{ onBack: unknown; onOpenSession: unknown }>(page) && page.props).toEqual({ onBack, onOpenSession: openSession })
   })
 

@@ -100,3 +100,23 @@ test("reads schedules from the sibling agents-schedule checkout by default", () 
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readFileSync(join(proj, "openapi/schedules.source"), "utf8"), `agents-schedule ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the matrix backend and records agents-matrix-connector", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "matrix", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/matrix.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/matrix.source"), "utf8"), `agents-matrix-connector ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("reads matrix from the sibling agents-matrix-connector checkout by default", () => {
+  const doc = '{"openapi":"3.1.0","paths":{"/matrix/api/v1/rooms":{}}}\n';
+  const parent = mkdtempSync(join(tmpdir(), "sync-parent-"));
+  const src = makeSource(doc, join(parent, "agents-matrix-connector"));
+  const proj = makeProject(join(parent, "agents-web"));
+  const r = run(proj, "matrix");
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/matrix.source"), "utf8"), `agents-matrix-connector ${git(src, "rev-parse", "HEAD")}\n`);
+});

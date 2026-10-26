@@ -10,10 +10,12 @@ export interface PresetSelectProps {
   value: string
   onChange: (presetId: string) => void
   disabled?: boolean
+  /** When set, adds an empty choice (value '') with this label, e.g. "Default preset". */
+  emptyLabel?: string
 }
 
 /** Picks a preset from the orchestrator's `GET /presets`; shows the default mark, loading and error states. */
-export function PresetSelect({ value, onChange, disabled }: PresetSelectProps) {
+export function PresetSelect({ value, onChange, disabled, emptyLabel }: PresetSelectProps) {
   const [presets, setPresets] = useState<PresetView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +42,7 @@ export function PresetSelect({ value, onChange, disabled }: PresetSelectProps) {
       helperText={loading ? 'Loading presets...' : undefined}
       fullWidth
     >
+      {emptyLabel !== undefined && <MenuItem value="">{emptyLabel}</MenuItem>}
       {(presets ?? []).map((p) => (
         <MenuItem key={p.id} value={p.id}>
           {p.name}
