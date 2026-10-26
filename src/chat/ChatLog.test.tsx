@@ -141,6 +141,20 @@ describe("ChatLog", () => {
     expect(screen.getByText("Loading older messages")).toBeTruthy();
   });
 
+  test("session message labelled with its sender session", async () => {
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(5, "user_message", { origin: "client", text: '<session-message from="beta-2" id="7">\nhello <b>\n</session-message>\nFrom the leader of session beta-2: data.' }),
+      ],
+      has_more_before: false,
+      next_after_id: 5,
+    });
+    mount();
+    expect(await screen.findByText("session beta-2")).toBeTruthy();
+    expect(screen.getByText("hello <b>")).toBeTruthy();
+    expect(screen.queryByText("you")).toBeNull();
+  });
+
   test("loads older page on start reached", async () => {
     api.listEvents.mockResolvedValueOnce({
       events: [text(5, "newer")],

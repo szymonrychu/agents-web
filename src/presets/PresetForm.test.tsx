@@ -14,7 +14,7 @@ const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), ge
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -604,6 +604,85 @@ describe('PresetForm', () => {
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('reuse_running_agent')
+  })
+
+  test('session options default off and stay sparse', { timeout: 15000 }, async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(field('Superleader').checked).toBe(false)
+    expect(field('Kubernetes access').checked).toBe(false)
+    expect(screen.getByText('superleader: can message the leaders of all sessions')).toBeTruthy()
+    expect(screen.getByText('Agents get full read-write access to every namespace and resource')).toBeTruthy()
+    await replace('Name', 's')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    const spec = api.createPreset.mock.calls[0][0].spec
+    expect(spec).not.toHaveProperty('session_messaging')
+    expect(spec).not.toHaveProperty('kube_access')
+  })
+
+  test('session options save and round-trip', { timeout: 15000 }, async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'o')
+    await userEvent.click(field('Superleader'))
+    await userEvent.click(field('Kubernetes access'))
+    expect(field('Superleader').checked).toBe(true)
+    expect(field('Kubernetes access').checked).toBe(true)
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', spec: { session_messaging: true, kube_access: true } })
+    cleanup()
+
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { session_messaging: true, kube_access: true } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Superleader').checked).toBe(true)
+    expect(field('Kubernetes access').checked).toBe(true)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ session_messaging: true, kube_access: true })
+    cleanup()
+
+    api.createPreset.mockClear()
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'p')
+    await userEvent.click(field('Superleader'))
+    await userEvent.click(field('Superleader'))
+    expect(field('Superleader').checked).toBe(false)
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('session_messaging')
+  })
+
+  test('kube access disabled when unavailable', { timeout: 15000 }, async () => {
+    api.getMeta.mockResolvedValue(meta({ kube_access: { available: false } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await waitFor(() => expect(field('Kubernetes access').disabled).toBe(true))
+    expect(screen.getByText('Not configured on this orchestrator')).toBeTruthy()
+    expect(screen.queryByText('Agents get full read-write access to every namespace and resource')).toBeNull()
+    expect(field('Superleader').disabled).toBe(false)
+    cleanup()
+
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { kube_access: true } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Kubernetes access').checked).toBe(true)
+    expect(field('Kubernetes access').disabled).toBe(true)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ kube_access: true })
+    cleanup()
+
+    api.getMeta.mockResolvedValue(meta({ kube_access: { available: true } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(field('Kubernetes access').disabled).toBe(false)
+    expect(screen.queryByText('Not configured on this orchestrator')).toBeNull()
   })
 
   test('saves an empty cache when enabled without a key', { timeout: 15000 }, async () => {

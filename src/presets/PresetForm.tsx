@@ -93,6 +93,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
 
   const errors = validate(values, meta, stored(preset).cache?.key)
   const cacheAvailable = meta?.cache.available === true
+  const kubeAccessAvailable = meta?.kube_access.available === true
   const invalid = Object.keys(errors).length > 0
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
@@ -101,7 +102,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'cacheEnabled' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -256,6 +257,14 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <Box>
             <FormControlLabel control={<Switch checked={values.reuseRunningAgent} onChange={(e) => set('reuseRunningAgent', e.target.checked)} />} label="Reuse running agent" />
             <FormHelperText>Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one</FormHelperText>
+          </Box>
+          <Box>
+            <FormControlLabel control={<Switch checked={values.sessionMessaging} onChange={(e) => set('sessionMessaging', e.target.checked)} />} label="Superleader" />
+            <FormHelperText>superleader: can message the leaders of all sessions</FormHelperText>
+          </Box>
+          <Box>
+            <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />
+            <FormHelperText>{meta && !kubeAccessAvailable ? 'Not configured on this orchestrator' : 'Agents get full read-write access to every namespace and resource'}</FormHelperText>
           </Box>
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }} disabled={!cacheAvailable}>
             <FormLabel component="legend">Workspace cache</FormLabel>

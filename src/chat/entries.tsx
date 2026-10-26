@@ -73,6 +73,14 @@ export function ChatEntry({ item }: { item: ChatItem }) {
           </Typography>
         </Row>
       )
+    case 'session':
+      return (
+        <Row item={item} label={`session ${item.from}`}>
+          <Typography component="span" sx={bodyText}>
+            {item.text}
+          </Typography>
+        </Row>
+      )
     case 'peer':
       return (
         <Row item={item} label={`peer from ${item.from ?? 'unknown'}`}>

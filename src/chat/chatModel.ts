@@ -23,6 +23,7 @@ interface Base {
 
 export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
+  | (Base & { kind: 'session'; text: string; from: string; messageId: number })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
   | (Base & { kind: 'thinking'; text: string; collapsed: boolean })
@@ -65,6 +66,11 @@ const str = (v: unknown, fallback = ''): string =>
 
 const USER_ORIGINS = new Set(['user', 'hook', 'restart', 'command']);
 
+// Contract with agents-orchestrator dispatcher/session_frame.py:frame; the trailer line after the closing tag is dropped.
+const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S]*?)\n<\/session-message>(?:\n|$)/;
+
+const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 function toolItem(base: Base, d: Record<string, unknown>, res?: ToolResult): ChatItem {
   return {
     ...base,
@@ -96,6 +102,8 @@ function toItem(row: EventRow, ordinals: Readonly<Record<string, number>>, orpha
     case 'user_message': {
       const origin = str(d.origin, 'user');
       const text = str(d.text ?? d.message);
+      const m = SESSION_FRAME.exec(text);
+      if (m) return { ...base, kind: 'session', text: unescapeBody(m[3]), from: m[1], messageId: Number(m[2]) };
       if (origin === 'peer') return { ...base, kind: 'peer', text, from: d.from == null ? undefined : str(d.from) };
       return { ...base, kind: 'user_message', text, origin: USER_ORIGINS.has(origin) ? origin : 'user' };
     }
