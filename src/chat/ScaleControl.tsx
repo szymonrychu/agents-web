@@ -23,7 +23,7 @@ export function ScaleControl({ session }: { session: SessionView }) {
       await scaleSession(session.id, { replicas: target })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      const hint = e instanceof ApiError && e.code === 'leader_would_leave' ? ' Make another agent leader first.' : ''
+      const hint = e instanceof ApiError && e.code === 'leader_would_leave' ? ' No ready agent that stays can take over leadership.' : ''
       setError({ sessionId: session.id, text: msg + hint })
     } finally {
       setBusy(false)
