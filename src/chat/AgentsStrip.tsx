@@ -18,11 +18,20 @@ export interface AgentsStripProps {
   onToggle: (agentId: string) => void
   autoCompactPct?: number
   /** Set for hive sessions only: enables the leader badge and the Make leader action. Alone sessions omit it. */
-  hive?: { sessionId: string; leaderEpoch: number | null }
+  hive?: { sessionId: string; leaderEpoch: number | null; leaderReason: string | null }
   /** session.spec.replicas: agents at or above it are leaving. */
   replicas?: number
   /** Ordinals of leaving agents still finishing a turn (session.status.drain.waiting). */
   drainWaiting?: readonly number[]
+}
+
+/** Captions for the automatic handover reasons; every other reason shows none. */
+const LEADER_CAPTIONS: Record<string, string> = { compaction: 'after compaction', scale_down: 'after scale-down' }
+
+function leaderTitle(epoch: number | null, reason: string | null): string {
+  const parts = [epoch === null ? 'leader' : `leader epoch ${epoch}`]
+  if (reason !== null) parts.push(`reason ${reason}`)
+  return parts.join(', ')
 }
 
 export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, replicas, drainWaiting }: AgentsStripProps) {
@@ -89,10 +98,15 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
             {hive && a.leader && (
               <Box
                 component="span"
-                title={hive.leaderEpoch === null ? 'leader' : `leader epoch ${hive.leaderEpoch}`}
+                title={leaderTitle(hive.leaderEpoch, hive.leaderReason)}
                 sx={{ fontSize: TOKENS.fontSizes.xs, color: TOKENS.accent, border: `${TOKENS.borderWidth}px solid ${TOKENS.accent}`, px: 0.5, flexShrink: 0 }}
               >
                 leader
+              </Box>
+            )}
+            {hive && a.leader && hive.leaderReason !== null && Object.hasOwn(LEADER_CAPTIONS, hive.leaderReason) && (
+              <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: 'text.secondary', flexShrink: 0 }}>
+                {LEADER_CAPTIONS[hive.leaderReason]}
               </Box>
             )}
             <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} />

@@ -144,6 +144,7 @@ describe('status stream', () => {
       sessionId: 's1',
       agentId: 'a1',
       epoch: 2,
+      reason: null,
     });
     expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 1, failed: 0 })).toEqual({
       type: 'message_status',
@@ -154,5 +155,18 @@ describe('status stream', () => {
     expect(statusEventFromFrame('cluster_status', { cluster: { id: 's1' } })).toBeNull();
     expect(statusEventFromFrame('cluster_removed', { cluster_id: 's1' })).toBeNull();
     expect(statusEventFromFrame('session_status', null)).toBeNull();
+  });
+
+  it('leader_changed carries the reason and a missing reason is null', () => {
+    expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 3, reason: 'compaction' })).toEqual({
+      type: 'leader_changed',
+      sessionId: 's1',
+      agentId: 'a1',
+      epoch: 3,
+      reason: 'compaction',
+    });
+    expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 4, reason: 'handover: context full' })).toMatchObject({ reason: 'handover: context full' });
+    expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 5 })).toMatchObject({ reason: null });
+    expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 5, reason: null })).toMatchObject({ reason: null });
   });
 });

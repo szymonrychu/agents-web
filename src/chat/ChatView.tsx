@@ -50,7 +50,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
           selected={selected}
           onToggle={toggle}
           autoCompactPct={session.summary.auto_compact_pct}
-          hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch } : undefined}
+          hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch, leaderReason: session.leader_reason } : undefined}
         />
       </Box>
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
