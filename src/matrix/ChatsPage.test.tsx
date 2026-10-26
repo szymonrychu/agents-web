@@ -9,7 +9,7 @@ import { ChatsPage } from './ChatsPage'
 
 const api = vi.hoisted(() => ({
   getMeta: vi.fn(), listRooms: vi.fn(), getRoom: vi.fn(), setRoomSettings: vi.fn(),
-  listRoomMessages: vi.fn(), addRule: vi.fn(), deleteRule: vi.fn(), listRules: vi.fn(),
+  listRoomMessages: vi.fn(), addRule: vi.fn(), deleteRule: vi.fn(), listRules: vi.fn(), getSettings: vi.fn(),
 }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 const client = vi.hoisted(() => ({ listPresets: vi.fn() }))
@@ -46,6 +46,7 @@ beforeEach(() => {
     rooms.filter((r) => (!o.kind || r.kind === o.kind) && (!o.access || r.access.state === o.access)))
   api.getRoom.mockImplementation(async (id: string) => detail(rooms.find((r) => r.room_id === id)!))
   api.listRules.mockResolvedValue({ allow: [], deny: [] })
+  api.getSettings.mockResolvedValue({ default_preset_id: null })
   api.listRoomMessages.mockResolvedValue([])
   client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Preset One', is_default: false }])
 })

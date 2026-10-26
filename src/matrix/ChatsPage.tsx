@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import { listPresets } from '../api/client'
 import { TOKENS } from '../theme'
@@ -10,6 +12,11 @@ import { FormError, usePoll } from '../triggers'
 import { getMeta, listRooms } from './api'
 import { ALL, RoomsTable } from './RoomsTable'
 import { RoomDrawer } from './RoomDrawer'
+import { DefaultPreset } from './DefaultPreset'
+import { RulesPanel } from './RulesPanel'
+import { UsersTable } from './UsersTable'
+
+type TabName = 'rooms' | 'users' | 'rules'
 
 export interface ChatsPageProps {
   onBack: () => void
@@ -19,6 +26,7 @@ export interface ChatsPageProps {
 export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
   const [kind, setKind] = useState(ALL)
   const [access, setAccess] = useState(ALL)
+  const [tab, setTab] = useState<TabName>('rooms')
   const [selected, setSelected] = useState<string | null>(null)
   const [presetNames, setPresetNames] = useState<Record<string, string>>({})
 
@@ -42,21 +50,30 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
         </Alert>
       )}
       <FormError error={metaError} />
-      <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Typography component="h2" sx={{ fontSize: TOKENS.fontSizes.md }}>Rooms</Typography>
-        <FormError error={error} />
-        <RoomsTable
-          rooms={rooms ?? []}
-          kind={kind}
-          access={access}
-          presetNames={presetNames}
-          onKind={setKind}
-          onAccess={setAccess}
-          onSelect={(r) => setSelected(r.room_id)}
-          onOpenSession={onOpenSession}
-        />
-        {rooms && rooms.length === 0 && <Typography color="text.secondary">No rooms discovered yet.</Typography>}
-      </Box>
+      <DefaultPreset meta={meta} />
+      <Tabs value={tab} onChange={(_, v: TabName) => setTab(v)} aria-label="Chats sections">
+        <Tab value="rooms" label="Rooms" />
+        <Tab value="users" label="Users" />
+        <Tab value="rules" label="Rules" />
+      </Tabs>
+      {tab === 'rooms' && (
+        <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormError error={error} />
+          <RoomsTable
+            rooms={rooms ?? []}
+            kind={kind}
+            access={access}
+            presetNames={presetNames}
+            onKind={setKind}
+            onAccess={setAccess}
+            onSelect={(r) => setSelected(r.room_id)}
+            onOpenSession={onOpenSession}
+          />
+          {rooms && rooms.length === 0 && <Typography color="text.secondary">No rooms discovered yet.</Typography>}
+        </Box>
+      )}
+      {tab === 'users' && <UsersTable />}
+      {tab === 'rules' && <RulesPanel meta={meta} />}
       <RoomDrawer roomId={selected} onClose={() => setSelected(null)} onChanged={() => void refresh()} />
     </Box>
   )
