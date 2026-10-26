@@ -44,7 +44,8 @@ describe('pluginSourceError', () => {
     ['git::https://github.com/o/r?ref=-main', /ref must not start with '-'/],
     ['git::https://github.com/o/r?ref=a..b', /ref must not contain '\.\.'/],
     ['github.com/o/r?ref=../x', /ref must not contain '\.\.'/],
-    ['git::https://github.com/o/r?ref=a b', /ref may hold only/],
+    ['git::https://github.com/o/r?ref=a b', /a remote source may not contain whitespace or control characters/],
+    ['git::https://github.com/o/r?ref=a~b', /ref may hold only/],
     ['git::https://github.com/o/r?ref=v1;rm', /ref may hold only/],
     ['git::https://github.com/o/r?ref=a&ref=b', /ref is given more than once/],
     ['git::https://github.com/o/r///abs', /subdir must be relative/],
@@ -66,7 +67,17 @@ describe('pluginSourceError', () => {
     ['github.com/o/r/extra', /accepted forms/],
     ['github.com//r', /accepted forms/],
     ['gitlab.com/o/r', /accepted forms/],
-  ])('refuses malformed sources: %s', (text, problem) => {
+    ['git::https://exam ple.com/o/r', /a remote source may not contain whitespace or control characters/],
+    ['git::https://h/o/r x', /a remote source may not contain whitespace or control characters/],
+    ['github.com/o/ r', /a remote source may not contain whitespace or control characters/],
+    ['git::https://exam\nple.com/o/r', /a remote source may not contain whitespace or control characters/],
+    ['git::https://exam\tple.com/o/r', /a remote source may not contain whitespace or control characters/],
+    ['git::https://h/o/r?ref=a\u0000b', /a remote source may not contain whitespace or control characters/],
+    ['github.com/o/r\u007f', /a remote source may not contain whitespace or control characters/],
+    ['git::ssh://h/o r', /a remote source may not contain whitespace or control characters/],
+    ['github.com/o/r//sub dir', /a remote source may not contain whitespace or control characters/],
+    ['./local\u001bdir', /a source may not contain control characters/],
+  ])('refuses malformed sources: %j', (text, problem) => {
     expect(pluginSourceError(text)).toMatch(problem)
   })
 

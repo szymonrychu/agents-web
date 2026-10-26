@@ -20,6 +20,11 @@ const REF_CHARS = /^[A-Za-z0-9._/-]+$/
 const LOCAL_PREFIXES = ['./', '../', '/']
 const NON_HTTPS_GIT = ['git::ssh://', 'git::file://']
 const SCP_LIKE = /^[^/:]+@[^/:]+:/
+// eslint-disable-next-line no-control-regex -- C0 and DEL are exactly what these refuse
+const CONTROL = /[\x00-\x1f\x7f]/
+// eslint-disable-next-line no-control-regex -- C0 and DEL are exactly what these refuse
+const BLANK_OR_CONTROL = /[\s\x00-\x1f\x7f]/
+const REMOTE_PREFIXES = ['git::', SHORTHAND]
 
 function refProblem(query: string): string | undefined {
   if (query === '') return 'empty query, only ?ref=<ref> is allowed'
@@ -57,6 +62,8 @@ function remoteProblem(rest: string, location: RegExp): string | undefined {
 }
 
 function problem(text: string): string | undefined {
+  if (REMOTE_PREFIXES.some((p) => text.startsWith(p)) && BLANK_OR_CONTROL.test(text)) return 'a remote source may not contain whitespace or control characters'
+  if (CONTROL.test(text)) return 'a source may not contain control characters'
   if (LOCAL_PREFIXES.some((p) => text.startsWith(p)) || NON_HTTPS_GIT.some((p) => text.startsWith(p)) || SCP_LIKE.test(text)) {
     return `only https git sources are allowed (${ACCEPTED_FORMS})`
   }
