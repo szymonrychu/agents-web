@@ -1449,6 +1449,8 @@ export interface components {
             any_mcp_config?: {
                 [key: string]: unknown;
             } | null;
+            /** Any Mcp Sources */
+            any_mcp_sources?: string[] | null;
             /** Auto Compact Pct */
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
