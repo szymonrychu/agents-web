@@ -21,7 +21,7 @@ vi.mock('../api/stream', () => ({
 }))
 
 type Entry = FileListing['entries'][number]
-const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z' })
+const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z', target_type: null })
 const listing = (path: string, entries: Entry[], next_offset: number | null = null): FileListing => ({
   agent_id: 'a1',
   session_id: 'c1',
