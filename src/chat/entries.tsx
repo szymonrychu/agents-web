@@ -67,6 +67,8 @@ const json = (v: unknown): string => {
 
 const STATUS_COLOUR = { running: 'text.secondary', ok: 'text.primary', error: 'error.main' } as const
 
+const COMMAND_STATUS_COLOUR = { queued: 'text.secondary', running: 'text.secondary', completed: 'text.primary', failed: 'error.main', cancelled: 'text.secondary' } as const
+
 function tokens(usage: Record<string, unknown> | undefined): string {
   if (!usage) return ''
   const n = (k: string) => (typeof usage[k] === 'number' ? (usage[k] as number) : undefined)
@@ -144,6 +146,29 @@ export function ChatEntry({ item }: { item: ChatItem }) {
           </Expandable>
         </Row>
       )
+    case 'command': {
+      const detail = item.status === 'failed' ? item.error : item.status === 'completed' && item.result !== 'ok' ? item.result : undefined
+      return (
+        <Row item={item} label="command">
+          <Typography component="span" sx={{ ...bodyText, fontFamily: MONO_FONT }}>
+            {item.args ? `/${item.name} ${item.args}` : `/${item.name}`}
+          </Typography>
+          <Box component="span" sx={{ ml: 1, color: COMMAND_STATUS_COLOUR[item.status] }}>
+            {item.status}
+          </Box>
+          {detail ? (
+            <Typography component="span" variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+              {detail}
+            </Typography>
+          ) : null}
+          {item.output ? (
+            <Box component="pre" sx={{ ...pre, mt: 0.5 }}>
+              {item.output}
+            </Box>
+          ) : null}
+        </Row>
+      )
+    }
     case 'denied':
       return (
         <Row item={item} label="denied">

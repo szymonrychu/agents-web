@@ -38,7 +38,7 @@ describe('chatModel', () => {
     ];
     const s = applyEvents(fresh(), rows);
     expect(s.items.map((i) => i.kind)).toEqual([
-      'user_message', 'user_message', 'user_message', 'user_message',
+      'user_message', 'user_message', 'user_message',
       'assistant', 'thinking', 'tool', 'denied', 'turn_end', 'error', 'error', 'peer',
     ]);
     for (const i of s.items) {
@@ -47,7 +47,69 @@ describe('chatModel', () => {
       expect(i.eventId).toBeGreaterThan(0);
       expect(i.ts).toBeTruthy();
     }
-    expect(s.items[8]).toMatchObject({ usage: { input_tokens: 3 } });
+    expect(s.items[7]).toMatchObject({ usage: { input_tokens: 3 } });
+  });
+
+  it('folds the typed-line echo of a command into the command row', () => {
+    const s = applyEvents(fresh(), [row(1, 'user_message', { text: '/reload-plugins', origin: 'command' })]);
+    expect(s.items).toEqual([]);
+  });
+
+  it('command row lifecycle', () => {
+    const rec = (state: string, extra: Record<string, unknown> = {}) => ({
+      record: { id: 'c1', name: 'reload-plugins', args: '--force', origin: 'client', state, ...extra },
+    });
+    const queued = row(1, 'command_queued', rec('queued'));
+    const started = row(2, 'command_started', rec('running'));
+    const done = row(3, 'command_completed', rec('completed', { result: 'ok', output: 'Reloaded' }));
+    const expected = {
+      kind: 'command', commandId: 'c1', name: 'reload-plugins', args: '--force',
+      status: 'completed', result: 'ok', output: 'Reloaded', eventId: 1,
+    };
+    // one batch, every arrival order
+    const orders = [[queued, started, done], [done, started, queued], [started, done, queued], [done, queued, started]];
+    for (const rows of orders) {
+      const s = applyEvents(fresh(), rows);
+      expect(s.items).toHaveLength(1);
+      expect(s.items[0]).toMatchObject(expected);
+    }
+    // across batches: queued, then running, then completed
+    let s = applyEvents(fresh(), [queued]);
+    expect(s.items[0]).toMatchObject({ kind: 'command', status: 'queued', eventId: 1 });
+    s = applyEvents(s, [started]);
+    expect(s.items).toHaveLength(1);
+    expect(s.items[0]).toMatchObject({ status: 'running', eventId: 1 });
+    s = applyEvents(s, [done]);
+    expect(s.items).toHaveLength(1);
+    expect(s.items[0]).toMatchObject(expected);
+    // a stale earlier event arriving later never regresses the status
+    s = applyEvents(s, [row(0, 'command_queued', rec('queued'))]);
+    expect(s.items).toHaveLength(1);
+    expect(s.items[0]).toMatchObject({ ...expected, eventId: 0 });
+    // history prepend: terminal row first, earlier rows later
+    let p = applyEvents(fresh(), [done]);
+    p = prependHistory(p, [queued, started]);
+    expect(p.items).toHaveLength(1);
+    expect(p.items[0]).toMatchObject(expected);
+    // two records stay two rows, in event order
+    const other = row(4, 'command_queued', { record: { id: 'c2', name: 'compact', args: '', state: 'queued' } });
+    const two = applyEvents(s, [other]);
+    expect(two.items.map((i) => (i.kind === 'command' ? i.commandId : i.kind))).toEqual(['c1', 'c2']);
+  });
+
+  it('command row failure and cancel', () => {
+    const failed = applyEvents(fresh(), [
+      row(1, 'command_queued', { record: { id: 'c1', name: 'nope', args: 'x', state: 'queued' } }),
+      row(2, 'command_failed', { record: { id: 'c1', name: 'nope', args: 'x', state: 'failed', error: 'unknown_command' } }),
+    ]);
+    expect(failed.items).toHaveLength(1);
+    expect(failed.items[0]).toMatchObject({ kind: 'command', status: 'failed', error: 'unknown_command' });
+    const cancelled = applyEvents(fresh(), [
+      row(1, 'command_queued', { record: { id: 'c2', name: 'compact', args: '', state: 'queued' } }),
+      row(2, 'command_failed', { record: { id: 'c2', name: 'compact', args: '', state: 'cancelled', error: 'cancelled' } }),
+    ]);
+    expect(cancelled.items).toHaveLength(1);
+    expect(cancelled.items[0]).toMatchObject({ kind: 'command', status: 'cancelled' });
   });
 
   it('pairs tool calls with results', () => {

@@ -35,10 +35,22 @@ export type ChatItem =
       status: 'running' | 'ok' | 'error';
       output?: string;
     })
+  | (Base & {
+      kind: 'command';
+      commandId: string;
+      name: string;
+      args: string;
+      status: CommandStatus;
+      result?: string;
+      error?: string;
+      output?: string;
+    })
   | (Base & { kind: 'denied'; name: string; reason: string })
   | (Base & { kind: 'turn_end'; usage?: Usage })
   | (Base & { kind: 'error'; message: string })
   | (Base & { kind: 'gap'; fromSeq?: number; toSeq?: number });
+
+export type CommandStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export type ChatKind = ChatItem['kind'];
 
@@ -64,7 +76,7 @@ export function emptyChat(ordinals: Readonly<Record<string, number>> = {}): Chat
 const str = (v: unknown, fallback = ''): string =>
   typeof v === 'string' ? v : v == null ? fallback : typeof v === 'object' ? JSON.stringify(v) : String(v);
 
-const USER_ORIGINS = new Set(['user', 'hook', 'restart', 'command']);
+const USER_ORIGINS = new Set(['user', 'hook', 'restart']);
 
 // Contract with agents-orchestrator dispatcher/session_frame.py:frame; the trailer line after the closing tag is dropped.
 const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S]*?)\n<\/session-message>(?:\n|$)/;
@@ -81,6 +93,44 @@ function toolItem(base: Base, d: Record<string, unknown>, res?: ToolResult): Cha
     status: res ? (res.isError ? 'error' : 'ok') : 'running',
     output: res?.output,
   };
+}
+
+const COMMAND_STATUS_BY_EVENT: Record<string, CommandStatus> = {
+  command_queued: 'queued',
+  command_started: 'running',
+  command_completed: 'completed',
+  command_failed: 'failed',
+};
+
+const COMMAND_STATUSES: ReadonlySet<string> = new Set<CommandStatus>(['queued', 'running', 'completed', 'failed', 'cancelled']);
+
+/** queued < running < any terminal status, so a late earlier event never regresses a row. */
+const commandRank = (s: CommandStatus): number => (s === 'queued' ? 0 : s === 'running' ? 1 : 2);
+
+const optStr = (v: unknown): string | undefined => (v == null ? undefined : str(v));
+
+/** Fold one command_* row (wrapper record in data.record) into the row of its record id; null when it carries no record id. */
+function foldCommand(cur: Extract<ChatItem, { kind: 'command' }> | undefined, row: EventRow, ordinals: Readonly<Record<string, number>>) {
+  const rec = (row.data?.record ?? {}) as Record<string, unknown>;
+  if (rec.id == null) return null;
+  const state = str(rec.state);
+  const status: CommandStatus = COMMAND_STATUSES.has(state) ? (state as CommandStatus) : COMMAND_STATUS_BY_EVENT[row.type];
+  const first: Extract<ChatItem, { kind: 'command' }> = cur ?? {
+    eventId: row.id,
+    agentId: row.agent_id,
+    agentOrdinal: ordinals[row.agent_id],
+    ts: row.ts,
+    turnId: row.turn_id,
+    kind: 'command',
+    commandId: str(rec.id),
+    name: str(rec.name),
+    args: str(rec.args),
+    status,
+  };
+  // The earliest event keeps the row position, whichever order the rows arrive in.
+  const base = row.id < first.eventId ? { eventId: row.id, ts: row.ts, turnId: row.turn_id } : {};
+  const next = commandRank(status) >= commandRank(first.status) ? { status, result: optStr(rec.result) ?? first.result, error: optStr(rec.error) ?? first.error, output: optStr(rec.output) ?? first.output } : {};
+  return { ...first, name: str(rec.name, first.name), args: str(rec.args, first.args), ...base, ...next };
 }
 
 function usageOf(d: Record<string, unknown>): Usage | undefined {
@@ -101,6 +151,8 @@ function toItem(row: EventRow, ordinals: Readonly<Record<string, number>>, orpha
   switch (row.type) {
     case 'user_message': {
       const origin = str(d.origin, 'user');
+      // The typed-line echo of a slash command folds into its command row (D12).
+      if (origin === 'command') return null;
       const text = str(d.text ?? d.message);
       const m = SESSION_FRAME.exec(text);
       if (m) return { ...base, kind: 'session', text: unescapeBody(m[3]), from: m[1], messageId: Number(m[2]) };
@@ -175,6 +227,26 @@ function merge(state: ChatState, rows: readonly EventRow[]): ChatState {
   }
   for (const it of added) if (it.kind === 'tool') delete orphans[it.toolUseId];
   for (const it of items) if (it.kind === 'tool' && it.status !== 'running') delete orphans[it.toolUseId];
+
+  // Command rows update their row by record id, whichever event arrives first.
+  const commandAt = new Map<string, { list: ChatItem[]; i: number }>();
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.kind === 'command') commandAt.set(it.commandId, { list: items, i });
+  }
+  for (const r of fresh) {
+    if (!(r.type in COMMAND_STATUS_BY_EVENT)) continue;
+    const id = (r.data?.record as Record<string, unknown> | undefined)?.id;
+    const at = id == null ? undefined : commandAt.get(str(id));
+    const cur = at ? (at.list[at.i] as Extract<ChatItem, { kind: 'command' }>) : undefined;
+    const it = foldCommand(cur, r, state.ordinals);
+    if (!it) continue;
+    if (at) at.list[at.i] = it;
+    else {
+      added.push(it);
+      commandAt.set(it.commandId, { list: added, i: added.length - 1 });
+    }
+  }
 
   const all = items.concat(added).sort((a, b) => a.eventId - b.eventId);
   return { ...state, items: all, seen, orphanResults: orphans };
