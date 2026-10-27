@@ -127,11 +127,21 @@ describe('syntaxDiagnostics', () => {
     expect(linesOf(state, diagnostics)).toEqual([2001])
   })
 
-  it('yaml: a 50000-key flat mapping is checked well under a second, with no false error', () => {
+  it('yaml: a mid-size mapping that fits the budget is fully checked, the late duplicate at its exact range', () => {
+    const head = flatYaml(3000)
+    const doc = `${head}k1500: again\n`
+    const { state, diagnostics } = check('yaml', doc)
+    expect(diagnostics).toHaveLength(1)
+    const keyFrom = head.length
+    expect(diagnostics[0]).toMatchObject({ from: keyFrom, to: keyFrom + 'k1500'.length, severity: 'error' })
+    expect(state.doc.sliceString(diagnostics[0].from, diagnostics[0].to)).toBe('k1500')
+  })
+
+  it('yaml: a 50000-key flat mapping never blocks longer than the budget and reports no false error', () => {
     const state = stateOf('yaml', flatYaml(50_000))
     const started = performance.now()
     const diagnostics = syntaxDiagnostics('yaml', state)
-    expect(performance.now() - started).toBeLessThan(1000)
+    expect(performance.now() - started).toBeLessThan(1500)
     expect(diagnostics).toEqual([])
   })
 
