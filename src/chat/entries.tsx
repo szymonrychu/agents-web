@@ -6,25 +6,38 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { ChatItem } from './chatModel'
+import { ChatMarkdown } from './Markdown'
 
 const TAG_PX = 36
 
 const ordinalLabel = (n: number | undefined): string => (n === undefined ? 'agent ?' : `agent ${n}`)
 
-function Row({ item, label, children }: { item: ChatItem; label?: string; children: ReactNode }) {
+/** `markdown` rows put the label and a block-level markdown body side by side, so the label stays on the first line. */
+function Row({ item, label, markdown, children }: { item: ChatItem; label?: string; markdown?: boolean; children: ReactNode }) {
   return (
     <Box aria-label={`${ordinalLabel(item.agentOrdinal)} row`} role="listitem" sx={{ display: 'flex', gap: 1, px: 2, py: 0.5, alignItems: 'flex-start' }}>
       <Typography component="span" variant="caption" sx={{ width: TAG_PX, flexShrink: 0, fontFamily: MONO_FONT, color: 'text.secondary' }}>
         {item.agentOrdinal === undefined ? '#?' : `#${item.agentOrdinal}`}
       </Typography>
-      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-        {label ? (
-          <Typography component="span" variant="caption" sx={{ color: 'text.secondary', mr: 1 }}>
-            {label}
-          </Typography>
-        ) : null}
-        {children}
-      </Box>
+      {markdown ? (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', minWidth: 0, flexGrow: 1 }}>
+          {label ? (
+            <Typography component="span" variant="caption" sx={{ color: 'text.secondary', flexShrink: 0 }}>
+              {label}
+            </Typography>
+          ) : null}
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>{children}</Box>
+        </Box>
+      ) : (
+        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+          {label ? (
+            <Typography component="span" variant="caption" sx={{ color: 'text.secondary', mr: 1 }}>
+              {label}
+            </Typography>
+          ) : null}
+          {children}
+        </Box>
+      )}
     </Box>
   )
 }
@@ -67,34 +80,26 @@ export function ChatEntry({ item }: { item: ChatItem }) {
   switch (item.kind) {
     case 'user_message':
       return (
-        <Row item={item} label={item.origin === 'user' ? 'you' : item.origin}>
-          <Typography component="span" sx={{ ...bodyText, color: 'text.primary', fontWeight: TOKENS.fontWeights.medium }}>
-            {item.text}
-          </Typography>
+        <Row item={item} label={item.origin === 'user' ? 'you' : item.origin} markdown>
+          <ChatMarkdown text={item.text} sx={{ color: 'text.primary', fontWeight: TOKENS.fontWeights.medium }} />
         </Row>
       )
     case 'session':
       return (
-        <Row item={item} label={`session ${item.from}`}>
-          <Typography component="span" sx={bodyText}>
-            {item.text}
-          </Typography>
+        <Row item={item} label={`session ${item.from}`} markdown>
+          <ChatMarkdown text={item.text} />
         </Row>
       )
     case 'peer':
       return (
-        <Row item={item} label={`peer from ${item.from ?? 'unknown'}`}>
-          <Typography component="span" sx={bodyText}>
-            {item.text}
-          </Typography>
+        <Row item={item} label={`peer from ${item.from ?? 'unknown'}`} markdown>
+          <ChatMarkdown text={item.text} />
         </Row>
       )
     case 'assistant':
       return (
-        <Row item={item}>
-          <Typography component="span" sx={bodyText}>
-            {item.text}
-          </Typography>
+        <Row item={item} markdown>
+          <ChatMarkdown text={item.text} />
         </Row>
       )
     case 'thinking':
