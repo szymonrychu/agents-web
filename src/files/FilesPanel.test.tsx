@@ -9,7 +9,7 @@ import { theme } from '../theme'
 import { FilesPanel } from './FilesPanel'
 import { useFileTree } from './useFileTree'
 
-const api = vi.hoisted(() => ({ listFiles: vi.fn(), readFile: vi.fn() }))
+const api = vi.hoisted(() => ({ listFiles: vi.fn(), readFile: vi.fn(), fileDownloadUrl: (sessionId: string, path: string) => `/dl/${sessionId}?path=${path}` }))
 const stream = vi.hoisted(() => ({ opened: [] as { url: string; opts: StreamOptions }[], close: vi.fn() }))
 
 vi.mock('../api/files', () => api)
@@ -21,7 +21,8 @@ vi.mock('../api/stream', () => ({
 }))
 
 type Entry = FileListing['entries'][number]
-const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z' })
+const entry = (name: string, type: Entry['type'] = 'file'): Entry => ({ name, type, size: type === 'file' ? 10 : null, mtime: '2026-10-23T00:00:00Z', target_type: null })
+const symlink = (name: string, target_type: Entry['target_type']): Entry => ({ ...entry(name, 'symlink'), target_type })
 const listing = (path: string, entries: Entry[], next_offset: number | null = null): FileListing => ({
   agent_id: 'a1',
   session_id: 'c1',
@@ -407,6 +408,73 @@ describe('FilesPanel', () => {
     expect(err.textContent).toContain('invalid_path')
     expect(err.textContent).toContain('escapes the workdir')
     expect(screen.queryByTestId('file-preview-text')).toBeNull()
+  })
+
+  test('download_icon_only_on_file_rows', async () => {
+    serve({
+      '': listing('', [
+        entry('src', 'dir'),
+        entry('a.txt'),
+        entry('sock', 'other'),
+        symlink('to-file', 'file'),
+        symlink('to-dir', 'dir'),
+        symlink('to-other', 'other'),
+        symlink('dangling', null),
+      ]),
+    })
+    mount()
+    await screen.findByText('a.txt')
+    const links = screen.getAllByRole('link').map((l) => l.getAttribute('aria-label'))
+    expect(links).toEqual(['Download a.txt', 'Download to-file'])
+    for (const [name, path] of [['a.txt', 'a.txt'], ['to-file', 'to-file']]) {
+      const link = screen.getByRole('link', { name: `Download ${name}` })
+      expect(link.getAttribute('href')).toBe(api.fileDownloadUrl('c1', path))
+      expect(link.getAttribute('download')).toBe(name)
+      expect(link.querySelector('[data-testid="FileDownloadOutlinedIcon"]')).not.toBeNull()
+    }
+    for (const name of ['src', 'sock', 'to-dir', 'to-other', 'dangling']) {
+      expect(screen.queryByRole('link', { name: `Download ${name}` })).toBeNull()
+    }
+  })
+
+  test('download_icon_in_nested_directory_uses_the_joined_path', async () => {
+    serve({ '': listing('', [entry('src', 'dir')]), src: listing('src', [entry('main.py')]) })
+    mount()
+    fireEvent.click(await screen.findByText('src'))
+    const link = await screen.findByRole('link', { name: 'Download main.py' })
+    expect(link.getAttribute('href')).toBe(api.fileDownloadUrl('c1', 'src/main.py'))
+    expect(link.getAttribute('download')).toBe('main.py')
+  })
+
+  test('download_click_does_not_open_preview', async () => {
+    serve({ '': listing('', [entry('a.txt')]) })
+    api.readFile.mockResolvedValue(content('a.txt', { content: 'hello' }))
+    mount()
+    const link = await screen.findByRole('link', { name: 'Download a.txt' })
+    // jsdom does not implement navigation: the browser default is cancelled before React sees the click.
+    link.addEventListener('click', (e) => e.preventDefault())
+    const item = screen.getByRole('treeitem')
+    fireEvent.click(link)
+    await act(async () => {})
+    expect(api.readFile).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('file-preview-text')).toBeNull()
+    expect(screen.queryByText('loading')).toBeNull()
+    expect(item.getAttribute('aria-selected')).not.toBe('true')
+    // A click on the name still opens the preview.
+    fireEvent.click(screen.getByText('a.txt'))
+    expect((await screen.findByTestId('file-preview-text')).textContent).toBe('hello')
+    expect(api.readFile).toHaveBeenCalledTimes(1)
+  })
+
+  test('download_icon_right_aligned', async () => {
+    serve({ '': listing('', [entry('a.txt')]) })
+    mount()
+    const link = await screen.findByRole('link', { name: 'Download a.txt' })
+    const row = link.parentElement as HTMLElement
+    expect(row.lastElementChild).toBe(link)
+    const name = screen.getByText('a.txt')
+    expect(row.contains(name)).toBe(true)
+    expect(getComputedStyle(name).flexGrow).toBe('1')
   })
 
   test('other_entries_type_only', async () => {

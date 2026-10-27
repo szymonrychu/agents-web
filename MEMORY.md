@@ -2,6 +2,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-10-27
+
+- file-download-in-file-browse D5: the Files tree downloads a file through a plain anchor (`IconButton component="a"`, `href` = `fileDownloadUrl(sessionId, path)`, `download` = the entry name), not `fetch` plus `URL.createObjectURL`. Why: the blob path buffers the whole file in browser memory, which breaks "any size" and shows no browser download progress; the anchor lets the browser stream the orchestrator's raw-bytes route to disk. Consequence for errors: a plain anchor cannot read the response, so a 4xx/5xx (403 at the ingress, 404, 409 `agent_not_ready`, 502) is shown by the browser's own download UI or error page, never in the Files panel. Accepted because the file was just listed by the same agent choice (no `agent_id` is sent). The icon shows for `type == "file"` and for a symlink with `target_type == "file"` only; its click calls `stopPropagation` so it neither opens the preview nor selects the row; the row's name element has `flex-grow: 1`, which keeps the icon on the right edge.
+
 ## 2026-10-25
 
 - endpoint filters are edited in `FiltersDialog`, opened by the "Filters (n)" button of each endpoints-list row, and saved through `PUT /endpoints/{id}/filters` (only filters are editable: recreating an endpoint would change its URL and credentials). The field catalogue comes from `GET /meta` (`filter_fields[type]`) and the UI never validates RE2 patterns itself, because JavaScript regex is not RE2 and the backend's 422 is authoritative. The Filters button stays disabled until the type's fields are loaded, since `FiltersEditor` drops every rule whose field is not listed and a save would then erase the stored rules.

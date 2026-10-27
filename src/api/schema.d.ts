@@ -577,6 +577,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/files/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download File
+         * @description One file of the session workdir as raw bytes, streamed from the wrapper (any size).
+         *
+         *     The wrapper's status is mapped before any byte is sent, so every refusal is a JSON error.
+         */
+        get: operations["download_file_api_v1_sessions__session_id__files_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/init-scripts": {
         parameters: {
             query?: never;
@@ -927,6 +949,8 @@ export interface components {
             name: string;
             /** Size */
             size: number | null;
+            /** Target Type */
+            target_type: ("dir" | "file" | "other") | null;
             /**
              * Type
              * @enum {string}
@@ -2973,6 +2997,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileContent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_api_v1_sessions__session_id__files_download_get: {
+        parameters: {
+            query?: {
+                path?: string;
+                agent_id?: string | null;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file's raw bytes, with download headers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
             /** @description Validation Error */
