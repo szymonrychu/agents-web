@@ -155,6 +155,74 @@ describe("ChatLog", () => {
     expect(screen.queryByText("you")).toBeNull();
   });
 
+  test("user_and_assistant_rows_render_markdown", async () => {
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(1, "user_message", { origin: "user", text: "make it **bold** and `inline`" }),
+        text(2, "| name | value |\n| --- | --- |\n| a | 1 |\n\n- first item\n- second item"),
+      ],
+      has_more_before: false,
+      next_after_id: 2,
+    });
+    mount();
+    const label = await screen.findByText("you");
+    const userRow = label.closest('[role="listitem"]') as HTMLElement;
+    expect(within(userRow).getByText("bold").tagName).toBe("STRONG");
+    expect(within(userRow).getByText("inline").tagName).toBe("CODE");
+    const rows = screen.getAllByRole("listitem");
+    const answer = rows.find((r) => r.querySelector("table")) as HTMLElement;
+    expect(answer).toBeTruthy();
+    expect(within(answer).getByRole("table")).toBeTruthy();
+    expect(within(answer).getByRole("columnheader", { name: "name" })).toBeTruthy();
+    expect(within(answer).getByRole("columnheader", { name: "value" })).toBeTruthy();
+    expect(within(answer).getByText("first item").closest("li")).toBeTruthy();
+    expect(within(answer).getByText("second item").closest("li")).toBeTruthy();
+  });
+
+  test("session_and_peer_rows_render_markdown", async () => {
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(1, "user_message", { origin: "client", text: '<session-message from="beta-2" id="7">\n# Plan\n- step one\n</session-message>\nFrom the leader of session beta-2: data.' }),
+        ev(2, "peer_message_received", { from: "alpha-1", message: "*hi*" }),
+      ],
+      has_more_before: false,
+      next_after_id: 2,
+    });
+    mount();
+    const sessionLabel = await screen.findByText("session beta-2");
+    const sessionRow = sessionLabel.closest('[role="listitem"]') as HTMLElement;
+    expect(within(sessionRow).getByRole("heading", { name: "Plan" })).toBeTruthy();
+    expect(within(sessionRow).getByText("step one").closest("li")).toBeTruthy();
+    expect(sessionRow.textContent).not.toContain("session-message");
+    expect(sessionRow.textContent).not.toContain("From the leader");
+    const peerRow = screen.getByText("peer from alpha-1").closest('[role="listitem"]') as HTMLElement;
+    expect(within(peerRow).getByText("hi").tagName).toBe("EM");
+  });
+
+  test("tool_and_status_rows_stay_plain", async () => {
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(1, "thinking", { text: "think **x**" }),
+        ev(2, "tool_call", { tool_use_id: "u1", tool_name: "Bash", tool_input: { cmd: "**x**" } }),
+        ev(3, "tool_result", { tool_use_id: "u1", response: "out **x**", is_error: false }),
+        ev(4, "tool_denied", { name: "Write", reason: "denied **x**" }),
+        ev(5, "error", { message: "failed **x**" }),
+      ],
+      has_more_before: false,
+      next_after_id: 5,
+    });
+    mount();
+    await screen.findByText("Bash");
+    fireEvent.click(screen.getByRole("button", { name: /thinking/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Bash/ }));
+    expect(screen.getByText("think **x**")).toBeTruthy();
+    expect(screen.getByText(/"cmd": "\*\*x\*\*"/)).toBeTruthy();
+    expect(screen.getByText("out **x**")).toBeTruthy();
+    expect(screen.getByText("Write: denied **x**")).toBeTruthy();
+    expect(screen.getByText("failed **x**")).toBeTruthy();
+    expect(document.querySelector("strong")).toBeNull();
+  });
+
   test("loads older page on start reached", async () => {
     api.listEvents.mockResolvedValueOnce({
       events: [text(5, "newer")],
