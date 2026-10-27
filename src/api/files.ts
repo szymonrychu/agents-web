@@ -1,10 +1,12 @@
-/** Typed access to the session workdir file API (read-only). */
+/** Typed access to the session workdir file API: listing, reading, downloading and writing. */
 import { base, query, request } from './client'
 import type { components } from './schema'
 
 export type FileListing = components['schemas']['FileListing']
 export type FileEntry = components['schemas']['FileEntry']
 export type FileContent = components['schemas']['FileContent']
+export type FileStamp = components['schemas']['FileStamp']
+export type FileWritten = components['schemas']['FileWritten']
 
 const id = encodeURIComponent
 
@@ -18,3 +20,7 @@ export const readFile = (sessionId: string, path: string) =>
 
 /** Relative URL of the raw-bytes download of one workdir file, for a plain anchor (the browser saves it; nothing is buffered here). */
 export const fileDownloadUrl = (sessionId: string, path: string) => `${base()}/sessions/${id(sessionId)}/files/download${query({ path })}`
+
+/** Replaces one existing file with `content`; `expected` is the stamp the editor loaded (a changed file answers 409 `file_changed`), `null` overwrites unconditionally. */
+export const writeFile = (sessionId: string, path: string, content: string, expected: FileStamp | null) =>
+  request<FileWritten>('PUT', `/sessions/${id(sessionId)}/files/content${query({ path })}`, { content, expected })
