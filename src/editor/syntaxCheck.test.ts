@@ -72,12 +72,16 @@ EOT
 }
 `
 
+/** A flat YAML mapping of `count` unique keys, one per line. */
+const flatYaml = (count: number) => Array.from({ length: count }, (_, i) => `k${i}: ${i}\n`).join('')
+
 /** One broken sample per checked language with the line its first mark must be on. */
 const BROKEN: [LanguageId, string, number][] = [
   ['json', '{"a": 1,}', 1],
   ['json', '{"a": 1', 1],
   ['yaml', 'a:\n  b: 1\n c: 2\n', 3],
   ['yaml', 'items: [1, 2\n', 1],
+  ['yaml', 'a: 1\nb: 2\na: 3\n', 3],
   ['toml', 'a = 1\na = 2\n', 2],
   ['toml', 'a =\nb = 1\n', 1],
   ['toml', 'a = ', 1],
@@ -104,6 +108,31 @@ describe('syntaxDiagnostics', () => {
     const flow = check('yaml', 'items: [1, 2\n')
     expect(flow.diagnostics.length).toBeGreaterThanOrEqual(1)
     expect(linesOf(flow.state, flow.diagnostics)).toContain(1)
+  })
+
+  it('yaml: a duplicate key is marked on its line, per mapping, in block and flow style', () => {
+    const block = check('yaml', 'a: 1\nb: 2\na: 3\n')
+    expect(block.diagnostics).toHaveLength(1)
+    expect(linesOf(block.state, block.diagnostics)).toEqual([3])
+    const flow = check('yaml', 'top: 1\nm: {x: 1, x: 2}\n')
+    expect(flow.diagnostics).toHaveLength(1)
+    expect(linesOf(flow.state, flow.diagnostics)).toEqual([2])
+    expect(check('yaml', 'p:\n  a: 1\nq:\n  a: 2\n').diagnostics).toEqual([])
+    expect(check('yaml', 'a: 1\n---\na: 2\n').diagnostics).toEqual([])
+  })
+
+  it('yaml: a duplicate key at the end of a 2000-key mapping is marked', () => {
+    const doc = `${flatYaml(2000)}k0: again\n`
+    const { state, diagnostics } = check('yaml', doc)
+    expect(linesOf(state, diagnostics)).toEqual([2001])
+  })
+
+  it('yaml: a 50000-key flat mapping is checked well under a second, with no false error', () => {
+    const state = stateOf('yaml', flatYaml(50_000))
+    const started = performance.now()
+    const diagnostics = syntaxDiagnostics('yaml', state)
+    expect(performance.now() - started).toBeLessThan(1000)
+    expect(diagnostics).toEqual([])
   })
 
   it('toml: a valid table has no diagnostic; a duplicate key and a missing value get one error on the reported line', () => {

@@ -5,11 +5,14 @@ import { linter, lintGutter, type Diagnostic } from '@codemirror/lint'
 import type { EditorState, Extension } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { parse as parseToml, TomlError } from 'smol-toml'
-import { parseAllDocuments } from 'yaml'
+import { Composer, isScalar, Lexer, Parser, visit, type CST, type Document } from 'yaml'
 import type { LanguageId } from './languages'
 
-/** Most milliseconds one check spends finishing a Lezer parse; an unfinished parse reports nothing. */
+/** Most milliseconds one check spends finishing a Lezer or YAML parse; an unfinished parse reports nothing. */
 const PARSE_TIMEOUT_MS = 500
+
+/** YAML lexemes parsed between two deadline checks. */
+const LEXEMES_PER_CHECK = 256
 
 const jsonCheck = jsonParseLinter()
 
@@ -27,11 +30,48 @@ function errorAt(state: EditorState, from: number, to: number, message: string):
   return { from: start, to: Math.min(Math.max(to, start + 1), length), severity: 'error', message }
 }
 
+/**
+ * The documents of a YAML stream, or `null` when lexing and parsing do not finish within `PARSE_TIMEOUT_MS`.
+ * Composition, linear in the parsed tokens, runs only on a finished parse, and without the library's duplicate key
+ * check, which is quadratic in the keys of a mapping (`yamlDuplicateKeys` replaces it).
+ */
+function yamlDocuments(source: string): Document.Parsed[] | null {
+  const deadline = performance.now() + PARSE_TIMEOUT_MS
+  const parser = new Parser()
+  const tokens: CST.Token[] = []
+  let lexemes = 0
+  for (const lexeme of new Lexer().lex(source)) {
+    if (++lexemes % LEXEMES_PER_CHECK === 0 && performance.now() > deadline) return null
+    tokens.push(...parser.next(lexeme))
+  }
+  tokens.push(...parser.end())
+  return Array.from(new Composer({ uniqueKeys: false }).compose(tokens))
+}
+
+/** One error per repeated scalar key of each mapping of `doc`, in linear time; equality as the library's own check. */
+function yamlDuplicateKeys(state: EditorState, doc: Document.Parsed): Diagnostic[] {
+  const out: Diagnostic[] = []
+  visit(doc, {
+    Map: (_, map) => {
+      const seen = new Set<unknown>()
+      for (const { key } of map.items) {
+        if (!isScalar(key) || !key.range || Number.isNaN(key.value)) continue
+        if (seen.has(key.value)) out.push(errorAt(state, key.range[0], key.range[1], 'Map keys must be unique'))
+        else seen.add(key.value)
+      }
+    },
+  })
+  return out
+}
+
+/** One diagnostic per document error and per duplicate key; a `---` stream is valid, an unfinished parse reports nothing. */
 function yamlDiagnostics(state: EditorState): Diagnostic[] {
-  const docs = parseAllDocuments(state.doc.toString())
-  return (Array.isArray(docs) ? docs : [docs]).flatMap((doc) =>
-    doc.errors.map((e) => errorAt(state, e.pos[0], e.pos[1], firstLine(e.message))),
-  )
+  const docs = yamlDocuments(state.doc.toString())
+  if (!docs) return []
+  return docs.flatMap((doc) => [
+    ...doc.errors.map((e) => errorAt(state, e.pos[0], e.pos[1], firstLine(e.message))),
+    ...yamlDuplicateKeys(state, doc),
+  ])
 }
 
 function tomlDiagnostics(state: EditorState): Diagnostic[] {
@@ -69,7 +109,8 @@ function treeDiagnostics(state: EditorState): Diagnostic[] {
  * inside a non-empty document.
  *
  * @param language - the file's language (`languageFor`); python and terraform read the state's Lezer tree, so the
- *   state must carry that language's support; plain text is never checked.
+ *   state must carry that language's support; plain text is never checked. Python, terraform and yaml report nothing
+ *   when their parse does not finish within `PARSE_TIMEOUT_MS`.
  */
 export function syntaxDiagnostics(language: LanguageId, state: EditorState): Diagnostic[] {
   switch (language) {
