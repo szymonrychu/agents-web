@@ -72,7 +72,12 @@ interface Entry {
   baseText: string
   /** The current text (typing replaces it without a render unless `dirty` flips). */
   text: string
-  /** Last `mtime|size` stamp seen for the path; undefined until the first answer, then never reset by a refetch. */
+  /** A symlink: the content route stamps its target, the listing the link itself, so only listing stamps are compared. */
+  link: boolean
+  /**
+   * Last `mtime|size` stamp seen for the path; undefined until the first answer (a symlink: until the first listing
+   * stamp), then never reset by a refetch.
+   */
   seen: string | null | undefined
   /** Token of the read in flight; any other answer is stale. */
   read: number
@@ -94,7 +99,8 @@ const stores = new Map<string, Store>()
 let lastToken = 0
 const token = () => ++lastToken
 
-const stampKey = (s: { mtime: string; size: number }) => `${s.mtime}|${s.size}`
+/** The `mtime|size` stamp of a file answer, a save answer or a listing entry (a symlink entry has no size). */
+export const stampKey = (s: { mtime: string; size: number | null }) => `${s.mtime}|${s.size}`
 const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
 function newTab(path: string, kind: TabKind): FileTab {
@@ -134,7 +140,7 @@ function createStore(sessionId: string): Store {
 
   const answer = (path: string, e: Entry, file: FileContent | null, error: string | null) => {
     const stamp = file ? { mtime: file.mtime, size: file.size } : null
-    if (e.seen === undefined) e.seen = stamp ? stampKey(stamp) : null
+    if (e.seen === undefined && !e.link) e.seen = stamp ? stampKey(stamp) : null
     const body = file?.kind === 'text' ? (file.content ?? '') : ''
     e.baseText = body
     e.text = body
@@ -225,7 +231,7 @@ function createStore(sessionId: string): Store {
     open(path, type) {
       if (type === 'dir') return
       if (find(path)) return set({ ...snap, active: path })
-      entries.set(path, { baseText: '', text: '', seen: undefined, read: 0, write: 0 })
+      entries.set(path, { baseText: '', text: '', link: type === 'symlink', seen: undefined, read: 0, write: 0 })
       set({ tabs: [...snap.tabs, newTab(path, type === 'other' ? 'other' : 'loading')], active: path })
       if (type !== 'other') load(path, 'open')
     },
@@ -264,12 +270,13 @@ function createStore(sessionId: string): Store {
     observe(stampOf) {
       for (const t of snap.tabs) {
         const e = entries.get(t.path)
-        if (t.kind === 'other' || !e || e.seen === undefined) continue
+        if (t.kind === 'other' || !e || (e.seen === undefined && !e.link)) continue
         const stamp = stampOf(t.path)
         if (stamp === null || stamp === e.seen) continue
+        const first = e.seen === undefined
         e.seen = stamp
-        // a save's own new stamp is the baseline
-        if (t.baseline && stamp === stampKey(t.baseline)) continue
+        // a symlink's first listing stamp is only the reference for later ones; a save's own new stamp is the baseline
+        if (first || (!e.link && t.baseline && stamp === stampKey(t.baseline))) continue
         changed(t)
       }
     },

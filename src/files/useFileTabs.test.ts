@@ -329,16 +329,6 @@ describe('useFileTabs', () => {
     await act(async () => slow.resolve(text('a', 'zz', 'm6')))
     expect(tab(result, 'a')).toMatchObject({ dirty: true, changedOnDisk: true, docVersion: version })
 
-    // a symlink: the listing stamps the link itself, so it refetches once, then the stamp stays stable
-    act(() => result.current.open('link', 'symlink'))
-    await settle()
-    stamps.link = 'l1|7'
-    act(() => result.current.observe(stampOf))
-    await settle()
-    act(() => result.current.observe(stampOf))
-    await settle()
-    expect(reads('link')).toBe(2)
-
     // a refetch answering another kind turns the tab into it
     act(() => result.current.open('data', 'file'))
     await settle()
@@ -354,6 +344,61 @@ describe('useFileTabs', () => {
     stamps.fifo = 'f2|0'
     act(() => result.current.observe(stampOf))
     expect(reads('fifo')).toBe(0)
+  })
+
+  // The tree listing stamps a symlink entry by itself (the link's own mtime, size null), the content route stamps the
+  // target: the first listing stamp is only the baseline for later listing stamps, never a change.
+  test('symlink tab first observation is not a change', async () => {
+    serve({ clean: [text('clean', 'one', 'm1')], dirty: [text('dirty', 'one', 'm1')] })
+    const { result } = renderHook(() => useFileTabs('symlink-first-1'))
+    act(() => result.current.open('clean', 'symlink'))
+    act(() => result.current.open('dirty', 'symlink'))
+    await settle()
+    act(() => result.current.setMode('clean', 'rw'))
+    act(() => result.current.setMode('dirty', 'rw'))
+    act(() => result.current.edit('dirty', 'typed'))
+    const version = tab(result, 'clean').docVersion
+
+    const stamps: Record<string, string> = { clean: 'L1|null', dirty: 'L1|null' }
+    act(() => result.current.observe((p) => stamps[p] ?? null))
+    await settle()
+    act(() => result.current.observe((p) => stamps[p] ?? null))
+    await settle()
+    expect(reads('clean')).toBe(1)
+    expect(reads('dirty')).toBe(1)
+    expect(tab(result, 'clean')).toMatchObject({ docVersion: version, mode: 'rw' })
+    expect(tab(result, 'dirty')).toMatchObject({ changedOnDisk: false, dirty: true })
+  })
+
+  test('symlink tab later listing change is detected', async () => {
+    serve({ clean: [text('clean', 'one', 'm1'), text('clean', 'two', 'm2')], dirty: [text('dirty', 'one', 'm1')] })
+    const { result } = renderHook(() => useFileTabs('symlink-later-1'))
+    act(() => result.current.open('clean', 'symlink'))
+    act(() => result.current.open('dirty', 'symlink'))
+    await settle()
+    act(() => result.current.setMode('clean', 'rw'))
+    act(() => result.current.setMode('dirty', 'rw'))
+    act(() => result.current.edit('dirty', 'typed'))
+
+    const stamps: Record<string, string> = { clean: 'L1|null', dirty: 'L1|null' }
+    act(() => result.current.observe((p) => stamps[p] ?? null))
+    await settle()
+    expect(reads('clean')).toBe(1)
+
+    stamps.clean = 'L2|null'
+    stamps.dirty = 'L2|null'
+    const version = tab(result, 'clean').docVersion
+    act(() => result.current.observe((p) => stamps[p] ?? null))
+    await settle()
+    expect(reads('clean')).toBe(2)
+    expect(tab(result, 'clean')).toMatchObject({ doc: 'two', mode: 'rw', docVersion: version + 1 })
+    expect(reads('dirty')).toBe(1)
+    expect(tab(result, 'dirty')).toMatchObject({ changedOnDisk: true, dirty: true })
+
+    // the new listing stamp is now the one compared with: an unchanged listing triggers nothing
+    act(() => result.current.observe((p) => stamps[p] ?? null))
+    await settle()
+    expect(reads('clean')).toBe(2)
   })
 
   test('a save drops a live refetch in flight', async () => {

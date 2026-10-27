@@ -21,7 +21,7 @@ import { useLayout } from '../layout/useLayout'
 import { MONO_FONT, TOKENS } from '../theme'
 import { createFileEvents } from './fileEvents'
 import { FileTabs } from './FileTabs'
-import { useFileTabs } from './useFileTabs'
+import { stampKey, useFileTabs } from './useFileTabs'
 import { joinPath, useFileTree } from './useFileTree'
 
 const WATCHED_EVENTS = ['tool_call', 'tool_result']
@@ -110,7 +110,7 @@ export function FilesPanel({ sessionId }: { sessionId: string }) {
       const slash = path.lastIndexOf('/')
       const name = path.slice(slash + 1)
       const e = state.dirs[slash < 0 ? '' : path.slice(0, slash)]?.entries.find((x) => x.name === name)
-      return e ? `${e.mtime}|${e.size}` : null
+      return e ? stampKey(e) : null
     })
   }, [state.dirs, observe])
 
