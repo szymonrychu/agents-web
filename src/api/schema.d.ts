@@ -569,7 +569,12 @@ export interface paths {
          * @description One file of the session workdir: text, or kind binary / too_large without content.
          */
         get: operations["file_content_api_v1_sessions__session_id__files_content_get"];
-        put?: never;
+        /**
+         * Write File Content
+         * @description Replace one existing file of the session workdir with `content`; the wrapper answers
+         *     409 `file_changed` when the file no longer matches `expected` (null: overwrite).
+         */
+        put: operations["write_file_content_api_v1_sessions__session_id__files_content_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -977,6 +982,35 @@ export interface components {
              * Format: uuid
              */
             session_id: string;
+        };
+        /**
+         * FileStamp
+         * @description The `mtime` and `size` of a file as the content route (or the last save) reported them.
+         */
+        FileStamp: {
+            /** Mtime */
+            mtime: string;
+            /** Size */
+            size: number;
+        };
+        /** FileWritten */
+        FileWritten: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Mtime */
+            mtime: string;
+            /** Path */
+            path: string;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Size */
+            size: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1750,6 +1784,15 @@ export interface components {
             turn_max_seconds?: number | null;
             /** Turn Stall Seconds */
             turn_stall_seconds?: number | null;
+        };
+        /**
+         * WriteFile
+         * @description Body of a file save: both keys required; `expected: null` overwrites unconditionally.
+         */
+        WriteFile: {
+            /** Content */
+            content: string;
+            expected: components["schemas"]["FileStamp"] | null;
         };
     };
     responses: never;
@@ -2997,6 +3040,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileContent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_file_content_api_v1_sessions__session_id__files_content_put: {
+        parameters: {
+            query?: {
+                path?: string;
+                agent_id?: string | null;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WriteFile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileWritten"];
                 };
             };
             /** @description Validation Error */

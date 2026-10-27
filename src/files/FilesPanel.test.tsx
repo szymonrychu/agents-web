@@ -1,18 +1,36 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { FileContent, FileListing } from '../api/files'
 import type { StreamOptions } from '../api/stream'
+import type { CodeEditorProps } from '../editor/CodeEditor'
 import { theme } from '../theme'
 import { FilesPanel } from './FilesPanel'
+import { useFileTabs } from './useFileTabs'
 import { useFileTree } from './useFileTree'
 
-const api = vi.hoisted(() => ({ listFiles: vi.fn(), readFile: vi.fn(), fileDownloadUrl: (sessionId: string, path: string) => `/dl/${sessionId}?path=${path}` }))
+const api = vi.hoisted(() => ({ listFiles: vi.fn(), readFile: vi.fn(), writeFile: vi.fn(), fileDownloadUrl: (sessionId: string, path: string) => `/dl/${sessionId}?path=${path}` }))
 const stream = vi.hoisted(() => ({ opened: [] as { url: string; opts: StreamOptions }[], close: vi.fn() }))
+const viewport = vi.hoisted(() => ({ layout: 'desktop' as 'phone' | 'tablet' | 'desktop' }))
 
 vi.mock('../api/files', () => api)
+// jsdom has no media queries: the test chooses the layout class.
+vi.mock('../layout/useLayout', () => ({ useLayout: () => viewport.layout }))
+// CodeMirror does not run under jsdom: a stand-in that takes the real props, shows the doc, and calls back.
+vi.mock('../editor/CodeEditor', () => ({
+  default: function CodeEditorStandIn(props: CodeEditorProps) {
+    return (
+      <div data-testid="file-editor" data-readonly={String(props.readOnly)} data-path={props.path}>
+        <span>{props.doc}</span>
+        <button type="button" onClick={() => props.onChange('changed text')}>
+          stand-in change
+        </button>
+      </div>
+    )
+  },
+}))
 vi.mock('../api/stream', () => ({
   openStream: (url: string, opts: StreamOptions) => {
     stream.opened.push({ url, opts })
@@ -67,16 +85,53 @@ const emit = (type: string, data: Record<string, unknown>) =>
 
 const calls = () => api.listFiles.mock.calls.map((c) => c.slice(0, 3))
 
+/** The tabs of every session the tests use live in a module-level store: close them so no test sees another's. */
+const SESSIONS = ['c1', 'c2', 'c3']
+function closeAllTabs() {
+  for (const sessionId of SESSIONS) {
+    const { result, unmount } = renderHook(() => useFileTabs(sessionId))
+    act(() => result.current.tabs.forEach((t) => result.current.close(t.path)))
+    unmount()
+  }
+}
+
+/** jsdom has no layout: give every element a box so react-resizable-panels mounts its panels. */
+function stubGeometry() {
+  class NoopObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal('ResizeObserver', NoopObserver)
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1000)
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(500)
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 1000, height: 500, top: 0, left: 0, right: 1000, bottom: 500, x: 0, y: 0, toJSON: () => ({}) })
+}
+
 beforeEach(() => {
   api.listFiles.mockReset()
   api.readFile.mockReset()
+  api.writeFile.mockReset()
   stream.opened.length = 0
   stream.close.mockReset()
+  viewport.layout = 'desktop'
+  stubGeometry()
+  closeAllTabs()
 })
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
+
+/** The editor stand-in of the tab of `path`, from its (possibly hidden) tab panel. */
+const inTree = (name: string) => within(screen.getByRole('tree')).getByText(name)
+const panelOf = (path: string) => {
+  const panel = screen.getAllByRole('tabpanel', { hidden: true }).find((p) => p.getAttribute('aria-label') === path)
+  if (!panel) throw new Error(`no tab panel for ${path}`)
+  return panel
+}
 
 describe('FilesPanel', () => {
   test('lazy_load_on_expand', async () => {
@@ -115,7 +170,7 @@ describe('FilesPanel', () => {
     expect(screen.queryByText('Load more')).toBeNull()
   })
 
-  test('preview_kinds', async () => {
+  test('tab_kinds', async () => {
     serve({ '': listing('', [entry('a.txt'), entry('logo.png'), entry('huge.log')]) })
     api.readFile.mockImplementation(async (_c: string, path: string) => {
       if (path === 'a.txt') return content(path, { kind: 'text', content: 'hello world\nline two', size: 20, mime: 'text/plain' })
@@ -124,20 +179,106 @@ describe('FilesPanel', () => {
     })
     mount()
     fireEvent.click(await screen.findByText('a.txt'))
-    const pre = await screen.findByTestId('file-preview-text')
-    expect(pre.tagName).toBe('PRE')
-    expect(pre.textContent).toBe('hello world\nline two')
+    const editor = await within(panelOf('a.txt')).findByTestId('file-editor')
+    expect(editor.textContent).toContain('hello world\nline two')
     expect(api.readFile).toHaveBeenLastCalledWith('c1', 'a.txt')
 
     fireEvent.click(screen.getByText('logo.png'))
-    const binary = await screen.findByTestId('file-preview-note')
+    const binary = await within(panelOf('logo.png')).findByTestId('file-preview-note')
     expect(binary.textContent).toContain('2048')
     expect(binary.textContent).toContain('image/png')
-    expect(screen.queryByTestId('file-preview-text')).toBeNull()
+    expect(within(panelOf('logo.png')).queryByTestId('file-editor')).toBeNull()
 
     fireEvent.click(screen.getByText('huge.log'))
-    await waitFor(() => expect(screen.getByTestId('file-preview-note').textContent).toContain('too large to preview'))
-    expect(screen.getByTestId('file-preview-note').textContent).toContain('99999999')
+    await waitFor(() => expect(within(panelOf('huge.log')).getByTestId('file-preview-note').textContent).toContain('too large to preview'))
+    expect(within(panelOf('huge.log')).getByTestId('file-preview-note').textContent).toContain('99999999')
+
+    // Earlier tabs stay open and mounted beside the new one.
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['a.txt', 'logo.png', 'huge.log'])
+    expect(within(panelOf('a.txt')).getByTestId('file-editor').textContent).toContain('hello world')
+  })
+
+  describe('split layout', () => {
+    const open = async () => {
+      serve({ '': listing('', [entry('a.txt')]) })
+      api.readFile.mockResolvedValue(content('a.txt', { content: 'hello' }))
+      const view = mount()
+      fireEvent.click(await screen.findByText('a.txt'))
+      await screen.findByTestId('file-editor')
+      return view
+    }
+    const panels = () => screen.getByTestId('files-split').querySelectorAll<HTMLElement>('[data-panel]')
+
+    test('tree left editor right', async () => {
+      for (const [i, layout] of (['desktop', 'tablet'] as const).entries()) {
+        viewport.layout = layout
+        serve({ '': listing('', [entry('a.txt')]) })
+        api.readFile.mockResolvedValue(content('a.txt', { content: 'hello' }))
+        const view = mount(`c${i + 1}`)
+        fireEvent.click(await screen.findByText('a.txt'))
+        const editor = await screen.findByTestId('file-editor')
+        const split = screen.getByTestId('files-split')
+        expect(split.getAttribute('data-orientation'), layout).toBe('horizontal')
+        const [first, second] = panels()
+        expect(panels()).toHaveLength(2)
+        expect(first.contains(screen.getByRole('tree')), layout).toBe(true)
+        expect(second.contains(editor), layout).toBe(true)
+        expect(first.contains(editor), layout).toBe(false)
+        // The tree stays rendered while a tab is open.
+        expect(inTree('a.txt')).toBeTruthy()
+        const separator = split.querySelector<HTMLElement>('[role="separator"]')
+        expect(separator?.style.flexBasis, layout).toMatch(/^\d+px$/)
+        view.unmount()
+      }
+    })
+
+    test('phone stacks', async () => {
+      viewport.layout = 'phone'
+      await open()
+      expect(screen.getByTestId('files-split').getAttribute('data-orientation')).toBe('vertical')
+      const [above, below] = panels()
+      expect(above.contains(screen.getByRole('tree'))).toBe(true)
+      expect(below.contains(screen.getByTestId('file-editor'))).toBe(true)
+      // Both are rendered, the tree is not hidden behind the editor.
+      expect(screen.getByRole('tree').closest('[hidden]')).toBeNull()
+      expect(screen.getByRole('tabpanel', { name: 'a.txt' })).toBeTruthy()
+    })
+
+    test('tree opens tabs', async () => {
+      serve({ '': listing('', [entry('a.txt'), entry('b.txt')]) })
+      api.readFile.mockImplementation(async (_c: string, path: string) => content(path, { content: `text of ${path}` }))
+      mount()
+      expect(await screen.findByText('Open a file from the tree')).toBeTruthy()
+      const selected = () =>
+        screen
+          .getAllByRole('treeitem')
+          .filter((i) => i.getAttribute('aria-selected') === 'true')
+          .map((i) => i.textContent)
+
+      fireEvent.click(await screen.findByText('a.txt'))
+      await within(panelOf('a.txt')).findByTestId('file-editor')
+      fireEvent.click(screen.getByText('b.txt'))
+      await within(panelOf('b.txt')).findByTestId('file-editor')
+      expect(screen.queryByText('Open a file from the tree')).toBeNull()
+      expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['a.txt', 'b.txt'])
+      expect(screen.getByRole('tab', { name: /b\.txt/ }).getAttribute('aria-selected')).toBe('true')
+      expect(selected()).toEqual(['b.txt'])
+      expect(api.readFile).toHaveBeenCalledTimes(2)
+
+      // An open file focuses its tab without another read, and the selection follows.
+      fireEvent.click(inTree('a.txt'))
+      await waitFor(() => expect(screen.getByRole('tab', { name: /a\.txt/ }).getAttribute('aria-selected')).toBe('true'))
+      expect(selected()).toEqual(['a.txt'])
+      expect(api.readFile).toHaveBeenCalledTimes(2)
+
+      // Selecting a tab moves the tree selection; closing the last tabs brings the note back.
+      fireEvent.click(screen.getByRole('tab', { name: /b\.txt/ }))
+      await waitFor(() => expect(selected()).toEqual(['b.txt']))
+      fireEvent.click(screen.getByRole('button', { name: 'Close b.txt' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Close a.txt' }))
+      expect(await screen.findByText('Open a file from the tree')).toBeTruthy()
+      expect(selected()).toEqual([])
+    })
   })
 
   describe('event_driven_refresh', () => {
@@ -241,6 +382,32 @@ describe('FilesPanel', () => {
       // Another file is not the open one.
       await result(await call('Write', { file_path: '/work/b.txt' }))
       expect(api.readFile).toHaveBeenCalledTimes(2)
+    })
+
+    test('written event refresh', async () => {
+      serve({ '': listing('', [entry('a.txt'), entry('b.txt')]) })
+      let version = 0
+      api.readFile.mockImplementation(async (_c: string, path: string) => content(path, { content: `${path} v${version++}` }))
+      const readsOf = (path: string) => api.readFile.mock.calls.filter((c) => c[1] === path).length
+      mount()
+      fireEvent.click(await screen.findByText('a.txt'))
+      await within(panelOf('a.txt')).findByText('a.txt v0')
+      fireEvent.click(screen.getByText('b.txt'))
+      await within(panelOf('b.txt')).findByText('b.txt v1')
+      fireEvent.click(within(panelOf('b.txt')).getByRole('button', { name: 'RW' }))
+      fireEvent.click(within(panelOf('b.txt')).getByRole('button', { name: 'stand-in change' }))
+      await within(panelOf('b.txt')).findByText('changed text')
+
+      // The clean tab is refetched on the result only, not on the call.
+      const first = await call('Write', { file_path: '/work/a.txt' })
+      expect(readsOf('a.txt')).toBe(1)
+      await result(first)
+      expect(await within(panelOf('a.txt')).findByText('a.txt v2')).toBeTruthy()
+      // The dirty tab keeps its text and is marked changed on disk.
+      await result(await call('Edit', { file_path: '/work/b.txt' }))
+      expect(readsOf('b.txt')).toBe(1)
+      expect(within(panelOf('b.txt')).getByText('changed text')).toBeTruthy()
+      expect(await within(panelOf('b.txt')).findByText('The file changed on disk while you were editing.')).toBeTruthy()
     })
 
     test('event_driven_refresh Bash results refresh expanded directories at most once a second', async () => {
@@ -388,6 +555,33 @@ describe('FilesPanel', () => {
       await tick(3100)
       expect(api.readFile).toHaveBeenCalledTimes(3)
     })
+
+    test('live refresh keeps edits', async () => {
+      let mtime = '2026-10-23T00:00:00Z'
+      serve({ '': () => listing('', [{ ...entry('a.txt'), mtime }, { ...entry('b.txt'), mtime }]) })
+      api.readFile.mockImplementation(async (_c: string, path: string) => content(path, { content: `${path} v${api.readFile.mock.calls.length}` }))
+      const readsOf = (path: string) => api.readFile.mock.calls.filter((c) => c[1] === path).length
+      mount()
+      fireEvent.click(await screen.findByText('a.txt'))
+      await within(panelOf('a.txt')).findByText('a.txt v1')
+      fireEvent.click(screen.getByText('b.txt'))
+      await within(panelOf('b.txt')).findByText('b.txt v2')
+      // b.txt goes RW and gets an unsaved edit.
+      fireEvent.click(within(panelOf('b.txt')).getByRole('button', { name: 'RW' }))
+      fireEvent.click(within(panelOf('b.txt')).getByRole('button', { name: 'stand-in change' }))
+      await within(panelOf('b.txt')).findByText('changed text')
+
+      mtime = '2026-10-24T00:00:00Z'
+      await tick(3100)
+      // The clean RO tab is refetched.
+      await within(panelOf('a.txt')).findByText(/a\.txt v\d/)
+      await waitFor(() => expect(readsOf('a.txt')).toBe(2))
+      // The dirty RW tab is not: its text stays and it says the file changed on disk.
+      expect(readsOf('b.txt')).toBe(1)
+      expect(within(panelOf('b.txt')).getByText('changed text')).toBeTruthy()
+      expect(within(panelOf('b.txt')).getByText('The file changed on disk while you were editing.')).toBeTruthy()
+      expect(within(panelOf('a.txt')).queryByText('The file changed on disk while you were editing.')).toBeNull()
+    })
   })
 
   test('symlink_previews_and_escape_error', async () => {
@@ -398,16 +592,18 @@ describe('FilesPanel', () => {
     })
     mount()
     fireEvent.click(await screen.findByText('link.txt'))
-    expect((await screen.findByTestId('file-preview-text')).textContent).toBe('target text')
+    expect((await within(panelOf('link.txt')).findByTestId('file-editor')).textContent).toContain('target text')
     expect(api.readFile).toHaveBeenCalledWith('c1', 'link.txt')
     // A symlink is a leaf: it is never listed as a directory.
     expect(calls()).toEqual([['c1', '']])
 
     fireEvent.click(screen.getByText('escape'))
-    const err = await screen.findByTestId('file-preview-error')
+    const err = await within(panelOf('escape')).findByTestId('file-preview-error')
     expect(err.textContent).toContain('invalid_path')
     expect(err.textContent).toContain('escapes the workdir')
-    expect(screen.queryByTestId('file-preview-text')).toBeNull()
+    // The link's tab stays open beside the error tab.
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['link.txt', 'escape'])
+    expect(within(panelOf('link.txt')).getByTestId('file-editor').textContent).toContain('target text')
   })
 
   test('download_icon_only_on_file_rows', async () => {
@@ -457,12 +653,12 @@ describe('FilesPanel', () => {
     fireEvent.click(link)
     await act(async () => {})
     expect(api.readFile).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('file-preview-text')).toBeNull()
+    expect(screen.queryByTestId('file-editor')).toBeNull()
     expect(screen.queryByText('loading')).toBeNull()
     expect(item.getAttribute('aria-selected')).not.toBe('true')
     // A click on the name still opens the preview.
     fireEvent.click(screen.getByText('a.txt'))
-    expect((await screen.findByTestId('file-preview-text')).textContent).toBe('hello')
+    expect((await screen.findByTestId('file-editor')).textContent).toContain('hello')
     expect(api.readFile).toHaveBeenCalledTimes(1)
   })
 
@@ -521,13 +717,21 @@ describe('FilesPanel', () => {
     api.readFile.mockResolvedValue(content('a.txt', { content: 'one' }))
     const view = mount()
     fireEvent.click(await screen.findByText('a.txt'))
-    await screen.findByTestId('file-preview-text')
-    view.rerender(
+    await screen.findByTestId('file-editor')
+    const as = (sessionId: string) => (
       <ThemeProvider theme={theme}>
-        <FilesPanel sessionId="c2" />
-      </ThemeProvider>,
+        <FilesPanel sessionId={sessionId} />
+      </ThemeProvider>
     )
-    await waitFor(() => expect(screen.queryByTestId('file-preview-text')).toBeNull())
+    view.rerender(as('c2'))
+    await waitFor(() => expect(screen.queryByTestId('file-editor')).toBeNull())
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    expect(await screen.findByText('Open a file from the tree')).toBeTruthy()
+    // Returning to the first session shows its tab again, without a read.
+    view.rerender(as('c1'))
+    expect((await screen.findByTestId('file-editor')).textContent).toContain('one')
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['a.txt'])
+    expect(api.readFile).toHaveBeenCalledTimes(1)
   })
 })
 

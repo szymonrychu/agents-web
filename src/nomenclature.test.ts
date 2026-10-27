@@ -12,8 +12,11 @@ const HISTORY = ['MEMORY.md', 'CHANGELOG.md']
 
 const GUARDED = ['.']
 
-/** Kubernetes, CNPG or kind phrases, never the orchestrator's unit. */
-const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info']
+/**
+ * Two classes of third-party phrases, never the orchestrator's unit: Kubernetes, CNPG or kind phrases, and npm package
+ * names (find-cluster-break, the dependency of @codemirror/state, written into package-lock.json).
+ */
+const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info', 'find-cluster-break']
 
 /** Old names exactly as the retirement tests that pin them as gone spell them. */
 const RETIRED = [
@@ -67,6 +70,17 @@ describe('nomenclature', () => {
     expect(offends(`a ${unit}.local ${unit.toUpperCase()}`)).toBe(true)
     expect(offends(`expect(client).not.toContain('patch${unit[0].toUpperCase()}${unit.slice(1)}')`)).toBe(false)
     expect(offends(`patch${unit[0].toUpperCase()}${unit.slice(1)}(id)`)).toBe(true)
+  })
+
+  test('the npm package name find-<unit>-break is allowed in its lockfile shapes, every other spelling still offends', () => {
+    const pkg = `find-${unit}-break`
+    expect(offends(`"node_modules/@marijn/${pkg}": {`)).toBe(false)
+    expect(offends(`"resolved": "https://registry.npmjs.org/@marijn/${pkg}/-/${pkg}-1.0.0.tgz",`)).toBe(false)
+    expect(offends(`"@marijn/${pkg}": "^1.0.0"`)).toBe(false)
+    expect(offends(`find-${unit}`)).toBe(true)
+    expect(offends(`${unit}-break`)).toBe(true)
+    expect(offends(`my-${unit}-break`)).toBe(true)
+    expect(offends(`${pkg} and a ${unit}`)).toBe(true)
   })
 
   test('the retired unit directory is untracked', () => {

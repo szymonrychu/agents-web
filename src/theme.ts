@@ -69,6 +69,21 @@ export const terminalTheme = {
   brightWhite: '#e8eaed',
 } as const
 
+/** Colours of highlighted code in the file editor: the terminal's hues, one per token class. */
+export const syntaxPalette = {
+  keyword: terminalTheme.magenta,
+  string: terminalTheme.green,
+  number: terminalTheme.yellow,
+  comment: TOKENS.textSecondary,
+  property: terminalTheme.blue,
+  type: terminalTheme.cyan,
+  function: terminalTheme.brightBlue,
+  operator: terminalTheme.brightCyan,
+  punctuation: terminalTheme.white,
+  atom: terminalTheme.brightMagenta,
+  invalid: terminalTheme.red,
+} as const
+
 const { regular, medium } = TOKENS.fontWeights
 const { xs, sm, md, lg, xl } = TOKENS.fontSizes
 const COARSE = '@media (pointer: coarse)'

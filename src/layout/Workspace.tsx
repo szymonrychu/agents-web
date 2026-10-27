@@ -32,9 +32,9 @@ const STRIP_WIDTH = 40
 const layoutKey = (sessionId: string) => `layout:${sessionId}`
 
 /** The library's inline `flex-basis: auto` beats a stylesheet flex shorthand, so the size is also passed as an inline style. */
-const DIVIDER_WIDTH = 2
+export const DIVIDER_WIDTH = 2
 
-const Divider = styled(Separator)(({ theme }) => ({
+export const Divider = styled(Separator)(({ theme }) => ({
   flex: `0 0 ${DIVIDER_WIDTH}px`,
   backgroundColor: TOKENS.borderStrong,
   '&[data-separator="hover"], &[data-separator="active"], &:focus-visible': { backgroundColor: theme.palette.primary.main, outline: 'none' },
