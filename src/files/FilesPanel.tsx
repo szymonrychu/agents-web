@@ -1,16 +1,18 @@
 /** Filesystem panel: the session's shared workdir as a lazily loaded tree with a read-only file preview. */
+import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import Folder from '@mui/icons-material/Folder'
 import FolderOpen from '@mui/icons-material/FolderOpen'
 import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined'
 import Link from '@mui/icons-material/Link'
 import Box from '@mui/material/Box'
+import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView'
 import { TreeItem } from '@mui/x-tree-view/TreeItem'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { eventStreamUrl } from '../api/client'
-import { readFile } from '../api/files'
+import { fileDownloadUrl, readFile } from '../api/files'
 import type { FileContent, FileEntry } from '../api/files'
 import { openStream } from '../api/stream'
 import { MONO_FONT, TOKENS } from '../theme'
@@ -36,16 +38,30 @@ type Preview = PreviewState & { path: string; sessionId: string }
 const noteSx = { fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' } as const
 const preSx = { m: 0, fontFamily: MONO_FONT, fontSize: `${TOKENS.fontSizes.sm / 16}rem`, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: 'text.primary' } as const
 
-function Row({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+/** One tree row: icon, the name (it grows, so a trailing action sits on the right edge), then an optional action. */
+function Row({ icon, action, children }: { icon?: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
       {icon}
-      <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Box component="span" sx={{ flexGrow: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {children}
       </Box>
+      {action}
     </Box>
   )
 }
+
+/** A plain anchor to the download route: the browser saves the file, so no click handler may open the preview or select the row. */
+function DownloadLink({ sessionId, path, name }: { sessionId: string; path: string; name: string }) {
+  return (
+    <IconButton component="a" href={fileDownloadUrl(sessionId, path)} download={name} size="small" aria-label={`Download ${name}`} onClick={(e) => e.stopPropagation()}>
+      <FileDownloadOutlined fontSize="small" />
+    </IconButton>
+  )
+}
+
+/** A file, or a symlink that resolves to a file inside the workdir, can be downloaded. */
+const downloadable = (e: FileEntry) => e.type === 'file' || (e.type === 'symlink' && e.target_type === 'file')
 
 function PreviewBody({ preview }: { preview: PreviewState }) {
   switch (preview.state) {
@@ -199,7 +215,8 @@ export function FilesPanel({ sessionId }: { sessionId: string }) {
         )
       }
       const icon = e.type === 'symlink' ? <Link fontSize="small" /> : <InsertDriveFileOutlined fontSize="small" />
-      return <TreeItem key={entryId(path)} itemId={entryId(path)} label={<Row icon={icon}>{e.name}</Row>} />
+      const action = downloadable(e) ? <DownloadLink sessionId={sessionId} path={path} name={e.name} /> : undefined
+      return <TreeItem key={entryId(path)} itemId={entryId(path)} label={<Row icon={icon} action={action}>{e.name}</Row>} />
     })
     if (d.error && dir !== '') {
       rows.push(
