@@ -1,4 +1,4 @@
-/** Filesystem panel: the session's shared workdir as a lazily loaded tree with a read-only file preview. */
+/** Filesystem panel: the session's shared workdir as a lazily loaded tree on the left and the open files as tabs on the right (a resizable split, stacked on a phone). */
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import Folder from '@mui/icons-material/Folder'
 import FolderOpen from '@mui/icons-material/FolderOpen'
@@ -9,15 +9,20 @@ import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView'
 import { TreeItem } from '@mui/x-tree-view/TreeItem'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
+import { Group, Panel } from 'react-resizable-panels'
 import { eventStreamUrl } from '../api/client'
-import { fileDownloadUrl, readFile } from '../api/files'
-import type { FileContent, FileEntry } from '../api/files'
+import { fileDownloadUrl } from '../api/files'
+import type { FileEntry } from '../api/files'
 import { openStream } from '../api/stream'
+import { Divider, DIVIDER_WIDTH } from '../layout/Workspace'
+import { useLayout } from '../layout/useLayout'
 import { MONO_FONT, TOKENS } from '../theme'
 import { createFileEvents } from './fileEvents'
-import { errorText, joinPath, useFileTree } from './useFileTree'
+import { FileTabs } from './FileTabs'
+import { useFileTabs } from './useFileTabs'
+import { joinPath, useFileTree } from './useFileTree'
 
 const WATCHED_EVENTS = ['tool_call', 'tool_result']
 const POLL_MS = 3000
@@ -28,15 +33,7 @@ const loadingId = (dir: string) => `loading:${dir}`
 const emptyId = (dir: string) => `empty:${dir}`
 const errorId = (dir: string) => `error:${dir}`
 
-type PreviewState =
-  | { state: 'loading' }
-  | { state: 'loaded'; file: FileContent }
-  | { state: 'error'; message: string }
-  | { state: 'other' }
-type Preview = PreviewState & { path: string; sessionId: string }
-
 const noteSx = { fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' } as const
-const preSx = { m: 0, fontFamily: MONO_FONT, fontSize: `${TOKENS.fontSizes.sm / 16}rem`, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: 'text.primary' } as const
 
 /** One tree row: icon, the name (it grows, so a trailing action sits on the right edge), then an optional action. */
 function Row({ icon, action, children }: { icon?: ReactNode; action?: ReactNode; children: ReactNode }) {
@@ -63,87 +60,28 @@ function DownloadLink({ sessionId, path, name }: { sessionId: string; path: stri
 /** A file, or a symlink that resolves to a file inside the workdir, can be downloaded. */
 const downloadable = (e: FileEntry) => e.type === 'file' || (e.type === 'symlink' && e.target_type === 'file')
 
-function PreviewBody({ preview }: { preview: PreviewState }) {
-  switch (preview.state) {
-    case 'loading':
-      return <Typography sx={noteSx}>loading</Typography>
-    case 'error':
-      return (
-        <Box role="alert" data-testid="file-preview-error" sx={{ ...noteSx, color: 'error.main' }}>
-          {preview.message}
-        </Box>
-      )
-    case 'other':
-      return (
-        <Typography data-testid="file-preview-note" sx={noteSx}>
-          Type: other. No preview.
-        </Typography>
-      )
-    case 'loaded': {
-      const { file } = preview
-      if (file.kind === 'text') {
-        return (
-          <Box component="pre" data-testid="file-preview-text" sx={preSx}>
-            {file.content ?? ''}
-          </Box>
-        )
-      }
-      const note = file.kind === 'binary' ? `Binary file, ${file.size} bytes, ${file.mime ?? 'unknown type'}` : `${file.size} bytes, too large to preview`
-      return (
-        <Typography data-testid="file-preview-note" sx={noteSx}>
-          {note}
-        </Typography>
-      )
-    }
-  }
-}
-
 export function FilesPanel({ sessionId }: { sessionId: string }) {
   const tree = useFileTree(sessionId)
   const { state, setExpanded, loadMore, refresh, refreshExpanded, pollExpanded, isLoaded, root } = tree
-  const [stored, setPreview] = useState<Preview | null>(null)
-  // A preview belongs to the session it was opened in: a session switch drops it.
-  const preview = stored?.sessionId === sessionId ? stored : null
-  const previewToken = useRef(0)
-  const previewRef = useRef(preview)
-  useEffect(() => {
-    previewRef.current = preview
-  })
+  const tabs = useFileTabs(sessionId)
+  const { open, observe, written } = tabs
+  const phone = useLayout() === 'phone'
 
-  const openFile = useCallback(
-    (path: string) => {
-      const token = ++previewToken.current
-      setPreview((p) => (p?.sessionId === sessionId && p.path === path && p.state === 'loaded' ? p : { path, sessionId, state: 'loading' }))
-      readFile(sessionId, path).then(
-        (file) => {
-          if (previewToken.current === token) setPreview({ path, sessionId, state: 'loaded', file })
-        },
-        (e: unknown) => {
-          if (previewToken.current === token) setPreview({ path, sessionId, state: 'error', message: errorText(e) })
-        },
-      )
-    },
-    [sessionId],
-  )
-
-  // Live tail of tool events (no history replay): a finished write refreshes its parent directory (and refetches an open preview of the file), a shell result the expanded tree.
+  // Live tail of tool events (no history replay): a finished write refreshes its parent directory (and applies the live refresh rules to an open tab of the file), a shell result the expanded tree.
   useEffect(() => {
     const events = createFileEvents({
       root,
       isLoaded,
       refresh,
       refreshExpanded,
-      written: (path) => {
-        const p = previewRef.current
-        if (p && p.path === path && p.state !== 'other') openFile(path)
-      },
+      written,
     })
     const stream = openStream(eventStreamUrl(sessionId), { eventNames: WATCHED_EVENTS, onEvent: (data) => events.handle(data), onOpen: pollExpanded })
     return () => {
       stream.close()
       events.dispose()
     }
-  }, [sessionId, root, isLoaded, refresh, refreshExpanded, pollExpanded, openFile])
+  }, [sessionId, root, isLoaded, refresh, refreshExpanded, pollExpanded, written])
 
   // Safety net for writers the hooks never see (terminal shells, check jobs) and for a tree that loaded in error: poll while the tab is visible, plus one pass on return.
   useEffect(() => {
@@ -166,21 +104,15 @@ export function FilesPanel({ sessionId }: { sessionId: string }) {
     }
   }, [pollExpanded])
 
-  // The open file changed on disk (mtime or size in its parent listing): refetch the preview.
-  const seen = useRef<{ path: string; stamp: string | null } | null>(null)
+  // A file open in a tab changed on disk (mtime or size in its parent listing): the tabs decide whether to refetch it or only say so.
   useEffect(() => {
-    if (!preview || preview.state === 'other') {
-      seen.current = null
-      return
-    }
-    const slash = preview.path.lastIndexOf('/')
-    const name = preview.path.slice(slash + 1)
-    const e = state.dirs[slash < 0 ? '' : preview.path.slice(0, slash)]?.entries.find((x) => x.name === name)
-    const stamp = e ? `${e.mtime}|${e.size}` : null
-    const prev = seen.current
-    seen.current = { path: preview.path, stamp: stamp ?? (prev?.path === preview.path ? prev.stamp : null) }
-    if (prev?.path === preview.path && stamp !== null && prev.stamp !== null && stamp !== prev.stamp) openFile(preview.path)
-  }, [state.dirs, preview, openFile])
+    observe((path) => {
+      const slash = path.lastIndexOf('/')
+      const name = path.slice(slash + 1)
+      const e = state.dirs[slash < 0 ? '' : path.slice(0, slash)]?.entries.find((x) => x.name === name)
+      return e ? `${e.mtime}|${e.size}` : null
+    })
+  }, [state.dirs, observe])
 
   const types = useMemo(() => {
     const out = new Map<string, FileEntry['type']>()
@@ -193,11 +125,7 @@ export function FilesPanel({ sessionId }: { sessionId: string }) {
     if (!id.startsWith('e:')) return
     const path = id.slice(2)
     const type = types.get(path)
-    if (type === 'file' || type === 'symlink') openFile(path)
-    else if (type === 'other') {
-      previewToken.current += 1
-      setPreview({ path, sessionId, state: 'other' })
-    }
+    if (type) open(path, type)
   }
 
   const children = (dir: string): ReactNode[] => {
@@ -229,38 +157,39 @@ export function FilesPanel({ sessionId }: { sessionId: string }) {
   }
 
   const top = state.dirs['']
+  const orientation = phone ? 'vertical' : 'horizontal'
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
-        <Typography noWrap sx={{ flexGrow: 1, fontFamily: MONO_FONT, ...noteSx }}>
-          {state.root ?? ''}
-        </Typography>
-      </Box>
-      {top?.error && (
-        <Box role="alert" sx={{ ...noteSx, color: 'error.main', px: 1 }}>
-          {top.error}
+    <Group key={orientation} data-testid="files-split" data-orientation={orientation} orientation={orientation} style={{ height: '100%' }}>
+      <Panel id="files-tree" minSize="15" defaultSize={phone ? '40' : '30'}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
+            <Typography noWrap sx={{ flexGrow: 1, fontFamily: MONO_FONT, ...noteSx }}>
+              {state.root ?? ''}
+            </Typography>
+          </Box>
+          {top?.error && (
+            <Box role="alert" sx={{ ...noteSx, color: 'error.main', px: 1 }}>
+              {top.error}
+            </Box>
+          )}
+          {state.missing && <Typography sx={{ ...noteSx, px: 1 }}>workdir not created yet</Typography>}
+          <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'auto' }}>
+            <SimpleTreeView
+              aria-label="Files"
+              expandedItems={state.expanded.map(entryId)}
+              selectedItems={tabs.active ? entryId(tabs.active) : null}
+              onExpandedItemsChange={(_e, ids) => setExpanded(ids.filter((i) => i.startsWith('e:')).map((i) => i.slice(2)))}
+              onItemClick={onItemClick}
+            >
+              {top ? children('') : null}
+            </SimpleTreeView>
+          </Box>
         </Box>
-      )}
-      {state.missing && <Typography sx={{ ...noteSx, px: 1 }}>workdir not created yet</Typography>}
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'auto' }}>
-        <SimpleTreeView
-          aria-label="Files"
-          expandedItems={state.expanded.map(entryId)}
-          selectedItems={preview ? entryId(preview.path) : null}
-          onExpandedItemsChange={(_e, ids) => setExpanded(ids.filter((i) => i.startsWith('e:')).map((i) => i.slice(2)))}
-          onItemClick={onItemClick}
-        >
-          {top ? children('') : null}
-        </SimpleTreeView>
-      </Box>
-      {preview && (
-        <Box sx={{ maxHeight: '50%', overflow: 'auto', borderTop: `${TOKENS.borderWidth}px solid ${TOKENS.border}`, p: 1 }}>
-          <Typography noWrap sx={{ ...noteSx, fontFamily: MONO_FONT, pb: 1 }}>
-            {preview.path}
-          </Typography>
-          <PreviewBody preview={preview} />
-        </Box>
-      )}
-    </Box>
+      </Panel>
+      <Divider style={{ flexBasis: DIVIDER_WIDTH }} />
+      <Panel id="files-editor" minSize="20" defaultSize={phone ? '60' : '70'}>
+        {tabs.tabs.length === 0 ? <Typography sx={{ ...noteSx, p: 2 }}>Open a file from the tree</Typography> : <FileTabs tabs={tabs} />}
+      </Panel>
+    </Group>
   )
 }
