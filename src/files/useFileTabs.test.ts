@@ -356,6 +356,43 @@ describe('useFileTabs', () => {
     expect(reads('fifo')).toBe(0)
   })
 
+  test('a save drops a live refetch in flight', async () => {
+    serve({ a: [text('a', 'one', 'm1')] })
+    const { result } = renderHook(() => useFileTabs('save-drops-read-1'))
+    act(() => result.current.open('a', 'file'))
+    await settle()
+    act(() => result.current.setMode('a', 'rw'))
+
+    // a clean RW tab starts a live refetch; the user types and saves before it answers
+    const slow = deferred<FileContent>()
+    api.readFile.mockReturnValueOnce(slow.promise)
+    act(() => result.current.written('a'))
+    expect(reads('a')).toBe(2)
+    act(() => result.current.edit('a', 'two'))
+    api.writeFile.mockResolvedValueOnce(saved('a', 'm2', 3))
+    act(() => result.current.save('a'))
+    await settle()
+    const version = tab(result, 'a').docVersion
+    expect(tab(result, 'a')).toMatchObject({ doc: 'two', dirty: false, saving: false, baseline: { mtime: 'm2', size: 3 } })
+
+    // the late answer carries the pre-save disk text and stamp: it is stale and dropped
+    await act(async () => slow.resolve(text('a', 'one', 'm1')))
+    expect(tab(result, 'a')).toMatchObject({
+      doc: 'two',
+      docVersion: version,
+      dirty: false,
+      changedOnDisk: false,
+      baseline: { mtime: 'm2', size: 3 },
+    })
+
+    // the next save expects the saved stamp, not the stale one
+    act(() => result.current.edit('a', 'three'))
+    api.writeFile.mockResolvedValueOnce(saved('a', 'm3', 5))
+    act(() => result.current.save('a'))
+    await settle()
+    expect(api.writeFile).toHaveBeenLastCalledWith('save-drops-read-1', 'a', 'three', { mtime: 'm2', size: 3 })
+  })
+
   test('written events', async () => {
     serve({ a: [text('a', 'one', 'm1'), text('a', 'two', 'm2')] })
     const { result } = renderHook(() => useFileTabs('written-1'))

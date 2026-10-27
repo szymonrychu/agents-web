@@ -189,6 +189,8 @@ function createStore(sessionId: string): Store {
     const sent = e.text
     const mine = token()
     e.write = mine
+    // a read in flight answers with the text from before this save: drop it
+    e.read = token()
     patch(path, (x) => ({ ...x, saving: true, saveError: null }))
     const current = () => {
       const cur = entries.get(path)
