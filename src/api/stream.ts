@@ -90,7 +90,7 @@ export type StatusEvent =
   | { type: 'session_status'; session: SessionView }
   | { type: 'agent_status'; sessionId: string; agent: AgentView }
   | { type: 'leader_changed'; sessionId: string; agentId: string; epoch: number; reason: string | null }
-  | { type: 'message_status'; sessionId: string; queued: number; failed: number }
+  | { type: 'message_status'; sessionId: string; queued: number; failed: number; oldestQueuedAt: string | null }
   | { type: 'session_removed'; sessionId: string };
 
 /** Maps one status stream frame to its event; null for frames the app ignores. */
@@ -107,7 +107,13 @@ export function statusEventFromFrame(type: string, data: unknown): StatusEvent |
     case 'leader_changed':
       return { type: 'leader_changed', sessionId: d.session_id as string, agentId: d.agent_id as string, epoch: d.epoch as number, reason: (d.reason as string | null | undefined) ?? null };
     case 'message_status':
-      return { type: 'message_status', sessionId: d.session_id as string, queued: d.queued as number, failed: d.failed as number };
+      return {
+        type: 'message_status',
+        sessionId: d.session_id as string,
+        queued: d.queued as number,
+        failed: d.failed as number,
+        oldestQueuedAt: (d.oldest_queued_at as string | null | undefined) ?? null,
+      };
     case 'session_removed':
       return { type: 'session_removed', sessionId: d.session_id as string };
     default:

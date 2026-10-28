@@ -5,6 +5,9 @@ on:
     tags: ["v*"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   web:
     runs-on: ubuntu-latest
@@ -21,6 +24,7 @@ jobs:
       - run: npm run check:api
 
   images:
+    needs: [web]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -61,7 +65,7 @@ jobs:
       - run: mise run test:chart
 
   chart-publish:
-    needs: [chart, images]
+    needs: [chart, images, web]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
@@ -99,7 +103,7 @@ jobs:
         run: helm push "agents-web-$VERSION.tgz" "$CHART_REPO"
 
   chart-publish-tag:
-    needs: [chart]
+    needs: [chart, images, web]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     env:

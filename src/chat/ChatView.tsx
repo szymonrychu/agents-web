@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { AgentView, SessionView } from '../api/client'
+import { AgentUnavailableBanner } from './AgentUnavailableBanner'
 import { AgentsStrip } from './AgentsStrip'
 import { ChatLog } from './ChatLog'
 import { Composer } from './Composer'
@@ -59,6 +60,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
       ) : (
         <ChatLog key={`${session.id}:${selected.join(',')}`} items={items} hasMoreBefore={chat.hasMoreBefore} loadingOlder={chat.loadingOlder} onLoadOlder={chat.loadOlder} />
       )}
+      <AgentUnavailableBanner session={session} agents={agents} />
       <QueueStrip sessionId={session.id} />
       <Composer key={session.id} sessionId={session.id} agents={agents} deleting={session.desired === 'deleting'} />
     </Box>

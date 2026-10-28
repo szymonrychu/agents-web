@@ -22,7 +22,7 @@ vi.mock('./NewSessionDialog', () => ({
 
 const session = (id: string, slug: string, closes_at: string | null, preset_name: string | null = 'Default'): SessionView =>
   ({
-    closes_at, created_at: '2026-01-01T10:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, preset_name, slug, spec: {}, status: {},
+    backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, closes_at, created_at: '2026-01-01T10:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, preset_name, slug, spec: {}, status: {},
     summary: { auto_compact_pct: 80, context_pct_max: 10, failed: 0, queued: 0, ready: 2, replicas: 3, state: 'working' },
   }) as unknown as SessionView
 

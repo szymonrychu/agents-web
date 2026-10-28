@@ -146,15 +146,28 @@ describe('status stream', () => {
       epoch: 2,
       reason: null,
     });
-    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 1, failed: 0 })).toEqual({
+    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 1, failed: 0, oldest_queued_at: '2026-01-01T00:00:00Z' })).toEqual({
       type: 'message_status',
       sessionId: 's1',
       queued: 1,
       failed: 0,
+      oldestQueuedAt: '2026-01-01T00:00:00Z',
     });
     expect(statusEventFromFrame('cluster_status', { cluster: { id: 's1' } })).toBeNull();
     expect(statusEventFromFrame('cluster_removed', { cluster_id: 's1' })).toBeNull();
     expect(statusEventFromFrame('session_status', null)).toBeNull();
+  });
+
+  it('message_status carries oldest_queued_at and a missing one is null', () => {
+    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 2, failed: 1, oldest_queued_at: '2026-01-01T00:05:00Z', messages: [] })).toEqual({
+      type: 'message_status',
+      sessionId: 's1',
+      queued: 2,
+      failed: 1,
+      oldestQueuedAt: '2026-01-01T00:05:00Z',
+    });
+    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 0, failed: 0, oldest_queued_at: null })).toMatchObject({ oldestQueuedAt: null });
+    expect(statusEventFromFrame('message_status', { session_id: 's1', queued: 0, failed: 0 })).toMatchObject({ oldestQueuedAt: null });
   });
 
   it('leader_changed carries the reason and a missing reason is null', () => {

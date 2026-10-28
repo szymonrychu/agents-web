@@ -68,7 +68,7 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
     case 'message_status': {
       const prev = state.sessions[action.sessionId]
       if (!prev) return state
-      const summary = { ...prev.session.summary, queued: action.queued, failed: action.failed }
+      const summary = { ...prev.session.summary, queued: action.queued, failed: action.failed, oldest_queued_at: action.oldestQueuedAt }
       return { ...state, sessions: { ...state.sessions, [action.sessionId]: { ...prev, session: { ...prev.session, summary } } } }
     }
     case 'session_removed': {

@@ -768,6 +768,19 @@ export interface components {
             /** Min Context Tokens */
             min_context_tokens?: number | null;
         };
+        /**
+         * BackupRun
+         * @description A finished transcripts save: when it finished and the archive size.
+         */
+        BackupRun: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+        };
         /** CheckAccepted */
         CheckAccepted: {
             /** Check Id */
@@ -1475,6 +1488,22 @@ export interface components {
              */
             session_id: string;
         };
+        /**
+         * SessionBackup
+         * @description What a discard would save now; each flag is true only when that save would really run.
+         *
+         *     `reason` is null when both run, else `no_session_cache` (no `spec.cache`),
+         *     `cache_not_configured` (no S3 cache configured) or the save's skip reason, the workdir's first.
+         */
+        SessionBackup: {
+            last_transcripts_backup: components["schemas"]["BackupRun"] | null;
+            /** Reason */
+            reason: string | null;
+            /** Transcripts */
+            transcripts: boolean;
+            /** Workdir */
+            workdir: boolean;
+        };
         /** SessionMessageIn */
         SessionMessageIn: {
             /** Text */
@@ -1582,6 +1611,8 @@ export interface components {
             context_pct_max: number | null;
             /** Failed */
             failed: number;
+            /** Oldest Queued At */
+            oldest_queued_at: string | null;
             /** Queued */
             queued: number;
             /** Ready */
@@ -1596,6 +1627,7 @@ export interface components {
         };
         /** SessionView */
         SessionView: {
+            backup: components["schemas"]["SessionBackup"];
             /** Closes At */
             closes_at: string | null;
             /**
@@ -1788,6 +1820,9 @@ export interface components {
         /**
          * WriteFile
          * @description Body of a file save: both keys required; `expected: null` overwrites unconditionally.
+         *
+         *     A body over 6 MiB + 16 KiB (1 MiB of content, every byte escaped) is 413 `too_large`
+         *     before it is read in full.
          */
         WriteFile: {
             /** Content */
@@ -3079,6 +3114,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FileWritten"];
                 };
+            };
+            /** @description The request body is over the limit of a file write */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
