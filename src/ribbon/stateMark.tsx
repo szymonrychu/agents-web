@@ -13,8 +13,9 @@ const COLOUR: Record<MarkState, string> = {
   deleting: TOKENS.textDisabled,
 }
 
-/** Maps a wrapper-reported agent state to a mark: a pod that is not ready is booting. */
+/** Maps a wrapper-reported agent state to a mark: a dead agent is an error, otherwise a pod that is not ready is booting. */
 export function agentMarkState(state: string, ready: boolean): MarkState {
+  if (state === 'dead') return 'error'
   if (!ready) return 'booting'
   if (state === 'idle') return 'waiting'
   if (state === 'busy' || state === 'working') return 'working'

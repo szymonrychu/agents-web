@@ -4,6 +4,7 @@ Lessons that outlive a session. Newest first.
 
 ## 2026-10-28
 
+- deploy-safe-agent-sessions D8, Q2 (web-agent-unavailable-banner): `AgentUnavailableBanner` (above `QueueStrip` in `ChatView`) shows "Agent unavailable: N messages queued, oldest <age> ago" when `summary.queued > 0` and either no agent is `ready` with a state other than `dead`, or `summary.oldest_queued_at` is more than 10 minutes old (strictly, re-evaluated on the `useNow` one second clock). Why: a queue behind a busy leader is normal and stays quiet, a stuck busy agent still surfaces. `agentMarkState` checks `dead` before `ready`, so a dead agent is `error` whether or not its pod is ready (a pod can be ready while its wrapper session is gone). The `message_status` frame's `oldest_queued_at` (event field `oldestQueuedAt`, absent becomes null) is written into `summary.oldest_queued_at` by `sessionsReducer`, so the age follows the stream without a refetch.
 - deploy-safe-agent-sessions D9 (web-ci-publish-gate): `images` needs `web` and `chart-publish` needs `chart`, `images` and `web`, so a red lint, test, build or API check on main never pushes the image or publishes the chart. The image build and smoke steps are not gated by an `if` (they run on pull requests too, after `web`); only login and push stay main-only. `chart-publish-tag` is unchanged: it requires an image a passing main build pushed, and the tag job only needs `chart`.
 
 ## 2026-10-27
