@@ -21,6 +21,7 @@ jobs:
       - run: npm run check:api
 
   images:
+    needs: [web]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -61,7 +62,7 @@ jobs:
       - run: mise run test:chart
 
   chart-publish:
-    needs: [chart, images]
+    needs: [chart, images, web]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:

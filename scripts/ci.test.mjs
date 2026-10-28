@@ -55,9 +55,13 @@ test("chart job: mise lint and test", () => {
   assert.ok(r.includes("mise run test:chart"));
 });
 
-test("chart-publish: main only, needs chart and images, versions and pushes", () => {
+test("images job needs web", () => {
+  assert.deepEqual([wf.jobs.images.needs].flat(), ["web"]);
+});
+
+test("chart-publish: main only, needs chart, images and web, versions and pushes", () => {
   const j = wf.jobs["chart-publish"];
-  assert.deepEqual([...j.needs].sort(), ["chart", "images"]);
+  assert.deepEqual([...j.needs].sort(), ["chart", "images", "web"]);
   assert.equal(j.if, MAIN);
   const r = runs("chart-publish");
   assert.ok(r.includes('scripts/chart-version.sh branch "$GITHUB_REF_NAME" "$GITHUB_SHA"'));
