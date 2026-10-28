@@ -40,7 +40,7 @@ function setViewport(width: number) {
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
-  auto_compact_pct: 80, context_pct_max: 40, failed: 0, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
+  auto_compact_pct: 80, context_pct_max: 40, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
 })
 const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
   ({ created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
