@@ -71,8 +71,9 @@ test("chart-publish: main only, needs chart, images and web, versions and pushes
   assert.equal(j.env.CHART_REPO, "oci://harbor.szymonrichert.pl/charts");
 });
 
-test("chart-publish-tag: tags only, requires the image, versions and pushes", () => {
+test("chart-publish-tag: tags only, needs chart, images and web, requires the image, versions and pushes", () => {
   const j = wf.jobs["chart-publish-tag"];
+  assert.deepEqual([...j.needs].sort(), ["chart", "images", "web"]);
   assert.equal(j.if, "startsWith(github.ref, 'refs/tags/v')");
   const r = runs("chart-publish-tag");
   assert.ok(r.includes('scripts/chart-version.sh tag "$GITHUB_REF_NAME" "$GITHUB_SHA"'));
@@ -81,6 +82,11 @@ test("chart-publish-tag: tags only, requires the image, versions and pushes", ()
   assert.ok(r.includes("regctl image digest"));
   assert.ok(r.includes('helm package chart/agents-web --version "$VERSION" --app-version "$SHA7"'));
   assert.ok(r.includes('helm push "agents-web-$VERSION.tgz" "$CHART_REPO"'));
+});
+
+test("workflow token is read-only at the top level", () => {
+  assert.deepEqual(wf.permissions, { contents: "read" });
+  for (const [name, j] of Object.entries(wf.jobs)) assert.equal(j.permissions, undefined, `${name} must not raise permissions`);
 });
 
 test("every Harbor login step is in a push-only job or guarded", () => {

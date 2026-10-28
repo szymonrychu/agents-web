@@ -5,6 +5,9 @@ on:
     tags: ["v*"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   web:
     runs-on: ubuntu-latest
@@ -100,7 +103,7 @@ jobs:
         run: helm push "agents-web-$VERSION.tgz" "$CHART_REPO"
 
   chart-publish-tag:
-    needs: [chart]
+    needs: [chart, images, web]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     env:

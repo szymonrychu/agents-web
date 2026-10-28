@@ -34,9 +34,9 @@ export function backupReasonText(reason: string | null): string {
     case 'restore_running':
       return 'the cache restore has not finished'
     case 'restore_failed':
-      return 'the cache restore failed, so the workspace is not saved over the stored copy'
+      return 'the cache restore failed, so the stored copy is not overwritten'
     case 'restore_skipped':
-      return 'the cache restore was skipped, so the workspace is not saved over the stored copy'
+      return 'the cache restore was skipped, so the stored copy is not overwritten'
     default:
       return `skipped (${reason})`
   }
@@ -130,7 +130,7 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
       {nothingSaved && <Typography sx={{ mt: 2 }}>{`Nothing is backed up: ${backupReasonText(backup.reason)}.`}</Typography>}
       {!nothingSaved && backup.reason !== null && (
         <Typography sx={{ mt: 2 }}>
-          {`The ${backup.workdir ? 'Claude transcripts are' : 'workspace files are'} not backed up: ${backupReasonText(backup.reason)}.`}
+          {`The ${backup.workdir ? 'chat history (Claude transcripts) is' : 'workspace files are'} not backed up: ${backupReasonText(backup.reason)}.`}
         </Typography>
       )}
       {backup.transcripts && lastBackup && (

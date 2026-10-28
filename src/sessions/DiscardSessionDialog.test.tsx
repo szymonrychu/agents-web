@@ -97,15 +97,32 @@ describe('DiscardSessionDialog', () => {
 
   test('names the reason a backup is skipped', () => {
     wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Nothing is backed up: the cache restore failed, so the workspace is not saved over the stored copy.')).toBeTruthy()
+    expect(screen.getByText('Nothing is backed up: the cache restore failed, so the stored copy is not overwritten.')).toBeTruthy()
     cleanup()
     // Only the transcripts are skipped: the workspace stays listed as backed up, the transcripts as deleted.
     wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files/)).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/Claude transcripts/)).toBeTruthy()
-    expect(screen.getByText('The Claude transcripts are not backed up: the cache restore has not finished.')).toBeTruthy()
+    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore has not finished.')).toBeTruthy()
     cleanup()
     wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { reason: 'something_new' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(screen.getByText('Nothing is backed up: skipped (something_new).')).toBeTruthy()
+  })
+
+  test('names the chat history when transcripts are not backed up', () => {
+    const cache = { cache: { key: 'k', exclude: [] } }
+    wrap(<DiscardSessionDialog open session={existing(cache, { workdir: true, reason: 'restore_skipped' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore was skipped, so the stored copy is not overwritten.')).toBeTruthy()
+    expect(screen.queryByText(/workspace is not saved/)).toBeNull()
+    cleanup()
+    wrap(<DiscardSessionDialog open session={existing(cache, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore has not finished.')).toBeTruthy()
+  })
+
+  test('names the workspace files when the workdir is not backed up', () => {
+    const cache = { cache: { key: 'k', exclude: [] } }
+    wrap(<DiscardSessionDialog open session={existing(cache, { transcripts: true, reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('The workspace files are not backed up: the cache restore failed, so the stored copy is not overwritten.')).toBeTruthy()
+    expect(screen.queryByText(/chat history \(Claude transcripts\) is not backed up/)).toBeNull()
   })
 })
