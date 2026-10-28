@@ -18,7 +18,7 @@ vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api
 const room = (id: string, over: Partial<RoomView> = {}): RoomView => ({
   room_id: id, alias: null, name: `Room ${id}`, kind: 'dm', membership: 'join', encrypted: false, message_request: false,
   member_count: 2, access: { state: 'default', reason: 'default policy', rule_id: null }, preset_id: null, trigger: null,
-  effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, ...over,
+  effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, agents_may_initiate: false, binding: null, ...over,
 })
 const detail = (r: RoomView): RoomDetail => ({
   ...r,
@@ -101,14 +101,35 @@ describe('ChatsPage', () => {
     await user.click(screen.getByRole('option', { name: 'Only when mentioned' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention' })
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention', agents_may_initiate: false })
     expect(within(drawer).getByText(/validation_error: bad preset/)).toBeTruthy()
     api.setRoomSettings.mockResolvedValueOnce(detail(rooms[0]))
     await user.click(within(drawer).getByRole('combobox', { name: 'Preset' }))
     await user.click(screen.getByRole('option', { name: 'Default preset' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention' })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false })
+  })
+
+  test('saves agents may start chats with the preset and trigger in one call', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    rooms[0] = { ...rooms[0], agents_may_initiate: true }
+    api.setRoomSettings.mockResolvedValue(detail({ ...rooms[0], agents_may_initiate: false }))
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    const toggle = within(drawer).getByRole('switch', { name: 'Agents may start chats' }) as HTMLInputElement
+    expect(toggle.checked).toBe(true)
+    await user.click(toggle)
+    expect(toggle.checked).toBe(false)
+    await user.click(within(drawer).getByRole('combobox', { name: 'Trigger' }))
+    await user.click(screen.getByRole('option', { name: 'Only when mentioned' }))
+    await user.click(within(drawer).getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(api.setRoomSettings).toHaveBeenCalledTimes(1)
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false })
   })
 
   test('allows and denies a room', async () => {

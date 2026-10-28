@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
+import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -41,6 +43,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const [rulesError, setRulesError] = useState<Error>()
   const [preset, setPreset] = useState('')
   const [trigger, setTrigger] = useState('')
+  const [mayInitiate, setMayInitiate] = useState(false)
   const [error, setError] = useState<Error>()
   const [pending, setPending] = useState<Pending | null>(null)
   const [reload, setReload] = useState(0)
@@ -52,6 +55,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
       setRoom(r)
       setPreset(r.preset_id ?? '')
       setTrigger(r.trigger ?? '')
+      setMayInitiate(r.agents_may_initiate)
     }, (e: unknown) => !cancelled && setError(e instanceof Error ? e : new Error(String(e))))
     return () => { cancelled = true }
   }, [roomId])
@@ -76,7 +80,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const save = async () => {
     setError(undefined)
     try {
-      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null })
+      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate })
       setRoom(updated)
       onChanged()
     } catch (e) {
@@ -133,6 +137,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               <MenuItem value="all">All messages</MenuItem>
               <MenuItem value="mention">Only when mentioned</MenuItem>
             </TextField>
+            <FormControlLabel control={<Switch checked={mayInitiate} onChange={(e) => setMayInitiate(e.target.checked)} />} label="Agents may start chats" />
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
           </Box>
           <Typography component="h3" variant="subtitle1">Members</Typography>

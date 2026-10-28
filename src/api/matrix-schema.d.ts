@@ -226,6 +226,26 @@ export interface components {
              */
             state: "allowed" | "denied" | "default";
         };
+        /**
+         * BindingView
+         * @description The room's active binding; a reservation by a first run in progress has no session yet.
+         */
+        BindingView: {
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "inbound" | "agent";
+            /** Session Id */
+            session_id: string | null;
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /** Slug */
+            slug: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -295,8 +315,11 @@ export interface components {
         /** RoomDetail */
         RoomDetail: {
             access: components["schemas"]["AccessView"];
+            /** Agents May Initiate */
+            agents_may_initiate: boolean;
             /** Alias */
             alias: string | null;
+            binding: components["schemas"]["BindingView"] | null;
             /**
              * Effective Trigger
              * @enum {string}
@@ -330,6 +353,8 @@ export interface components {
         };
         /** RoomSettingsIn */
         RoomSettingsIn: {
+            /** Agents May Initiate */
+            agents_may_initiate?: boolean | null;
             /** Preset Id */
             preset_id?: string | null;
             /** Trigger */
@@ -338,8 +363,11 @@ export interface components {
         /** RoomView */
         RoomView: {
             access: components["schemas"]["AccessView"];
+            /** Agents May Initiate */
+            agents_may_initiate: boolean;
             /** Alias */
             alias: string | null;
+            binding: components["schemas"]["BindingView"] | null;
             /**
              * Effective Trigger
              * @enum {string}
