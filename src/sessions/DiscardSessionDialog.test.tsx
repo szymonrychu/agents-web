@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView, Meta } from '../api/client'
@@ -18,8 +18,9 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
   },
   discard_hook: 'none', models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
-const existing = (o: Partial<SessionView['spec']> = {}): SessionView =>
-  ({ created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id: 'c-1', observed_generation: 1, slug: 'alpha', status: {},
+const NO_BACKUP: SessionView['backup'] = { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
+const existing = (o: Partial<SessionView['spec']> = {}, backup: Partial<SessionView['backup']> = {}): SessionView =>
+  ({ backup: { ...NO_BACKUP, ...backup }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id: 'c-1', observed_generation: 1, slug: 'alpha', status: {},
     spec: { env: { A: 'b' }, max_attempts: 5, peers: true, replicas: 2, workdir: 'work', pvc_size: '20Gi', model: 'opus', ...o },
     summary: { auto_compact_pct: 80, context_pct_max: null, failed: 0, queued: 0, ready: 0, replicas: 2, state: 'waiting' } }) as SessionView
 
@@ -38,8 +39,8 @@ describe('DiscardSessionDialog', () => {
     api.deleteSession.mockResolvedValue(existing())
     const onDiscarded = vi.fn()
     wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={onDiscarded} />)
-    expect(screen.getByText(/workspace PVC/)).toBeTruthy()
-    expect(screen.getByText(/the session's whole chat history/)).toBeTruthy()
+    expect(screen.getByText(/The workspace PVC/)).toBeTruthy()
+    expect(screen.getByText(/The session's whole chat history/)).toBeTruthy()
     expect(screen.getByText(/no undo/i)).toBeTruthy()
     expect(button('Discard').disabled).toBe(true)
     await userEvent.type(field('Type the slug to confirm'), 'alph')
@@ -64,5 +65,47 @@ describe('DiscardSessionDialog', () => {
     wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     await waitFor(() => expect(api.getMeta).toHaveBeenCalledTimes(3))
     expect(screen.queryByText(/exported to/)).toBeNull()
+  })
+
+  test('states what is backed up when the session cache is configured', () => {
+    const backup = { workdir: true, transcripts: true, reason: null, last_transcripts_backup: { finished_at: '2026-10-27T10:00:00Z', bytes: 2048 } }
+    wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'my-key', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    const deleted = within(screen.getByRole('list', { name: 'Deleted' }))
+    const saved = within(screen.getByRole('list', { name: 'Backed up' }))
+    expect(saved.getByText(/Workspace files.*S3 cache under the key my-key.*restored when a session with the same slug is created/)).toBeTruthy()
+    expect(saved.getByText(/Claude transcripts.*S3 cache.*restored when a session with the same slug is created/)).toBeTruthy()
+    expect(screen.getByText(/last transcripts backup finished/i).textContent).toMatch(/2 KB/)
+    expect(deleted.getByText(/The agents/)).toBeTruthy()
+    expect(deleted.getByText(/The workspace PVC/)).toBeTruthy()
+    expect(deleted.getByText(/chat history/)).toBeTruthy()
+    expect(deleted.queryByText(/Claude transcripts/)).toBeNull()
+    expect(deleted.queryByText(/workspace files/i)).toBeNull()
+    expect(screen.queryByText(/Nothing is backed up/)).toBeNull()
+  })
+
+  test('states nothing is backed up without a session cache', () => {
+    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: the session has no session cache.')).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Backed up' })).toBeNull()
+    const deleted = within(screen.getByRole('list', { name: 'Deleted' }))
+    expect(deleted.getByText(/Claude transcripts/)).toBeTruthy()
+    expect(deleted.getByText(/workspace files/i)).toBeTruthy()
+    cleanup()
+    wrap(<DiscardSessionDialog open session={existing({}, { reason: 'cache_not_configured' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: no S3 cache is configured on this orchestrator.')).toBeTruthy()
+  })
+
+  test('names the reason a backup is skipped', () => {
+    wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: the cache restore failed, so the workspace is not saved over the stored copy.')).toBeTruthy()
+    cleanup()
+    // Only the transcripts are skipped: the workspace stays listed as backed up, the transcripts as deleted.
+    wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files/)).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/Claude transcripts/)).toBeTruthy()
+    expect(screen.getByText('The Claude transcripts are not backed up: the cache restore has not finished.')).toBeTruthy()
+    cleanup()
+    wrap(<DiscardSessionDialog open session={existing({ cache: { key: 'k', exclude: [] } }, { reason: 'something_new' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: skipped (something_new).')).toBeTruthy()
   })
 })
