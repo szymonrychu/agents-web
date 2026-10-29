@@ -4,6 +4,96 @@
  */
 
 export interface paths {
+    "/agent/v1/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recent activity lines of the caller's session, oldest first (read-only)
+         * @description The digest of the newest stored tool calls, results and finished turns of the caller's
+         *     session, own lines included. `agent` keeps one pod's lines; a name that matches nothing
+         *     gives an empty list, since gone agents' lines are history.
+         */
+        get: operations["activity_agent_v1_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a message to the chat (leader only) */
+        post: operations["send_message_agent_v1_chat_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/messages/{send_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Delivery status of a send of the caller's session (leader only) */
+        get: operations["message_status_agent_v1_chat_messages__send_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** React to a chat message (leader only) */
+        post: operations["send_reaction_agent_v1_chat_reactions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rooms the caller's session may post to (leader only) */
+        get: operations["rooms_agent_v1_chat_rooms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/init-scripts": {
         parameters: {
             query?: never;
@@ -721,6 +811,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Activity */
+        Activity: {
+            /** Lines */
+            lines: components["schemas"]["ActivityLine"][];
+        };
+        /** ActivityLine */
+        ActivityLine: {
+            /** Agent */
+            agent: string;
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
         /** AgentContext */
         AgentContext: {
             /** Used Percentage */
@@ -1270,6 +1379,11 @@ export interface components {
             error: string | null;
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "turn" | "command";
             /** Max Attempts */
             max_attempts: number;
             /** Next Attempt At */
@@ -1291,6 +1405,8 @@ export interface components {
             turn: components["schemas"]["TurnView"] | null;
             /** Turn Id */
             turn_id: string | null;
+            /** Wrapper Command Id */
+            wrapper_command_id: string | null;
         };
         /** Meta */
         Meta: {
@@ -1794,7 +1910,7 @@ export interface components {
          */
         WrapperSettings: {
             /** Agent Commands */
-            agent_commands?: ("compact" | "context" | "mcp" | "reload-plugins" | "reload-skills")[] | null;
+            agent_commands?: string[] | null;
             auto_compact?: components["schemas"]["AutoCompact"] | null;
             /** Hooks */
             hooks?: {
@@ -1838,6 +1954,289 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    activity_agent_v1_activity_get: {
+        parameters: {
+            query?: {
+                agent?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_message_agent_v1_chat_messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Reply To */
+                    reply_to?: string | null;
+                    /** Room */
+                    room?: string | null;
+                    /** Text */
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod), trigger_session or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    message_status_agent_v1_chat_messages__send_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                send_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod), trigger_session or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    send_reaction_agent_v1_chat_reactions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Key */
+                    key: string;
+                    /** To */
+                    to: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod), trigger_session or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rooms_agent_v1_chat_rooms_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod), trigger_session or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     init_scripts_get_agent_v1_init_scripts_get: {
         parameters: {
             query?: never;
