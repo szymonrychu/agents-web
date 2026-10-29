@@ -80,7 +80,6 @@ export interface FormState {
 
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
 const NAME_CHARS = /^[A-Za-z0-9 ._-]+$/
-const SECRET_KEY = /TOKEN|SECRET|PASSW(OR)?D|CREDENTIAL|API_?KEY|PRIVATE_?KEY|ACCESS_?KEY/i
 const RESERVED_KEY = /^(CCW_|CLAUDE_|ANTHROPIC_)|^POD_NAME$|_PROXY$|BASE_URL$/i
 export const MAX_SLUG = 40
 export const MAX_NAME = 40
@@ -245,7 +244,6 @@ const intIn = (text: string, min: number, max: number, what: string): string | u
 export function envKeyError(key: string, all: EnvRow[]): string | undefined {
   if (key === '') return 'Key is required'
   if (!ENV_NAME.test(key)) return 'Key may hold letters, digits and underscores only'
-  if (SECRET_KEY.test(key)) return 'Looks like a secret, secrets do not belong in the spec'
   if (RESERVED_KEY.test(key)) return 'Reserved name, set by the orchestrator'
   if (all.filter((r) => r.key === key).length > 1) return 'Duplicate key'
   return undefined

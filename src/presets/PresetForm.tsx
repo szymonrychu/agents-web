@@ -21,8 +21,8 @@ import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
 import { createPreset, getMeta, updatePreset } from '../api/client'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, copyName, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
-import type { FormState, FormValues } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 
 export interface PresetFormProps {
   open: boolean
@@ -44,6 +44,25 @@ function copiedSpec(source: PresetView): Partial<SessionSpec> {
   const spec = stored(source)
   if (!spec.cache?.key?.startsWith(CACHE_KEY_RESERVED_PREFIX)) return spec
   return { ...spec, cache: { ...spec.cache, key: null } }
+}
+
+type PasteMerge = { errors: string[] } | { errors: null; rows: EnvRow[] | null }
+
+/**
+ * Parses pasted .env text and merges its pairs into the rows: an existing key is replaced in place (first match),
+ * a new key is appended, and empty rows are dropped. `rows` is null when the text holds no pairs (nothing to change).
+ */
+function mergePaste(text: string, current: EnvRow[]): PasteMerge {
+  const { pairs, errors } = parseDotenv(text)
+  if (errors.length > 0) return { errors: errors.map((e) => `line ${e.line}: ${e.message}`) }
+  if (pairs.length === 0) return { errors: null, rows: null }
+  const rows = current.map((r) => ({ ...r }))
+  for (const pair of pairs) {
+    const existing = rows.find((r) => r.key === pair.key)
+    if (existing) existing.value = pair.value
+    else rows.push({ ...pair })
+  }
+  return { errors: null, rows: rows.filter((r) => r.key !== '' || r.value !== '') }
 }
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
@@ -122,32 +141,35 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setPasteText(null)
     setPasteErrors([])
   }
-  const applyPaste = () => {
-    const { pairs, errors: parseErrors } = parseDotenv(pasteText ?? '')
-    if (parseErrors.length > 0) {
-      setPasteErrors(parseErrors.map((e) => `line ${e.line}: ${e.message}`))
-      return
+  /** Applies the paste box text to the env rows; returns the resulting rows, or null (errors shown in the box) when it does not parse. */
+  const applyPaste = (): EnvRow[] | null => {
+    const merge = mergePaste(pasteText ?? '', values.env)
+    if (merge.errors) {
+      setPasteErrors(merge.errors)
+      return null
     }
-    if (pairs.length > 0) {
-      const rows = values.env.map((r) => ({ ...r }))
-      for (const pair of pairs) {
-        const existing = rows.find((r) => r.key === pair.key)
-        if (existing) existing.value = pair.value
-        else rows.push({ ...pair })
-      }
-      set('env', rows.filter((r) => r.key !== '' || r.value !== ''))
-    }
+    if (merge.rows) set('env', merge.rows)
     closePaste()
+    return merge.rows ?? values.env
   }
 
   const setSource = (index: number, value: string) => set('anyMcpSources', values.anyMcpSources.map((s, i) => (i === index ? value : s)))
   const setScript = (index: number, value: string) => set('initScripts', values.initScripts.map((s, i) => (i === index ? value : s)))
 
   async function submit() {
+    let env = values.env
+    let keys = setKeys
+    if (pasteText !== null && pasteText.trim() !== '') {
+      // a paste still in the box counts: apply it as Apply does and send the merged rows, not the stale state
+      const merged = applyPaste()
+      if (merged === null || merged.some((r) => envKeyError(r.key, merged))) return
+      env = merged
+      keys = new Set(setKeys).add('env')
+    }
     setBusy(true)
     setServerError(null)
     try {
-      const body = { name: values.name, spec: toPresetSpec(values, setKeys) as SessionSpec }
+      const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as SessionSpec }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError(e instanceof Error ? e.message : String(e))
@@ -213,7 +235,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                   slotProps={{ input: { sx: { fontFamily: 'monospace' } } }}
                 />
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button size="small" variant="outlined" onClick={applyPaste}>Apply</Button>
+                  <Button size="small" variant="outlined" onClick={() => applyPaste()}>Apply</Button>
                   <Button size="small" onClick={closePaste}>Cancel</Button>
                 </Box>
               </Box>
