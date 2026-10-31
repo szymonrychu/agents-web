@@ -73,7 +73,7 @@ export default function TemplateEditor({ label, value, onChange, preview, disabl
 
   const error = result?.error ?? null
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Box role="group" aria-label={label} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Typography variant="body2" component="label">
         {label}
       </Typography>

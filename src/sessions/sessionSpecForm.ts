@@ -1,5 +1,7 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
 import type { SessionSpec, Meta } from '../api/client'
+import type { Hooks } from '../hooks/types'
+import { validateHooks } from '../hooks/validate'
 import { pluginSourceError } from '../presets/pluginSource'
 
 export interface EnvRow {
@@ -340,6 +342,10 @@ export function validate(v: FormValues, meta: Meta | null, storedCacheKey?: stri
   e.turnMax = nonNegative(v.turnMax, 'Turn max seconds')
   e.systemAppend = v.systemAppend.length > 16384 ? 'System append must be at most 16384 characters' : undefined
   for (const f of JSON_FIELDS) e[f] = jsonObjectError(v[f])
+  if (meta && !e.hooks && v.hooks.trim() !== '') {
+    const problems = validateHooks(JSON.parse(v.hooks) as Hooks, meta.hook_events)
+    if (problems.length > 0) e.hooks = problems.map((p) => `${p.path}: ${p.message}`).join('; ')
+  }
   const envErrors = v.env.map((r) => envKeyError(r.key, v.env))
   if (envErrors.some(Boolean)) e.env = envErrors
   const scriptErrors = initScriptErrors(v.initScripts)

@@ -4,9 +4,10 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { Meta, PresetView } from '../api/client'
+import { editorText, setEditorText, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
@@ -33,6 +34,9 @@ beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
   api.getMeta.mockResolvedValue(meta())
 })
+let restoreRange: () => void = () => {}
+beforeAll(() => { restoreRange = stubRangeRects() })
+afterAll(() => restoreRange())
 afterEach(cleanup)
 
 async function ready() {
@@ -531,10 +535,10 @@ describe('PresetForm', () => {
     await replace('Name', 'a')
     await userEvent.click(button('Add init script'))
     await userEvent.click(button('Add init script'))
-    await paste('Init script 1', 'echo one')
-    await paste('Init script 2', 'echo two')
+    await setEditorText('Init script 1', 'echo one')
+    await setEditorText('Init script 2', 'echo two')
     await userEvent.click(button('Remove init script 1'))
-    expect(field('Init script 1').value).toBe('echo two')
+    expect(await editorText('Init script 1')).toBe('echo two')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
     expect(api.createPreset.mock.calls[0][0].spec.init_scripts).toEqual(['echo two'])
@@ -544,8 +548,8 @@ describe('PresetForm', () => {
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: { init_scripts: ['a', 'b'] } })} {...noop} />)
     await ready()
-    expect(field('Init script 1').value).toBe('a')
-    expect(field('Init script 2').value).toBe('b')
+    expect(await editorText('Init script 1')).toBe('a')
+    expect(await editorText('Init script 2')).toBe('b')
     await userEvent.click(button('Remove init script 2'))
     await userEvent.click(button('Remove init script 1'))
     await userEvent.click(button('Save'))
@@ -566,11 +570,11 @@ describe('PresetForm', () => {
     await userEvent.click(button('Add init script'))
     expect(screen.getByText('Init script 1 must not be empty')).toBeTruthy()
     expect(button('Create').disabled).toBe(true)
-    await paste('Init script 1', 'x'.repeat(16385))
-    expect(screen.getByText('Init script 1 must be at most 16384 characters')).toBeTruthy()
+    await setEditorText('Init script 1', 'x'.repeat(16385))
+    expect(await screen.findByText('Init script 1 must be at most 16384 characters')).toBeTruthy()
     expect(button('Create').disabled).toBe(true)
-    await replace('Init script 1', 'ok')
-    expect(button('Create').disabled).toBe(false)
+    await setEditorText('Init script 1', 'ok')
+    await waitFor(() => expect(button('Create').disabled).toBe(false))
     for (let i = 0; i < 20; i++) await userEvent.click(button('Add init script'))
     expect(screen.getByText('Init script 21: at most 20 init scripts')).toBeTruthy()
     expect(button('Create').disabled).toBe(true)
@@ -591,16 +595,17 @@ describe('PresetForm', () => {
     await replace('Leader lease seconds', '120')
     await replace('Autoclose after seconds', '600')
     await replace('Auto-compact idle seconds', '30')
-    await replace('Auto-compact instructions', 'keep it short')
+    await setEditorText('Auto-compact instructions', 'keep it short')
     await replace('Auto-compact min context tokens', '5000')
-    await replace('System append', 'be nice')
-    await replace('Restart continue prompt', 'go on')
+    await setEditorText('System append', 'be nice')
+    await setEditorText('Restart continue prompt', 'go on')
     await replace('Turn stall seconds', '90')
     await replace('Max restarts', '2')
     await replace('Turn max seconds', '600')
     await replace('Permissions allow', 'Bash, Read')
     await replace('Permissions deny', 'WebFetch')
-    await paste('Hooks', '{"Stop":[{"type":"command","command":"echo"}]}')
+    await userEvent.click(button('Raw JSON'))
+    await paste('Hooks JSON', '{"onTurn":[{"type":"command","run":"echo"}]}')
     await paste('MCP servers', '{"s":{"type":"http","url":"http://x"}}')
     await paste('Plugins', '{"install":[]}')
     await userEvent.click(screen.getByRole('combobox', { name: 'Agent commands' }))
@@ -616,7 +621,7 @@ describe('PresetForm', () => {
       auto_compact: { idle_seconds: 30, instructions: 'keep it short', min_context_tokens: 5000 },
       system_append: 'be nice', restart_continue_prompt: 'go on', turn_stall_seconds: 90, max_restarts: 2, turn_max_seconds: 600,
       agent_commands: ['compact', 'mcp'], permissions: { allow: ['Bash', 'Read'], deny: ['WebFetch'] },
-      hooks: { Stop: [{ type: 'command', command: 'echo' }] }, mcp_servers: { s: { type: 'http', url: 'http://x' } }, plugins: { install: [] },
+      hooks: { onTurn: [{ type: 'command', run: 'echo' }] }, mcp_servers: { s: { type: 'http', url: 'http://x' } }, plugins: { install: [] },
     })
     cleanup()
 
@@ -626,7 +631,8 @@ describe('PresetForm', () => {
     expect(field('Autoclose after seconds').value).toBe('600')
     expect(field('Auto-compact min context tokens').value).toBe('5000')
     expect(field('Permissions allow').value).toBe('Bash, Read')
-    expect(JSON.parse(field('Hooks').value)).toEqual(spec.wrapper.hooks)
+    expect(screen.getByRole('group', { name: 'onTurn' })).toBeTruthy()
+    expect(await editorText('Auto-compact instructions')).toBe('keep it short')
     expect(screen.getByRole('combobox', { name: 'Agent commands' }).textContent).toBe('compact, mcp')
     api.updatePreset.mockResolvedValue(preset())
     await userEvent.click(button('Save'))
@@ -641,7 +647,7 @@ describe('PresetForm', () => {
     expect(screen.queryByLabelText('Leader lease seconds')).toBeNull()
     await replace('Max replicas', '2')
     expect(screen.getByLabelText('Leader lease seconds')).toBeTruthy()
-    for (const label of ['Hooks', 'MCP servers', 'Plugins']) {
+    for (const label of ['MCP servers', 'Plugins']) {
       await paste(label, '{nope')
       expect(screen.getByText(/valid JSON/)).toBeTruthy()
       expect(button('Create').disabled).toBe(true)
@@ -652,6 +658,52 @@ describe('PresetForm', () => {
       expect(button('Create').disabled).toBe(false)
     }
     expect(api.createPreset).not.toHaveBeenCalled()
+  })
+
+  test('hooks come from the /meta events and a rule violation blocks Save', { timeout: 30000 }, async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'h')
+    expect(screen.getByLabelText('Hook event').textContent).toContain('onTurn')
+    expect(screen.getByLabelText('Hook event').textContent).toContain('onAgentToolCall')
+    await userEvent.click(button('Add hook'))
+    expect(screen.getByText('run: required')).toBeTruthy()
+    expect(button('Create').disabled).toBe(true)
+    await paste('Run', 'echo hi')
+    expect(button('Create').disabled).toBe(false)
+  })
+
+  test('hooks edit round-trips through the form', { timeout: 30000 }, async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const hooks = { onTurn: [{ type: 'command', run: 'echo' }] }
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { hooks } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ wrapper: { hooks } })
+  })
+
+  test.each([
+    ['Auto-compact instructions', 'preset_text'],
+    ['System append', 'preset_text'],
+    ['Restart continue prompt', 'preset_text'],
+    ['Init script 1', 'init_script'],
+  ])('%s previews through the orchestrator with surface %s', { timeout: 30000 }, async (label, surface) => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered: 'RENDERED', error: null, variables: ['session_slug'] }), { status: 200 }))
+    vi.stubGlobal('fetch', f)
+    try {
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      if (label.startsWith('Init')) await userEvent.click(button('Add init script'))
+      await setEditorText(label, 'echo {{ session_slug }}')
+      await userEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: 'Preview' }))
+      await waitFor(() => expect(screen.getByTestId('template-rendered').textContent).toBe('RENDERED'))
+      const call = f.mock.calls.find((c) => String(c[0]).endsWith('/templates/preview'))
+      expect(call?.[1].method).toBe('POST')
+      expect(JSON.parse(call?.[1].body)).toEqual({ template: 'echo {{ session_slug }}', surface })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   test('reuse running agent row renders off by default with its help text', { timeout: 15000 }, async () => {
