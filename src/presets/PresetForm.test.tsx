@@ -660,6 +660,31 @@ describe('PresetForm', () => {
     expect(api.createPreset).not.toHaveBeenCalled()
   })
 
+  test('start prompt: help text, preview on the web chat surface, sparse save and load', { timeout: 30000 }, async () => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered: 'hi sample-user', error: null, variables: ['user'] }), { status: 200 }))
+    vi.stubGlobal('fetch', f)
+    try {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      expect(screen.getByText('Sent before the session, webhook, chat or cron prompt, in one message.')).toBeTruthy()
+      await replace('Name', 's')
+      await setEditorText('Start prompt', 'hi {{ user }}')
+      await userEvent.click(within(screen.getByRole('group', { name: 'Start prompt' })).getByRole('button', { name: 'Preview' }))
+      await waitFor(() => expect(screen.getByTestId('template-rendered').textContent).toBe('hi sample-user'))
+      expect(JSON.parse(f.mock.calls.find((c) => String(c[0]).endsWith('/templates/preview'))?.[1].body)).toEqual({ template: 'hi {{ user }}', surface: 'web_chat_start' })
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+      expect(api.createPreset.mock.calls[0][0].spec.start_prompt).toBe('hi {{ user }}')
+      cleanup()
+      wrap(<PresetForm open preset={preset({ spec: { start_prompt: 'stored' } as PresetView['spec'] })} {...noop} />)
+      await ready()
+      expect(await editorText('Start prompt')).toBe('stored')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   test('hooks come from the /meta events and a rule violation blocks Save', { timeout: 30000 }, async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()

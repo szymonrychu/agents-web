@@ -139,7 +139,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -171,10 +171,11 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   }
 
   const setSource = (index: number, value: string) => set('anyMcpSources', values.anyMcpSources.map((s, i) => (i === index ? value : s)))
-  const template = (key: 'compactInstructions' | 'systemAppend' | 'restartPrompt', label: string, surface: Surface) => (
+  const template = (key: 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'startPrompt', label: string, surface: Surface, help?: string) => (
     <Box>
       <TemplateEditor label={label} value={values[key]} onChange={(v) => set(key, v)} preview={previewFor(surface)} />
       {errors[key] && values[key] !== '' && <FormHelperText error>{errors[key]}</FormHelperText>}
+      {help && <FormHelperText>{help}</FormHelperText>}
     </Box>
   )
 
@@ -293,6 +294,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {errors.initScripts?.map((m, i) => (m ? <FormHelperText key={i} error>{m}</FormHelperText> : null))}
             <FormHelperText>Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.</FormHelperText>
           </Box>
+          {template('startPrompt', 'Start prompt', 'web_chat_start', 'Sent before the session, webhook, chat or cron prompt, in one message.')}
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}
           <Box sx={{ display: 'flex', gap: 1 }}>

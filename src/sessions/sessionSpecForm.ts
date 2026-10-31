@@ -25,6 +25,8 @@ export interface FormValues {
   /** any-mcp plugin sources, one per row, in order. */
   anyMcpSources: string[]
   initScripts: string[]
+  /** Jinja template sent before the session, webhook, chat or cron prompt, in one message. */
+  startPrompt: string
   maxAttempts: string
   autoCompact: string
   cpuRequest: string
@@ -72,7 +74,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -98,7 +100,7 @@ export function blankValues(meta: Meta | null): FormValues {
   const d = meta?.defaults
   return {
     name: '', replicas: d ? String(d.replicas) : '', maxReplicas: '', static: false, model: d?.model ?? '', effort: d?.effort ?? '', peers: true, workdir: d?.workdir ?? 'workdir',
-    pvcSize: d?.pvc_size ?? '', env: [], anyMcp: d && Object.keys(d.any_mcp_config).length > 0 ? JSON.stringify(d.any_mcp_config, null, 2) : '', anyMcpSources: [], initScripts: [],
+    pvcSize: d?.pvc_size ?? '', env: [], anyMcp: d && Object.keys(d.any_mcp_config).length > 0 ? JSON.stringify(d.any_mcp_config, null, 2) : '', anyMcpSources: [], initScripts: [], startPrompt: '',
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
@@ -122,7 +124,7 @@ export function setKeyOf(field: keyof FormValues): SetKey | null {
 export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<SessionSpec>): FormState {
   const values = { ...blankValues(meta), name }
   const setKeys = new Set<SetKey>()
-  const text = (key: SetKey, field: 'model' | 'effort' | 'workdir' | 'pvcSize' | 'hookUrl' | 'image', stored: string | null | undefined) => {
+  const text = (key: SetKey, field: 'model' | 'effort' | 'workdir' | 'pvcSize' | 'hookUrl' | 'image' | 'startPrompt', stored: string | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = stored
     setKeys.add(key)
@@ -173,6 +175,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   }
   text('hookUrl', 'hookUrl', spec.discard_hook_url)
   text('image', 'image', spec.image)
+  text('startPrompt', 'startPrompt', spec.start_prompt)
   num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
   num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
   if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
@@ -401,6 +404,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   }
   if (setKeys.has('hookUrl')) spec.discard_hook_url = str(v.hookUrl)
   if (setKeys.has('image')) spec.image = str(v.image)
+  if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
