@@ -62,7 +62,7 @@ export interface SubagentInfo {
 
 export interface ChatState {
   items: ChatItem[];
-  /** Subagent metadata by claude agent id, from subagent_started/subagent_stopped. */
+  /** Subagent metadata by claude agent id, from subagent_started/subagent_linked/subagent_stopped. */
   subagents: Readonly<Record<string, SubagentInfo>>;
   ordinals: Readonly<Record<string, number>>;
   seen: ReadonlySet<number>;
@@ -199,7 +199,7 @@ function merge(state: ChatState, rows: readonly EventRow[]): ChatState {
   }
   const subagents: Record<string, SubagentInfo> = { ...state.subagents };
   for (const r of fresh) {
-    if (r.type !== 'subagent_started' && r.type !== 'subagent_stopped') continue;
+    if (r.type !== 'subagent_started' && r.type !== 'subagent_stopped' && r.type !== 'subagent_linked') continue;
     const d = r.data ?? {};
     const id = claudeAgentOf(d);
     if (id === undefined) continue;
@@ -207,7 +207,8 @@ function merge(state: ChatState, rows: readonly EventRow[]): ChatState {
     subagents[id] = {
       claudeAgentId: id,
       agentType: optStr(d.agent_type) ?? prev?.agentType,
-      parentToolUseId: optStr(d.parent_tool_use_id) ?? prev?.parentToolUseId,
+      // The first non-null parent wins (subagent_started, else the late subagent_linked, else subagent_stopped).
+      parentToolUseId: prev?.parentToolUseId ?? optStr(d.parent_tool_use_id),
       // A stop is final: an older page replaying the start never reopens it.
       status: r.type === 'subagent_stopped' || prev?.status === 'stopped' ? 'stopped' : 'running',
     };

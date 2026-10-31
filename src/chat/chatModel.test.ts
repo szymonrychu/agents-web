@@ -188,6 +188,28 @@ describe('subagents', () => {
     expect(v.main[3]).toMatchObject({ claudeAgentId: SUB_ID });
   });
 
+  it('subagent_linked supplies the late parent and never renders in the main log', () => {
+    const rows = subagentRun(false);
+    rows.splice(4, 0, { ...rows[3], id: 4.5, type: 'subagent_linked', data: { agent_id: SUB_ID, parent_tool_use_id: TASK_ID } });
+    const s = load(rows);
+    expect(s.subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+    expect(s.items.some((i) => (i.kind as string) === 'subagent_linked')).toBe(false);
+    const v = splitSubagents(s.items, s.subagents);
+    expect(v.byToolUse[TASK_ID]).toEqual([SUB_ID]);
+    expect(v.main.map((i) => i.kind)).toEqual(['user_message', 'assistant', 'tool', 'assistant', 'turn_end']);
+  });
+
+  it('the first non-null parent_tool_use_id wins', () => {
+    const rows = subagentRun();
+    rows.push({ ...rows[3], id: 13, type: 'subagent_linked', data: { agent_id: SUB_ID, parent_tool_use_id: 'toolu_other' } });
+    expect(load(rows).subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+  });
+
+  it('subagent_stopped parent anchors when started and linked carried none', () => {
+    const rows = subagentRun(false).map((r) => (r.type === 'subagent_stopped' ? { ...r, data: { ...r.data, parent_tool_use_id: TASK_ID } } : r));
+    expect(load(rows).subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+  });
+
   it('falls back to subagent_started when the Task call is outside the window', () => {
     const s = load(subagentRun().filter((r) => r.id !== 3));
     const v = splitSubagents(s.items, s.subagents);

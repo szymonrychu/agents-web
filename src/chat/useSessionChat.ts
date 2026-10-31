@@ -21,6 +21,7 @@ const STREAM_EVENTS = [
   'error',
   'gap',
   'subagent_started',
+  'subagent_linked',
   'subagent_stopped',
 ]
 
