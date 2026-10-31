@@ -11,8 +11,10 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import TemplateEditor from '../editor/TemplateEditor'
 import { FormError, usePoll } from '../triggers'
 import { addRule, deleteRule, listRules } from './api'
+import { connectorPreview } from './PreamblePanel'
 import type { MatrixMeta, RuleView } from './api'
 
 const LISTS = ['allow', 'deny']
@@ -22,6 +24,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
   const [kind, setKind] = useState('')
   const [value, setValue] = useState('')
   const [note, setNote] = useState('')
+  const [preamble, setPreamble] = useState('')
   const [error, setError] = useState<Error>()
   const [removing, setRemoving] = useState<RuleView | null>(null)
   const { data: rules, error: loadError, refresh } = usePoll(listRules, 5000, [])
@@ -38,9 +41,10 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
   const add = async () => {
     setError(undefined)
     try {
-      await addRule({ list, kind, value: value.trim(), ...(note.trim() ? { note: note.trim() } : {}) })
+      await addRule({ list, kind, value: value.trim(), ...(note.trim() ? { note: note.trim() } : {}), ...(preamble.trim() ? { preamble } : {}) })
       setValue('')
       setNote('')
+      setPreamble('')
       await refresh()
     } catch (e) {
       fail(e)
@@ -65,7 +69,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
       <Typography component="h3" variant="subtitle1">{name === 'allow' ? 'Allow list' : 'Deny list'}</Typography>
       <Table size="small" aria-label={`${name} rules`}>
         <TableHead>
-          <TableRow>{['Kind', 'Value', 'Note', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {items.map((r) => (
@@ -73,6 +77,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
               <TableCell>{r.kind}</TableCell>
               <TableCell>{r.value}</TableCell>
               <TableCell>{r.note}</TableCell>
+              <TableCell>{r.preamble ? 'custom' : 'default'}</TableCell>
               <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
               <TableCell><Button size="small" color="error" onClick={() => setRemoving(r)}>Delete</Button></TableCell>
             </TableRow>
@@ -96,6 +101,12 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
         <TextField size="small" label="Value" value={value} onChange={(e) => setValue(e.target.value)} />
         <TextField size="small" label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
         <Button variant="contained" disabled={!loaded || !kind || !value.trim()} onClick={() => void add()}>Add rule</Button>
+      </Box>
+      <Box sx={{ maxWidth: 720 }}>
+        <TemplateEditor
+          label="Preamble override (empty uses the global preamble)" value={preamble} onChange={setPreamble}
+          preview={connectorPreview({ rule_name: note.trim() })} previewLabel="Preview override"
+        />
       </Box>
       {section('allow', rules?.allow ?? [])}
       {section('deny', rules?.deny ?? [])}
