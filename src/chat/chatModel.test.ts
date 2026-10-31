@@ -94,6 +94,14 @@ describe('chatModel', () => {
     expect(trimWindow(applyEvents(fresh(), rows)).items).toHaveLength(10);
   });
 
+  it('caps the main log and subagent items separately', () => {
+    const main = Array.from({ length: 3 }, (_, i) => row(i + 1, 'assistant_text', { text: 'm' + i }));
+    const sub = Array.from({ length: 10 }, (_, i) => row(i + 4, 'assistant_text', { text: 's' + i, agent_id: 'sa' }));
+    const s = trimWindow(applyEvents(fresh(), [...main, ...sub]), 4);
+    expect(s.items.filter((i) => i.claudeAgentId === undefined).map((i) => i.eventId)).toEqual([1, 2, 3]);
+    expect(s.items.filter((i) => i.claudeAgentId !== undefined).map((i) => i.eventId)).toEqual([10, 11, 12, 13]);
+  });
+
   it('gap rows become gap items', () => {
     const s = applyEvents(fresh(), [row(1, 'gap', { from_seq: 3, to_seq: 9 })]);
     expect(s.items[0]).toMatchObject({ kind: 'gap' });

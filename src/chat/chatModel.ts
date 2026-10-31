@@ -230,10 +230,19 @@ export function prependHistory(state: ChatState, rows: readonly EventRow[]): Cha
   return merge(state, rows);
 }
 
-/** Keep only the newest `max` items. */
+/** Keep the newest `max` main-log items and, separately, the newest `max` subagent items, so a busy subagent cannot evict main rows. */
 export function trimWindow(state: ChatState, max = MAX_ITEMS): ChatState {
-  if (state.items.length <= max) return state;
-  return { ...state, items: state.items.slice(state.items.length - max) };
+  const isSub = (i: ChatItem): boolean => i.claudeAgentId !== undefined && i.kind !== 'subagent';
+  const subCount = state.items.filter(isSub).length;
+  const mainCount = state.items.length - subCount;
+  if (mainCount <= max && subCount <= max) return state;
+  let dropMain = Math.max(0, mainCount - max);
+  let dropSub = Math.max(0, subCount - max);
+  const items = state.items.filter((i) => {
+    if (isSub(i)) return dropSub > 0 ? (dropSub--, false) : true;
+    return dropMain > 0 ? (dropMain--, false) : true;
+  });
+  return { ...state, items };
 }
 
 /** Items of the given agents; an empty list means all agents. */
