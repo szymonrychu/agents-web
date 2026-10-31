@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript openapi/orchestrator.json -o src/api/schema.d.ts && openapi-typescript openapi/webhooks.json -o src/api/webhooks-schema.d.ts && openapi-typescript openapi/schedules.json -o src/api/schedules-schema.d.ts && openapi-typescript openapi/matrix.json -o src/api/matrix-schema.d.ts",
     "check:api": "openapi-typescript openapi/orchestrator.json -o \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/orch-schema.check.d.ts\" src/api/schema.d.ts && openapi-typescript openapi/webhooks.json -o \"${TMPDIR:-/tmp}/webhooks-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/webhooks-schema.check.d.ts\" src/api/webhooks-schema.d.ts && openapi-typescript openapi/schedules.json -o \"${TMPDIR:-/tmp}/schedules-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/schedules-schema.check.d.ts\" src/api/schedules-schema.d.ts && openapi-typescript openapi/matrix.json -o \"${TMPDIR:-/tmp}/matrix-schema.check.d.ts\" && diff -q \"${TMPDIR:-/tmp}/matrix-schema.check.d.ts\" src/api/matrix-schema.d.ts",
     "sync:api": "node scripts/sync-api.mjs",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
     "test:chart": "node --test 'chart/tests/*.test.mjs'",
     "lint:chart": "helm lint chart/agents-web --set image.tag=ci"
   },

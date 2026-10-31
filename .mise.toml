@@ -4,8 +4,8 @@ helm = "4.2.4"
 shellcheck = "0.11.0"
 
 [tasks.test]
-description = "Run test"
-run = "npm test"
+description = "Run the vitest suite and the scripts tests"
+run = ["npm test", "npm run test:scripts"]
 
 [tasks.lint]
 description = "Run lint (eslint and shellcheck)"

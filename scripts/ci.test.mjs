@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseToml } from "smol-toml";
 import { parse } from "yaml";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -31,6 +32,18 @@ test("web job: node 24 with npm cache and the four npm scripts", () => {
   for (const c of ["npm ci", "npm run lint", "npm test", "npm run build", "npm run check:api"]) {
     assert.ok(r.includes(c), c);
   }
+});
+
+test("test_scripts_tests_are_wired", () => {
+  const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  assert.equal(pkg.scripts["test:scripts"], "node --test 'scripts/*.test.mjs'");
+  assert.equal(pkg.scripts.test, "vitest run");
+  const webRuns = wf.jobs.web.steps.map((s) => s.run ?? "");
+  const vitest = webRuns.indexOf("npm test");
+  assert.ok(vitest >= 0);
+  assert.equal(webRuns[vitest + 1], "npm run test:scripts");
+  const mise = parseToml(readFileSync(join(root, ".mise.toml"), "utf8"));
+  assert.deepEqual(mise.tasks.test.run, ["npm test", "npm run test:scripts"]);
 });
 
 test("images job: build, smoke, push only on main with 50MB chunks", () => {
