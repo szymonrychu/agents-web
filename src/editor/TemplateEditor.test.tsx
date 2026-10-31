@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { EditorView } from '@codemirror/view'
 import userEvent from '@testing-library/user-event'
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
@@ -62,5 +63,35 @@ describe('TemplateEditor', () => {
     const preview = vi.fn()
     mount('   ', preview)
     expect((screen.getByRole('button', { name: 'Preview' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  test('an outside change of value reaches the editor', () => {
+    const preview = vi.fn()
+    const el = (value: string) => (
+      <ThemeProvider theme={theme}>
+        <TemplateEditor label="Prompt" value={value} onChange={vi.fn()} preview={preview} />
+      </ThemeProvider>
+    )
+    const r = render(el('first'))
+    const text = () => EditorView.findFromDOM(screen.getByTestId('file-editor'))?.state.doc.toString()
+    return waitFor(() => expect(text()).toBe('first')).then(() => {
+      r.rerender(el('second'))
+      return waitFor(() => expect(text()).toBe('second'))
+    })
+  })
+
+  test('editing the template clears the stale preview', async () => {
+    const preview = vi.fn().mockResolvedValue(ok)
+    const el = (value: string) => (
+      <ThemeProvider theme={theme}>
+        <TemplateEditor label="Prompt" value={value} onChange={vi.fn()} preview={preview} />
+      </ThemeProvider>
+    )
+    const r = render(el('a'))
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    expect(await screen.findByTestId('template-rendered')).toBeTruthy()
+    r.rerender(el('ab'))
+    expect(screen.queryByTestId('template-rendered')).toBeNull()
+    expect(screen.queryByText('session_slug')).toBeNull()
   })
 })

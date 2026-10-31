@@ -47,4 +47,15 @@ describe('validateHooks', () => {
     expect(errs({ onTurn: [hook('ftp://x')] })).toEqual(['onTurn.0.url: must be an http or https URL'])
     expect(errs({ onTurn: [hook('https://x.example/h')] })).toEqual([])
   })
+
+  test('matcher must compile as a regex', () => {
+    expect(errs({ onAgentToolCall: [cmd({ matcher: '(' })] })).toEqual([expect.stringMatching(/^onAgentToolCall\.0\.matcher: invalid regex/)])
+  })
+  test('timeout and interval must be above zero, retries not negative', () => {
+    expect(errs({ onTick: [cmd({ interval_seconds: 0, timeout_seconds: 0 })] })).toEqual([
+      'onTick.0.interval_seconds: must be greater than 0',
+      'onTick.0.timeout_seconds: must be greater than 0',
+    ])
+    expect(errs({ onTurn: [{ type: 'webhook', url: 'http://x', retries: -1 } as HookAction] })).toEqual(['onTurn.0.retries: must be 0 or more'])
+  })
 })

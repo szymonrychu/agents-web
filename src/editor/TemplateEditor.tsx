@@ -47,7 +47,12 @@ export function postTemplatePreview(previewUrl: string, surface: string): (templ
 }
 
 export default function TemplateEditor({ label, value, onChange, preview, disabled = false }: TemplateEditorProps): JSX.Element {
-  const [result, setResult] = useState<TemplatePreview | null>(null)
+  // `forValue` is the template the shown preview was made from; a different value hides it as stale
+  const [preview_, setPreview] = useState<{ result: TemplatePreview; forValue: string } | null>(null)
+  // `seen` is the last text the editor itself reported; a value that differs came from outside and replaces the document
+  const [sync, setSync] = useState({ seen: value, docVersion: 1 })
+  if (sync.seen !== value) setSync({ seen: value, docVersion: sync.docVersion + 1 })
+  const result = preview_ !== null && preview_.forValue === value ? preview_.result : null
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -55,9 +60,9 @@ export default function TemplateEditor({ label, value, onChange, preview, disabl
     setBusy(true)
     setFailure(null)
     try {
-      setResult(await preview(value))
+      setPreview({ result: await preview(value), forValue: value })
     } catch (e) {
-      setResult(null)
+      setPreview(null)
       setFailure(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
@@ -72,7 +77,7 @@ export default function TemplateEditor({ label, value, onChange, preview, disabl
       </Typography>
       <Box sx={{ minHeight: 96, maxHeight: 320, border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'auto' }}>
         <Suspense fallback={null}>
-          <CodeEditor path="template.j2" doc={value} docVersion={1} readOnly={disabled} onChange={onChange} onSave={() => undefined} />
+          <CodeEditor path="template.j2" doc={value} docVersion={sync.docVersion} readOnly={disabled} onChange={(text) => { setSync((c) => ({ ...c, seen: text })); onChange(text) }} onSave={() => undefined} />
         </Suspense>
       </Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>

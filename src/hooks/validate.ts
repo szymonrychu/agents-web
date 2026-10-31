@@ -27,6 +27,18 @@ export function validateHooks(hooks: Hooks | null, events: HookEventInfo[]): Hoo
       } else if (action.interval_seconds == null) {
         add('interval_seconds', 'required on onTick')
       }
+      if (action.matcher != null) {
+        try {
+          new RegExp(action.matcher)
+        } catch (e) {
+          add('matcher', `invalid regex: ${e instanceof Error ? e.message : String(e)}`)
+        }
+      }
+      for (const key of ['interval_seconds', 'timeout_seconds'] as const) {
+        const v = action[key]
+        if (v != null && v <= 0) add(key, 'must be greater than 0')
+      }
+      if (action.type === 'webhook' && action.retries != null && action.retries < 0) add('retries', 'must be 0 or more')
       if (action.type === 'command') commandRules(action, add)
       else if (!HTTP_URL.test(action.url)) add('url', 'must be an http or https URL')
     })
