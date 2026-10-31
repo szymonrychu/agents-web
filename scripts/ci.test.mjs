@@ -13,15 +13,14 @@ const MAIN = "github.event_name == 'push' && github.ref == 'refs/heads/main'";
 const runs = (job) => (wf.jobs[job].steps ?? []).map((s) => s.run ?? "").join("\n");
 const stepsWith = (job, re) => wf.jobs[job].steps.filter((s) => re.test(s.run ?? ""));
 
-test("triggers: push main, tags v*, pull requests", () => {
+test("triggers: push main and pull requests, no tags", () => {
   const on = wf.on;
-  assert.deepEqual(on.push.branches, ["main"]);
-  assert.deepEqual(on.push.tags, ["v*"]);
+  assert.deepEqual(on.push, { branches: ["main"] });
   assert.ok("pull_request" in on);
 });
 
 test("exactly the five jobs", () => {
-  assert.deepEqual(Object.keys(wf.jobs).sort(), ["chart", "chart-publish", "chart-publish-tag", "images", "web"]);
+  assert.deepEqual(Object.keys(wf.jobs).sort(), ["chart", "chart-publish", "images", "release", "web"]);
 });
 
 test("web job: node 24 with npm cache and the four npm scripts", () => {
@@ -84,22 +83,12 @@ test("chart-publish: main only, needs chart, images and web, versions and pushes
   assert.equal(j.env.CHART_REPO, "oci://harbor.szymonrichert.pl/charts");
 });
 
-test("chart-publish-tag: tags only, needs chart, images and web, requires the image, versions and pushes", () => {
-  const j = wf.jobs["chart-publish-tag"];
-  assert.deepEqual([...j.needs].sort(), ["chart", "images", "web"]);
-  assert.equal(j.if, "startsWith(github.ref, 'refs/tags/v')");
-  const r = runs("chart-publish-tag");
-  assert.ok(r.includes('scripts/chart-version.sh tag "$GITHUB_REF_NAME" "$GITHUB_SHA"'));
-  assert.ok(r.includes('helm show chart "$CHART_REPO/agents-web" --version "$VERSION"'));
-  assert.ok(r.includes("containers/agents-web:$SHA7"));
-  assert.ok(r.includes("regctl image digest"));
-  assert.ok(r.includes('helm package chart/agents-web --version "$VERSION" --app-version "$SHA7"'));
-  assert.ok(r.includes('helm push "agents-web-$VERSION.tgz" "$CHART_REPO"'));
-});
-
-test("workflow token is read-only at the top level", () => {
+test("workflow token is read-only at the top level, only release may push tags", () => {
   assert.deepEqual(wf.permissions, { contents: "read" });
-  for (const [name, j] of Object.entries(wf.jobs)) assert.equal(j.permissions, undefined, `${name} must not raise permissions`);
+  for (const [name, j] of Object.entries(wf.jobs)) {
+    if (name === "release") continue;
+    assert.equal(j.permissions, undefined, `${name} must not raise permissions`);
+  }
 });
 
 test("every Harbor login step is in a push-only job or guarded", () => {
@@ -120,16 +109,12 @@ test("chart-version.sh: main gives <version>-main.<sha7>", () => {
   assert.equal(r.stdout.trim(), `${chartVersion}-main.0123456`);
 });
 
-test("chart-version.sh: matching tag gives X.Y.Z", () => {
-  const r = run("tag", `v${chartVersion}`, "0123456789abcdef");
-  assert.equal(r.status, 0);
-  assert.equal(r.stdout.trim(), chartVersion);
-});
-
-test("chart-version.sh: mismatched tag is refused", () => {
-  const r = run("tag", "v9.9.9", "0123456789abcdef");
-  assert.equal(r.status, 1);
-  assert.match(r.stderr, /does not match/);
+test("chart-version.sh: tag refs publish nothing", () => {
+  for (const ref of [`v${chartVersion}`, "v9.9.9"]) {
+    const r = run("tag", ref, "0123456789abcdef");
+    assert.equal(r.status, 2, ref);
+    assert.equal(r.stdout, "", ref);
+  }
 });
 
 test("chart-version.sh: other refs publish nothing", () => {
@@ -140,4 +125,84 @@ test("every regctl-installer use is pinned to a 40-hex commit SHA", () => {
   const uses = Object.values(wf.jobs).flatMap((j) => (j.steps ?? []).map((s) => s.uses ?? "")).filter((u) => /regctl-installer/.test(u));
   assert.ok(uses.length >= 3);
   for (const u of uses) assert.match(u, /^regclient\/actions\/regctl-installer@[0-9a-f]{40}$/);
+});
+
+const RELEASED = "steps.version.outputs.version != ''";
+const release = () => wf.jobs.release;
+const copySteps = (steps) => steps.flatMap((s, i) => (/regctl image copy/.test(s.run ?? "") ? [i] : []));
+
+test("test_release_job_runs_last_on_main_push", () => {
+  const j = release();
+  assert.equal(j.if, MAIN);
+  const others = Object.keys(wf.jobs).filter((n) => n !== "release").sort();
+  assert.deepEqual([...j.needs].sort(), others);
+  assert.deepEqual([...j.needs].sort(), ["chart", "chart-publish", "images", "web"]);
+  assert.deepEqual(j.permissions, { contents: "write" });
+  assert.deepEqual(j.concurrency, { group: "release", "cancel-in-progress": false });
+});
+
+test("test_release_job_fetches_full_history_and_tags", () => {
+  const checkout = release().steps[0];
+  assert.match(checkout.uses, /^actions\/checkout@/);
+  assert.equal(checkout.with["fetch-depth"], 0);
+  assert.equal(checkout.with["fetch-tags"], true);
+});
+
+test("test_release_job_computes_version_with_script", () => {
+  const steps = release().steps;
+  const version = steps.findIndex((s) => s.id === "version");
+  assert.ok(version >= 0);
+  assert.equal(steps[version].run, 'echo "version=$(python3 scripts/next_version.py)" >> "$GITHUB_OUTPUT"');
+  const later = steps.slice(version + 1);
+  assert.ok(later.length > 0);
+  for (const s of later) assert.equal(s.if, RELEASED, JSON.stringify(s));
+});
+
+test("test_release_job_retags_manifest_only", () => {
+  const j = release();
+  assert.equal(j.env.IMAGE, "harbor.szymonrichert.pl/containers/agents-web");
+  assert.equal(j.env.HARBOR_URL, "harbor.szymonrichert.pl");
+  const copies = j.steps
+    .flatMap((s) => (s.run ?? "").split("\n"))
+    .filter((l) => l.includes("regctl image copy"))
+    .map((l) => l.trim());
+  assert.deepEqual(copies, [
+    'regctl image copy "$IMAGE:$SHORTSHA" "$IMAGE:$VERSION"',
+    'regctl image copy "$IMAGE:$SHORTSHA" "$IMAGE:$VERSION_MINOR"',
+    'regctl image copy "$IMAGE:$SHORTSHA" "$IMAGE:$VERSION_MAJOR"',
+  ]);
+  const tag = j.steps[copySteps(j.steps)[0]].run;
+  for (const line of ['SHORTSHA="${GITHUB_SHA::7}"', 'VERSION_MINOR="${VERSION%.*}"', 'VERSION_MAJOR="${VERSION%%.*}"']) {
+    assert.ok(tag.includes(line), line);
+  }
+  const installers = j.steps.map((s) => s.uses ?? "").filter((u) => /regctl-installer/.test(u));
+  assert.equal(installers.length, 1);
+  assert.match(installers[0], /^regclient\/actions\/regctl-installer@[0-9a-f]{40}$/);
+  const logins = j.steps.filter((s) => /regctl registry login/.test(s.run ?? ""));
+  assert.equal(logins.length, 1);
+  assert.deepEqual(logins[0].env, {
+    HARBOR_USERNAME: "${{ secrets.HARBOR_USERNAME }}",
+    HARBOR_PASSWORD: "${{ secrets.HARBOR_PASSWORD }}",
+  });
+  const text = JSON.stringify(j);
+  for (const banned of ["docker", "regctl image import", "--blob-chunk"]) assert.ok(!text.includes(banned), banned);
+});
+
+test("test_release_job_pushes_git_tag_last", () => {
+  const steps = release().steps;
+  const last = steps.at(-1);
+  assert.deepEqual(
+    last.run.trim().split("\n").map((l) => l.trim()),
+    ['git tag "v$VERSION" "$GITHUB_SHA"', 'git push origin "refs/tags/v$VERSION"'],
+  );
+  assert.ok(Math.max(...copySteps(steps)) < steps.length - 1);
+  assert.equal(last.env.VERSION, "${{ steps.version.outputs.version }}");
+  for (const s of steps) assert.doesNotMatch(s.run ?? "", /(^|\s)(--force|-f)(\s|$)/);
+  assert.ok(!readFileSync(join(root, ".github/workflows/ci.yaml"), "utf8").includes("secrets.GITHUB_TOKEN"));
+});
+
+test("test_no_tag_trigger_or_tag_publish_job", () => {
+  assert.equal(wf.on.push.tags, undefined);
+  assert.equal(wf.jobs["chart-publish-tag"], undefined);
+  assert.ok(!readFileSync(join(root, ".github/workflows/ci.yaml"), "utf8").includes("startsWith(github.ref, 'refs/tags"));
 });
