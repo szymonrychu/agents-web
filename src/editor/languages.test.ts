@@ -16,7 +16,7 @@ type Tree = NonNullable<ReturnType<typeof ensureSyntaxTree>>
 const languageOf = (support: Extension): Language | null => EditorState.create({ extensions: [support] }).facet(language)
 
 describe('languageFor', () => {
-  const lezer: Record<Exclude<LanguageId, 'plain' | 'toml'>, Language> = {
+  const lezer: Record<Exclude<LanguageId, 'plain' | 'toml' | 'jinja'>, Language> = {
     python: pythonLanguage,
     yaml: yamlLanguage,
     json: jsonLanguage,
@@ -34,13 +34,16 @@ describe('languageFor', () => {
     ['prod.tfvars', 'terraform'],
     ['config.HCL', 'terraform'],
     ['pyproject.toml', 'toml'],
+    ['prompt.j2', 'jinja'],
+    ['init.jinja', 'jinja'],
+    ['init.JINJA2', 'jinja'],
   ]
 
   it.each(cases)('maps %s to %s with that language', (path, id) => {
     const { id: got, support } = languageFor(path)
     expect(got).toBe(id)
     const lang = languageOf(support)
-    if (id === 'toml') expect(lang?.name).toBe('toml')
+    if (id === 'toml' || id === 'jinja') expect(lang?.name).toBe(id === 'toml' ? 'toml' : 'jinja2')
     else expect(lang).toBe(lezer[id as keyof typeof lezer])
   })
 
