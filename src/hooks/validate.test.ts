@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { validateHooks } from './validate'
+import { HOOK_EVENTS_FIXTURE } from './testEvents'
 import type { HookAction, HookEventInfo, Hooks } from './types'
 
-const events: HookEventInfo[] = [
-  { name: 'onTurn', supports_matcher: false, supports_interval: false },
-  { name: 'onTick', supports_matcher: false, supports_interval: true },
-  { name: 'onAgentToolCall', supports_matcher: true, supports_interval: false },
-]
+const events: HookEventInfo[] = HOOK_EVENTS_FIXTURE
 const cmd = (o: Partial<HookAction> = {}): HookAction => ({ type: 'command', run: 'echo', ...o }) as HookAction
 const errs = (h: Hooks | null) => validateHooks(h, events).map((e) => `${e.path}: ${e.message}`)
 
@@ -26,10 +23,17 @@ describe('validateHooks', () => {
     expect(errs({ onTurn: [cmd({ matcher: 'Bash' })] })).toEqual(['onTurn.0.matcher: only allowed on onAgentToolCall'])
     expect(errs({ onAgentToolCall: [cmd({ matcher: 'Bash' })] })).toEqual([])
   })
+  test('interval and when follow supports_interval, supports_when and interval_required of the event', () => {
+    const custom: HookEventInfo[] = [{ name: 'onEvery', can_veto: false, supports_matcher: false, supports_interval: true, supports_when: false, interval_required: false }]
+    const run = (h: Hooks) => validateHooks(h, custom).map((e) => `${e.path}: ${e.message}`)
+    expect(run({ onEvery: [cmd()] })).toEqual([])
+    expect(run({ onEvery: [cmd({ interval_seconds: 5 })] })).toEqual([])
+    expect(run({ onEvery: [cmd({ interval_seconds: 5, when: 'busy' })] })).toEqual(['onEvery.0.when: not allowed on onEvery'])
+  })
   test('interval and when only on onTick, interval required there', () => {
     expect(errs({ onTurn: [cmd({ interval_seconds: 5, when: 'busy' })] })).toEqual([
-      'onTurn.0.interval_seconds: only allowed on onTick',
-      'onTurn.0.when: only allowed on onTick',
+      'onTurn.0.interval_seconds: not allowed on onTurn',
+      'onTurn.0.when: not allowed on onTurn',
     ])
     expect(errs({ onTick: [cmd()] })).toEqual(['onTick.0.interval_seconds: required on onTick'])
     expect(errs({ onTick: [cmd({ interval_seconds: 5, when: 'always' })] })).toEqual([])

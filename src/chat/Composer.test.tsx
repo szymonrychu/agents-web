@@ -51,7 +51,7 @@ describe('Composer', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
     fireEvent.change(input(), { target: { value: 'do it' } })
     fireEvent.keyDown(input(), { key: 'Enter' })
-    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'do it' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'do it', lane: 'regular' }))
     await waitFor(() => expect((input() as HTMLTextAreaElement).value).toBe(''))
   })
 
@@ -73,7 +73,7 @@ describe('Composer', () => {
     fireEvent.click(within(screen.getByRole('listbox')).getByText('Agent 1'))
     fireEvent.change(input(), { target: { value: 'hi' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'hi', target_agent_id: 'a1' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'hi', lane: 'regular', target_agent_id: 'a1' }))
   })
 
   test('disables send when empty or deleting', () => {

@@ -6,15 +6,12 @@ import { useState } from 'react'
 import { afterEach, describe, expect, test } from 'vitest'
 import { theme } from '../theme'
 import HooksEditor from './HooksEditor'
+import { HOOK_EVENTS_FIXTURE } from './testEvents'
 import type { HookEventInfo, Hooks } from './types'
 
 afterEach(cleanup)
 
-const events: HookEventInfo[] = [
-  { name: 'onTurn', supports_matcher: false, supports_interval: false },
-  { name: 'onTick', supports_matcher: false, supports_interval: true },
-  { name: 'onAgentToolCall', supports_matcher: true, supports_interval: false },
-]
+const events: HookEventInfo[] = HOOK_EVENTS_FIXTURE
 
 let last: Hooks | null | undefined
 function Harness({ initial }: { initial: Hooks | null }) {

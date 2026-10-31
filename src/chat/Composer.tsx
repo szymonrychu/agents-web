@@ -32,7 +32,7 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
     if (!canSend) return
     setSending(true)
     setError(null)
-    postMessage(sessionId, chosen === ANY ? { text } : { text, target_agent_id: chosen })
+    postMessage(sessionId, chosen === ANY ? { text, lane: 'regular' } : { text, lane: 'regular', target_agent_id: chosen })
       .then(() => setText(''))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSending(false))

@@ -21,12 +21,9 @@ export function validateHooks(hooks: Hooks | null, events: HookEventInfo[]): Hoo
     actions.forEach((action, i) => {
       const add = (field: string, message: string) => out.push({ path: `${event}.${i}.${field}`, message })
       if (action.matcher != null && !info.supports_matcher) add('matcher', `only allowed on ${toolEvents.join(', ')}`)
-      if (!info.supports_interval) {
-        if (action.interval_seconds != null) add('interval_seconds', 'only allowed on onTick')
-        if (action.when != null) add('when', 'only allowed on onTick')
-      } else if (action.interval_seconds == null) {
-        add('interval_seconds', 'required on onTick')
-      }
+      if (!info.supports_interval && action.interval_seconds != null) add('interval_seconds', `not allowed on ${event}`)
+      if (!info.supports_when && action.when != null) add('when', `not allowed on ${event}`)
+      if (info.interval_required && action.interval_seconds == null) add('interval_seconds', `required on ${event}`)
       if (action.matcher != null) {
         try {
           new RegExp(action.matcher)

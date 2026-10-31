@@ -7,13 +7,7 @@ export type HookAction = CommandHook | WebhookHook
 export type Hooks = Record<string, HookAction[]>
 
 /** One hook event as the orchestrator's `/meta.hook_events` lists it. */
-export interface HookEventInfo {
-  name: string
-  /** The event carries a tool name a `matcher` can test (onAgentToolCall, onToolResult). */
-  supports_matcher: boolean
-  /** The event is periodic: `interval_seconds` is required and `when` is allowed (onTick). */
-  supports_interval: boolean
-}
+export type HookEventInfo = components['schemas']['MetaHookEvent']
 
 export interface HookError {
   /** `<event>` or `<event>.<index>[.<field>]`, the shape of the orchestrator's error paths. */

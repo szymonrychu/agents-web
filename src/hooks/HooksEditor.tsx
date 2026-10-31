@@ -103,7 +103,7 @@ function ActionFields({ action, info, errors, disabled, onChange }: { action: Ho
         </TextField>
         {info?.supports_matcher && text('matcher', 'Matcher', action.matcher)}
         {info?.supports_interval && num('interval_seconds', 'Interval seconds', action.interval_seconds)}
-        {info?.supports_interval && (
+        {info?.supports_when && (
           <TextField select size="small" label="When" value={action.when ?? ''} disabled={disabled} slotProps={native} onChange={(e) => set('when', e.target.value === '' ? undefined : e.target.value)}>
             <option value="" />
             <option value="busy">busy</option>
