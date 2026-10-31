@@ -12,6 +12,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { FormError, PresetSelect } from '../triggers'
+import TemplateEditor, { type TemplatePreview } from '../editor/TemplateEditor'
 import { createEndpoint, getMeta, previewTemplate } from './api'
 import type { EndpointCreated, EndpointIn, FilterResult, Filters, WebhookMeta } from './api'
 import { EMPTY_FILTERS, FiltersEditor } from './FiltersEditor'
@@ -91,6 +92,18 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
     }
   }
 
+  // The template editor's preview: the example JSON through the webhook preview; a rejection is shown by the editor.
+  const previewPrompt = async (text: string): Promise<TemplatePreview> => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(example)
+    } catch {
+      throw new Error('Example JSON is not valid JSON')
+    }
+    const out = await previewTemplate({ type, example: parsed, template: text })
+    return { rendered: out.prompt, error: null, variables: [] }
+  }
+
   const submit = async () => {
     const body: EndpointIn = { type, preset_id: presetId }
     if (suffix) body.suffix = suffix
@@ -133,11 +146,13 @@ function Body({ onClose, onCreated }: Omit<CreateEndpointDialogProps, 'open'>) {
             />
           </>
         )}
-        <TextField
-          label="Prompt template" multiline minRows={4} value={template} onChange={(e) => { setTemplate(e.target.value); clearPreview() }}
-          helperText={`Jinja2, optional; default prompt when empty. Variables: ${PLACEHOLDERS.map((p) => `{{ ${p} }}`).join(', ')}. Filter: from_json.`}
-          slotProps={{ htmlInput: { style: { fontFamily: 'monospace' } } }} fullWidth
+        <TemplateEditor
+          label="Prompt template" value={template} onChange={(t) => { setTemplate(t); clearPreview() }}
+          preview={previewPrompt} previewLabel="Preview template"
         />
+        <Typography variant="caption" color="text.secondary">
+          {`Jinja2, optional; default prompt when empty. Variables: ${PLACEHOLDERS.map((p) => `{{ ${p} }}`).join(', ')}. Filter: from_json.`}
+        </Typography>
         {filterFields ? <FiltersEditor type={type} fields={filterFields} value={filters} onChange={(f) => { setFilters(f); clearPreview() }} /> : <FormError error={metaError as never} />}
         <TextField
           label="Example JSON" multiline minRows={4} value={example}

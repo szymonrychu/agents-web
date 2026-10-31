@@ -27,6 +27,8 @@ export interface TemplateEditorProps {
   /** Renders the template; a rejection is shown as an error. */
   preview: (template: string) => Promise<TemplatePreview>
   disabled?: boolean
+  /** The preview button's text; default "Preview". */
+  previewLabel?: string
 }
 
 /**
@@ -46,7 +48,7 @@ export function postTemplatePreview(previewUrl: string, surface: string): (templ
   }
 }
 
-export default function TemplateEditor({ label, value, onChange, preview, disabled = false }: TemplateEditorProps): JSX.Element {
+export default function TemplateEditor({ label, value, onChange, preview, disabled = false, previewLabel = 'Preview' }: TemplateEditorProps): JSX.Element {
   // `forValue` is the template the shown preview was made from; a different value hides it as stale
   const [preview_, setPreview] = useState<{ result: TemplatePreview; forValue: string } | null>(null)
   // `seen` is the last text the editor itself reported; a value that differs came from outside and replaces the document
@@ -82,7 +84,7 @@ export default function TemplateEditor({ label, value, onChange, preview, disabl
       </Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <Button size="small" onClick={() => void run()} disabled={disabled || busy || value.trim() === ''}>
-          Preview
+          {previewLabel}
         </Button>
         {result?.variables.map((v) => (
           <Chip key={v} size="small" label={v} />
