@@ -223,6 +223,29 @@ describe("ChatLog", () => {
     expect(document.querySelector("strong")).toBeNull();
   });
 
+  test("renders command row", async () => {
+    const record = { id: "c1", name: "reload-plugins", args: "", origin: "client", turn_id: null };
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(1, "user_message", { origin: "command", text: "/reload-plugins" }),
+        ev(2, "command_queued", { record: { ...record, state: "queued" } }),
+        ev(3, "command_started", { record: { ...record, state: "running" } }),
+        ev(4, "command_completed", { record: { ...record, state: "completed", result: "ok", output: "Reloaded 3 plugins" } }),
+      ],
+      has_more_before: false,
+      next_after_id: 4,
+    });
+    mount();
+    const line = await screen.findByText("/reload-plugins");
+    expect(screen.getAllByText("/reload-plugins")).toHaveLength(1);
+    const row = line.closest('[role="listitem"]') as HTMLElement;
+    expect(within(row).getByText("command")).toBeTruthy();
+    expect(within(row).getByText("completed")).toBeTruthy();
+    const out = within(row).getByText("Reloaded 3 plugins");
+    expect(out.tagName).toBe("PRE");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
   test("loads older page on start reached", async () => {
     api.listEvents.mockResolvedValueOnce({
       events: [text(5, "newer")],
