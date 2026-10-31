@@ -16,6 +16,7 @@ import { theme } from "../theme";
 import { ChatView } from "./ChatView";
 import { FOLLOW_PX, nextFirstIndex, START_INDEX } from "./ChatLog";
 import type { ChatItem } from "./chatModel";
+import { subagentRun } from "./__fixtures__/subagentRun";
 
 const virtuosoProps = vi.hoisted(() => ({
   last: null as null | {
@@ -407,6 +408,58 @@ describe("ChatLog", () => {
     expect(FOLLOW_PX).toBe(48);
     expect(virtuosoProps.last!.followOutput(true)).toBe("auto");
     expect(virtuosoProps.last!.followOutput(false)).toBe(false);
+  });
+});
+
+// Fixture rows as the events API returns them, on agent a0 (ordinal 0).
+const runEvents = (linked = true): EventView[] =>
+  subagentRun(linked).map((r) => ({ ...r, agent_id: "a0", seq: r.id, session_id: "c1", wrapper_session_id: "s" }) as unknown as EventView);
+
+describe("subagent panes", () => {
+  test("main view hides subagent operations; the pane under the Task call shows them read-only", async () => {
+    api.listEvents.mockResolvedValue({ events: runEvents(), has_more_before: false, next_after_id: 12 });
+    mount();
+    expect(await screen.findByText("Found it: src/config.py.")).toBeTruthy();
+    expect(screen.getByText("Delegating the search.")).toBeTruthy();
+    expect(screen.queryByText("It is in src/config.py.")).toBeNull();
+    const pane = screen.getByRole("group", { name: "subagent Explore" });
+    const taskRow = screen.getByText("Task").closest('[role="listitem"]') as HTMLElement;
+    expect(taskRow.contains(pane)).toBe(true);
+    expect(within(pane).getByText("stopped, 3 operations")).toBeTruthy();
+    expect(within(pane).queryByRole("textbox")).toBeNull();
+    fireEvent.click(within(pane).getByRole("button", { name: /subagent Explore/ }));
+    expect(within(pane).getByText("It is in src/config.py.")).toBeTruthy();
+    expect(within(pane).getByText("thinking")).toBeTruthy();
+    expect(within(pane).getByText("Read")).toBeTruthy();
+    // main rows: user, main text, Task call, main text, turn end
+    expect(screen.getAllByRole("listitem").filter((r) => !pane.contains(r))).toHaveLength(5);
+  });
+
+  test("without the Task link the pane is its own row at subagent_started", async () => {
+    api.listEvents.mockResolvedValue({ events: runEvents(false), has_more_before: false, next_after_id: 12 });
+    mount();
+    const pane = await screen.findByRole("group", { name: "subagent Explore" });
+    const taskRow = screen.getByText("Task").closest('[role="listitem"]') as HTMLElement;
+    expect(taskRow.contains(pane)).toBe(false);
+    expect(screen.queryByText("It is in src/config.py.")).toBeNull();
+  });
+
+  test("live subagent events stream in and update the pane status", async () => {
+    const rows = runEvents();
+    api.listEvents.mockResolvedValue({ events: rows.slice(0, 3), has_more_before: false, next_after_id: 3 });
+    mount();
+    await screen.findByText("Delegating the search.");
+    const names = stream.opened[0].opts.eventNames ?? [];
+    expect(names).toEqual(expect.arrayContaining(["subagent_started", "subagent_stopped"]));
+    act(() => {
+      for (const r of rows.slice(3, 8)) stream.opened[0].opts.onEvent(r, { type: r.type, id: String(r.id) });
+    });
+    expect(within(screen.getByRole("group", { name: "subagent Explore" })).getByText("running, 3 operations")).toBeTruthy();
+    expect(screen.queryByText("It is in src/config.py.")).toBeNull();
+    act(() => {
+      for (const r of rows.slice(8)) stream.opened[0].opts.onEvent(r, { type: r.type, id: String(r.id) });
+    });
+    expect(within(screen.getByRole("group", { name: "subagent Explore" })).getByText("stopped, 3 operations")).toBeTruthy();
   });
 });
 
