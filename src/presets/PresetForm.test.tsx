@@ -698,6 +698,22 @@ describe('PresetForm', () => {
     expect(button('Create').disabled).toBe(false)
   })
 
+  test('invalid raw hooks JSON blocks Save and shows the error', { timeout: 30000 }, async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { hooks: { onTurn: [{ type: 'command', run: 'echo' }] } } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Raw JSON'))
+    await replace('Hooks JSON', '')
+    await paste('Hooks JSON', '{nope')
+    expect(screen.getByText(/Invalid JSON/)).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+    await replace('Hooks JSON', '{"onTurn":[{"type":"command","run":"ok"}]}')
+    expect(button('Save').disabled).toBe(false)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec.wrapper.hooks).toEqual({ onTurn: [{ type: 'command', run: 'ok' }] })
+  })
+
   test('hooks edit round-trips through the form', { timeout: 30000 }, async () => {
     api.updatePreset.mockResolvedValue(preset())
     const hooks = { onTurn: [{ type: 'command', run: 'echo' }] }

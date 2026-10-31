@@ -116,4 +116,21 @@ describe('HooksEditor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Form' }))
     expect(screen.getByLabelText('Hook event')).toBeTruthy()
   })
+
+  test('raw JSON reports invalid text and keeps the Form toggle off until it parses', async () => {
+    const seen: (string | null)[] = []
+    render(
+      <ThemeProvider theme={theme}>
+        <HooksEditor value={null} onChange={() => {}} onInvalid={(m) => seen.push(m)} events={events} />
+      </ThemeProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Raw JSON' }))
+    await userEvent.click(screen.getByLabelText('Hooks JSON'))
+    await userEvent.paste('{nope')
+    expect(seen.at(-1)).toMatch(/Invalid JSON/)
+    expect((screen.getByRole('button', { name: 'Form' }) as HTMLButtonElement).disabled).toBe(true)
+    await userEvent.clear(screen.getByLabelText('Hooks JSON'))
+    expect(seen.at(-1)).toBeNull()
+    expect((screen.getByRole('button', { name: 'Form' }) as HTMLButtonElement).disabled).toBe(false)
+  })
 })

@@ -19,9 +19,10 @@ import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
-import { base, createPreset, getMeta, updatePreset } from '../api/client'
+import { createPreset, getMeta, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
-import TemplateEditor, { postTemplatePreview } from '../editor/TemplateEditor'
+import TemplateEditor from '../editor/TemplateEditor'
+import { previewFor, type Surface } from '../sessions/previewFor'
 import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
@@ -40,10 +41,6 @@ export interface PresetFormProps {
 
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
 const NOT_AVAILABLE = ' (not available)'
-
-type Surface = 'web_chat_start' | 'preset_text' | 'init_script'
-/** Renders a template through the orchestrator's preview for the surface it is sent on. */
-const previewFor = (surface: Surface) => postTemplatePreview(`${base()}/templates/preview`, surface)
 
 const hooksOf = (text: string): Hooks | null => {
   try {
@@ -94,6 +91,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [hooksInvalid, setHooksInvalid] = useState(false)
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteErrors, setPasteErrors] = useState<string[]>([])
   const touched = useRef(new Set<keyof FormValues>())
@@ -131,7 +129,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const errors = validate(values, meta, stored(preset).cache?.key)
   const cacheAvailable = meta?.cache.available === true
   const kubeAccessAvailable = meta?.kube_access.available === true
-  const invalid = Object.keys(errors).length > 0
+  const invalid = Object.keys(errors).length > 0 || hooksInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
       touched.current.add(key)
@@ -376,7 +374,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('permDeny', 'Permissions deny', { help: 'Comma separated' })}
           {meta && (
             <Box>
-              <HooksEditor value={hooksOf(values.hooks)} onChange={(v) => set('hooks', v === null ? '' : JSON.stringify(v, null, 2))} events={meta.hook_events} />
+              <HooksEditor value={hooksOf(values.hooks)} onChange={(v) => set('hooks', v === null ? '' : JSON.stringify(v, null, 2))} events={meta.hook_events} onInvalid={(m) => setHooksInvalid(m !== null)} />
               <FormHelperText>Command hooks run with the agent's credentials.</FormHelperText>
             </Box>
           )}

@@ -23,6 +23,8 @@ export interface HooksEditorProps {
   onChange: (value: Hooks | null) => void
   /** The hook events the orchestrator accepts, from `/meta.hook_events`. */
   events: HookEventInfo[]
+  /** Called with the parse error of the Raw JSON text, or null when it is valid; the stored value is the last valid one. */
+  onInvalid?: (message: string | null) => void
   disabled?: boolean
 }
 
@@ -120,13 +122,14 @@ function ActionFields({ action, info, errors, disabled, onChange }: { action: Ho
   )
 }
 
-function RawJson({ value, onChange, disabled }: { value: Hooks | null; onChange: (v: Hooks | null) => void; disabled: boolean }): JSX.Element {
+function RawJson({ value, onChange, onInvalid, disabled }: { value: Hooks | null; onChange: (v: Hooks | null) => void; onInvalid: (m: string | null) => void; disabled: boolean }): JSX.Element {
   const [text, setText] = useState(value === null ? '' : JSON.stringify(value, null, 2))
   const [error, setError] = useState<string | null>(null)
   const edit = (next: string) => {
     setText(next)
     if (next.trim() === '') {
       setError(null)
+      onInvalid(null)
       onChange(null)
       return
     }
@@ -134,9 +137,12 @@ function RawJson({ value, onChange, disabled }: { value: Hooks | null; onChange:
       const parsed: unknown = JSON.parse(next)
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('hooks must be a JSON object')
       setError(null)
+      onInvalid(null)
       onChange(parsed as Hooks)
     } catch (e) {
-      setError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`)
+      const message = `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`
+      setError(message)
+      onInvalid(message)
     }
   }
   return (
@@ -151,8 +157,13 @@ function RawJson({ value, onChange, disabled }: { value: Hooks | null; onChange:
   )
 }
 
-export default function HooksEditor({ value, onChange, events, disabled = false }: HooksEditorProps): JSX.Element {
+export default function HooksEditor({ value, onChange, events, onInvalid = () => {}, disabled = false }: HooksEditorProps): JSX.Element {
   const [raw, setRaw] = useState(false)
+  const [rawInvalid, setRawInvalid] = useState(false)
+  const reportInvalid = (m: string | null) => {
+    setRawInvalid(m !== null)
+    onInvalid(m)
+  }
   const [pick, setPick] = useState(events[0]?.name ?? '')
   const known = new Map(events.map((e) => [e.name, e]))
   const errors = validateHooks(value, events)
@@ -170,12 +181,12 @@ export default function HooksEditor({ value, onChange, events, disabled = false 
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="subtitle2">Hooks</Typography>
-        <Button size="small" onClick={() => setRaw(!raw)}>
+        <Button size="small" disabled={raw && rawInvalid} onClick={() => setRaw(!raw)}>
           {raw ? 'Form' : 'Raw JSON'}
         </Button>
       </Box>
       {raw ? (
-        <RawJson value={value} onChange={onChange} disabled={disabled} />
+        <RawJson value={value} onChange={onChange} onInvalid={reportInvalid} disabled={disabled} />
       ) : (
         <>
           {Object.entries(hooks).map(([event, actions]) => (
