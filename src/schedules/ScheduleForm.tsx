@@ -10,6 +10,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError } from '../api/client'
+import TemplateEditor, { type TemplatePreview } from '../editor/TemplateEditor'
 import { FormError, PresetSelect } from '../triggers'
 import { createSchedule, previewSchedule, updateSchedule } from './api'
 import type { ScheduleView } from './api'
@@ -20,7 +21,7 @@ export interface ScheduleFormProps {
   onCancel: () => void
 }
 
-type Field = 'name' | 'cron' | 'timezone' | 'preset'
+type Field = 'name' | 'cron' | 'timezone' | 'preset' | 'prompt'
 type FieldErrors = Partial<Record<Field, string>>
 interface Preview { key: string; fires: string[]; errors: FieldErrors }
 
@@ -31,7 +32,11 @@ const FIELD_OF_CODE: Record<string, Field> = {
   invalid_cron: 'cron',
   invalid_timezone: 'timezone',
   unknown_preset: 'preset',
+  invalid_prompt: 'prompt',
 }
+
+const PROMPT_VARIABLES = ['schedule_name', 'fired_at', 'preset', 'now']
+const LINE_PREFIX = /^line (\d+): /
 
 const FALLBACK_ZONES = ['UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo']
 
@@ -90,6 +95,20 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
     if (field) setSaveErrors((s) => ({ ...s, [field]: undefined }))
     setFormError(null)
   }
+  // The prompt editor's preview: the backend renders the Jinja prompt with the schedule's context; a bad template comes
+  // back as 422 invalid_prompt whose message is "line N: ..." and is shown by the editor with its line.
+  const previewPrompt = async (text: string): Promise<TemplatePreview> => {
+    try {
+      const out = await previewSchedule({
+        cron: cron.trim(), timezone, preset_id: presetId || null, schedule_name: name.trim() || null, prompt: text,
+      })
+      return { rendered: out.rendered ?? null, error: null, variables: out.variables }
+    } catch (e) {
+      if (!(e instanceof ApiError) || e.code !== 'invalid_prompt') throw e
+      const m = LINE_PREFIX.exec(e.message)
+      return { rendered: null, error: { line: m ? Number(m[1]) : null, message: m ? e.message.slice(m[0].length) : e.message }, variables: [] }
+    }
+  }
   const valid = name.trim() !== '' && cron.trim() !== '' && presetId !== '' && prompt.trim() !== ''
 
   const submit = async () => {
@@ -135,11 +154,12 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
         <PresetSelect value={presetId} onChange={edit('preset', setPresetId)} />
         {err('preset') && <FormHelperText error>{err('preset')}</FormHelperText>}
       </Box>
-      <TextField
-        label="Prompt" multiline minRows={4} value={prompt} onChange={(e) => edit(null, setPrompt)(e.target.value)}
-        helperText="Sent to the agent on each fire. Placeholders: {schedule_name} and {fired_at} (ISO 8601, in the schedule's timezone)."
-        slotProps={{ htmlInput: { style: { fontFamily: 'monospace' } } }} fullWidth
+      <TemplateEditor
+        label="Prompt" value={prompt} onChange={edit('prompt', setPrompt)} preview={previewPrompt} previewLabel="Preview prompt"
       />
+      <FormHelperText error={Boolean(err('prompt'))}>
+        {err('prompt') ?? `Jinja2, sent to the agent on each fire. Variables: ${PROMPT_VARIABLES.map((v) => `{{ ${v} }}`).join(', ')} (fired_at is ISO 8601, in the schedule's timezone).`}
+      </FormHelperText>
       <FormControlLabel control={<Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />} label="Enabled" />
       <FormError error={formError as never} />
       <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
