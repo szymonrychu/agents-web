@@ -152,7 +152,12 @@ test("test_release_job_computes_version_with_script", () => {
   const steps = release().steps;
   const version = steps.findIndex((s) => s.id === "version");
   assert.ok(version >= 0);
-  assert.equal(steps[version].run, 'echo "version=$(python3 scripts/next_version.py)" >> "$GITHUB_OUTPUT"');
+  // A bare assignment fails the step (bash -e) when the script fails; inside echo it would not.
+  assert.equal(steps[version].shell, undefined);
+  assert.deepEqual(steps[version].run.trim().split("\n"), [
+    'version="$(python3 scripts/next_version.py)"',
+    'echo "version=$version" >> "$GITHUB_OUTPUT"',
+  ]);
   const later = steps.slice(version + 1);
   assert.ok(later.length > 0);
   for (const s of later) assert.equal(s.if, RELEASED, JSON.stringify(s));
