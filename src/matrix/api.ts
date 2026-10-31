@@ -45,6 +45,8 @@ export const listUsers = (opts: UsersQuery = {}) => req<UserView[]>('GET', `/use
 
 export const listRules = () => req<RulesView>('GET', '/rules');
 export const addRule = (body: RuleIn) => req<RuleView>('POST', '/rules', body);
+/** Sets (text) or clears (null) the rule's own preamble. */
+export const patchRule = (ruleId: string | number, preamble: string | null) => req<RuleView>('PATCH', `/rules/${id(String(ruleId))}`, { preamble });
 export const deleteRule = (ruleId: string | number) => req<void>('DELETE', `/rules/${id(String(ruleId))}`);
 
 export const getSettings = () => req<SettingsView>('GET', '/settings');
