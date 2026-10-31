@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
+import { EditorView } from '@codemirror/view'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { ScheduleView } from './api'
@@ -16,7 +17,7 @@ vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api
 const FIRES = ['2026-10-27T06:00:00Z', '2026-10-28T06:00:00Z', '2026-10-29T06:00:00Z']
 const sched = (over: Partial<ScheduleView> = {}): ScheduleView =>
   ({
-    id: 's1', name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/London', preset_id: 'p2', prompt: 'Run {schedule_name}',
+    id: 's1', name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/London', preset_id: 'p2', prompt: 'Run {{ schedule_name }}',
     enabled: false, next_fires: [], last_run: null, created_at: '2026-10-25T10:00:00Z', updated_at: '2026-10-25T10:00:00Z', ...over,
   }) as ScheduleView
 const apiError = (status: number, code: string, message: string) => new ApiError(status, code, message)
@@ -32,6 +33,26 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+const rangeOriginal = { rects: Range.prototype.getClientRects, box: Range.prototype.getBoundingClientRect }
+beforeAll(() => {
+  Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] }) as unknown as DOMRectList
+  Range.prototype.getBoundingClientRect = () => new DOMRect()
+})
+afterAll(() => {
+  Range.prototype.getClientRects = rangeOriginal.rects
+  Range.prototype.getBoundingClientRect = rangeOriginal.box
+})
+
+/** Replaces the prompt in the (lazy) code editor. */
+const setPrompt = async (text: string) => {
+  const view = await waitFor(() => {
+    const v = EditorView.findFromDOM(screen.getByTestId('file-editor'))
+    if (!v) throw new Error('editor not ready')
+    return v
+  })
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } })
+}
+
 const mount = (schedule?: ScheduleView) => {
   const onSaved = vi.fn()
   const onCancel = vi.fn()
@@ -46,15 +67,14 @@ const fill = async (u: ReturnType<typeof userEvent.setup>) => {
   await u.type(screen.getByLabelText('Name'), 'nightly')
   await u.type(screen.getByLabelText('Cron'), '0 6 * * *')
   await pickPreset(u, 'Default preset')
-  await u.type(screen.getByLabelText('Prompt'), 'Do it')
+  await setPrompt('Do it')
 }
 
 describe('defaults', () => {
   test('defaults timezone to Europe/Warsaw, loads presets and hints the placeholders', async () => {
     mount()
     expect(screen.getByRole('combobox', { name: 'Timezone' }).textContent).toBe('Europe/Warsaw')
-    expect(screen.getByText(/\{schedule_name\}/)).toBeTruthy()
-    expect(screen.getByText(/\{fired_at\}/)).toBeTruthy()
+    for (const v of ['schedule_name', 'fired_at', 'preset', 'now']) expect(screen.getByText(new RegExp(`\\{\\{ ${v} \\}\\}`))).toBeTruthy()
     expect(screen.getByText(/5 fields/)).toBeTruthy()
     await userEvent.setup().click(await screen.findByRole('combobox', { name: 'Preset' }))
     expect(await screen.findByRole('option', { name: /Other preset/ })).toBeTruthy()
@@ -130,6 +150,37 @@ describe('preview', () => {
   })
 })
 
+describe('prompt preview', () => {
+  test('previews the prompt with the cron, timezone, preset and name, and shows the rendered text and variables', async () => {
+    api.previewSchedule.mockResolvedValue({ next_fires: FIRES, rendered: 'Run nightly at 2026-10-27', variables: ['schedule_name', 'fired_at'] })
+    const u = userEvent.setup()
+    mount(sched({ prompt: 'Run {{ schedule_name }}' }))
+    await u.click(screen.getByRole('button', { name: 'Preview prompt' }))
+    expect((await screen.findByTestId('template-rendered')).textContent).toBe('Run nightly at 2026-10-27')
+    expect(screen.getByText('fired_at')).toBeTruthy()
+    expect(api.previewSchedule).toHaveBeenCalledWith({
+      cron: '0 6 * * *', timezone: 'Europe/London', preset_id: 'p2', schedule_name: 'nightly', prompt: 'Run {{ schedule_name }}',
+    })
+  })
+
+  test('an invalid_prompt rejection shows its line and message in the editor', async () => {
+    api.previewSchedule.mockImplementation(async (body: { prompt?: string }) => {
+      if (body.prompt !== undefined) throw apiError(422, 'invalid_prompt', 'line 2: unexpected end of template')
+      return { next_fires: FIRES }
+    })
+    const u = userEvent.setup()
+    mount(sched({ prompt: 'a\n{{ x' }))
+    await u.click(screen.getByRole('button', { name: 'Preview prompt' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('line 2: unexpected end of template')
+    expect(screen.queryByTestId('template-rendered')).toBeNull()
+  })
+
+  test('the cron-only preview carries no prompt', async () => {
+    mount(sched())
+    await waitFor(() => expect(api.previewSchedule).toHaveBeenCalledWith({ cron: '0 6 * * *', timezone: 'Europe/London' }))
+  })
+})
+
 describe('save', () => {
   test('save creates the schedule and reports it', async () => {
     const saved = sched({ id: 'new' })
@@ -150,8 +201,7 @@ describe('save', () => {
     api.updateSchedule.mockResolvedValue(saved)
     const u = userEvent.setup()
     const { onSaved } = mount(sched())
-    await u.clear(screen.getByLabelText('Prompt'))
-    await u.type(screen.getByLabelText('Prompt'), 'changed')
+    await setPrompt('changed')
     await u.click(screen.getByLabelText('Enabled'))
     await u.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
@@ -202,6 +252,11 @@ describe('errors', () => {
   test('errors: unknown_preset lands on the preset field', async () => {
     await attempt(apiError(422, 'unknown_preset', 'no such preset'))
     expect(await screen.findByText(/no such preset/)).toBeTruthy()
+  })
+
+  test('errors: invalid_prompt on save shows under the prompt', async () => {
+    await attempt(apiError(422, 'invalid_prompt', 'line 1: unexpected end of template'))
+    expect(await screen.findByText(/line 1: unexpected end of template/)).toBeTruthy()
   })
 
   test('errors: other failures show as a form error', async () => {

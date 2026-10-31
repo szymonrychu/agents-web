@@ -7,6 +7,8 @@ import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { ChatItem } from './chatModel'
 import { ChatMarkdown } from './Markdown'
+import { SubagentPane } from './SubagentPane'
+import type { SubagentIndex } from './SubagentPane'
 
 const TAG_PX = 36
 
@@ -76,8 +78,20 @@ function tokens(usage: Record<string, unknown> | undefined): string {
   return parts.length ? ` (${parts.join(', ')})` : ''
 }
 
-export function ChatEntry({ item }: { item: ChatItem }) {
+/** Subagents only appear inside panes, so a pane's own entries get no index (no nesting). */
+const plainEntry = (item: ChatItem) => <ChatEntry item={item} />
+
+/** @param subagents panes of the main view; a Task call shows its subagents' panes under it. */
+export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: SubagentIndex }) {
   switch (item.kind) {
+    case 'subagent': {
+      const pane = subagents?.panes[item.claudeAgentId]
+      return (
+        <Row item={item}>
+          {pane ? <SubagentPane pane={pane} renderItem={plainEntry} /> : null}
+        </Row>
+      )
+    }
     case 'user_message':
       return (
         <Row item={item} label={item.origin === 'user' ? 'you' : item.origin} markdown>
@@ -142,6 +156,10 @@ export function ChatEntry({ item }: { item: ChatItem }) {
               </>
             ) : null}
           </Expandable>
+          {(subagents?.byToolUse[item.toolUseId] ?? []).map((id) => {
+            const pane = subagents?.panes[id]
+            return pane ? <SubagentPane key={id} pane={pane} renderItem={plainEntry} /> : null
+          })}
         </Row>
       )
     case 'denied':

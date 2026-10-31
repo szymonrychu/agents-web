@@ -179,6 +179,12 @@ export interface components {
         PreviewIn: {
             /** Cron */
             cron: string;
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Prompt */
+            prompt?: string | null;
+            /** Schedule Name */
+            schedule_name?: string | null;
             /** Timezone */
             timezone?: string | null;
         };
@@ -186,6 +192,13 @@ export interface components {
         PreviewView: {
             /** Next Fires */
             next_fires: string[];
+            /** Rendered */
+            rendered?: string | null;
+            /**
+             * Variables
+             * @default []
+             */
+            variables: string[];
         };
         /** RunView */
         RunView: {
@@ -371,7 +384,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset) */
+            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset, invalid_prompt) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -491,7 +504,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset) */
+            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset, invalid_prompt) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -542,7 +555,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset) */
+            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset, invalid_prompt) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -644,7 +657,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset) */
+            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset, invalid_prompt) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -782,7 +795,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset) */
+            /** @description invalid request (invalid_request, invalid_cron, invalid_timezone, unknown_preset, invalid_prompt) */
             422: {
                 headers: {
                     [name: string]: unknown;

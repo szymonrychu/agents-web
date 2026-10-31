@@ -10,7 +10,7 @@ import { ChatLog } from './ChatLog'
 import { Composer } from './Composer'
 import { QueueStrip } from './QueueStrip'
 import { ScaleControl } from './ScaleControl'
-import { filterByAgents } from './chatModel'
+import { filterByAgents, splitSubagents } from './chatModel'
 import { useSessionChat } from './useSessionChat'
 import { TOKENS } from '../theme'
 
@@ -32,7 +32,8 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
   const selected = useMemo(() => (filter.sessionId === session.id ? filter.ids : []), [filter, session.id])
   const ordinals = useMemo(() => Object.fromEntries(agents.map((a) => [a.id, a.ordinal])), [agents])
   const chat = useSessionChat(session.id, ordinals, maxItems)
-  const items = useMemo(() => filterByAgents(chat.items, selected), [chat.items, selected])
+  // The main log shows only the main agent; each subagent's operations go to its read-only pane.
+  const view = useMemo(() => splitSubagents(filterByAgents(chat.items, selected), chat.subagents), [chat.items, chat.subagents, selected])
   const toggle = (id: string) => setFilter({ sessionId: session.id, ids: selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id] })
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -58,7 +59,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
       {chat.loading ? (
         <Typography sx={{ color: 'text.secondary', pt: 1 }}>Loading messages</Typography>
       ) : (
-        <ChatLog key={`${session.id}:${selected.join(',')}`} items={items} hasMoreBefore={chat.hasMoreBefore} loadingOlder={chat.loadingOlder} onLoadOlder={chat.loadOlder} />
+        <ChatLog key={`${session.id}:${selected.join(',')}`} items={view.main} subagents={view} hasMoreBefore={chat.hasMoreBefore} loadingOlder={chat.loadingOlder} onLoadOlder={chat.loadOlder} />
       )}
       <AgentUnavailableBanner session={session} agents={agents} />
       <QueueStrip sessionId={session.id} />

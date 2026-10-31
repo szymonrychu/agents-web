@@ -155,7 +155,8 @@ export interface paths {
         delete: operations["delete_rule_matrix_api_v1_rules__rule_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Patch Rule */
+        patch: operations["patch_rule_matrix_api_v1_rules__rule_id__patch"];
         trace?: never;
     };
     "/matrix/api/v1/settings": {
@@ -170,6 +171,23 @@ export interface paths {
         /** Put Settings */
         put: operations["put_settings_matrix_api_v1_settings_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/matrix/api/v1/templates/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Template */
+        post: operations["preview_template_matrix_api_v1_templates_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -405,8 +423,15 @@ export interface components {
             list: string;
             /** Note */
             note?: string | null;
+            /** Preamble */
+            preamble?: string | null;
             /** Value */
             value: string;
+        };
+        /** RulePatch */
+        RulePatch: {
+            /** Preamble */
+            preamble: string | null;
         };
         /** RuleView */
         RuleView: {
@@ -423,6 +448,8 @@ export interface components {
             list: string;
             /** Note */
             note: string | null;
+            /** Preamble */
+            preamble: string | null;
             /** Value */
             value: string;
         };
@@ -442,15 +469,24 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** SettingsIn */
+        /**
+         * SettingsIn
+         * @description A field left out keeps its stored value; null clears it.
+         */
         SettingsIn: {
             /** Default Preset Id */
-            default_preset_id: string | null;
+            default_preset_id?: string | null;
+            /** Preamble */
+            preamble?: string | null;
         };
         /** SettingsView */
         SettingsView: {
+            /** Default Preamble */
+            default_preamble: string;
             /** Default Preset Id */
             default_preset_id: string | null;
+            /** Preamble */
+            preamble: string | null;
         };
         /** SyncView */
         SyncView: {
@@ -458,6 +494,30 @@ export interface components {
             healthy: boolean;
             /** Last Sync At */
             last_sync_at: string | null;
+        };
+        /** TemplatePreviewError */
+        TemplatePreviewError: {
+            /** Line */
+            line: number | null;
+            /** Message */
+            message: string;
+        };
+        /** TemplatePreviewIn */
+        TemplatePreviewIn: {
+            /** Context */
+            context?: {
+                [key: string]: unknown;
+            } | null;
+            /** Template */
+            template: string;
+        };
+        /** TemplatePreviewView */
+        TemplatePreviewView: {
+            error: components["schemas"]["TemplatePreviewError"] | null;
+            /** Rendered */
+            rendered: string | null;
+            /** Variables */
+            variables: string[];
         };
         /** UserView */
         UserView: {
@@ -783,6 +843,41 @@ export interface operations {
             };
         };
     };
+    patch_rule_matrix_api_v1_rules__rule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RulePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_settings_matrix_api_v1_settings_get: {
         parameters: {
             query?: never;
@@ -823,6 +918,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_template_matrix_api_v1_templates_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplatePreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplatePreviewView"];
                 };
             };
             /** @description Validation Error */

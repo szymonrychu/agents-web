@@ -4,11 +4,12 @@ import type { KeyboardEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import FormHelperText from '@mui/material/FormHelperText'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import { postMessage } from '../api/client'
-import type { AgentView } from '../api/client'
+import type { AgentView, PostMessage } from '../api/client'
 import { TOKENS } from '../theme'
 
 export interface ComposerProps {
@@ -19,9 +20,17 @@ export interface ComposerProps {
 
 const ANY = ''
 
+type Lane = PostMessage['lane']
+const LANES: { value: Lane; label: string; hint: string }[] = [
+  { value: 'idle', label: 'Idle', hint: 'Idle: waits until the agent is free.' },
+  { value: 'regular', label: 'Regular', hint: 'Regular: delivered at the next tool boundary of a running turn.' },
+  { value: 'priority', label: 'Priority (interrupts the agent)', hint: 'Priority: interrupts the agent right now.' },
+]
+
 export function Composer({ sessionId, agents, deleting }: ComposerProps) {
   const [text, setText] = useState('')
   const [target, setTarget] = useState(ANY)
+  const [lane, setLane] = useState<Lane>('regular')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const canSend = text.trim() !== '' && !deleting && !sending
@@ -32,7 +41,7 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
     if (!canSend) return
     setSending(true)
     setError(null)
-    postMessage(sessionId, chosen === ANY ? { text } : { text, target_agent_id: chosen })
+    postMessage(sessionId, chosen === ANY ? { text, lane } : { text, lane, target_agent_id: chosen })
       .then(() => setText(''))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSending(false))
@@ -62,6 +71,13 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
           onKeyDown={onKeyDown}
           slotProps={{ htmlInput: { 'aria-label': 'Message' } }}
         />
+        <Select size="small" value={lane} onChange={(e) => setLane(e.target.value as Lane)} inputProps={{ 'aria-label': 'Lane' }} sx={{ minWidth: 120 }}>
+          {LANES.map((l) => (
+            <MenuItem key={l.value} value={l.value}>
+              {l.label}
+            </MenuItem>
+          ))}
+        </Select>
         <Select size="small" value={chosen} onChange={(e) => setTarget(e.target.value)} inputProps={{ 'aria-label': 'Target agent' }} sx={{ minWidth: 160 }}>
           <MenuItem value={ANY}>Any free agent</MenuItem>
           {agents.map((a) => (
@@ -74,6 +90,7 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
           Send
         </Button>
       </Box>
+      <FormHelperText>{LANES.find((l) => l.value === lane)?.hint}</FormHelperText>
     </Box>
   )
 }

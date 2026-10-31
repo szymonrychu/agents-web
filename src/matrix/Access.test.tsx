@@ -35,8 +35,8 @@ beforeEach(() => {
   })
   api.addRule.mockResolvedValue({})
   api.deleteRule.mockResolvedValue(undefined)
-  api.getSettings.mockResolvedValue({ default_preset_id: 'p1' })
-  api.setSettings.mockResolvedValue({ default_preset_id: 'p2' })
+  api.getSettings.mockResolvedValue({ default_preset_id: 'p1', preamble: null, default_preamble: 'Default' })
+  api.setSettings.mockResolvedValue({ default_preset_id: 'p2', preamble: null, default_preamble: 'Default' })
   client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Preset One', is_default: false }, { id: 'p2', name: 'Preset Two', is_default: false }])
 })
 afterEach(() => {

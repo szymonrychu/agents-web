@@ -10,6 +10,7 @@ const EXT: Record<LanguageId, string> = {
   json: 'package.json',
   terraform: 'main.tf',
   toml: 'pyproject.toml',
+  jinja: 'prompt.j2',
   plain: 'notes.txt',
 }
 

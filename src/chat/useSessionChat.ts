@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { eventStreamUrl, listEvents } from '../api/client'
 import { openStream } from '../api/stream'
 import { applyEvents, emptyChat, prependHistory, trimWindow, MAX_ITEMS } from './chatModel'
-import type { ChatItem, ChatState, EventRow } from './chatModel'
+import type { ChatItem, ChatState, EventRow, SubagentInfo } from './chatModel'
 
 export const PAGE_SIZE = 200
 
@@ -20,10 +20,15 @@ const STREAM_EVENTS = [
   'turn_failed',
   'error',
   'gap',
+  'subagent_started',
+  'subagent_linked',
+  'subagent_stopped',
 ]
 
 export interface SessionChat {
   items: ChatItem[]
+  /** Subagent metadata (type, Task link, running/stopped) by claude agent id. */
+  subagents: Readonly<Record<string, SubagentInfo>>
   loading: boolean
   loadingOlder: boolean
   hasMoreBefore: boolean
@@ -139,7 +144,7 @@ export function useSessionChat(sessionId: string, ordinals: Readonly<Record<stri
   }, [sessionId])
 
   return useMemo(
-    () => ({ items: loaded.chat.items, loading: loaded.loading, loadingOlder: loaded.loadingOlder, hasMoreBefore: loaded.hasMoreBefore, error: loaded.error, loadOlder }),
+    () => ({ items: loaded.chat.items, subagents: loaded.chat.subagents, loading: loaded.loading, loadingOlder: loaded.loadingOlder, hasMoreBefore: loaded.hasMoreBefore, error: loaded.error, loadOlder }),
     [loaded, loadOlder],
   )
 }

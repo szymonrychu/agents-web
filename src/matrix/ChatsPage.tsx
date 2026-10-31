@@ -13,6 +13,7 @@ import { getMeta, listRooms } from './api'
 import { ALL, RoomsTable } from './RoomsTable'
 import { RoomDrawer } from './RoomDrawer'
 import { DefaultPreset } from './DefaultPreset'
+import { PreamblePanel } from './PreamblePanel'
 import { RulesPanel } from './RulesPanel'
 import { UsersTable } from './UsersTable'
 
@@ -51,6 +52,7 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
       )}
       <FormError error={metaError} />
       <DefaultPreset meta={meta} />
+      <PreamblePanel />
       <Tabs value={tab} onChange={(_, v: TabName) => setTab(v)} aria-label="Chats sections">
         <Tab value="rooms" label="Rooms" />
         <Tab value="users" label="Users" />

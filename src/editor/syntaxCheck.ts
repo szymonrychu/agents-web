@@ -123,6 +123,7 @@ export function syntaxDiagnostics(language: LanguageId, state: EditorState): Dia
     case 'python':
     case 'terraform':
       return treeDiagnostics(state)
+    case 'jinja':
     case 'plain':
       return []
   }

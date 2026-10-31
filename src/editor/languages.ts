@@ -3,13 +3,15 @@ import { json } from '@codemirror/lang-json'
 import { python } from '@codemirror/lang-python'
 import { yaml } from '@codemirror/lang-yaml'
 import { StreamLanguage } from '@codemirror/language'
+import { jinja2 } from '@codemirror/legacy-modes/mode/jinja2'
 import { toml } from '@codemirror/legacy-modes/mode/toml'
 import type { Extension } from '@codemirror/state'
 import { hcl } from 'codemirror-lang-hcl'
 
-export type LanguageId = 'python' | 'yaml' | 'json' | 'terraform' | 'toml' | 'plain'
+export type LanguageId = 'python' | 'yaml' | 'json' | 'terraform' | 'toml' | 'jinja' | 'plain'
 
 const tomlLanguage = StreamLanguage.define(toml)
+const jinjaLanguage = StreamLanguage.define(jinja2)
 
 /** Lower-cased last extension to language; `.tf.json` ends in `.json`, so Terraform's JSON syntax opens as json. */
 const BY_EXTENSION = new Map<string, Exclude<LanguageId, 'plain'>>([
@@ -22,6 +24,9 @@ const BY_EXTENSION = new Map<string, Exclude<LanguageId, 'plain'>>([
   ['tfvars', 'terraform'],
   ['hcl', 'terraform'],
   ['toml', 'toml'],
+  ['j2', 'jinja'],
+  ['jinja', 'jinja'],
+  ['jinja2', 'jinja'],
 ])
 
 const SUPPORT: Record<Exclude<LanguageId, 'plain'>, () => Extension> = {
@@ -30,6 +35,7 @@ const SUPPORT: Record<Exclude<LanguageId, 'plain'>, () => Extension> = {
   json: () => json(),
   terraform: () => hcl(),
   toml: () => tomlLanguage,
+  jinja: () => jinjaLanguage,
 }
 
 /**

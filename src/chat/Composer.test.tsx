@@ -51,7 +51,7 @@ describe('Composer', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
     fireEvent.change(input(), { target: { value: 'do it' } })
     fireEvent.keyDown(input(), { key: 'Enter' })
-    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'do it' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'do it', lane: 'regular' }))
     await waitFor(() => expect((input() as HTMLTextAreaElement).value).toBe(''))
   })
 
@@ -69,11 +69,42 @@ describe('Composer', () => {
 
   test('sends to chosen agent', async () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
-    fireEvent.mouseDown(screen.getByRole('combobox'))
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Target agent' }))
     fireEvent.click(within(screen.getByRole('listbox')).getByText('Agent 1'))
     fireEvent.change(input(), { target: { value: 'hi' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'hi', target_agent_id: 'a1' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'hi', lane: 'regular', target_agent_id: 'a1' }))
+  })
+
+  test('lane defaults to regular and the options are idle, regular and priority', () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    const lane = screen.getByRole('combobox', { name: 'Lane' })
+    expect(lane.textContent).toBe('Regular')
+    fireEvent.mouseDown(lane)
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Idle', 'Regular', 'Priority (interrupts the agent)'])
+  })
+
+  test.each([
+    ['Idle', 'idle'],
+    ['Priority (interrupts the agent)', 'priority'],
+  ])('sends in the %s lane', async (option, lane) => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
+    fireEvent.click(within(screen.getByRole('listbox')).getByText(option))
+    fireEvent.change(input(), { target: { value: 'go' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'go', lane }))
+  })
+
+  test('the hint follows the lane', () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    expect(screen.getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Priority (interrupts the agent)'))
+    expect(screen.getByText('Priority: interrupts the agent right now.')).toBeTruthy()
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Idle'))
+    expect(screen.getByText('Idle: waits until the agent is free.')).toBeTruthy()
   })
 
   test('disables send when empty or deleting', () => {

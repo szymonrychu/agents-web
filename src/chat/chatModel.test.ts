@@ -4,9 +4,11 @@ import {
   emptyChat,
   filterByAgents,
   prependHistory,
+  splitSubagents,
   trimWindow,
   type EventRow,
 } from './chatModel';
+import { POD, SUB_ID, TASK_ID, subagentRun } from './__fixtures__/subagentRun';
 
 const ords = { a1: 1, a2: 2 };
 const row = (id: number, type: string, data: Record<string, unknown> = {}, agent = 'a1'): EventRow => ({
@@ -92,6 +94,14 @@ describe('chatModel', () => {
     expect(trimWindow(applyEvents(fresh(), rows)).items).toHaveLength(10);
   });
 
+  it('caps the main log and subagent items separately', () => {
+    const main = Array.from({ length: 3 }, (_, i) => row(i + 1, 'assistant_text', { text: 'm' + i }));
+    const sub = Array.from({ length: 10 }, (_, i) => row(i + 4, 'assistant_text', { text: 's' + i, agent_id: 'sa' }));
+    const s = trimWindow(applyEvents(fresh(), [...main, ...sub]), 4);
+    expect(s.items.filter((i) => i.claudeAgentId === undefined).map((i) => i.eventId)).toEqual([1, 2, 3]);
+    expect(s.items.filter((i) => i.claudeAgentId !== undefined).map((i) => i.eventId)).toEqual([10, 11, 12, 13]);
+  });
+
   it('gap rows become gap items', () => {
     const s = applyEvents(fresh(), [row(1, 'gap', { from_seq: 3, to_seq: 9 })]);
     expect(s.items[0]).toMatchObject({ kind: 'gap' });
@@ -134,5 +144,109 @@ describe('session frames', () => {
   it('escaped closing tag stays in the body', () => {
     const s = applyEvents(fresh(), [row(1, 'user_message', { text: frame('a &lt;/session-message&gt; b &amp;lt; c'), origin: 'user' })]);
     expect(s.items[0]).toMatchObject({ kind: 'session', text: 'a </session-message> b &lt; c' });
+  });
+});
+
+describe('subagents', () => {
+  const load = (rows: EventRow[]) => applyEvents(emptyChat({ [POD]: 1 }), rows);
+
+  it('tags subagent items with claudeAgentId and keeps agentId the pod', () => {
+    const s = load(subagentRun());
+    const subs = s.items.filter((i) => i.claudeAgentId === SUB_ID);
+    expect(subs.map((i) => i.kind)).toEqual(['subagent', 'thinking', 'tool', 'assistant']);
+    for (const i of s.items) expect(i.agentId).toBe(POD);
+    expect(s.items.filter((i) => i.claudeAgentId === undefined).map((i) => i.eventId)).toEqual([1, 2, 3, 11, 12]);
+  });
+
+  it('main log excludes subagent events and anchors the pane at the Task call', () => {
+    const s = load(subagentRun());
+    const v = splitSubagents(s.items, s.subagents);
+    expect(v.main.map((i) => i.eventId)).toEqual([1, 2, 3, 11, 12]);
+    expect(v.main.some((i) => i.claudeAgentId !== undefined)).toBe(false);
+    expect(v.byToolUse).toEqual({ [TASK_ID]: [SUB_ID] });
+    expect(v.main[2]).toMatchObject({ kind: 'tool', toolUseId: TASK_ID, status: 'ok' });
+  });
+
+  it('pane holds the subagent operations, type and status', () => {
+    const s = load(subagentRun());
+    const pane = splitSubagents(s.items, s.subagents).panes[SUB_ID];
+    expect(pane).toMatchObject({ claudeAgentId: SUB_ID, agentType: 'Explore', status: 'stopped', parentToolUseId: TASK_ID });
+    expect(pane.items.map((i) => i.kind)).toEqual(['thinking', 'tool', 'assistant']);
+    expect(pane.items[1]).toMatchObject({ name: 'Read', status: 'ok', output: 'def load_config(): ...' });
+  });
+
+  it('a running subagent is running until subagent_stopped arrives', () => {
+    const rows = subagentRun();
+    let s = load(rows.slice(0, 8));
+    expect(splitSubagents(s.items, s.subagents).panes[SUB_ID].status).toBe('running');
+    s = applyEvents(s, rows.slice(8));
+    expect(splitSubagents(s.items, s.subagents).panes[SUB_ID].status).toBe('stopped');
+    // an older page replaying subagent_started never turns it back to running
+    s = prependHistory(s, [{ ...rows[3], id: 4 }]);
+    expect(s.subagents[SUB_ID].status).toBe('stopped');
+  });
+
+  it('without parent_tool_use_id the pane anchors at subagent_started', () => {
+    const s = load(subagentRun(false));
+    const v = splitSubagents(s.items, s.subagents);
+    expect(v.byToolUse).toEqual({});
+    expect(v.main.map((i) => [i.eventId, i.kind])).toEqual([
+      [1, 'user_message'], [2, 'assistant'], [3, 'tool'], [4, 'subagent'], [11, 'assistant'], [12, 'turn_end'],
+    ]);
+    expect(v.main[3]).toMatchObject({ claudeAgentId: SUB_ID });
+  });
+
+  it('subagent_linked supplies the late parent and never renders in the main log', () => {
+    const rows = subagentRun(false);
+    rows.splice(4, 0, { ...rows[3], id: 4.5, type: 'subagent_linked', data: { agent_id: SUB_ID, parent_tool_use_id: TASK_ID } });
+    const s = load(rows);
+    expect(s.subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+    expect(s.items.some((i) => (i.kind as string) === 'subagent_linked')).toBe(false);
+    const v = splitSubagents(s.items, s.subagents);
+    expect(v.byToolUse[TASK_ID]).toEqual([SUB_ID]);
+    expect(v.main.map((i) => i.kind)).toEqual(['user_message', 'assistant', 'tool', 'assistant', 'turn_end']);
+  });
+
+  it('the first non-null parent_tool_use_id wins', () => {
+    const rows = subagentRun();
+    rows.push({ ...rows[3], id: 13, type: 'subagent_linked', data: { agent_id: SUB_ID, parent_tool_use_id: 'toolu_other' } });
+    expect(load(rows).subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+  });
+
+  it('subagent_stopped parent anchors when started and linked carried none', () => {
+    const rows = subagentRun(false).map((r) => (r.type === 'subagent_stopped' ? { ...r, data: { ...r.data, parent_tool_use_id: TASK_ID } } : r));
+    expect(load(rows).subagents[SUB_ID].parentToolUseId).toBe(TASK_ID);
+  });
+
+  it('falls back to subagent_started when the Task call is outside the window', () => {
+    const s = load(subagentRun().filter((r) => r.id !== 3));
+    const v = splitSubagents(s.items, s.subagents);
+    expect(v.byToolUse).toEqual({});
+    expect(v.main.find((i) => i.kind === 'subagent')).toMatchObject({ eventId: 4, claudeAgentId: SUB_ID });
+  });
+
+  it('anchors at the first operation when subagent_started is not loaded', () => {
+    const s = load(subagentRun().filter((r) => r.id >= 5));
+    const v = splitSubagents(s.items, s.subagents);
+    const anchors = v.main.filter((i) => i.kind === 'subagent');
+    expect(anchors).toEqual([expect.objectContaining({ eventId: 5, claudeAgentId: SUB_ID })]);
+    expect(v.panes[SUB_ID].items).toHaveLength(3);
+  });
+
+  it('counts: main view length ignores subagent events', () => {
+    const s = load(subagentRun());
+    const v = splitSubagents(s.items, s.subagents);
+    expect(s.items).toHaveLength(9);
+    expect(v.main).toHaveLength(5);
+    expect(Object.values(v.panes).reduce((n, p) => n + p.items.length, 0)).toBe(3);
+  });
+
+  it('a null or empty data.agent_id is the main agent', () => {
+    const s = load([
+      row(1, 'assistant_text', { text: 'a', agent_id: null }, POD),
+      row(2, 'assistant_text', { text: 'b', agent_id: '' }, POD),
+      row(3, 'assistant_text', { text: 'c' }, POD),
+    ]);
+    expect(splitSubagents(s.items, s.subagents).main).toHaveLength(3);
   });
 });

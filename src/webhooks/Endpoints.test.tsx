@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
+import { EditorView } from '@codemirror/view'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { EndpointCreated, EndpointView } from './api'
@@ -52,6 +53,26 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+const rangeOriginal = { rects: Range.prototype.getClientRects, box: Range.prototype.getBoundingClientRect }
+beforeAll(() => {
+  Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] }) as unknown as DOMRectList
+  Range.prototype.getBoundingClientRect = () => new DOMRect()
+})
+afterAll(() => {
+  Range.prototype.getClientRects = rangeOriginal.rects
+  Range.prototype.getBoundingClientRect = rangeOriginal.box
+})
+
+/** Replaces the prompt template in the (lazy) code editor. */
+const setTemplate = async (text: string) => {
+  const view = await waitFor(() => {
+    const v = EditorView.findFromDOM(screen.getByTestId('file-editor'))
+    if (!v) throw new Error('editor not ready')
+    return v
+  })
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } })
+}
+
 const pickPreset = async (u: ReturnType<typeof userEvent.setup>, name: string) => {
   await u.click(await screen.findByRole('combobox', { name: 'Preset' }))
   await u.click(await screen.findByRole('option', { name: new RegExp(name) }))
@@ -86,8 +107,7 @@ describe('create', () => {
     await u.click(screen.getByLabelText('Set credentials'))
     await u.type(screen.getByLabelText('Username'), 'bob')
     await u.type(screen.getByLabelText('Password'), 'a-long-enough-password')
-    await u.click(screen.getByLabelText('Prompt template'))
-    await u.paste('Review {{ repo }}')
+    await setTemplate('Review {{ repo }}')
     await u.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(api.createEndpoint).toHaveBeenCalled())
     expect(api.createEndpoint).toHaveBeenCalledWith({
@@ -122,8 +142,7 @@ describe('create', () => {
     api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app' })
     const u = userEvent.setup()
     mountCreate()
-    await u.click(screen.getByLabelText('Prompt template'))
-    await u.paste('Review {{ repo }}')
+    await setTemplate('Review {{ repo }}')
     const example = screen.getByLabelText('Example JSON') as HTMLTextAreaElement
     expect(JSON.parse(example.value)).toBeTruthy()
     await u.click(screen.getByRole('button', { name: 'Preview' }))
@@ -131,12 +150,31 @@ describe('create', () => {
     expect(api.previewTemplate).toHaveBeenCalledWith({ template: 'Review {{ repo }}', type: 'github-pr', example: JSON.parse(example.value) })
   })
 
+  test('the template editor previews through the webhook preview with the example JSON', async () => {
+    api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app' })
+    const u = userEvent.setup()
+    mountCreate()
+    await setTemplate('Review {{ repo }}')
+    await u.click(screen.getByRole('button', { name: 'Preview template' }))
+    expect((await screen.findByTestId('template-rendered')).textContent).toBe('Review acme/app')
+    const example = screen.getByLabelText('Example JSON') as HTMLTextAreaElement
+    expect(api.previewTemplate).toHaveBeenCalledWith({ template: 'Review {{ repo }}', type: 'github-pr', example: JSON.parse(example.value) })
+  })
+
+  test('the template editor shows the backend render error', async () => {
+    api.previewTemplate.mockRejectedValue(apiError(422, 'invalid_request', 'line 1: undefined name'))
+    const u = userEvent.setup()
+    mountCreate()
+    await setTemplate('{{ nope }}')
+    await u.click(screen.getByRole('button', { name: 'Preview template' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('line 1: undefined name')
+  })
+
   test('create preview shows the render error and rejects invalid example JSON', async () => {
     api.previewTemplate.mockRejectedValue(apiError(422, 'invalid_request', 'line 1: undefined name'))
     const u = userEvent.setup()
     mountCreate()
-    await u.click(screen.getByLabelText('Prompt template'))
-    await u.paste('{{ nope }}')
+    await setTemplate('{{ nope }}')
     await u.click(screen.getByRole('button', { name: 'Preview' }))
     expect(await screen.findByText(/line 1: undefined name/)).toBeTruthy()
     const example = screen.getByLabelText('Example JSON')
@@ -334,8 +372,7 @@ describe('filters', () => {
     api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app', filters: { passed: true, reason: null } })
     const u = userEvent.setup()
     mountCreate()
-    await u.click(screen.getByLabelText('Prompt template'))
-    await u.paste('Review {{ repo }}')
+    await setTemplate('Review {{ repo }}')
     await addDenyRule(u, 'author', 'bob')
     await u.click(screen.getByRole('button', { name: 'Preview' }))
     expect(await screen.findByText('Review acme/app')).toBeTruthy()
@@ -346,8 +383,7 @@ describe('filters', () => {
     api.previewTemplate.mockResolvedValue({ prompt: 'Review acme/app', filters: { passed: true, reason: null } })
     const u = userEvent.setup()
     mountCreate()
-    await u.click(screen.getByLabelText('Prompt template'))
-    await u.paste('Review {{ repo }}')
+    await setTemplate('Review {{ repo }}')
     await addDenyRule(u, 'author', 'bob')
     await u.click(screen.getByRole('button', { name: 'Preview' }))
     expect(await screen.findByText('Passes the filters')).toBeTruthy()

@@ -8,6 +8,7 @@ import App from './App'
 import { BACKEND_MENUS } from './backends/registry'
 import { loadConfig, resetConfig } from './config/backends'
 import { theme } from './theme'
+import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn() }))
 const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, close: vi.fn() }))
@@ -53,7 +54,7 @@ const meta = (): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
 }) as Meta
 
 const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, updated_at: '2026-01-01T00:00:00Z' })

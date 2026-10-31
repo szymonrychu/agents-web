@@ -2,6 +2,10 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -11,8 +15,10 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import TemplateEditor from '../editor/TemplateEditor'
 import { FormError, usePoll } from '../triggers'
-import { addRule, deleteRule, listRules } from './api'
+import { addRule, deleteRule, listRules, patchRule } from './api'
+import { connectorPreview } from './PreamblePanel'
 import type { MatrixMeta, RuleView } from './api'
 
 const LISTS = ['allow', 'deny']
@@ -22,8 +28,12 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
   const [kind, setKind] = useState('')
   const [value, setValue] = useState('')
   const [note, setNote] = useState('')
+  const [preamble, setPreamble] = useState('')
   const [error, setError] = useState<Error>()
   const [removing, setRemoving] = useState<RuleView | null>(null)
+  const [editing, setEditing] = useState<RuleView | null>(null)
+  const [draft, setDraft] = useState('')
+  const [editError, setEditError] = useState<Error>()
   const { data: rules, error: loadError, refresh } = usePoll(listRules, 5000, [])
 
   const kinds = meta?.rule_kinds[list] ?? []
@@ -38,9 +48,10 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
   const add = async () => {
     setError(undefined)
     try {
-      await addRule({ list, kind, value: value.trim(), ...(note.trim() ? { note: note.trim() } : {}) })
+      await addRule({ list, kind, value: value.trim(), ...(note.trim() ? { note: note.trim() } : {}), ...(preamble.trim() ? { preamble } : {}) })
       setValue('')
       setNote('')
+      setPreamble('')
       await refresh()
     } catch (e) {
       fail(e)
@@ -60,12 +71,31 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
     }
   }
 
+  const startEdit = (r: RuleView) => {
+    setEditing(r)
+    setDraft(r.preamble ?? '')
+    setEditError(undefined)
+  }
+
+  // null clears the rule's own preamble so it follows the global one again
+  const saveEdit = async (preamble: string | null) => {
+    if (!editing) return
+    setEditError(undefined)
+    try {
+      await patchRule(editing.id, preamble)
+      setEditing(null)
+      await refresh()
+    } catch (e) {
+      setEditError(e instanceof Error ? e : new Error(String(e)))
+    }
+  }
+
   const section = (name: string, items: RuleView[]) => (
     <Box key={name} component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Typography component="h3" variant="subtitle1">{name === 'allow' ? 'Allow list' : 'Deny list'}</Typography>
       <Table size="small" aria-label={`${name} rules`}>
         <TableHead>
-          <TableRow>{['Kind', 'Value', 'Note', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {items.map((r) => (
@@ -73,8 +103,12 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
               <TableCell>{r.kind}</TableCell>
               <TableCell>{r.value}</TableCell>
               <TableCell>{r.note}</TableCell>
+              <TableCell>{r.preamble ? 'custom' : 'default'}</TableCell>
               <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
-              <TableCell><Button size="small" color="error" onClick={() => setRemoving(r)}>Delete</Button></TableCell>
+              <TableCell>
+                <Button size="small" onClick={() => startEdit(r)}>Edit preamble</Button>
+                <Button size="small" color="error" onClick={() => setRemoving(r)}>Delete</Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -97,8 +131,31 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
         <TextField size="small" label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
         <Button variant="contained" disabled={!loaded || !kind || !value.trim()} onClick={() => void add()}>Add rule</Button>
       </Box>
+      <Box sx={{ maxWidth: 720 }}>
+        <TemplateEditor
+          label="Preamble override (empty uses the global preamble)" value={preamble} onChange={setPreamble}
+          preview={connectorPreview({ rule_name: note.trim() })} previewLabel="Preview override"
+        />
+      </Box>
       {section('allow', rules?.allow ?? [])}
       {section('deny', rules?.deny ?? [])}
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md">
+        <DialogTitle>{editing ? `Preamble for ${editing.kind}: ${editing.value}` : ''}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormError error={editError} />
+          {editing && (
+            <TemplateEditor
+              label="Preamble (empty uses the global preamble)" value={draft} onChange={setDraft}
+              preview={connectorPreview({ rule_name: editing.note?.trim() || editing.value })} previewLabel="Preview preamble"
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => void saveEdit(null)}>Reset to global</Button>
+          <Button onClick={() => setEditing(null)}>Cancel</Button>
+          <Button variant="contained" onClick={() => void saveEdit(draft.trim() ? draft : null)}>Save</Button>
+        </DialogActions>
+      </Dialog>
       <ConfirmDialog
         open={removing !== null}
         title="Delete this rule?"

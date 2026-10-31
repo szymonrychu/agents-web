@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import { Virtuoso } from 'react-virtuoso'
 import { ChatEntry } from './entries'
 import type { ChatItem } from './chatModel'
+import type { SubagentIndex } from './SubagentPane'
 
 export const START_INDEX = 1_000_000
 /** Distance from the bottom within which new items keep the view pinned. */
@@ -29,9 +30,11 @@ export interface ChatLogProps {
   hasMoreBefore: boolean
   loadingOlder: boolean
   onLoadOlder: () => void
+  /** Subagent panes placed in the main log at their anchors. */
+  subagents?: SubagentIndex
 }
 
-export function ChatLog({ items, hasMoreBefore, loadingOlder, onLoadOlder }: ChatLogProps) {
+export function ChatLog({ items, hasMoreBefore, loadingOlder, onLoadOlder, subagents }: ChatLogProps) {
   const [track, setTrack] = useState<Track>({ items, index: START_INDEX })
   let index = track.index
   if (track.items !== items) {
@@ -48,7 +51,7 @@ export function ChatLog({ items, hasMoreBefore, loadingOlder, onLoadOlder }: Cha
       atBottomThreshold={FOLLOW_PX}
       startReached={onLoadOlder}
       computeItemKey={(_i, item) => item.eventId}
-      itemContent={(_i, item) => <ChatEntry item={item} />}
+      itemContent={(_i, item) => <ChatEntry item={item} subagents={subagents} />}
       components={{
         Header: () => (
           <Box sx={{ px: 2, py: 1 }}>

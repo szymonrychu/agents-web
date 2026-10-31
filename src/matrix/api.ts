@@ -15,6 +15,7 @@ export type RuleView = S['RuleView'];
 export type RulesView = S['RulesView'];
 export type SettingsIn = S['SettingsIn'];
 export type SettingsView = S['SettingsView'];
+export type TemplatePreviewView = S['TemplatePreviewView'];
 
 const id = encodeURIComponent;
 const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('matrix'), method, path, body);
@@ -44,6 +45,8 @@ export const listUsers = (opts: UsersQuery = {}) => req<UserView[]>('GET', `/use
 
 export const listRules = () => req<RulesView>('GET', '/rules');
 export const addRule = (body: RuleIn) => req<RuleView>('POST', '/rules', body);
+/** Sets (text) or clears (null) the rule's own preamble. */
+export const patchRule = (ruleId: string | number, preamble: string | null) => req<RuleView>('PATCH', `/rules/${id(String(ruleId))}`, { preamble });
 export const deleteRule = (ruleId: string | number) => req<void>('DELETE', `/rules/${id(String(ruleId))}`);
 
 export const getSettings = () => req<SettingsView>('GET', '/settings');
@@ -55,3 +58,7 @@ export interface MessagesQuery extends PageQuery {
 }
 export const listMessages = (opts: MessagesQuery = {}) =>
   req<MessageView[]>('GET', `/messages${query({ status: opts.status, room_id: opts.roomId, limit: opts.limit, before_id: opts.beforeId })}`);
+
+/** Renders a preamble template on the connector; `context` overrides the sample values (for example `rule_name`). */
+export const previewTemplate = (template: string, context?: Record<string, unknown>) =>
+  req<TemplatePreviewView>('POST', '/templates/preview', { template, ...(context ? { context } : {}) });

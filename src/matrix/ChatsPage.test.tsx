@@ -46,7 +46,7 @@ beforeEach(() => {
     rooms.filter((r) => (!o.kind || r.kind === o.kind) && (!o.access || r.access.state === o.access)))
   api.getRoom.mockImplementation(async (id: string) => detail(rooms.find((r) => r.room_id === id)!))
   api.listRules.mockResolvedValue({ allow: [], deny: [] })
-  api.getSettings.mockResolvedValue({ default_preset_id: null })
+  api.getSettings.mockResolvedValue({ default_preset_id: null, preamble: null, default_preamble: 'Default' })
   api.listRoomMessages.mockResolvedValue([])
   client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Preset One', is_default: false }])
 })

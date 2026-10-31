@@ -71,7 +71,7 @@ describe('client', () => {
     await getInitScripts('s1');
     await putInitScripts('s1', ['echo']);
     await listAgents('s1');
-    await postMessage('s1', { text: 'hi' });
+    await postMessage('s1', { text: 'hi', lane: 'regular' });
     await listMessages('s1', { status: 'queued' });
     await makeLeader('s1', 'a1');
     await scaleSession('s1', { replicas: 2 });

@@ -7,12 +7,13 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import IconButton from '@mui/material/IconButton'
-import TextField from '@mui/material/TextField'
+import FormHelperText from '@mui/material/FormHelperText'
 import Typography from '@mui/material/Typography'
 import { getInitScripts, putInitScripts } from '../api/client'
 import type { SessionView, InitScriptsView } from '../api/client'
+import EntryList from '../common/EntryList'
 import { TOKENS } from '../theme'
+import { previewFor } from './previewFor'
 import { initScriptErrors } from './sessionSpecForm'
 
 export interface InitScriptsDialogProps {
@@ -103,26 +104,8 @@ export function InitScriptsDialog({ open, session, onClose }: InitScriptsDialogP
               Scripts in the workdir: <Box component="span" sx={{ fontFamily: 'monospace' }}>{view.script_path}</Box>
             </Typography>
             {view.edited_since_run && <Alert severity="info">The scripts were edited since the run; the log above shows the earlier version.</Alert>}
-            {scripts.map((script, i) => (
-              <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <TextField
-                  size="small"
-                  label={`Init script ${i + 1}`}
-                  value={script}
-                  onChange={(e) => change(scripts.map((s, j) => (j === i ? e.target.value : s)))}
-                  error={Boolean(errors?.[i])}
-                  helperText={errors?.[i]}
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  slotProps={{ input: { sx: { fontFamily: 'monospace' } } }}
-                />
-                <IconButton size="small" aria-label={`Remove init script ${i + 1}`} onClick={() => change(scripts.filter((_, j) => j !== i))}>x</IconButton>
-              </Box>
-            ))}
-            <Box>
-              <Button size="small" onClick={() => change([...scripts, ''])}>Add init script</Button>
-            </Box>
+            <EntryList label="Init script" entries={scripts} onChange={change} preview={previewFor('init_script')} />
+            {errors?.map((m, i) => (m ? <FormHelperText key={i} error>{m}</FormHelperText> : null))}
             {saved && (
               <Alert severity="success">
                 <div>Saved. Applies to the next session</div>

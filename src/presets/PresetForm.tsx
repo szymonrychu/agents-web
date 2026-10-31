@@ -20,6 +20,11 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
 import { createPreset, getMeta, updatePreset } from '../api/client'
+import EntryList from '../common/EntryList'
+import TemplateEditor from '../editor/TemplateEditor'
+import { previewFor, type Surface } from '../sessions/previewFor'
+import HooksEditor from '../hooks/HooksEditor'
+import type { Hooks } from '../hooks/types'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
 import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
@@ -36,6 +41,15 @@ export interface PresetFormProps {
 
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
 const NOT_AVAILABLE = ' (not available)'
+
+const hooksOf = (text: string): Hooks | null => {
+  try {
+    const v: unknown = JSON.parse(text)
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Hooks) : null
+  } catch {
+    return null
+  }
+}
 
 const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
 
@@ -77,6 +91,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [hooksInvalid, setHooksInvalid] = useState(false)
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteErrors, setPasteErrors] = useState<string[]>([])
   const touched = useRef(new Set<keyof FormValues>())
@@ -114,7 +129,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const errors = validate(values, meta, stored(preset).cache?.key)
   const cacheAvailable = meta?.cache.available === true
   const kubeAccessAvailable = meta?.kube_access.available === true
-  const invalid = Object.keys(errors).length > 0
+  const invalid = Object.keys(errors).length > 0 || hooksInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
       touched.current.add(key)
@@ -122,7 +137,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -154,7 +169,13 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   }
 
   const setSource = (index: number, value: string) => set('anyMcpSources', values.anyMcpSources.map((s, i) => (i === index ? value : s)))
-  const setScript = (index: number, value: string) => set('initScripts', values.initScripts.map((s, i) => (i === index ? value : s)))
+  const template = (key: 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'startPrompt', label: string, surface: Surface, help?: string) => (
+    <Box>
+      <TemplateEditor label={label} value={values[key]} onChange={(v) => set(key, v)} preview={previewFor(surface)} />
+      {errors[key] && values[key] !== '' && <FormHelperText error>{errors[key]}</FormHelperText>}
+      {help && <FormHelperText>{help}</FormHelperText>}
+    </Box>
+  )
 
   async function submit() {
     let env = values.env
@@ -267,28 +288,11 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <FormHelperText>Plugin sources, a repo or a dir in a repo at a git ref: github.com/&lt;owner&gt;/&lt;repo&gt;[//&lt;subdir&gt;][?ref=&lt;ref&gt;] or git::https://&lt;host&gt;/&lt;path&gt;[//&lt;subdir&gt;][?ref=&lt;ref&gt;]</FormHelperText>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {values.initScripts.map((script, i) => (
-              <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <TextField
-                  size="small"
-                  label={`Init script ${i + 1}`}
-                  value={script}
-                  onChange={(e) => setScript(i, e.target.value)}
-                  error={Boolean(errors.initScripts?.[i])}
-                  helperText={errors.initScripts?.[i]}
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  slotProps={{ input: { sx: { fontFamily: 'monospace' } } }}
-                />
-                <IconButton size="small" aria-label={`Remove init script ${i + 1}`} onClick={() => set('initScripts', values.initScripts.filter((_, j) => j !== i))}>x</IconButton>
-              </Box>
-            ))}
-            <Box>
-              <Button size="small" onClick={() => set('initScripts', [...values.initScripts, ''])}>Add init script</Button>
-            </Box>
+            <EntryList label="Init script" entries={values.initScripts} onChange={(v) => set('initScripts', v)} preview={previewFor('init_script')} />
+            {errors.initScripts?.map((m, i) => (m ? <FormHelperText key={i} error>{m}</FormHelperText> : null))}
             <FormHelperText>Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.</FormHelperText>
           </Box>
+          {template('startPrompt', 'Start prompt', 'web_chat_start', 'Sent before the session, webhook, chat or cron prompt, in one message.')}
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -344,10 +348,10 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             />
           </Box>
           {text('compactIdle', 'Auto-compact idle seconds')}
-          {text('compactInstructions', 'Auto-compact instructions')}
+          {template('compactInstructions', 'Auto-compact instructions', 'preset_text')}
           {text('compactMinTokens', 'Auto-compact min context tokens')}
-          {text('systemAppend', 'System append', { multiline: true })}
-          {text('restartPrompt', 'Restart continue prompt')}
+          {template('systemAppend', 'System append', 'preset_text')}
+          {template('restartPrompt', 'Restart continue prompt', 'preset_text')}
           {text('turnStall', 'Turn stall seconds')}
           {text('maxRestarts', 'Max restarts')}
           {text('turnMax', 'Turn max seconds')}
@@ -368,7 +372,12 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           </FormControl>
           {text('permAllow', 'Permissions allow', { help: 'Comma separated' })}
           {text('permDeny', 'Permissions deny', { help: 'Comma separated' })}
-          {text('hooks', 'Hooks', { multiline: true, help: 'Command hooks run with the agent\'s credentials.' })}
+          {meta && (
+            <Box>
+              <HooksEditor value={hooksOf(values.hooks)} onChange={(v) => set('hooks', v === null ? '' : JSON.stringify(v, null, 2))} events={meta.hook_events} onInvalid={(m) => setHooksInvalid(m !== null)} />
+              <FormHelperText>Command hooks run with the agent's credentials.</FormHelperText>
+            </Box>
+          )}
           {text('mcpServers', 'MCP servers', { multiline: true })}
           {text('plugins', 'Plugins', { multiline: true })}
         </Box>
