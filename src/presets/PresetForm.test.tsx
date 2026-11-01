@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { Meta, PresetView } from '../api/client'
-import { editorText, setEditorText, stubRangeRects } from '../editor/testEditor'
+import { editorText, editorView, setEditorText, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
@@ -39,8 +39,10 @@ beforeAll(() => { restoreRange = stubRangeRects() })
 afterAll(() => restoreRange())
 afterEach(cleanup)
 
+// The lazy CodeMirror editors mount asynchronously; waiting for them keeps their import out of the middle of an interaction.
 async function ready() {
   await waitFor(() => expect(field('Auto-compact percent').value).toBe('80'))
+  await editorView('Start prompt')
 }
 const paste = async (label: string, text: string) => {
   await userEvent.click(field(label))
@@ -63,7 +65,7 @@ const noop = { onClose: vi.fn(), onSaved: vi.fn() }
 const optionTexts = () => screen.getAllByRole('option').map((o) => o.textContent)
 
 describe('PresetForm', () => {
-  test('keeps edits made before meta loads', { timeout: 15000 }, async () => {
+  test('keeps edits made before meta loads', async () => {
     let resolveMeta: (m: Meta) => void = () => {}
     api.getMeta.mockReturnValue(new Promise<Meta>((r) => { resolveMeta = r }))
     api.createPreset.mockResolvedValue(preset())
@@ -81,7 +83,7 @@ describe('PresetForm', () => {
     expect(body.spec.max_attempts).toBe(9)
   })
 
-  test('new_preset_prefills_defaults_saves_only_set_fields', { timeout: 15000 }, async () => {
+  test('new_preset_prefills_defaults_saves_only_set_fields', async () => {
     api.createPreset.mockResolvedValue(preset())
     const onSaved = vi.fn()
     wrap(<PresetForm open onClose={vi.fn()} onSaved={onSaved} />)
@@ -374,7 +376,7 @@ describe('PresetForm', () => {
 
     const SECRET_NAMED = ['MY_TOKEN', 'APP_SECRET', 'DB_PASSWORD', 'ADMIN_PASSWD', 'GIT_CREDENTIAL', 'STRIPE_API_KEY', 'SIGNING_PRIVATE_KEY', 'AWS_ACCESS_KEY']
 
-    test('secret-named keys are accepted', { timeout: 30000 }, async () => {
+    test('secret-named keys are accepted', async () => {
       wrap(<PresetForm open {...noop} />)
       await ready()
       await paste('Name', 'ok')
@@ -490,7 +492,7 @@ describe('PresetForm', () => {
     expect(screen.getByText('Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.')).toBeTruthy()
   })
 
-  test('max replicas renders, validates bounds and maps only when set', { timeout: 15000 }, async () => {
+  test('max replicas renders, validates bounds and maps only when set', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open onClose={vi.fn()} onSaved={vi.fn()} />)
     await ready()
@@ -512,7 +514,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[1][0].spec.max_replicas).toBe(4)
   })
 
-  test('static switch maps to spec.static and errors when max replicas differs from replicas', { timeout: 15000 }, async () => {
+  test('static switch maps to spec.static and errors when max replicas differs from replicas', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open onClose={vi.fn()} onSaved={vi.fn()} />)
     await ready()
@@ -529,7 +531,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec.static).toBe(true)
   })
 
-  test('init scripts add, edit and remove rows and submit init_scripts', { timeout: 20000 }, async () => {
+  test('init scripts add, edit and remove rows and submit init_scripts', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -546,7 +548,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec.init_scripts).toEqual(['echo two'])
   })
 
-  test('init scripts sparse: loads stored rows, omits the key when unset, sends [] when all removed', { timeout: 20000 }, async () => {
+  test('init scripts sparse: loads stored rows, omits the key when unset, sends [] when all removed', async () => {
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: { init_scripts: ['a', 'b'] } })} {...noop} />)
     await ready()
@@ -565,7 +567,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[1][1].spec).not.toHaveProperty('init_scripts')
   })
 
-  test('init scripts validation names the script and blocks Save', { timeout: 30000 }, async () => {
+  test('init scripts validation names the script and blocks Save', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'a')
@@ -581,7 +583,7 @@ describe('PresetForm', () => {
     expect(screen.getByText('Init script 21: at most 20 init scripts')).toBeTruthy()
     expect(button('Create').disabled).toBe(true)
   })
-  test('config fields', { timeout: 30000 }, async () => {
+  test('config fields', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -643,7 +645,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual(spec)
   })
 
-  test('plugins editor round trips through the form', { timeout: 30000 }, async () => {
+  test('plugins editor round trips through the form', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -665,14 +667,14 @@ describe('PresetForm', () => {
     expect((field('Install plugin 1')).value).toBe('jira')
   })
 
-  test('unlisted install marketplace blocks save', { timeout: 30000 }, async () => {
+  test('unlisted install marketplace blocks save', async () => {
     wrap(<PresetForm open preset={preset({ spec: { wrapper: { plugins: { install: [{ plugin: 'p@gone' }] } } } as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(screen.getByText(/marketplace "gone" is not listed/)).toBeTruthy()
     expect(button('Save').disabled).toBe(true)
   })
 
-  test('config validation', { timeout: 30000 }, async () => {
+  test('config validation', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'v')
@@ -693,7 +695,7 @@ describe('PresetForm', () => {
     expect(api.createPreset).not.toHaveBeenCalled()
   })
 
-  test('start prompt: help text, preview on the web chat surface, sparse save and load', { timeout: 30000 }, async () => {
+  test('start prompt: help text, preview on the web chat surface, sparse save and load', async () => {
     const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered: 'hi sample-user', error: null, variables: ['user'] }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     try {
@@ -718,7 +720,7 @@ describe('PresetForm', () => {
     }
   })
 
-  test('hooks come from the /meta events and a rule violation blocks Save', { timeout: 30000 }, async () => {
+  test('hooks come from the /meta events and a rule violation blocks Save', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'h')
@@ -731,7 +733,7 @@ describe('PresetForm', () => {
     expect(button('Create').disabled).toBe(false)
   })
 
-  test('invalid raw hooks JSON blocks Save and shows the error', { timeout: 30000 }, async () => {
+  test('invalid raw hooks JSON blocks Save and shows the error', async () => {
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: { wrapper: { hooks: { onTurn: [{ type: 'command', run: 'echo' }] } } } as PresetView['spec'] })} {...noop} />)
     await ready()
@@ -747,7 +749,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec.wrapper.hooks).toEqual({ onTurn: [{ type: 'command', run: 'ok' }] })
   })
 
-  test('hooks edit round-trips through the form', { timeout: 30000 }, async () => {
+  test('hooks edit round-trips through the form', async () => {
     api.updatePreset.mockResolvedValue(preset())
     const hooks = { onTurn: [{ type: 'command', run: 'echo' }] }
     wrap(<PresetForm open preset={preset({ spec: { wrapper: { hooks } } as PresetView['spec'] })} {...noop} />)
@@ -762,7 +764,7 @@ describe('PresetForm', () => {
     ['System append', 'preset_text'],
     ['Restart continue prompt', 'preset_text'],
     ['Init script 1', 'init_script'],
-  ])('%s previews through the orchestrator with surface %s', { timeout: 30000 }, async (label, surface) => {
+  ])('%s previews through the orchestrator with surface %s', async (label, surface) => {
     const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered: 'RENDERED', error: null, variables: ['session_slug'] }), { status: 200 }))
     vi.stubGlobal('fetch', f)
     try {
@@ -780,14 +782,14 @@ describe('PresetForm', () => {
     }
   })
 
-  test('reuse running agent row renders off by default with its help text', { timeout: 15000 }, async () => {
+  test('reuse running agent row renders off by default with its help text', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     expect(field('Reuse running agent').checked).toBe(false)
     expect(screen.getByText('Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one')).toBeTruthy()
   })
 
-  test('reuse running agent switched on saves reuse_running_agent true', { timeout: 15000 }, async () => {
+  test('reuse running agent switched on saves reuse_running_agent true', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -799,7 +801,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec.reuse_running_agent).toBe(true)
   })
 
-  test('reuse running agent stored on a preset loads on and round-trips', { timeout: 15000 }, async () => {
+  test('reuse running agent stored on a preset loads on and round-trips', async () => {
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: { reuse_running_agent: true } as PresetView['spec'] })} {...noop} />)
     await ready()
@@ -809,7 +811,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ reuse_running_agent: true })
   })
 
-  test('reuse running agent untouched keeps the spec sparse', { timeout: 15000 }, async () => {
+  test('reuse running agent untouched keeps the spec sparse', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -819,7 +821,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('reuse_running_agent')
   })
 
-  test('session options default off and stay sparse', { timeout: 15000 }, async () => {
+  test('session options default off and stay sparse', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -835,7 +837,7 @@ describe('PresetForm', () => {
     expect(spec).not.toHaveProperty('kube_access')
   })
 
-  test('session options save and round-trip', { timeout: 15000 }, async () => {
+  test('session options save and round-trip', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -871,7 +873,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('session_messaging')
   })
 
-  test('kube access disabled when unavailable', { timeout: 15000 }, async () => {
+  test('kube access disabled when unavailable', async () => {
     api.getMeta.mockResolvedValue(meta({ kube_access: { available: false } }))
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -907,7 +909,7 @@ describe('PresetForm', () => {
     await userEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: 'Preview' }))
   }
 
-  test('saves an empty cache when enabled with derived keys', { timeout: 15000 }, async () => {
+  test('saves an empty cache when enabled with derived keys', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -923,7 +925,7 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', spec: { cache: {} } })
   })
 
-  test('two key editors on the archive_name surface, both keys saved and no old key', { timeout: 30000 }, async () => {
+  test('two key editors on the archive_name surface, both keys saved and no old key', async () => {
     const f = previewReply('team/fast/')
     try {
       api.createPreset.mockResolvedValue(preset())
@@ -949,7 +951,7 @@ describe('PresetForm', () => {
     }
   })
 
-  test('an empty save key says restore only, an empty restore key says fresh start', { timeout: 30000 }, async () => {
+  test('an empty save key says restore only, an empty restore key says fresh start', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await userEvent.click(field('Cache the workspace in S3'))
@@ -960,7 +962,7 @@ describe('PresetForm', () => {
     await waitFor(() => expect(screen.queryByText('Empty: restore only, nothing is saved')).toBeNull())
   })
 
-  test('an invalid key template shows the preview error line', { timeout: 30000 }, async () => {
+  test('an invalid key template shows the preview error line', async () => {
     previewReply(null, { line: 1, message: 'unexpected end of template' })
     try {
       wrap(<PresetForm open {...noop} />)
@@ -975,7 +977,7 @@ describe('PresetForm', () => {
     }
   })
 
-  test('rejects a key longer than 256 characters and keeps excludes validated', { timeout: 30000 }, async () => {
+  test('rejects a key longer than 256 characters and keeps excludes validated', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'c')
@@ -1005,7 +1007,7 @@ describe('PresetForm', () => {
     expect(api.createPreset).not.toHaveBeenCalled()
   })
 
-  test('shows the server message when a save is refused', { timeout: 15000 }, async () => {
+  test('shows the server message when a save is refused', async () => {
     const message = 'cache.restore_key prefix preset- is reserved for preset-derived keys'
     api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'invalid', message))
     wrap(<PresetForm open preset={preset({ spec: { cache: { restore_key: 'preset-0123456789abcdef', save_key: 'preset-0123456789abcdef', exclude: [] } } as PresetView['spec'] })} {...noop} />)
@@ -1015,7 +1017,7 @@ describe('PresetForm', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(message)
   })
 
-  test('disables the cache section when the orchestrator has no cache', { timeout: 15000 }, async () => {
+  test('disables the cache section when the orchestrator has no cache', async () => {
     api.getMeta.mockResolvedValue(meta({ cache: { available: false, max_bytes: 0 } }))
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -1031,7 +1033,7 @@ describe('PresetForm', () => {
     expect(field('Cache the workspace in S3').disabled).toBe(false)
   })
 
-  test('loads a stored cache', { timeout: 15000 }, async () => {
+  test('loads a stored cache', async () => {
     const stored = { cache: { restore_key: 'team-a/', save_key: '', exclude: ['node_modules/**', '*.log'] } }
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: stored as PresetView['spec'] })} {...noop} />)
@@ -1056,7 +1058,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ cache: {} })
   })
 
-  test('keeps presets without a cache sparse', { timeout: 15000 }, async () => {
+  test('keeps presets without a cache sparse', async () => {
     api.createPreset.mockResolvedValue(preset())
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
@@ -1074,7 +1076,7 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
   })
 
-  test('a copy drops preset-derived cache keys', { timeout: 15000 }, async () => {
+  test('a copy drops preset-derived cache keys', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open copyOf={preset({ spec: { cache: { restore_key: 'preset-0123456789abcdef', save_key: 'preset-0123456789abcdef', exclude: ['a'] } } as PresetView['spec'] })} {...noop} />)
     await ready()
@@ -1090,7 +1092,7 @@ describe('PresetForm', () => {
     const GITLAB = 'git::https://gitlab.example.com/team/plugins.git?ref=main'
     const rows = () => screen.queryAllByLabelText(/^any-mcp plugin \d+$/) as HTMLInputElement[]
 
-    test('any-mcp plugins sparse by default', { timeout: 15000 }, async () => {
+    test('any-mcp plugins sparse by default', async () => {
       api.createPreset.mockResolvedValue(preset())
       wrap(<PresetForm open {...noop} />)
       await ready()
@@ -1102,7 +1104,7 @@ describe('PresetForm', () => {
       expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('any_mcp_sources')
     })
 
-    test('any-mcp plugins add rows and save', { timeout: 20000 }, async () => {
+    test('any-mcp plugins add rows and save', async () => {
       api.createPreset.mockResolvedValue(preset())
       wrap(<PresetForm open {...noop} />)
       await ready()
@@ -1119,7 +1121,7 @@ describe('PresetForm', () => {
       expect(api.createPreset.mock.calls[0][0].spec.any_mcp_sources).toEqual([GITHUB, GITLAB])
     })
 
-    test('any-mcp plugins remove rows', { timeout: 20000 }, async () => {
+    test('any-mcp plugins remove rows', async () => {
       api.updatePreset.mockResolvedValue(preset())
       const third = 'github.com/acme/other'
       wrap(<PresetForm open preset={preset({ spec: { replicas: 2, any_mcp_sources: [GITHUB, GITLAB, third] } as PresetView['spec'] })} {...noop} />)
@@ -1134,7 +1136,7 @@ describe('PresetForm', () => {
       expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
     })
 
-    test('any-mcp plugins validate and load', { timeout: 20000 }, async () => {
+    test('any-mcp plugins validate and load', async () => {
       api.updatePreset.mockResolvedValue(preset())
       wrap(<PresetForm open preset={preset({ spec: { any_mcp_sources: [GITHUB, GITLAB] } as PresetView['spec'] })} {...noop} />)
       await ready()

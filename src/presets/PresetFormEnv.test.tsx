@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Meta, PresetView } from '../api/client'
-import { stubRangeRects } from '../editor/testEditor'
+import { editorView, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
@@ -42,8 +42,10 @@ beforeAll(() => { restoreRange = stubRangeRects() })
 afterAll(() => restoreRange())
 afterEach(cleanup)
 
+// The lazy CodeMirror editors mount asynchronously; waiting for them keeps their import out of the middle of an interaction.
 async function ready() {
   await waitFor(() => expect(field('Auto-compact percent').value).toBe('80'))
+  await editorView('Start prompt')
 }
 const type = async (label: string, text: string) => {
   await userEvent.click(field(label))
