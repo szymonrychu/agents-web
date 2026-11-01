@@ -54,6 +54,22 @@ describe('ChatView', () => {
     expect(screen.getByText('Preparing alpha: cache restore running')).toBeTruthy()
   })
 
+  test('shows the preparing bootstrap step', () => {
+    const s = { ...session(0), status: { phase: 'pending' } } as unknown as SessionView
+    const a = { ...agent('unknown', false), bootstrap: { step: 'install_plugins', status: 'running', message: null, started_at: null, finished_at: null } } as unknown as AgentView
+    mount(s, [a])
+    expect(screen.getByText('Preparing alpha: 0 of 1 agents ready, bootstrap: install_plugins')).toBeTruthy()
+  })
+
+  test('shows a bootstrap failure as an error with step and message, and attention with its reason', () => {
+    const f = { step: 'install_plugins', status: 'failed', message: 'boom', started_at: null, finished_at: null }
+    mount(session(0), [{ ...agent('idle', true), bootstrap_failure: f } as unknown as AgentView])
+    expect(screen.getByText('Bootstrap failed: install_plugins failed: boom')).toBeTruthy()
+    cleanup()
+    mount(session(0), [{ ...agent('busy', true), attention: { reason: 'dialog', since: null } } as unknown as AgentView])
+    expect(screen.getByText('waiting: dialog')).toBeTruthy()
+  })
+
   test('shows discarding progress and no progress once ready', () => {
     const s = { ...session(0), desired: 'deleting', status: { phase: 'deleting', message: 'saving the workspace cache' } } as unknown as SessionView
     mount(s, [agent('idle', true)])

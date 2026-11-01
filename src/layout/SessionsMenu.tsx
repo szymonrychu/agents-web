@@ -6,7 +6,7 @@ import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
-import { sessionMarkState } from '../ribbon/sessionStatus'
+import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { TOKENS } from '../theme'
@@ -39,7 +39,7 @@ export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, se
           <ListItem key={session.id} disablePadding>
             <ListItemButton selected={session.id === selectedId} aria-current={session.id === selectedId ? 'true' : undefined} onClick={() => { onSelect(session.id); onClose() }} sx={{ gap: 1 }}>
               <StateMark state={sessionMarkState(session, Object.values(agents), discarded === true)} />
-              <ListItemText primary={session.slug} />
+              <ListItemText primary={session.slug} secondary={discarded ? null : sessionIssue(session, Object.values(agents))?.text} slotProps={{ secondary: { noWrap: true } }} />
             </ListItemButton>
           </ListItem>
         ))}

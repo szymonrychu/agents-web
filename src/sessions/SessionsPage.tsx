@@ -9,7 +9,7 @@ import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { listSessions } from '../api/client'
 import type { SessionView } from '../api/client'
-import { sessionMarkState } from '../ribbon/sessionStatus'
+import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
 import { DiscardSessionDialog } from './DiscardSessionDialog'
@@ -87,6 +87,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
               <ListItemText primary={c.slug} sx={{ minWidth: 120 }} />
               <Typography component="span">{c.preset_name ?? 'none'}</Typography>
               <Typography component="span">{markLabel(sessionMarkState(c, []))}</Typography>
+              {sessionIssue(c, [])?.text ? <Typography component="span" color="error">{sessionIssue(c, [])?.text}</Typography> : null}
               <Typography component="span">{`${c.summary.ready}/${c.summary.replicas}`}</Typography>
               <Typography component="span">{new Date(c.created_at).toLocaleString()}</Typography>
               <Typography component="span">{timeLeft(c.closes_at)}</Typography>

@@ -1,18 +1,20 @@
 /** Progress bar of a session being prepared or discarded; renders nothing otherwise. */
 import Box from '@mui/material/Box'
 import LinearProgress from '@mui/material/LinearProgress'
-import type { SessionView } from '../api/client'
+import type { AgentView, SessionView } from '../api/client'
 import { TOKENS } from '../theme'
 import { preparingProgress } from './sessionStatus'
 
 export interface SessionProgressProps {
   session: SessionView
+  /** Agents of the session; the running bootstrap step shows in the label. */
+  agents?: readonly AgentView[]
   /** Also print the label under the bar. */
   showLabel?: boolean
 }
 
-export function SessionProgress({ session, showLabel = false }: SessionProgressProps) {
-  const progress = preparingProgress(session)
+export function SessionProgress({ session, agents = [], showLabel = false }: SessionProgressProps) {
+  const progress = preparingProgress(session, agents)
   if (progress === null) return null
   const name = `${progress.kind === 'discarding' ? 'Discarding' : 'Preparing'} ${session.slug}`
   return (

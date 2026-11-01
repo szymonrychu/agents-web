@@ -902,6 +902,33 @@ export interface components {
              */
             ts: string;
         };
+        /**
+         * AgentAttention
+         * @description The agent's claude is waiting on a person; `state` is unchanged by it.
+         */
+        AgentAttention: {
+            /** Reason */
+            reason: string;
+            /** Since */
+            since: string | null;
+        };
+        /**
+         * AgentBootstrapStep
+         * @description A wrapper bootstrap step. `message` is set on failure only: redacted by the wrapper and
+         *     truncated here.
+         */
+        AgentBootstrapStep: {
+            /** Finished At */
+            finished_at: string | null;
+            /** Message */
+            message: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Step */
+            step: string;
+        };
         /** AgentContext */
         AgentContext: {
             /** Used Percentage */
@@ -913,6 +940,9 @@ export interface components {
         };
         /** AgentView */
         AgentView: {
+            attention: components["schemas"]["AgentAttention"] | null;
+            bootstrap: components["schemas"]["AgentBootstrapStep"] | null;
+            bootstrap_failure: components["schemas"]["AgentBootstrapStep"] | null;
             context: components["schemas"]["AgentContext"] | null;
             /** Context Pct */
             context_pct: number | null;
@@ -1938,8 +1968,12 @@ export interface components {
         };
         /** SessionSummary */
         SessionSummary: {
+            /** Attention Agents */
+            attention_agents: number;
             /** Auto Compact Pct */
             auto_compact_pct: number;
+            /** Bootstrap Failed Agents */
+            bootstrap_failed_agents: number;
             /** Context Pct Max */
             context_pct_max: number | null;
             /** Failed */

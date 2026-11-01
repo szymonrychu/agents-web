@@ -1,10 +1,11 @@
 /** Small square mark of an agent or session state, and the colour the context gauge ring takes from it. */
 import Box from '@mui/material/Box'
+import type { AgentView } from '../api/client'
 import { TOKENS } from '../theme'
 
 /**
  * Mark states. `idle` is the old "waiting" of summary.state (all agents idle); `attention` is an agent waiting for
- * input (dialog, permission, question) and is fed only by the agent state value 'waiting', which no backend sends yet.
+ * input (dialog, permission, question) and is fed by agent.attention (and the typed agent state 'waiting').
  */
 export type MarkState = 'working' | 'idle' | 'attention' | 'booting' | 'error' | 'deleting' | 'discarded'
 
@@ -43,6 +44,13 @@ export function agentMarkState(state: string, ready: boolean): MarkState {
   if (state === 'busy' || state === 'working') return 'working'
   if (state === 'error' || state === 'failed') return 'error'
   return 'booting'
+}
+
+/** Mark of an agent: a bootstrap failure is an error, then the pod state, then attention (agent.attention) once the pod is ready. */
+export function agentMark(a: AgentView): MarkState {
+  if (a.bootstrap_failure) return 'error'
+  const base = agentMarkState(a.state, a.ready)
+  return a.attention && a.ready && (base === 'idle' || base === 'working') ? 'attention' : base
 }
 
 export function StateMark({ state }: { state: MarkState }) {

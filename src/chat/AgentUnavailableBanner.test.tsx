@@ -21,7 +21,7 @@ afterEach(() => {
 })
 
 const agent = (id: string, ordinal: number, o: Partial<AgentView> = {}): AgentView => ({
-  context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', ...o,
+  context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', attention: null, bootstrap: null, bootstrap_failure: null, ...o,
 })
 
 const session = (summary: Partial<SessionView['summary']> = {}): SessionView =>

@@ -1,6 +1,6 @@
 /** Session level status derived from what /api/v1/stream already pushes: the mark state and the preparing/discarding progress. */
 import type { AgentView, SessionView } from '../api/client'
-import { agentMarkState } from './stateMark'
+import { agentMark } from './stateMark'
 import type { MarkState } from './stateMark'
 
 export interface Progress {
@@ -23,17 +23,51 @@ function runningGate(status: Dict): string | null {
   return null
 }
 
+export interface Issue {
+  kind: 'bootstrap_failure' | 'attention'
+  text: string
+}
+
+const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+const live = (agents: readonly AgentView[]): AgentView[] => agents.filter((a) => !a.gone)
+
+/** What needs a person on one agent: a failed bootstrap step ("install_plugins failed: ...") or the attention reason. */
+export function agentIssue(a: AgentView): Issue | null {
+  const f = a.bootstrap_failure
+  if (f) return { kind: 'bootstrap_failure', text: f.message ? `${f.step} failed: ${f.message}` : `${f.step} failed` }
+  if (a.attention) return { kind: 'attention', text: `waiting: ${a.attention.reason}` }
+  return null
+}
+
+/** The most urgent issue of a session: a bootstrap failure first, then attention; agent detail first, summary counts as fallback. */
+export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
+  const issues = live(agents).map(agentIssue)
+  const failure = issues.find((i) => i?.kind === 'bootstrap_failure')
+  if (failure) return failure
+  const failed = session.summary.bootstrap_failed_agents ?? 0
+  if (failed > 0) return { kind: 'bootstrap_failure', text: `${plural(failed, 'agent', 'agents')} failed to bootstrap` }
+  const attention = issues.find((i) => i?.kind === 'attention')
+  if (attention) return attention
+  const waiting = session.summary.attention_agents ?? 0
+  return waiting > 0 ? { kind: 'attention', text: `${plural(waiting, 'agent', 'agents')} waiting for input` } : null
+}
+
+/** The bootstrap step an agent is running now, for the preparing label. */
+const runningStep = (agents: readonly AgentView[]): string | null => live(agents).find((a) => a.bootstrap?.status === 'running')?.bootstrap?.step ?? null
+
 /** Progress of a session being prepared (gates running, pods not ready) or discarded; null otherwise. */
-export function preparingProgress(session: SessionView): Progress | null {
+export function preparingProgress(session: SessionView, agents: readonly AgentView[] = []): Progress | null {
   const status = obj(session.status)
   const message = typeof status.message === 'string' && status.message !== '' ? status.message : null
   if (session.desired === 'deleting') return { kind: 'discarding', label: message ?? 'discarding', value: null }
   const gate = runningGate(status)
   if (gate === null && status.phase !== 'pending') return null
-  if (gate !== null) return { kind: 'preparing', label: message ?? gate, value: null }
+  const step = runningStep(agents)
+  const withStep = (label: string): string => (step === null ? label : `${label}, bootstrap: ${step}`)
+  if (gate !== null) return { kind: 'preparing', label: withStep(message ?? gate), value: null }
   const { ready, replicas } = session.summary
   const value = replicas > 0 ? Math.round((ready / replicas) * 100) : null
-  return { kind: 'preparing', label: message ?? `${ready} of ${replicas} agents ready`, value }
+  return { kind: 'preparing', label: withStep(message ?? `${ready} of ${replicas} agents ready`), value }
 }
 
 /**
@@ -44,8 +78,8 @@ export function sessionMarkState(session: SessionView, agents: readonly AgentVie
   if (discarded) return 'discarded'
   const summary = session.summary.state
   if (session.desired === 'deleting' || summary === 'deleting') return 'deleting'
-  if (summary === 'error') return 'error'
-  if (agents.some((a) => !a.gone && agentMarkState(a.state, a.ready) === 'attention')) return 'attention'
+  if (summary === 'error' || (session.summary.bootstrap_failed_agents ?? 0) > 0 || live(agents).some((a) => a.bootstrap_failure)) return 'error'
+  if ((session.summary.attention_agents ?? 0) > 0 || live(agents).some((a) => agentMark(a) === 'attention')) return 'attention'
   const base: MarkState = summary === 'working' ? 'working' : summary === 'booting' ? 'booting' : 'idle'
-  return base !== 'booting' && preparingProgress(session) !== null ? 'booting' : base
+  return base !== 'booting' && preparingProgress(session, agents) !== null ? 'booting' : base
 }
