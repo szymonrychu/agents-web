@@ -57,7 +57,7 @@ const meta = (): Meta => ({
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
 }) as Meta
 
-const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, updated_at: '2026-01-01T00:00:00Z' })
+const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
 const PRESETS = [preset('p-default', 'Default', true), preset('p-big', 'Big box')]
 
 function emit(type: string, data: unknown) {
