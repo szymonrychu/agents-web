@@ -104,6 +104,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [source] = useState({ preset, copyOf })
   const [meta, setMeta] = useState<Meta | null>(null)
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
+  // a preset-level flag, not part of the spec: copies keep the source value
+  const [superleaderManageable, setSuperleaderManageable] = useState(() => (preset ?? copyOf)?.superleader_manageable ?? false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -222,7 +224,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
         }
         env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
       }
-      const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
+      const body = { name: values.name, superleader_manageable: superleaderManageable, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError((e instanceof Error ? e.message : String(e)) + (secretsSaved ? ' (a replaced protected value was already saved)' : ''))
@@ -375,6 +377,10 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <Box>
             <FormControlLabel control={<Switch checked={values.sessionMessaging} onChange={(e) => set('sessionMessaging', e.target.checked)} />} label="Superleader" />
             <FormHelperText>superleader: can message the leaders of all sessions</FormHelperText>
+          </Box>
+          <Box>
+            <FormControlLabel control={<Switch checked={superleaderManageable} onChange={(e) => setSuperleaderManageable(e.target.checked)} />} label="Superleader can manage" />
+            <FormHelperText>The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them</FormHelperText>
           </Box>
           <Box>
             <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />
