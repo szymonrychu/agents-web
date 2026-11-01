@@ -120,3 +120,23 @@ test("reads matrix from the sibling agents-matrix-connector checkout by default"
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readFileSync(join(proj, "openapi/matrix.source"), "utf8"), `agents-matrix-connector ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the usage backend and records agents-usage", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "usage", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/usage.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/usage.source"), "utf8"), `agents-usage ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("reads usage from the sibling agents-usage checkout by default", () => {
+  const doc = '{"openapi":"3.1.0","paths":{"/usage/v1/current":{}}}\n';
+  const parent = mkdtempSync(join(tmpdir(), "sync-parent-"));
+  const src = makeSource(doc, join(parent, "agents-usage"));
+  const proj = makeProject(join(parent, "agents-web"));
+  const r = run(proj, "usage");
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/usage.source"), "utf8"), `agents-usage ${git(src, "rev-parse", "HEAD")}\n`);
+});

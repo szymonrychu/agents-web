@@ -17,7 +17,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const NO_BACKUP: SessionView['backup'] = { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
 const existing = (o: Partial<SessionView['spec']> = {}, backup: Partial<SessionView['backup']> = {}): SessionView =>

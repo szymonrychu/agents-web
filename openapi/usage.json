@@ -1,0 +1,514 @@
+{
+  "components": {
+    "schemas": {
+      "CurrentView": {
+        "properties": {
+          "last_probe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastProbeView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Probe"
+          },
+          "last_sample": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastSampleView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sample"
+          },
+          "windows": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/WindowView"
+            },
+            "title": "Windows",
+            "type": "object"
+          }
+        },
+        "required": [
+          "last_probe",
+          "last_sample",
+          "windows"
+        ],
+        "title": "CurrentView",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HistoryView": {
+        "properties": {
+          "bucket_seconds": {
+            "title": "Bucket Seconds",
+            "type": "integer"
+          },
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PointView"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bucket_seconds",
+          "from",
+          "points",
+          "to"
+        ],
+        "title": "HistoryView",
+        "type": "object"
+      },
+      "LastProbeView": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "at",
+          "error",
+          "ok"
+        ],
+        "title": "LastProbeView",
+        "type": "object"
+      },
+      "LastSampleView": {
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent",
+          "at"
+        ],
+        "title": "LastSampleView",
+        "type": "object"
+      },
+      "MarkView": {
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "preset_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "preset_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Name"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ended_at",
+          "origin",
+          "preset_id",
+          "preset_name",
+          "session_id",
+          "slug",
+          "started_at"
+        ],
+        "title": "MarkView",
+        "type": "object"
+      },
+      "PointView": {
+        "properties": {
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "percent": {
+            "title": "Percent",
+            "type": "number"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "statusline",
+              "probe"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "observed_at",
+          "percent",
+          "resets_at",
+          "source"
+        ],
+        "title": "PointView",
+        "type": "object"
+      },
+      "SessionsView": {
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/MarkView"
+            },
+            "title": "Marks",
+            "type": "array"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "from",
+          "marks",
+          "to",
+          "truncated"
+        ],
+        "title": "SessionsView",
+        "type": "object"
+      },
+      "WindowView": {
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "percent": {
+            "title": "Percent",
+            "type": "number"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "statusline",
+              "probe"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "observed_at",
+          "percent",
+          "resets_at",
+          "source",
+          "stale"
+        ],
+        "title": "WindowView",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "agents-usage",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/usage/v1/current": {
+      "get": {
+        "operationId": "get_current",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "summary": "Current windows"
+      }
+    },
+    "/usage/v1/history": {
+      "get": {
+        "operationId": "get_history",
+        "parameters": [
+          {
+            "description": "Only this metric (five_hour, seven_day)",
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Start of the range (default: to minus 7 days)",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "End of the range (default: now)",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Points per metric at most",
+            "in": "query",
+            "name": "max_points",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 1000,
+              "minimum": 10,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "summary": "Usage history"
+      }
+    },
+    "/usage/v1/sessions": {
+      "get": {
+        "operationId": "get_sessions",
+        "parameters": [
+          {
+            "description": "Start of the range (default: to minus 7 days)",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "End of the range (default: now)",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Marks at most",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 2000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "summary": "Session marks"
+      }
+    }
+  }
+}

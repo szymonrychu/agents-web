@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { SessionsPage } from '../sessions/SessionsPage'
 import { SchedulesPage } from '../schedules/SchedulesPage'
 import { ChatsPage } from '../matrix/ChatsPage'
+import { UsagePage } from '../usage/UsagePage'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -75,6 +76,22 @@ describe('menuEntries', () => {
     const page = chats!.render(onBack, openSession)
     expect(isValidElement(page) && page.type).toBe(ChatsPage)
     expect(isValidElement<{ onBack: unknown; onOpenSession: unknown }>(page) && page.props).toEqual({ onBack, onOpenSession: openSession })
+  })
+
+  test('lists Usage after Presets and Backups only with the usage backend', () => {
+    expect(menuEntries(config('orchestrator', 'usage')).map((e) => [e.id, e.order])).toEqual([
+      ['sessions', 10],
+      ['presets', 40],
+      ['backups', 45],
+      ['usage', 50],
+    ])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('usage')
+    const usage = menuEntries(config('usage')).find((e) => e.id === 'usage')
+    expect(usage).toMatchObject({ label: 'Usage', order: 50, backend: 'usage' })
+    const onBack = vi.fn()
+    const page = usage!.render(onBack, vi.fn())
+    expect(isValidElement(page) && page.type).toBe(UsagePage)
+    expect(isValidElement<{ onBack: unknown }>(page) && page.props).toEqual({ onBack })
   })
 
   test('filters_by_configured_backends', () => {
