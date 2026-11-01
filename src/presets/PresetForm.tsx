@@ -30,6 +30,7 @@ import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
 import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, envRow, envValueError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
+import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
 export interface PresetFormProps {
   open: boolean
@@ -374,8 +375,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <FormLabel component="legend">Usage quota</FormLabel>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {text('quotaFiveHour', '5-hour quota percent')}
-              {text('quotaSevenDay', 'Weekly quota percent')}
+              {text('quotaFiveHour', QUOTA_FIELD_LABELS.five_hour)}
+              {text('quotaSevenDay', QUOTA_FIELD_LABELS.seven_day)}
             </Box>
             <FormHelperText>{`Starting or growing a session is refused at or above this percent of the window, 1 to 100${meta?.usage.configured ? '' : ', when the usage gate is configured'}`}</FormHelperText>
             {meta && <FormHelperText>{`Empty uses the default (${meta.usage.quota_default_pct}%)`}</FormHelperText>}

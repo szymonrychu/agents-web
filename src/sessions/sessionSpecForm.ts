@@ -6,6 +6,7 @@ type EnvVarIn = components['schemas']['EnvVarIn']
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import { pluginSourceError } from '../presets/pluginSource'
+import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
 /**
  * One env variable, GitLab CI style. A protected variable is write-only: `stored` marks one that came from the server
@@ -379,8 +380,8 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   e.hookUrl = hookUrlError(v.hookUrl)
   e.leaderLease = v.leaderLease.trim() === '' ? undefined : intIn(v.leaderLease, 60, 604800, 'Leader lease seconds')
   e.autocloseAfter = v.autocloseAfter.trim() === '' ? undefined : intIn(v.autocloseAfter, 1, 2592000, 'Autoclose after seconds')
-  e.quotaFiveHour = v.quotaFiveHour.trim() === '' ? undefined : intIn(v.quotaFiveHour, 1, 100, '5-hour quota percent')
-  e.quotaSevenDay = v.quotaSevenDay.trim() === '' ? undefined : intIn(v.quotaSevenDay, 1, 100, 'Weekly quota percent')
+  e.quotaFiveHour = v.quotaFiveHour.trim() === '' ? undefined : intIn(v.quotaFiveHour, 1, 100, QUOTA_FIELD_LABELS.five_hour)
+  e.quotaSevenDay = v.quotaSevenDay.trim() === '' ? undefined : intIn(v.quotaSevenDay, 1, 100, QUOTA_FIELD_LABELS.seven_day)
   e.compactMinTokens = v.compactMinTokens.trim() === '' ? undefined : intIn(v.compactMinTokens, 0, Number.MAX_SAFE_INTEGER, 'Min context tokens')
   e.maxRestarts = v.maxRestarts.trim() === '' ? undefined : intIn(v.maxRestarts, 0, 10, 'Max restarts')
   e.compactIdle = nonNegative(v.compactIdle, 'Auto-compact idle seconds')

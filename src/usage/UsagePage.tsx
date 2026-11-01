@@ -5,11 +5,15 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
+import { Suspense, lazy } from 'react'
 import { formatAge, useNow } from '../chat/agentAge'
 import { TOKENS } from '../theme'
 import { usePoll } from '../triggers'
 import { getCurrent } from './api'
 import type { WindowView } from './api'
+
+/** The chart library is large: its chunk loads only when the Usage page opens. */
+const UsageHistory = lazy(() => import('./UsageHistory'))
 
 export interface UsagePageProps {
   onBack: () => void
@@ -81,7 +85,11 @@ export function UsagePage({ onBack }: UsagePageProps) {
           {metrics.map((m) => <WindowCard key={m} metric={m} window={windows[m]} now={now} />)}
         </Box>
       )}
-      {/* UsageHistory (chart and session timeline) mounts here under the cards. */}
+      <Box component="section" aria-label="Usage history">
+        <Suspense fallback={<Typography color="text.secondary">Loading usage history</Typography>}>
+          <UsageHistory />
+        </Suspense>
+      </Box>
     </Box>
   )
 }

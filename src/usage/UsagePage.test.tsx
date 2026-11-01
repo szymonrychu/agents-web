@@ -7,8 +7,10 @@ import { theme } from '../theme'
 import type { CurrentView, WindowView } from './api'
 import { UsagePage } from './UsagePage'
 
-const api = vi.hoisted(() => ({ getCurrent: vi.fn() }))
+const api = vi.hoisted(() => ({ getCurrent: vi.fn(), getHistory: vi.fn(), getSessions: vi.fn() }))
+const client = vi.hoisted(() => ({ getMeta: vi.fn(), listPresets: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
+vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...client }))
 
 const NOW = Date.parse('2026-11-01T12:00:00Z')
 const win = (o: Partial<WindowView> = {}): WindowView => ({
@@ -22,6 +24,10 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   api.getCurrent.mockReset()
+  api.getHistory.mockReset().mockResolvedValue({ from: '2026-10-25T12:00:00Z', to: '2026-11-01T12:00:00Z', bucket_seconds: 60, points: [] })
+  api.getSessions.mockReset().mockResolvedValue({ from: '2026-10-25T12:00:00Z', to: '2026-11-01T12:00:00Z', marks: [], truncated: false })
+  client.getMeta.mockReset().mockResolvedValue({ usage: { configured: true, quota_default_pct: 100 } })
+  client.listPresets.mockReset().mockResolvedValue([])
 })
 afterEach(() => {
   cleanup()
@@ -138,6 +144,22 @@ describe('UsagePage alerts', () => {
 })
 
 describe('UsagePage', () => {
+  test('shows the lazy usage history region under the cards, and a history failure leaves the cards alone', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    const region = await screen.findByRole('region', { name: 'Usage history' })
+    expect(await within(region).findByText('No usage history in this range')).toBeTruthy()
+    expect(within(region).getByRole('button', { name: '7d' })).toBeTruthy()
+    expect(screen.getByTestId('usage-card-seven_day')).toBeTruthy()
+    cleanup()
+
+    api.getHistory.mockRejectedValue(new Error('down'))
+    mount()
+    expect(await screen.findByText('Usage history unavailable')).toBeTruthy()
+    expect(await screen.findByTestId('usage-card-seven_day')).toBeTruthy()
+    expect(screen.queryByText('Usage service unavailable')).toBeNull()
+  })
+
   test('Back calls onBack', async () => {
     api.getCurrent.mockResolvedValue(view())
     const onBack = vi.fn()
