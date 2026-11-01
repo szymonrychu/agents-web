@@ -8,6 +8,7 @@
  *   30 Schedules (agents-schedule-microservice)
  *   35 Chats     (agents-matrix-connector)
  *   40 Presets   (orchestrator, registered below)
+ *   45 Backups   (orchestrator, S3 workspace archives)
  */
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
@@ -15,6 +16,7 @@ import { SessionsPage } from '../sessions/SessionsPage'
 import { webhooksMenu } from '../webhooks/menu'
 import { schedulesMenu } from '../schedules/menu'
 import { chatsMenu } from '../matrix/menu'
+import { backupsMenu } from '../backups/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -30,6 +32,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   orchestrator: [
     { id: 'sessions', label: 'Sessions', order: 10, backend: 'orchestrator', render: (onBack, openSession) => createElement(SessionsPage, { onBack, onOpen: openSession }) },
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
+    backupsMenu,
   ],
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
