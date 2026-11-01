@@ -62,8 +62,12 @@ export interface FormValues {
   image: string
   /** Workspace cache in S3; the spec carries `cache` only when this is on. */
   cacheEnabled: boolean
-  /** Empty means the server derives the key from the preset. */
-  cacheKey: string
+  /** On: the server derives both keys from the preset and the form sends neither. */
+  cacheDerive: boolean
+  /** Jinja template (surface `archive_name`); empty is a fresh start. Used when `cacheDerive` is off. */
+  cacheRestoreKey: string
+  /** Jinja template (surface `archive_name`); empty is restore-only. Used when `cacheDerive` is off. */
+  cacheSaveKey: string
   /** One glob per line, relative to the workdir. */
   cacheExclude: string
 }
@@ -90,9 +94,9 @@ export const MAX_NAME = 40
 export const MAX_INIT_SCRIPTS = 20
 export const MAX_INIT_SCRIPT_CHARS = 16384
 const COPY_SUFFIX = ' copy'
-const CACHE_KEY = /^[a-z0-9][a-z0-9._-]{0,62}$/
-/** Cache keys in this prefix are derived by the server from a preset id; a caller may not pick one. */
+/** Cache keys starting with this are derived by the server from a preset id. */
 export const CACHE_KEY_RESERVED_PREFIX = 'preset-'
+export const MAX_CACHE_KEY = 256
 export const MAX_CACHE_EXCLUDE = 50
 export const MAX_CACHE_EXCLUDE_CHARS = 256
 
@@ -106,14 +110,14 @@ export function blankValues(meta: Meta | null): FormValues {
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
-    cacheEnabled: false, cacheKey: '', cacheExclude: '',
+    cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
 }
 
 /** The set-key that owns a form field. */
 export function setKeyOf(field: keyof FormValues): SetKey | null {
   if (field === 'name') return null
-  if (field === 'cacheEnabled' || field === 'cacheKey' || field === 'cacheExclude') return 'cache'
+  if (field === 'cacheEnabled' || field === 'cacheDerive' || field === 'cacheRestoreKey' || field === 'cacheSaveKey' || field === 'cacheExclude') return 'cache'
   return field === 'cpuRequest' || field === 'cpuLimit' || field === 'memRequest' || field === 'memLimit' ? 'resources' : field
 }
 
@@ -192,7 +196,10 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   }
   if (spec.cache) {
     values.cacheEnabled = true
-    values.cacheKey = spec.cache.key ?? ''
+    const { restore_key: restore, save_key: save } = spec.cache
+    values.cacheDerive = (restore ?? null) === null && (save ?? null) === null
+    values.cacheRestoreKey = restore ?? ''
+    values.cacheSaveKey = save ?? ''
     values.cacheExclude = (spec.cache.exclude ?? []).join('\n')
     setKeys.add('cache')
   }
@@ -287,17 +294,9 @@ export function initScriptErrors(scripts: string[]): (string | undefined)[] | un
   return errors.some(Boolean) ? errors : undefined
 }
 
-/**
- * Cache key rules of the server; empty is fine (the server derives the key from the preset).
- * `storedKey` is the key the edited preset already carries, the one reserved key the server accepts back.
- */
-export function cacheKeyError(key: string, storedKey?: string | null): string | undefined {
-  const k = key.trim()
-  if (k === '') return undefined
-  if (!CACHE_KEY.test(k)) return "Cache key: lowercase letters, digits, '.', '_' and '-', at most 63"
-  if (k.startsWith(CACHE_KEY_RESERVED_PREFIX) && k !== storedKey) return `cache.key prefix ${CACHE_KEY_RESERVED_PREFIX} is reserved for preset-derived keys`
-  return undefined
-}
+/** A key template; the server renders and validates it (the preview shows the result), only the length is checked here. */
+export const cacheKeyError = (label: string, key: string): string | undefined =>
+  key.length > MAX_CACHE_KEY ? `${label}: at most ${MAX_CACHE_KEY} characters` : undefined
 
 /** The exclude globs of the text: one per line, trimmed, blank lines dropped. */
 export const cacheExcludeLines = (text: string): string[] => text.split('\n').map((l) => l.trim()).filter(Boolean)
@@ -323,9 +322,8 @@ export function nameError(name: string): string | undefined {
 
 /**
  * Inline errors; an empty field is never an error because clearing a field means unset.
- * `storedCacheKey` is the cache key of the preset being edited (accepted back even in the reserved prefix).
  */
-export function validate(v: FormValues, meta: Meta | null, storedCacheKey?: string | null): FormErrors {
+export function validate(v: FormValues, meta: Meta | null): FormErrors {
   const e: FormErrors = {}
   e.name = nameError(v.name)
   e.replicas = v.replicas.trim() === '' ? undefined : intIn(v.replicas, 1, meta?.caps.max_replicas ?? 16, 'Replicas')
@@ -356,7 +354,10 @@ export function validate(v: FormValues, meta: Meta | null, storedCacheKey?: stri
   const sourceErrors = v.anyMcpSources.map(pluginSourceError)
   if (sourceErrors.some(Boolean)) e.anyMcpSources = sourceErrors
   if (v.cacheEnabled) {
-    e.cacheKey = cacheKeyError(v.cacheKey, storedCacheKey)
+    if (!v.cacheDerive) {
+      e.cacheRestoreKey = cacheKeyError('Restore key', v.cacheRestoreKey)
+      e.cacheSaveKey = cacheKeyError('Save key', v.cacheSaveKey)
+    }
     e.cacheExclude = cacheExcludeError(v.cacheExclude)
   }
   for (const k of Object.keys(e) as (keyof FormErrors)[]) if (e[k] === undefined) delete e[k]
@@ -412,7 +413,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('kubeAccess') && v.kubeAccess) spec.kube_access = true
   if (setKeys.has('cache') && v.cacheEnabled) {
     const exclude = cacheExcludeLines(v.cacheExclude)
-    spec.cache = { ...(v.cacheKey.trim() !== '' && { key: v.cacheKey.trim() }), ...(exclude.length > 0 && { exclude }) }
+    spec.cache = { ...(!v.cacheDerive && { restore_key: v.cacheRestoreKey, save_key: v.cacheSaveKey }), ...(exclude.length > 0 && { exclude }) }
   }
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper

@@ -99,7 +99,7 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
   ]
   const restored = 'restored when a session with the same slug is created'
   const saved = [
-    ...(backup.workdir ? [`Workspace files: saved to the S3 cache under the key ${session.spec.cache?.key ?? '(the session cache key)'}, ${restored}`] : []),
+    ...(backup.workdir ? [`Workspace files: saved to the S3 cache under the key ${session.spec.cache?.save_key || session.spec.cache?.restore_key || '(the session cache key)'}, ${restored}`] : []),
     ...(backup.transcripts ? [`Claude transcripts: saved to the S3 cache, ${restored}`] : []),
   ]
   const lastBackup = backup.last_transcripts_backup
