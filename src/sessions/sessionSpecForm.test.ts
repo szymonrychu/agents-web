@@ -64,3 +64,27 @@ describe('wrapper permission_mode', () => {
     expect(toPresetSpec(values, setKeys)).not.toHaveProperty('wrapper')
   })
 })
+
+describe('docker sidecar', () => {
+  test('a stored docker spec loads and round-trips with its sizes', () => {
+    const spec = { docker: true, docker_storage: '50Gi', docker_cpu: '2', docker_memory: '4Gi' } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(values.docker).toBe(true)
+    expect(values.dockerStorage).toBe('50Gi')
+    expect(toPresetSpec(values, setKeys)).toEqual(spec)
+  })
+
+  test('docker alone sends no sizes, and off sends nothing', () => {
+    const on = stateFromPreset(null, 'p', { docker: true } as Partial<SessionSpec>)
+    expect(toPresetSpec(on.values, on.setKeys)).toEqual({ docker: true })
+    const off = toPresetSpec({ ...on.values, docker: false, dockerStorage: '9Gi' }, on.setKeys)
+    expect(off).not.toHaveProperty('docker')
+    expect(off).not.toHaveProperty('docker_storage')
+  })
+
+  test('unset docker stays out of the spec', () => {
+    const { values, setKeys } = stateFromPreset(null, 'p', { replicas: 2 })
+    expect(values.docker).toBe(false)
+    expect(toPresetSpec(values, setKeys)).not.toHaveProperty('docker')
+  })
+})

@@ -72,6 +72,11 @@ export interface FormValues {
   sessionMessaging: boolean
   /** Agents get read-write access to every namespace and resource; the spec carries it only when on. */
   kubeAccess: boolean
+  /** Privileged Docker-in-Docker sidecar; the spec carries it, and the three sizes, only when on. */
+  docker: boolean
+  dockerStorage: string
+  dockerCpu: string
+  dockerMemory: string
   compactIdle: string
   compactInstructions: string
   compactMinTokens: string
@@ -110,7 +115,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -140,7 +145,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -149,6 +154,7 @@ export function blankValues(meta: Meta | null): FormValues {
 /** The set-key that owns a form field. */
 export function setKeyOf(field: keyof FormValues): SetKey | null {
   if (field === 'name') return null
+  if (field === 'dockerStorage' || field === 'dockerCpu' || field === 'dockerMemory') return 'docker'
   if (field === 'cacheEnabled' || field === 'cacheDerive' || field === 'cacheRestoreKey' || field === 'cacheSaveKey' || field === 'cacheExclude') return 'cache'
   return field === 'cpuRequest' || field === 'cpuLimit' || field === 'memRequest' || field === 'memLimit' ? 'resources' : field
 }
@@ -225,6 +231,13 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.kube_access) {
     values.kubeAccess = true
     setKeys.add('kubeAccess')
+  }
+  if (spec.docker) {
+    values.docker = true
+    values.dockerStorage = spec.docker_storage ?? ''
+    values.dockerCpu = spec.docker_cpu ?? ''
+    values.dockerMemory = spec.docker_memory ?? ''
+    setKeys.add('docker')
   }
   if (spec.cache) {
     values.cacheEnabled = true
@@ -449,6 +462,12 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
   if (setKeys.has('kubeAccess') && v.kubeAccess) spec.kube_access = true
+  if (setKeys.has('docker') && v.docker) {
+    spec.docker = true
+    if (v.dockerStorage !== '') spec.docker_storage = v.dockerStorage
+    if (v.dockerCpu !== '') spec.docker_cpu = v.dockerCpu
+    if (v.dockerMemory !== '') spec.docker_memory = v.dockerMemory
+  }
   if (setKeys.has('cache') && v.cacheEnabled) {
     const exclude = cacheExcludeLines(v.cacheExclude)
     spec.cache = { ...(!v.cacheDerive && { restore_key: v.cacheRestoreKey, save_key: v.cacheSaveKey }), ...(exclude.length > 0 && { exclude }) }
