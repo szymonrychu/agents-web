@@ -371,6 +371,15 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('hookUrl', 'Pre-discard webhook URL')}
           {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
+          <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <FormLabel component="legend">Usage quota</FormLabel>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {text('quotaFiveHour', '5-hour quota percent')}
+              {text('quotaSevenDay', 'Weekly quota percent')}
+            </Box>
+            <FormHelperText>Starting or growing a session is refused at or above this percent of the window, 1 to 100</FormHelperText>
+            {meta && <FormHelperText>{`Empty uses the default (${meta.usage.quota_default_pct}%)`}</FormHelperText>}
+          </Box>
           <Box>
             <TextField select size="small" label="Permission mode" value={values.permissionMode || 'bypassPermissions'} onChange={(e) => set('permissionMode', e.target.value)} fullWidth>
               {permissionModes.map((o) => (
