@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { EndpointCreated, EndpointView } from './api'
-import { CreateEndpointDialog } from './CreateEndpointDialog'
+import { EndpointFormDialog } from './EndpointFormDialog'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointsList } from './EndpointsList'
 
@@ -30,6 +30,7 @@ const META = {
     'grafana-alert': ['labels', 'title', 'body'],
   },
 }
+const BASIC = { auth_mode: 'basic', auth_header: null, hmac_algorithm: null, hmac_prefix: null, hmac_timestamp_header: null }
 const PASSWORD = 'pw-secret-0123456789'
 const view = (over: Partial<EndpointView> = {}): EndpointView =>
   ({
@@ -80,7 +81,7 @@ const pickPreset = async (u: ReturnType<typeof userEvent.setup>, name: string) =
 const mountCreate = () => {
   const onCreated = vi.fn()
   const onClose = vi.fn()
-  render(wrap(<CreateEndpointDialog open onClose={onClose} onCreated={onCreated} />))
+  render(wrap(<EndpointFormDialog open mode="create" onClose={onClose} onDone={onCreated} />))
   return { onCreated, onClose }
 }
 
@@ -92,7 +93,7 @@ describe('create', () => {
     await pickPreset(u, 'Default preset')
     await u.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
-    expect(api.createEndpoint).toHaveBeenCalledWith({ type: 'github-pr', preset_id: 'p1' })
+    expect(api.createEndpoint).toHaveBeenCalledWith({ type: 'github-pr', preset_id: 'p1', ...BASIC })
     expect(onCreated.mock.calls[0][0].password).toBe(PASSWORD)
   })
 
@@ -111,7 +112,7 @@ describe('create', () => {
     await u.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(api.createEndpoint).toHaveBeenCalled())
     expect(api.createEndpoint).toHaveBeenCalledWith({
-      type: 'gitlab-mr', preset_id: 'p2', suffix: 'my.hook_1', username: 'bob', password: 'a-long-enough-password', prompt_template: 'Review {{ repo }}',
+      type: 'gitlab-mr', preset_id: 'p2', ...BASIC, suffix: 'my.hook_1', username: 'bob', password: 'a-long-enough-password', prompt_template: 'Review {{ repo }}',
     })
   })
 
@@ -332,7 +333,7 @@ describe('filters', () => {
     await u.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
     expect(api.createEndpoint).toHaveBeenCalledWith({
-      type: 'github-pr', preset_id: 'p1',
+      type: 'github-pr', preset_id: 'p1', ...BASIC,
       filters: { allow: [], deny: [{ field: 'author', match: 'equals', values: ['dependabot'] }] },
     })
   })
