@@ -302,7 +302,7 @@ describe('App', () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Discard'])
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
     expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
   })
