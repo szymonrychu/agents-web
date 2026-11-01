@@ -6,6 +6,7 @@ import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
+import { sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { TOKENS } from '../theme'
@@ -34,10 +35,10 @@ export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, se
       <Typography component="h2" sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>Sessions</Typography>
       <List aria-label="Sessions" dense disablePadding>
         {sessions.length === 0 && <Typography sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>No sessions yet</Typography>}
-        {sessions.map(({ session }) => (
+        {sessions.map(({ session, agents, discarded }) => (
           <ListItem key={session.id} disablePadding>
             <ListItemButton selected={session.id === selectedId} aria-current={session.id === selectedId ? 'true' : undefined} onClick={() => { onSelect(session.id); onClose() }} sx={{ gap: 1 }}>
-              <StateMark state={session.summary.state} />
+              <StateMark state={sessionMarkState(session, Object.values(agents), discarded === true)} />
               <ListItemText primary={session.slug} />
             </ListItemButton>
           </ListItem>

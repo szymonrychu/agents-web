@@ -2,6 +2,8 @@
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { TOKENS } from '../theme'
+import { markColour } from './stateMark'
+import type { MarkState } from './stateMark'
 
 export interface ContextGaugeProps {
   /** Used percentage of the full model window; null when unknown. */
@@ -11,6 +13,8 @@ export interface ContextGaugeProps {
   size?: 'small' | 'medium'
   /** Accessible name; defaults to "context N%" or "context unknown". */
   label?: string
+  /** Agent or session state: when set, it colours the ring (idle, working, waiting) instead of the compact warning. */
+  state?: MarkState
 }
 
 const SIZES = { small: 28, medium: 40 } as const
@@ -20,7 +24,7 @@ const VIEW = 44
 
 const clamp = (n: number): number => Math.min(100, Math.max(0, n))
 
-export function ContextGauge({ value, autoCompactPct, size = 'small', label }: ContextGaugeProps) {
+export function ContextGauge({ value, autoCompactPct, size = 'small', label, state }: ContextGaugeProps) {
   const known = value !== null && Number.isFinite(value)
   const pct = known ? Math.round(clamp(value)) : 0
   const px = SIZES[size]
@@ -39,7 +43,7 @@ export function ContextGauge({ value, autoCompactPct, size = 'small', label }: C
         aria-valuenow={known ? pct : undefined}
         aria-valuemin={0}
         aria-valuemax={100}
-        sx={{ position: 'absolute', color: warn ? TOKENS.warning : TOKENS.accent }}
+        sx={{ position: 'absolute', color: state ? markColour(state) : warn ? TOKENS.warning : TOKENS.accent }}
       />
       {tick !== null && (
         <svg viewBox={`0 0 ${VIEW} ${VIEW}`} width={px} height={px} aria-hidden style={{ position: 'absolute', inset: 0 }}>
@@ -64,7 +68,7 @@ export function ContextGauge({ value, autoCompactPct, size = 'small', label }: C
           justifyContent: 'center',
           fontSize: `${(size === 'small' ? 8 : TOKENS.fontSizes.xs) / 16}rem`,
           fontWeight: TOKENS.fontWeights.medium,
-          color: TOKENS.textSecondary,
+          color: state && warn ? TOKENS.warning : TOKENS.textSecondary,
         }}
       >
         {known ? `${pct}%` : '-'}

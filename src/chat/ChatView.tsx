@@ -12,6 +12,9 @@ import { QueueStrip } from './QueueStrip'
 import { ScaleControl } from './ScaleControl'
 import { filterByAgents, splitSubagents } from './chatModel'
 import { useSessionChat } from './useSessionChat'
+import { SessionProgress } from '../ribbon/SessionProgress'
+import { sessionMarkState } from '../ribbon/sessionStatus'
+import { markLabel } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
 
 /** status is a free-form dict: read status.drain.waiting defensively (absent when no drain). */
@@ -42,7 +45,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
           {session.slug}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          {session.desired === 'deleting' ? 'deleting' : session.summary.state}
+          {markLabel(sessionMarkState(session, agents))}
         </Typography>
         <ScaleControl session={session} />
         <AgentsStrip
@@ -55,6 +58,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
           hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch, leaderReason: session.leader_reason } : undefined}
         />
       </Box>
+      <SessionProgress session={session} showLabel />
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
       {chat.loading ? (
         <Typography sx={{ color: 'text.secondary', pt: 1 }}>Loading messages</Typography>

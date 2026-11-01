@@ -109,7 +109,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
                 {LEADER_CAPTIONS[hive.leaderReason]}
               </Box>
             )}
-            <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} />
+            <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} state={agentMarkState(a.state, a.ready)} />
           </ButtonBase>
           {hive && !a.leader && (
             <Button size="small" disabled={pending === a.id} onClick={() => void onMakeLeader(hive.sessionId, a.id)}>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { ChatView } from './chat/ChatView'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
@@ -18,7 +19,7 @@ import { TOKENS } from './theme'
 export const APP_NAME = 'Agent Orchestrator';
 
 export default function App() {
-  const { state, sessions, select } = useSessions()
+  const { state, sessions, select, dismiss } = useSessions()
   const [creating, setCreating] = useState(false)
   // The main area shows the selected session or a settings page; no router.
   const [view, setView] = useState<string>('session')
@@ -43,6 +44,7 @@ export default function App() {
         onNew={() => setCreating(true)}
         onInitScripts={setInitScripts}
         onDiscard={setDiscarding}
+        onDismiss={dismiss}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
@@ -53,6 +55,11 @@ export default function App() {
         )}
         {openEntry ? (
           openEntry.render(() => setView('session'), show)
+        ) : selected?.discarded ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography color="text.secondary">{`Session ${selected.session.slug} was discarded`}</Typography>
+            <Button size="small" onClick={() => dismiss(selected.session.id)}>Dismiss</Button>
+          </Box>
         ) : selected ? (
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <Workspace
