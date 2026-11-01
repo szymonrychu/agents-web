@@ -26,5 +26,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Form tests are CPU-bound in jsdom: every edit re-renders a whole MUI form (about 25 ms), so a test with dozens of
+    // interactions takes 1-2 s alone and several times that under parallel load. The 5 s default failed the heaviest
+    // ones (PresetForm, Endpoints, ScheduleForm) only when the machine was busy; a real hang still fails at 30 s.
+    testTimeout: 30000,
   },
 }));

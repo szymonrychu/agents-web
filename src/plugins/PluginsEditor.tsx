@@ -156,6 +156,15 @@ function FormEditor({ value, onChange, onInvalid }: { value: PluginsValue | null
   )
 }
 
+/** The first problem with a marketplace source in raw JSON, or null. */
+function rawMarketplaceError(value: PluginsValue): string | null {
+  for (const m of value.marketplaces ?? []) {
+    const bad = typeof m?.source === 'string' ? sourceError(parseSource(m.source)) : 'source is required'
+    if (bad !== null) return `marketplace "${m?.name}": ${bad}`
+  }
+  return null
+}
+
 function RawJson({ value, onChange, onInvalid }: { value: PluginsValue | null; onChange: (v: PluginsValue | null) => void; onInvalid: (m: string | null) => void }): JSX.Element {
   const [text, setText] = useState(value === null ? '' : JSON.stringify(value, null, 2))
   const [error, setError] = useState<string | null>(null)
@@ -171,11 +180,13 @@ function RawJson({ value, onChange, onInvalid }: { value: PluginsValue | null; o
     try {
       const parsed: unknown = JSON.parse(next)
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('plugins must be a JSON object')
+      const bad = rawMarketplaceError(parsed as PluginsValue)
+      if (bad !== null) throw new Error(bad)
       setError(null)
       onInvalid(null)
       onChange(parsed as PluginsValue)
     } catch (e) {
-      const message = `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`
+      const message = e instanceof SyntaxError ? `Invalid JSON: ${e.message}` : e instanceof Error ? e.message : String(e)
       setError(message)
       onInvalid(message)
     }

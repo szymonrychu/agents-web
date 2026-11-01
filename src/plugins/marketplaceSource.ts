@@ -13,7 +13,8 @@ export interface SourceParts {
 
 export const SOURCE_KINDS: readonly SourceKind[] = ['github', 'git', 'url', 'directory']
 
-const GITHUB = /^[^/\s]+\/[^/\s]+$/
+const GITHUB = /^[\w.-]+\/[\w.-]+$/
+const PATH = /^(\.{1,2}\/|\/|~)\S*$/
 const HTTP = /^https?:\/\/[^/\s]+/
 const GIT_URL = /^(https?:\/\/[^/\s]+\/\S+|ssh:\/\/\S+|git:\/\/\S+|git@[^:\s]+:\S+)$/
 
@@ -43,5 +44,6 @@ export function sourceError({ kind, value }: SourceParts): string | null {
   if (kind === 'github' && !GITHUB.test(v)) return 'github source must be owner/repo'
   if (kind === 'git' && !GIT_URL.test(v)) return 'must be a git URL (https, ssh or git@host:path)'
   if (kind === 'url' && !HTTP.test(v)) return 'must be an http(s) URL of a marketplace.json'
+  if (kind === 'directory' && !PATH.test(v)) return 'must be a path starting with ./, ../, / or ~'
   return null
 }

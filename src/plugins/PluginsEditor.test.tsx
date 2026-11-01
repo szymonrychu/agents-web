@@ -106,4 +106,31 @@ describe('PluginsEditor', () => {
     await userEvent.paste('[1]')
     expect(screen.getByText(/JSON object/)).toBeTruthy()
   })
+
+  test('a github: prefixed source shows an inline error and blocks Save until fixed', async () => {
+    mount(null)
+    await click('Add marketplace')
+    await type('Marketplace name 1', 'acme')
+    await type('Marketplace repo 1', 'github:owner/repo')
+    expect(screen.getByText(/owner\/repo/)).toBeTruthy()
+    expect(invalid.at(-1)).toMatch(/owner\/repo/)
+    await userEvent.clear(screen.getByLabelText('Marketplace repo 1'))
+    await type('Marketplace repo 1', 'owner/repo')
+    expect(screen.queryByText(/must be owner\/repo/)).toBeNull()
+    expect(invalid.at(-1)).toBeNull()
+  })
+
+  test('a stored invalid source is flagged on load', () => {
+    mount({ marketplaces: [{ name: 'acme', source: 'github:owner/repo' }] })
+    expect(invalid.at(-1)).not.toBeNull()
+  })
+
+  test('raw JSON with a bad marketplace source blocks too', async () => {
+    mount(null)
+    await click('Plugins raw JSON')
+    await userEvent.click(screen.getByLabelText('Plugins JSON'))
+    await userEvent.paste('{"marketplaces":[{"name":"a","source":"github:owner/repo"}]}')
+    expect(screen.getByText(/marketplace "a"/)).toBeTruthy()
+    expect(invalid.at(-1)).not.toBeNull()
+  })
 })
