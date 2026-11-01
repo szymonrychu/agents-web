@@ -81,9 +81,22 @@ describe('DiscardSessionDialog', () => {
   test('a restore-only cache says nothing is saved and lists the workspace files as deleted', () => {
     const backup = { workdir: true, transcripts: false, reason: 'restore_running', last_transcripts_backup: null }
     wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Restore-only cache: nothing is saved to it')).toBeTruthy()
+    expect(screen.queryByText('Restore-only cache: nothing is saved to it')).toBeNull()
+    expect(screen.getByText('Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up (the cache restore has not finished).')).toBeTruthy()
+    expect(screen.queryByText(/session has no session cache/)).toBeNull()
     expect(screen.queryByRole('list', { name: 'Backed up' })).toBeNull()
     expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/The workspace files/)).toBeTruthy()
+    cleanup()
+    const noReason = { workdir: true, transcripts: false, reason: null, last_transcripts_backup: null }
+    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, noReason)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up.')).toBeTruthy()
+  })
+
+  test('a restore-only cache that backs up transcripts says only that no workspace files are saved', () => {
+    const backup = { workdir: true, transcripts: true, reason: null, last_transcripts_backup: null }
+    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Restore-only cache: nothing is saved to it')).toBeTruthy()
+    expect(screen.queryByText(/Nothing is backed up/)).toBeNull()
   })
 
   test('states what is backed up when the session cache is configured', () => {

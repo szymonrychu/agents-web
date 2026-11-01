@@ -97,6 +97,9 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
   const workdirSaved = backup.workdir && !restoreOnly
   const nothingSaved = !workdirSaved && !backup.transcripts
   const saveTarget = saveResolved ?? (cache?.save_key ? `${cache.save_key} (rendered when it is saved)` : '(the key derived from the preset)')
+  const nothingSavedText = restoreOnly
+    ? `Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up${backup.reason === null ? '' : ` (${backupReasonText(backup.reason)})`}.`
+    : `Nothing is backed up: ${backupReasonText(backup.reason)}.`
   const deleted = [
     'The agents',
     'The workspace PVC',
@@ -134,8 +137,8 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
     >
       <ItemList label="Deleted" items={deleted} />
       {saved.length > 0 && <ItemList label="Backed up" items={saved} />}
-      {restoreOnly && <Typography sx={{ mt: 2 }}>Restore-only cache: nothing is saved to it</Typography>}
-      {nothingSaved && <Typography sx={{ mt: 2 }}>{`Nothing is backed up: ${backupReasonText(backup.reason)}.`}</Typography>}
+      {restoreOnly && !nothingSaved && <Typography sx={{ mt: 2 }}>Restore-only cache: nothing is saved to it</Typography>}
+      {nothingSaved && <Typography sx={{ mt: 2 }}>{nothingSavedText}</Typography>}
       {!nothingSaved && backup.reason !== null && (
         <Typography sx={{ mt: 2 }}>
           {`The ${workdirSaved ? 'chat history (Claude transcripts) is' : 'workspace files are'} not backed up: ${backupReasonText(backup.reason)}.`}

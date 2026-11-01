@@ -2,6 +2,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-11-01
+
+- s3-backup-restore I2 (download auth): verified, no code change. The browser authenticates to the orchestrator API only by the oauth2-proxy session cookie (agents-helmfile values/agents-orchestrator/common.yaml: oauth2-proxy admission sidecar; MEMORY 2026-10-25: both web and api pods share one cookie config on lab.szymonrichert.pl), and `src/api/client.ts` adds no auth header (plain `fetch`). So a plain anchor to `/api/v1/cache/archives/download?key=` carries the cookie like any navigation; the API's 302 to the presigned S3 URL is followed by the browser, which sends no cookie to S3. A JS fetch would not follow it better (cross-origin S3 needs CORS), so the anchor stays. Risk left: an expired cookie makes the anchor land on the Keycloak login instead of a file. Discard dialog: a restore-only cache with no transcripts now says "Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up (reason)" instead of the misleading no-session-cache text.
+
 ## 2026-10-31
 
 - agents-ui-improvements F11 (main vs subagent view): a row is a subagent event when `data.agent_id` is a non-empty string (the wrapper sends `agent_id: null` on main-agent hook events); `ChatItem.claudeAgentId` holds it, while `agentId` stays `row.agent_id` (the orchestrator pod), so the two never clash. `subagent_started` becomes a `subagent` anchor item; `subagent_started`/`subagent_stopped` also feed `ChatState.subagents` (type, `parent_tool_use_id`, status; a stop is final, so an older page replaying the start never reopens it). `splitSubagents` (applied after the pod filter) gives the main log plus one read-only `SubagentPane` per subagent: under the main Task/Agent tool call when `parent_tool_use_id` matches a loaded main tool call, else at its `subagent_started` row, else (start not loaded) at its first loaded operation. Main-view counts (rows, Virtuoso index) use only the main list. Caveat: `MAX_ITEMS` trims all items, so a chatty subagent shortens the main window. The live stream now also subscribes to `subagent_started` and `subagent_stopped`.
