@@ -49,3 +49,18 @@ describe('cache restore_key and save_key', () => {
     expect(errors.cacheSaveKey).toBeUndefined()
   })
 })
+
+describe('wrapper permission_mode', () => {
+  test('a stored mode loads and round-trips', () => {
+    const spec = { wrapper: { permission_mode: 'auto' } } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(values.permissionMode).toBe('auto')
+    expect(toPresetSpec(values, setKeys)).toEqual(spec)
+  })
+
+  test('unset stays out of the spec', () => {
+    const { values, setKeys } = stateFromPreset(null, 'p', { replicas: 2 })
+    expect(values.permissionMode).toBe('')
+    expect(toPresetSpec(values, setKeys)).not.toHaveProperty('wrapper')
+  })
+})

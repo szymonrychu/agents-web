@@ -1336,6 +1336,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/permission-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Permission Mode
+         * @description Set `spec.wrapper.permission_mode` on the session and its source preset.
+         *
+         *     Applied by the normal config-hash rollout: idle pods restart, busy ones at the turn end.
+         */
+        put: operations["put_permission_mode_api_v1_sessions__session_id__permission_mode_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/restart": {
         parameters: {
             query?: never;
@@ -1517,6 +1539,10 @@ export interface components {
             ordinal: number;
             /** Peers */
             peers: number;
+            /** Permission Mode Reason */
+            permission_mode_reason?: string | null;
+            /** Permission Mode State */
+            permission_mode_state?: "unavailable" | null;
             /** Pod Name */
             pod_name: string;
             /** Ready */
@@ -2194,6 +2220,8 @@ export interface components {
             kube_access: components["schemas"]["MetaKubeAccess"];
             /** Models */
             models: string[];
+            /** Permission Modes */
+            permission_modes: components["schemas"]["MetaPermissionMode"][];
         };
         /** MetaCache */
         MetaCache: {
@@ -2260,6 +2288,16 @@ export interface components {
             /** Available */
             available: boolean;
         };
+        /** MetaPermissionMode */
+        MetaPermissionMode: {
+            /** Label */
+            label: string;
+            /**
+             * Value
+             * @enum {string}
+             */
+            value: "bypassPermissions" | "auto";
+        };
         /** MetaResources */
         MetaResources: {
             /** Limits */
@@ -2270,6 +2308,36 @@ export interface components {
             requests: {
                 [key: string]: string;
             };
+        };
+        /** PermissionModeIn */
+        PermissionModeIn: {
+            /**
+             * Permission Mode
+             * @enum {string}
+             */
+            permission_mode: "bypassPermissions" | "auto";
+        };
+        /** PermissionModeView */
+        PermissionModeView: {
+            /**
+             * Permission Mode
+             * @enum {string}
+             */
+            permission_mode: "bypassPermissions" | "auto";
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Preset Name */
+            preset_name?: string | null;
+            /**
+             * Preset Updated
+             * @default false
+             */
+            preset_updated: boolean;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
         };
         /** Permissions */
         Permissions: {
@@ -2677,6 +2745,8 @@ export interface components {
             failed: number;
             /** Oldest Queued At */
             oldest_queued_at: string | null;
+            /** Permission Unavailable Agents */
+            permission_unavailable_agents: number;
             /** Queued */
             queued: number;
             /** Ready */
@@ -2879,6 +2949,8 @@ export interface components {
             mcp_servers?: {
                 [key: string]: components["schemas"]["McpStdio"] | components["schemas"]["McpRemote"];
             } | null;
+            /** Permission Mode */
+            permission_mode?: ("bypassPermissions" | "auto") | null;
             permissions?: components["schemas"]["Permissions"] | null;
             plugins?: components["schemas"]["Plugins"] | null;
             /** Restart Continue Prompt */
@@ -6067,6 +6139,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_permission_mode_api_v1_sessions__session_id__permission_mode_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionModeView"];
                 };
             };
             /** @description Validation Error */
