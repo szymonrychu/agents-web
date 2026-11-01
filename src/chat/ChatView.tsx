@@ -12,6 +12,7 @@ import { QueueStrip } from './QueueStrip'
 import { ScaleControl } from './ScaleControl'
 import { filterByAgents, splitSubagents } from './chatModel'
 import { useSessionChat } from './useSessionChat'
+import { SessionIssue } from '../ribbon/SessionIssue'
 import { SessionProgress } from '../ribbon/SessionProgress'
 import { sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
@@ -58,7 +59,8 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
           hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch, leaderReason: session.leader_reason } : undefined}
         />
       </Box>
-      <SessionProgress session={session} showLabel />
+      <SessionProgress session={session} agents={agents} showLabel />
+      <SessionIssue session={session} agents={agents} />
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
       {chat.loading ? (
         <Typography sx={{ color: 'text.secondary', pt: 1 }}>Loading messages</Typography>

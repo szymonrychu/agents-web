@@ -6,7 +6,8 @@ import ButtonBase from '@mui/material/ButtonBase'
 import type { AgentView } from '../api/client'
 import { makeLeader } from '../api/client'
 import { ContextGauge } from '../ribbon/ContextGauge'
-import { StateMark, agentMarkState } from '../ribbon/stateMark'
+import { agentIssue } from '../ribbon/sessionStatus'
+import { StateMark, agentMark } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
 import { formatAge, useNow } from './agentAge'
 
@@ -60,6 +61,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
         const on = selected.includes(a.id)
         const free = a.state === 'idle' && a.free_since ? formatAge(now - Date.parse(a.free_since)) : null
         const leaving = replicas !== undefined && a.ordinal >= replicas && !a.gone
+        const issue = agentIssue(a)
         const leavingText = !leaving ? null : drainWaiting?.includes(a.ordinal) ? 'leaving after its turn' : 'leaving'
         return (
           <Box key={a.id} data-testid={`agent-row-${a.pod_name}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -78,7 +80,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
               color: 'text.primary',
             }}
           >
-            <StateMark state={agentMarkState(a.state, a.ready)} />
+            <StateMark state={agentMark(a)} />
             <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: 'text.secondary', flexShrink: 0 }}>
               {`#${a.ordinal}`}
             </Box>
@@ -88,6 +90,11 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
             {free !== null && (
               <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: 'text.secondary', flexShrink: 0 }}>
                 {`free ${free}`}
+              </Box>
+            )}
+            {issue !== null && (
+              <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: issue.kind === 'bootstrap_failure' ? 'error.main' : TOKENS.attention, flexShrink: 0 }}>
+                {issue.text}
               </Box>
             )}
             {leavingText !== null && (
@@ -109,7 +116,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
                 {LEADER_CAPTIONS[hive.leaderReason]}
               </Box>
             )}
-            <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} state={agentMarkState(a.state, a.ready)} />
+            <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} state={agentMark(a)} />
           </ButtonBase>
           {hive && !a.leader && (
             <Button size="small" disabled={pending === a.id} onClick={() => void onMakeLeader(hive.sessionId, a.id)}>

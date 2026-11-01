@@ -6,6 +6,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-11-01 (session-status-backend)
+
+- Orchestrator fields now consumed (schema synced from agents-orchestrator 03a8c52): `agent.attention {reason, since}` feeds the `attention` mark (`agentMark`, only for a ready pod) and the text "waiting: <reason>"; `agent.bootstrap_failure` is an `error` mark with "<step> failed: <message>" (AgentsStrip row, `SessionIssue` under the chat header and in the TopBar tab, SessionsMenu secondary line); `summary.bootstrap_failed_agents` / `summary.attention_agents` drive the session mark and a count fallback text when agent detail is not loaded (SessionsPage list). Precedence: error (summary error or bootstrap failure) > attention > working > booting > idle. `agent.bootstrap` running step is appended to the preparing label ("..., bootstrap: install_plugins"). Why: startup problems must be visible without asking. Full-suite PresetForm tests can time out under load; they pass alone.
+
 ## 2026-11-01 (session-status-ui)
 
 - session-status-ui (web only): the mark state `waiting` is renamed `idle`, because summary.state `waiting` means all agents idle, not waiting on input. `attention` is the new mark for an agent waiting on input; it is fed only by the agent state value `waiting` (typed in `AgentState`), which no backend sends yet, so no fake data. Colours: idle textSecondary, working `TOKENS.info`, attention `TOKENS.attention`, booting warning, error error, deleting/discarded textDisabled. `ContextGauge` takes `state` and colours the ring from it; the auto-compact warning then shows on the label text and the tick. `session_removed` now keeps a client-side tombstone (`SessionEntry.discarded`) until `dismiss` (lost on reload; a snapshot keeps tombstones, a late session_status does not revive one). Preparing progress (`ribbon/sessionStatus.ts`) derives from pushed `status.phase`, `status.message`, `status.cache.{sessions_restore,restore}` and `status.init` running states, else ready/replicas; a durable "discarded" needs a backend soft delete.

@@ -15,6 +15,7 @@ import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ContextGauge } from '../ribbon/ContextGauge'
+import { SessionIssue } from '../ribbon/SessionIssue'
 import { SessionProgress } from '../ribbon/SessionProgress'
 import { sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
@@ -97,7 +98,8 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
                   </>
                 )}
               </Box>
-              {discarded ? null : <SessionProgress session={session} />}
+              {discarded ? null : <SessionProgress session={session} agents={Object.values(agents)} />}
+              {discarded ? null : <SessionIssue session={session} agents={Object.values(agents)} />}
               </Box>
             }
           />

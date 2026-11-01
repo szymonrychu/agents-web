@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 const agent = (id: string, ordinal: number, o: Partial<AgentView> = {}): AgentView => ({
-  context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', ...o,
+  context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', attention: null, bootstrap: null, bootstrap_failure: null, ...o,
 })
 
 function mount(agents: AgentView[], selected: string[] = [], onToggle: (id: string) => void = () => {}, hive?: { sessionId: string; leaderEpoch: number | null; leaderReason: string | null }, scale: { replicas?: number; drainWaiting?: number[] } = {}) {
@@ -44,6 +44,18 @@ describe('AgentsStrip', () => {
   test('typed waiting agent state shows the attention mark', () => {
     mount([agent('a0', 0, { state: 'waiting' } as never)])
     expect(within(screen.getByRole('group', { name: 'agent filter' })).getByRole('img', { name: 'state attention' })).toBeTruthy()
+  })
+
+  test('agent.attention shows the attention mark and the reason', () => {
+    mount([agent('a0', 0, { attention: { reason: 'permission', since: null } })])
+    expect(within(screen.getByRole('group', { name: 'agent filter' })).getByRole('img', { name: 'state attention' })).toBeTruthy()
+    expect(screen.getByText('waiting: permission')).toBeTruthy()
+  })
+
+  test('a bootstrap failure shows the error mark with the step and message', () => {
+    mount([agent('a0', 0, { bootstrap_failure: { step: 'install_plugins', status: 'failed', message: 'boom', started_at: null, finished_at: null } })])
+    expect(within(screen.getByRole('group', { name: 'agent filter' })).getByRole('img', { name: 'state error' })).toBeTruthy()
+    expect(screen.getByText('install_plugins failed: boom')).toBeTruthy()
   })
 
   test('no_leaving_label_within_replicas', () => {
