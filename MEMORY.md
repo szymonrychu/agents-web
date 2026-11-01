@@ -1,3 +1,7 @@
+## 2026-11-01
+
+- webhook-ingress-auth (web U1-U3): `EndpointFormDialog` replaces `CreateEndpointDialog` and serves create, edit and clone. Auth presets live in `authPresets.ts` (GitLab = header `X-Gitlab-Token`, GitHub = hmac `X-Hub-Signature-256` with `sha256=`, Grafana bearer or hmac, Basic, Custom); picking one pre-fills fields that stay editable. The backend refuses fields that do not belong to the mode, so `authPayload` sends them as null. Edit sends only changed fields, with the auth fields as one group; the secret is never an input (Rotate is its own action via the list's confirm dialog). Clone takes only the API's overrides (suffix, preset). `CredentialsDialog` is the one-time reveal for create, rotate, clone and a mode change; the parent drops it on close and the list never carries a secret. Not done: GitLab signing token (`webhook-signature`), because the backend hmac verifier has no such mode (hex of `ts:body` only); a preset would fail every delivery. Schema synced from agents-webhook 838ba1f.
+
 # agents-web memory
 
 Lessons that outlive a session. Newest first.

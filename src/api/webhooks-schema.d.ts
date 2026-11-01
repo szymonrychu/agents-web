@@ -70,6 +70,24 @@ export interface paths {
         delete: operations["delete_endpoint_webhooks_api_v1_endpoints__id__delete"];
         options?: never;
         head?: never;
+        /** Patch Endpoint */
+        patch: operations["patch_endpoint_webhooks_api_v1_endpoints__id__patch"];
+        trace?: never;
+    };
+    "/webhooks/api/v1/endpoints/{id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone Endpoint */
+        post: operations["clone_endpoint_webhooks_api_v1_endpoints__id__clone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -182,11 +200,27 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CloneIn */
+        CloneIn: {
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Suffix */
+            suffix?: string | null;
+        };
         /**
          * EndpointCreated
-         * @description The only view that carries a password (create and rotate responses).
+         * @description The only view that carries credentials, shown once: `password` (basic mode) or
+         *     `secret` (header, bearer, hmac). Create, rotate, clone and a patch that changes the
+         *     auth mode return it; a patch without a mode change returns both as null.
          */
         EndpointCreated: {
+            /** Auth Header */
+            auth_header: string | null;
+            /**
+             * Auth Mode
+             * @enum {string}
+             */
+            auth_mode: "basic" | "header" | "bearer" | "hmac";
             /**
              * Created At
              * Format: date-time
@@ -195,26 +229,58 @@ export interface components {
             /** Credentials Rotated At */
             credentials_rotated_at: string | null;
             filters: components["schemas"]["Filters"];
+            /** Has Secret */
+            has_secret: boolean;
+            /** Hmac Algorithm */
+            hmac_algorithm: string | null;
+            /** Hmac Prefix */
+            hmac_prefix: string | null;
+            /** Hmac Timestamp Header */
+            hmac_timestamp_header: string | null;
             /** Id */
             id: number;
             /** Password */
-            password: string;
+            password?: string | null;
             /** Preset Id */
             preset_id: string;
             /** Prompt Template */
             prompt_template: string | null;
+            /** Secret */
+            secret?: string | null;
             /** Suffix */
             suffix: string;
             /** Type */
             type: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
             /** Url */
             url: string;
             /** Username */
-            username: string;
+            username: string | null;
         };
-        /** EndpointIn */
+        /**
+         * EndpointIn
+         * @description `username` and `password` are for basic mode; the other modes get a generated secret.
+         */
         EndpointIn: {
+            /** Auth Header */
+            auth_header?: string | null;
+            /**
+             * Auth Mode
+             * @default basic
+             * @enum {string}
+             */
+            auth_mode: "basic" | "header" | "bearer" | "hmac";
             filters?: components["schemas"]["Filters"] | null;
+            /** Hmac Algorithm */
+            hmac_algorithm?: "sha256" | null;
+            /** Hmac Prefix */
+            hmac_prefix?: string | null;
+            /** Hmac Timestamp Header */
+            hmac_timestamp_header?: string | null;
             /** Password */
             password?: string | null;
             /** Preset Id */
@@ -228,8 +294,43 @@ export interface components {
             /** Username */
             username?: string | null;
         };
+        /**
+         * EndpointPatch
+         * @description Every editable field; only the fields sent are changed, null clears a nullable one.
+         *
+         *     There is no secret, password or type here (extra fields are refused): a secret is replaced
+         *     only by rotate, or issued anew by a change of `auth_mode`.
+         */
+        EndpointPatch: {
+            /** Auth Header */
+            auth_header?: string | null;
+            /** Auth Mode */
+            auth_mode?: ("basic" | "header" | "bearer" | "hmac") | null;
+            filters?: components["schemas"]["Filters"] | null;
+            /** Hmac Algorithm */
+            hmac_algorithm?: "sha256" | null;
+            /** Hmac Prefix */
+            hmac_prefix?: string | null;
+            /** Hmac Timestamp Header */
+            hmac_timestamp_header?: string | null;
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Prompt Template */
+            prompt_template?: string | null;
+            /** Suffix */
+            suffix?: string | null;
+            /** Username */
+            username?: string | null;
+        };
         /** EndpointView */
         EndpointView: {
+            /** Auth Header */
+            auth_header: string | null;
+            /**
+             * Auth Mode
+             * @enum {string}
+             */
+            auth_mode: "basic" | "header" | "bearer" | "hmac";
             /**
              * Created At
              * Format: date-time
@@ -238,6 +339,14 @@ export interface components {
             /** Credentials Rotated At */
             credentials_rotated_at: string | null;
             filters: components["schemas"]["Filters"];
+            /** Has Secret */
+            has_secret: boolean;
+            /** Hmac Algorithm */
+            hmac_algorithm: string | null;
+            /** Hmac Prefix */
+            hmac_prefix: string | null;
+            /** Hmac Timestamp Header */
+            hmac_timestamp_header: string | null;
             /** Id */
             id: number;
             /** Preset Id */
@@ -248,10 +357,15 @@ export interface components {
             suffix: string;
             /** Type */
             type: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
             /** Url */
             url: string;
             /** Username */
-            username: string;
+            username: string | null;
         };
         /** EventDetail */
         EventDetail: {
@@ -603,6 +717,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_endpoint_webhooks_api_v1_endpoints__id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndpointPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clone_endpoint_webhooks_api_v1_endpoints__id__clone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CloneIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointCreated"];
+                };
             };
             /** @description Validation Error */
             422: {

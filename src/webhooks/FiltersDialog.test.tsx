@@ -35,7 +35,9 @@ const STORED: Filters = {
 const URL1 = 'https://h.example/webhook/abc'
 const view = (over: Partial<EndpointView> = {}): EndpointView => ({
   id: 1, suffix: 'abc', url: URL1, type: 'github-pr', preset_id: 'p1', prompt_template: null,
-  username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: STORED, ...over,
+  username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: STORED,
+  auth_mode: 'basic', auth_header: null, hmac_algorithm: null, hmac_prefix: null, hmac_timestamp_header: null, has_secret: false,
+  updated_at: '2026-10-25T10:00:00Z', ...over,
 })
 const GRAFANA = view({ id: 2, suffix: 'g2', url: 'https://h.example/webhook/g2', type: 'grafana-alert', filters: { allow: [], deny: [] } })
 

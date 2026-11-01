@@ -19,6 +19,7 @@ const ev = (id: number, over: Partial<EventView> = {}): EventView =>
 const endpoint = (id: number, suffix: string): EndpointView => ({
   id, suffix, type: 'github', url: `https://h.example/webhook/${suffix}`, preset_id: 'p1', prompt_template: null, username: `user${id}`,
   created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: { allow: [], deny: [] },
+  auth_mode: 'basic', auth_header: null, hmac_algorithm: null, hmac_prefix: null, hmac_timestamp_header: null, has_secret: false, updated_at: '2026-10-25T10:00:00Z',
 })
 
 const mount = () => render(<ThemeProvider theme={theme}><WebhooksPage onBack={() => {}} /></ThemeProvider>)
