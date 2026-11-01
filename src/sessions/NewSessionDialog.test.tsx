@@ -86,6 +86,16 @@ describe('NewSessionDialog', () => {
     expect(create().disabled).toBe(false)
   })
 
+  test('shows_usage_quota_refusal_message', async () => {
+    const text = 'usage quota reached: seven_day at 83% (limit 80%)'
+    api.createSession.mockRejectedValue(new ApiError(409, 'usage_quota', text))
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
+    await userEvent.click(create())
+    expect((await screen.findByRole('alert')).textContent).toContain(text)
+    expect(create().disabled).toBe(false)
+  })
+
   test('shows_preset_list_load_error', async () => {
     api.listPresets.mockRejectedValue(new ApiError(500, 'boom', 'cannot list presets'))
     wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)

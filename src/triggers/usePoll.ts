@@ -11,30 +11,35 @@ const visible = () => document.visibilityState !== 'hidden'
 
 /**
  * Calls `fn` now and every `intervalMs` while the document is visible; stops on unmount.
- * Calls never overlap: a tick or refresh while one is in flight is skipped.
+ * Calls never overlap: a tick or refresh while one is in flight is skipped. A deps change discards the
+ * in-flight result and fetches for the new deps at once.
  */
 export function usePoll<T>(fn: () => Promise<T>, intervalMs: number, deps: readonly unknown[]): PollResult<T> {
   const [state, setState] = useState<{ data: T | undefined; error: Error | undefined; loading: boolean }>({ data: undefined, error: undefined, loading: true })
   const fnRef = useRef(fn)
   fnRef.current = fn
-  const inFlight = useRef(false)
+  const generation = useRef(0)
+  const inFlight = useRef<number | undefined>(undefined)
   const alive = useRef(true)
 
   const refresh = useCallback(async () => {
-    if (inFlight.current) return
-    inFlight.current = true
+    const mine = generation.current
+    if (inFlight.current === mine) return
+    inFlight.current = mine
+    const current = () => alive.current && generation.current === mine
     try {
       const data = await fnRef.current()
-      if (alive.current) setState({ data, error: undefined, loading: false })
+      if (current()) setState({ data, error: undefined, loading: false })
     } catch (e) {
-      if (alive.current) setState((s) => ({ ...s, error: e instanceof Error ? e : new Error(String(e)), loading: false }))
+      if (current()) setState((s) => ({ ...s, error: e instanceof Error ? e : new Error(String(e)), loading: false }))
     } finally {
-      inFlight.current = false
+      if (inFlight.current === mine) inFlight.current = undefined
     }
   }, [])
 
   useEffect(() => {
     alive.current = true
+    generation.current++
     setState((s) => ({ ...s, loading: true }))
     let timer: ReturnType<typeof setInterval> | undefined
     const stop = () => {

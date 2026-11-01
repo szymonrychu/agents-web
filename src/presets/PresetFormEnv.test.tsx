@@ -18,7 +18,7 @@ const meta = (): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus'], efforts: ['high'],
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, models: ['opus'], efforts: ['high'],
 })
 const preset = (spec: Record<string, unknown> = {}): PresetView =>
   ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec }) as PresetView

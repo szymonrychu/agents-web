@@ -319,8 +319,8 @@ export interface paths {
         put?: never;
         /**
          * Create Session
-         * @description Same body and rules as the main port; the caller's session is recorded as the creator
-         *     and `created_by_service` stays empty.
+         * @description Same body and rules as the main port, usage gate included; the caller's session is
+         *     recorded as the creator and `created_by_service` stays empty.
          */
         post: operations["create_session_agent_v1_admin_sessions_post"];
         delete?: never;
@@ -763,7 +763,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Scale the caller's session (leader only) */
+        /**
+         * Scale the caller's session (leader only)
+         * @description A scale-up over the usage quota is refused 409 `usage_quota`.
+         */
         post: operations["scale_agent_v1_scale_post"];
         delete?: never;
         options?: never;
@@ -1390,6 +1393,7 @@ export interface paths {
         /**
          * Scale Session
          * @description Set spec.replicas in place (no caller agent: the public route has no leader check).
+         *     A scale-up over the usage quota is refused 409 `usage_quota`.
          */
         post: operations["scale_session_api_v1_sessions__session_id__scale_post"];
         delete?: never;
@@ -2223,6 +2227,7 @@ export interface components {
             models: string[];
             /** Permission Modes */
             permission_modes: components["schemas"]["MetaPermissionMode"][];
+            usage: components["schemas"]["MetaUsage"];
         };
         /** MetaCache */
         MetaCache: {
@@ -2322,6 +2327,13 @@ export interface components {
             requests: {
                 [key: string]: string;
             };
+        };
+        /** MetaUsage */
+        MetaUsage: {
+            /** Configured */
+            configured: boolean;
+            /** Quota Default Pct */
+            quota_default_pct: number;
         };
         /** PermissionModeIn */
         PermissionModeIn: {
@@ -2666,6 +2678,7 @@ export interface components {
              * @default false
              */
             static: boolean;
+            usage_quota?: components["schemas"]["UsageQuota"] | null;
             /**
              * Workdir
              * @default workdir
@@ -2754,6 +2767,7 @@ export interface components {
              * @default false
              */
             static: boolean;
+            usage_quota?: components["schemas"]["UsageQuota"] | null;
             /**
              * Workdir
              * @default workdir
@@ -2799,6 +2813,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Created By Service */
+            created_by_service?: string | null;
+            /** Created By Session */
+            created_by_session?: string | null;
             /**
              * Desired
              * @enum {string}
@@ -2898,6 +2916,18 @@ export interface components {
             usage?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * UsageQuota
+         * @description Per-preset ceilings, in percent of the account's usage windows, below the default
+         *     (`ORCH_USAGE_QUOTA_DEFAULT`) at which starting or growing a session is refused. A metric
+         *     left unset uses the default.
+         */
+        UsageQuota: {
+            /** Five Hour Pct */
+            five_hour_pct?: number | null;
+            /** Seven Day Pct */
+            seven_day_pct?: number | null;
         };
         /** ValidationError */
         ValidationError: {
