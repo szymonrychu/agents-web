@@ -21,7 +21,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const preset = (o: Partial<PresetView> = {}): PresetView =>
   ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec: {}, ...o }) as PresetView
@@ -109,7 +109,7 @@ describe('PresetForm', () => {
     await paste('Name', 'Fast 1')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'Fast 1', spec: {} })
+    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'Fast 1', superleader_manageable: false, spec: {} })
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
 
     await replace('Replicas', '3')
@@ -123,6 +123,7 @@ describe('PresetForm', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(2))
     expect(api.createPreset).toHaveBeenLastCalledWith({
       name: 'Fast 1',
+      superleader_manageable: false,
       spec: {
         replicas: 3, model: 'sonnet', peers: false, env: { FOO: plain('bar') },
         resources: { requests: { cpu: '500m', memory: '1Gi' }, limits: { cpu: '4', memory: '4Gi' } },
@@ -146,11 +147,11 @@ describe('PresetForm', () => {
     expect(screen.getByRole('combobox', { name: 'Effort' }).textContent).toBe('high')
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
-    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', spec: stored })
+    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', superleader_manageable: false, spec: stored })
     await replace('Replicas', '4')
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(2))
-    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', spec: { ...stored, replicas: 4 } })
+    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', superleader_manageable: false, spec: { ...stored, replicas: 4 } })
     expect(api.createPreset).not.toHaveBeenCalled()
   })
 
@@ -165,7 +166,7 @@ describe('PresetForm', () => {
     await userEvent.keyboard('{Escape}')
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
-    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', spec: stored })
+    expect(api.updatePreset).toHaveBeenLastCalledWith('p-1', { name: 'fast', superleader_manageable: false, spec: stored })
   })
 
   test('clearing_a_field_unsets_it', async () => {
@@ -182,7 +183,7 @@ describe('PresetForm', () => {
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
     const body = api.updatePreset.mock.calls[0][1]
-    expect(body).toEqual({ name: 'fast', spec: {} })
+    expect(body).toEqual({ name: 'fast', superleader_manageable: false, spec: {} })
     expect(JSON.stringify(body)).not.toContain('null')
   })
 
@@ -196,7 +197,7 @@ describe('PresetForm', () => {
     expect(field('Replicas').value).toBe('2')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'fast copy', spec })
+    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'fast copy', superleader_manageable: false, spec })
     expect(api.updatePreset).not.toHaveBeenCalled()
     cleanup()
     const long = `${'A'.repeat(34)} tail`
@@ -317,7 +318,7 @@ describe('PresetForm', () => {
       await userEvent.click(button('Apply'))
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', spec: { env: { X: plain('1') } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', superleader_manageable: false, spec: { env: { X: plain('1') } } })
     })
 
     test('drops empty rows on a merge', async () => {
@@ -404,7 +405,7 @@ describe('PresetForm', () => {
       expect(button('Create').disabled).toBe(false)
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', spec: { env: { FOO: plain('1'), API_TOKEN: plain('secret') } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', superleader_manageable: false, spec: { env: { FOO: plain('1'), API_TOKEN: plain('secret') } } })
     })
 
     test('Save applies a pending paste', async () => {
@@ -426,7 +427,7 @@ describe('PresetForm', () => {
       await openPaste('  \n ')
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'blank', spec: {} })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'blank', superleader_manageable: false, spec: {} })
     })
 
     test('a pending paste with a parse error blocks submit', async () => {
@@ -837,6 +838,35 @@ describe('PresetForm', () => {
     expect(spec).not.toHaveProperty('kube_access')
   })
 
+  test('permission mode switch: options from meta, unset shows Allow all, untouched is left out', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByRole('combobox', { name: 'Permission mode' }).textContent).toBe('Allow all')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Permission mode' }))
+    expect(optionTexts()).toEqual(['Allow all', 'Auto'])
+    await userEvent.keyboard('{Escape}')
+    await replace('Name', 'pm')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('wrapper')
+  })
+
+  test('permission mode change is sent as wrapper.permission_mode and round-trips', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'pm')
+    await pick('Permission mode', 'Auto')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ wrapper: { permission_mode: 'auto' } })
+    cleanup()
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { permission_mode: 'auto' } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(screen.getByRole('combobox', { name: 'Permission mode' }).textContent).toBe('Auto')
+  })
+
   test('session options save and round-trip', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
@@ -848,7 +878,7 @@ describe('PresetForm', () => {
     expect(field('Kubernetes access').checked).toBe(true)
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', spec: { session_messaging: true, kube_access: true } })
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', superleader_manageable: false, spec: { session_messaging: true, kube_access: true } })
     cleanup()
 
     api.updatePreset.mockResolvedValue(preset())
@@ -871,6 +901,48 @@ describe('PresetForm', () => {
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('session_messaging')
+  })
+
+  test('new preset starts with superleader switch off and sends false', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(field('Superleader can manage').checked).toBe(false)
+    await replace('Name', 'n')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].superleader_manageable).toBe(false)
+  })
+
+  test('turning the switch on sends true', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'n')
+    await userEvent.click(field('Superleader can manage'))
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].superleader_manageable).toBe(true)
+  })
+
+  test('edit shows the stored value and sends it', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ superleader_manageable: true })} {...noop} />)
+    await ready()
+    expect(field('Superleader can manage').checked).toBe(true)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].superleader_manageable).toBe(true)
+  })
+
+  test('copy keeps the source value', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open copyOf={preset({ superleader_manageable: true })} {...noop} />)
+    await ready()
+    expect(field('Superleader can manage').checked).toBe(true)
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].superleader_manageable).toBe(true)
   })
 
   test('kube access disabled when unavailable', async () => {
@@ -922,7 +994,7 @@ describe('PresetForm', () => {
     expect(screen.queryByRole('group', { name: 'Restore key' })).toBeNull()
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', spec: { cache: {} } })
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', superleader_manageable: false, spec: { cache: {} } })
   })
 
   test('two key editors on the archive_name surface, both keys saved and no old key', async () => {

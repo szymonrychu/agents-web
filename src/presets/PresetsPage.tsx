@@ -84,6 +84,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
           >
             <ListItemText primary={p.name} />
             {p.is_default && <Chip size="small" label="Default" sx={{ ml: 1 }} />}
+            {p.superleader_manageable && <Chip size="small" label="Superleader" sx={{ ml: 1 }} />}
           </ListItem>
         ))}
       </List>

@@ -84,6 +84,8 @@ export interface FormValues {
   /** Comma list. */
   permAllow: string
   permDeny: string
+  /** Claude permission mode (`bypassPermissions` or `auto`); empty means unset, which the wrapper treats as Allow all. */
+  permissionMode: string
   /** JSON text, empty means unset. */
   hooks: string
   mcpServers: string
@@ -104,7 +106,7 @@ export interface FormValues {
 
 export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[] }
 
-type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'hooks' | 'mcpServers' | 'plugins'
+type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
@@ -139,7 +141,7 @@ export function blankValues(meta: Meta | null): FormValues {
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
-    agentCommands: [], permAllow: '', permDeny: '', hooks: '', mcpServers: '', plugins: '',
+    agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
 }
@@ -248,6 +250,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     wtext('turnStall', w.turn_stall_seconds)
     wtext('maxRestarts', w.max_restarts)
     wtext('turnMax', w.turn_max_seconds)
+    wtext('permissionMode', w.permission_mode)
     if (w.agent_commands) {
       values.agentCommands = [...w.agent_commands]
       setKeys.add('agentCommands')
@@ -483,6 +486,7 @@ function wrapperFromValues(v: FormValues, setKeys: ReadonlySet<SetKey>): Record<
     ['turn_stall_seconds', has('turnStall') ? num(v.turnStall) : undefined],
     ['max_restarts', has('maxRestarts') ? num(v.maxRestarts) : undefined],
     ['turn_max_seconds', has('turnMax') ? num(v.turnMax) : undefined],
+    ['permission_mode', has('permissionMode') ? str(v.permissionMode) : undefined],
     ['agent_commands', has('agentCommands') && v.agentCommands.length > 0 ? [...v.agentCommands] : undefined],
     ['permissions', allow.length + deny.length > 0 ? group([['allow', allow.length > 0 ? allow : undefined], ['deny', deny.length > 0 ? deny : undefined]]) : undefined],
     ['hooks', json('hooks')],

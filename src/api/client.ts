@@ -25,6 +25,8 @@ export type CopyPreset = S['CopyPreset'];
 export type ScaleRequest = S['ScaleRequest'];
 export type ScaleResult = S['ScaleResult'];
 export type InitScriptsView = S['InitScriptsView'];
+export type PermissionModeView = S['PermissionModeView'];
+export type PermissionMode = S['PermissionModeIn']['permission_mode'];
 
 export type AgentCommand = 'compact' | 'interrupt' | 'restart';
 
@@ -88,6 +90,8 @@ export const createSession = (body: CreateSession) => request<SessionView>('POST
 /** Discards the session; takes no purge parameter. */
 export const deleteSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}`);
 export const getInitScripts = (sessionId: string) => request<InitScriptsView>('GET', `/sessions/${id(sessionId)}/init-scripts`);
+export const putPermissionMode = (sessionId: string, permissionMode: PermissionMode) =>
+  request<PermissionModeView>('PUT', `/sessions/${id(sessionId)}/permission-mode`, { permission_mode: permissionMode });
 export const putInitScripts = (sessionId: string, scripts: string[]) =>
   request<InitScriptsView>('PUT', `/sessions/${id(sessionId)}/init-scripts`, { scripts });
 export const listPresets = () => request<PresetView[]>('GET', '/presets');

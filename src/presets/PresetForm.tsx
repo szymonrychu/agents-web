@@ -104,6 +104,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [source] = useState({ preset, copyOf })
   const [meta, setMeta] = useState<Meta | null>(null)
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
+  // a preset-level flag, not part of the spec: copies keep the source value
+  const [superleaderManageable, setSuperleaderManageable] = useState(() => (preset ?? copyOf)?.superleader_manageable ?? false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -152,6 +154,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     return result
   }
   const kubeAccessAvailable = meta?.kube_access.available === true
+  const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
   const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
@@ -222,7 +225,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
         }
         env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
       }
-      const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
+      const body = { name: values.name, superleader_manageable: superleaderManageable, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError((e instanceof Error ? e.message : String(e)) + (secretsSaved ? ' (a replaced protected value was already saved)' : ''))
@@ -369,12 +372,24 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
           <Box>
+            <TextField select size="small" label="Permission mode" value={values.permissionMode || 'bypassPermissions'} onChange={(e) => set('permissionMode', e.target.value)} fullWidth>
+              {permissionModes.map((o) => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </TextField>
+            <FormHelperText>Allow all runs every action; Auto has a classifier review actions, safer for sessions that read untrusted text</FormHelperText>
+          </Box>
+          <Box>
             <FormControlLabel control={<Switch checked={values.reuseRunningAgent} onChange={(e) => set('reuseRunningAgent', e.target.checked)} />} label="Reuse running agent" />
             <FormHelperText>Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one</FormHelperText>
           </Box>
           <Box>
             <FormControlLabel control={<Switch checked={values.sessionMessaging} onChange={(e) => set('sessionMessaging', e.target.checked)} />} label="Superleader" />
             <FormHelperText>superleader: can message the leaders of all sessions</FormHelperText>
+          </Box>
+          <Box>
+            <FormControlLabel control={<Switch checked={superleaderManageable} onChange={(e) => setSuperleaderManageable(e.target.checked)} />} label="Superleader can manage" />
+            <FormHelperText>The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them</FormHelperText>
           </Box>
           <Box>
             <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />

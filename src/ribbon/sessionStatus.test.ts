@@ -89,6 +89,16 @@ describe('attention and bootstrap fields', () => {
     expect(sessionIssue(session(), [aview({ attention: { reason: 'dialog', since: null } })])).toEqual({ kind: 'attention', text: 'waiting: dialog' })
     expect(sessionIssue(session(), [aview()])).toBeNull()
   })
+  test('unavailable permission mode: reason from the agent, count fallback, absent otherwise', () => {
+    const unavailable = aview({ permission_mode_state: 'unavailable', permission_mode_reason: 'auto mode is unavailable for your plan' })
+    expect(agentIssue(unavailable)).toEqual({ kind: 'permission_unavailable', text: 'Auto mode unavailable: auto mode is unavailable for your plan' })
+    expect(agentIssue(aview({ permission_mode_state: 'unavailable' }))).toEqual({ kind: 'permission_unavailable', text: 'Auto mode unavailable' })
+    expect(agentIssue(aview({ permission_mode_state: null, permission_mode_reason: 'stale' }))).toBeNull()
+    expect(sessionIssue(session(), [unavailable])).toEqual({ kind: 'permission_unavailable', text: 'Auto mode unavailable: auto mode is unavailable for your plan' })
+    expect(sessionIssue(session({}, { permission_unavailable_agents: 2 }), [])).toEqual({ kind: 'permission_unavailable', text: 'Auto mode unavailable on 2 agents' })
+    expect(sessionIssue(session({}, { permission_unavailable_agents: 0 }), [])).toBeNull()
+    expect(sessionIssue(session({}, { bootstrap_failed_agents: 1, permission_unavailable_agents: 1 }), [])?.kind).toBe('bootstrap_failure')
+  })
   test('preparing label shows the current bootstrap step', () => {
     const s = session({ status: { phase: 'pending' } }, { ready: 0, replicas: 1 })
     const a = aview({ ready: false, bootstrap: { step: 'install_plugins', status: 'running', message: null, started_at: null, finished_at: null } })

@@ -23,8 +23,8 @@ vi.mock('./PresetForm', () => ({
     ) : null,
 }))
 
-const preset = (id: string, name: string, is_default = false): PresetView =>
-  ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, updated_at: '2026-01-01T00:00:00Z' }) as PresetView
+const preset = (id: string, name: string, is_default = false, superleader_manageable = false): PresetView =>
+  ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, superleader_manageable, updated_at: '2026-01-01T00:00:00Z' }) as PresetView
 // The server may return them in any order; the page puts the default first.
 const PRESETS = [preset('p-big', 'Big box'), preset('p-default', 'Default', true), preset('p-fast', 'Fast')]
 
@@ -40,6 +40,14 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('PresetsPage', () => {
+  test('shows a Superleader chip for manageable presets', async () => {
+    api.listPresets.mockResolvedValue([preset('p-a', 'Alpha', false, true), preset('p-b', 'Beta')])
+    wrap()
+    await screen.findByText('Alpha')
+    expect(within(row('Alpha')).getByText('Superleader', { selector: '.MuiChip-label' })).toBeTruthy()
+    expect(within(row('Beta')).queryByText('Superleader', { selector: '.MuiChip-label' })).toBeNull()
+  })
+
   test('lists_presets_default_marked_without_delete', async () => {
     wrap()
     expect(screen.getByRole('heading', { name: 'Presets' })).toBeTruthy()

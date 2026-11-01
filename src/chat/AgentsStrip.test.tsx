@@ -52,6 +52,11 @@ describe('AgentsStrip', () => {
     expect(screen.getByText('waiting: permission')).toBeTruthy()
   })
 
+  test('an unavailable permission mode shows its reason on the agent, absent otherwise', () => {
+    mount([agent('a0', 0, { permission_mode_state: 'unavailable', permission_mode_reason: 'unavailable for this model' }), agent('a1', 1)])
+    expect(screen.getAllByText('Auto mode unavailable: unavailable for this model')).toHaveLength(1)
+  })
+
   test('a bootstrap failure shows the error mark with the step and message', () => {
     mount([agent('a0', 0, { bootstrap_failure: { step: 'install_plugins', status: 'failed', message: 'boom', started_at: null, finished_at: null } })])
     expect(within(screen.getByRole('group', { name: 'agent filter' })).getByRole('img', { name: 'state error' })).toBeTruthy()
