@@ -143,6 +143,24 @@ describe('usePoll', () => {
     expect(max).toBe(1)
   })
 
+  test('a deps change discards the in-flight result and fetches for the new deps', async () => {
+    const resolvers: Record<string, (v: string) => void> = {}
+    const fn = vi.fn((range: string) => new Promise<string>((r) => { resolvers[range] = r }))
+    const { result, rerender } = renderHook(({ range }) => usePoll(() => fn(range), 60000, [range]), { initialProps: { range: '24h' } })
+    await act(async () => {})
+    expect(fn).toHaveBeenCalledTimes(1)
+    rerender({ range: '7d' })
+    await act(async () => {})
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(fn).toHaveBeenLastCalledWith('7d')
+    await act(async () => { resolvers['24h']('old') })
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.loading).toBe(true)
+    await act(async () => { resolvers['7d']('new') })
+    expect(result.current.data).toBe('new')
+    expect(result.current.loading).toBe(false)
+  })
+
   test('stops on unmount', async () => {
     const fn = vi.fn().mockResolvedValue(1)
     const { unmount } = renderHook(() => usePoll(fn, 1000, []))

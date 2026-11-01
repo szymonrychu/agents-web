@@ -20,6 +20,7 @@ const BAR_PX = 10
 export function SessionTimeline({ marks, from, to, now }: SessionTimelineProps) {
   const bars = timelineBars(marks, from, to, now)
   if (bars.length === 0) return <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm, pl: `${PLOT_LEFT}px` }}>No sessions in this range</Typography>
+  const origins = [...new Set(bars.map((b) => (b.origin in ORIGIN_COLORS ? b.origin : 'other')))]
   const lanes = Math.max(...bars.map((b) => b.lane)) + 1
   return (
     <Box data-testid="session-timeline" sx={{ position: 'relative', pl: `${PLOT_LEFT}px`, pr: `${MARGIN.right}px` }}>
@@ -38,6 +39,14 @@ export function SessionTimeline({ marks, from, to, now }: SessionTimelineProps) 
           </Tooltip>
         ))}
       </svg>
+      <Box data-testid="session-legend" sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 0.5 }}>
+        {origins.map((o) => (
+          <Box key={o} data-testid={`session-legend-${o}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>
+            <Box component="span" sx={{ width: 10, height: 10, backgroundColor: ORIGIN_COLORS[o] }} />
+            {o}
+          </Box>
+        ))}
+      </Box>
     </Box>
   )
 }

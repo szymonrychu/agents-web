@@ -67,6 +67,14 @@ describe('UsageChart', () => {
     expect(last?.x).toBe(WIDTH - MARGIN.right)
   })
 
+  test('x axis is pinned to the range even when a series starts later', () => {
+    const { container } = mount([week])
+    const points = coords(line(container, 'seven_day')?.getAttribute('d'))
+    const plotWidth = WIDTH - MARGIN.right - PLOT_LEFT
+    expect(points[0].x).toBeCloseTo(PLOT_LEFT + plotWidth * (5 / 7), 1)
+    expect(points.at(-1)?.x).toBe(WIDTH - MARGIN.right)
+  })
+
   test('the plot starts at the shared left edge the session lane pads by', () => {
     const { container } = mount([five])
     const axis = container.querySelector('.MuiChartsAxis-directionX .MuiChartsAxis-line')

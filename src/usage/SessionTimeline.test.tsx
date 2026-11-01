@@ -70,6 +70,22 @@ describe('SessionTimeline', () => {
     expect(tip.textContent).toContain('2026-11-01 06:00 UTC - 2026-11-01 12:00 UTC')
   })
 
+  test('the legend has one entry per origin present, in the origin colour', () => {
+    mount([mark({ session_id: 'a', origin: 'ui' }), mark({ session_id: 'b', origin: 'ui' }), mark({ session_id: 'c', origin: 'webhook' })])
+    const entries = screen.getAllByTestId(/^session-legend-/)
+    expect(entries.map((e) => e.textContent)).toEqual(['ui', 'webhook'])
+    const swatch = (o: string) => getComputedStyle(screen.getByTestId(`session-legend-${o}`).querySelector('span') as HTMLElement).backgroundColor
+    const probe = document.createElement('div')
+    probe.style.backgroundColor = ORIGIN_COLORS.webhook
+    expect(swatch('webhook')).toBe(probe.style.backgroundColor)
+    expect(swatch('ui')).not.toBe(swatch('webhook'))
+  })
+
+  test('an unknown origin is listed under the other legend entry', () => {
+    mount([mark({ session_id: 'a', origin: 'something-new' })])
+    expect(screen.getAllByTestId(/^session-legend-/).map((e) => e.textContent)).toEqual(['other'])
+  })
+
   test('no marks shows an empty lane message', () => {
     mount([])
     expect(screen.getByText('No sessions in this range')).toBeTruthy()
