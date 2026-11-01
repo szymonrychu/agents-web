@@ -12,7 +12,7 @@ const api = vi.hoisted(() => ({ deleteSession: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: false, max_bytes: 0 }, kube_access: { available: false }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], cache: { available: false, max_bytes: 0 }, kube_access: { available: false }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',

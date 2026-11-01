@@ -154,6 +154,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setRestoreRendered(result.rendered === null ? null : { template, rendered: result.rendered })
     return result
   }
+  const dockerAvailable = meta?.docker.available === true
   const kubeAccessAvailable = meta?.kube_access.available === true
   const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
   const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
@@ -164,7 +165,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -405,6 +406,19 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />
             <FormHelperText>{meta && !kubeAccessAvailable ? 'Not configured on this orchestrator' : 'Agents get full read-write access to every namespace and resource'}</FormHelperText>
           </Box>
+          {(dockerAvailable || values.docker) && (
+            <Box>
+              <FormControlLabel control={<Switch checked={values.docker} onChange={(e) => set('docker', e.target.checked)} />} label="Docker (privileged sidecar)" disabled={!dockerAvailable} />
+              <FormHelperText>{values.docker ? 'Runs a privileged container in the agent pod (Docker-in-Docker): the agent gets root-equivalent control of its node. Enable only for trusted presets.' : 'Docker daemon next to the agent for docker build, docker run and kind'}</FormHelperText>
+              {values.docker && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                  {text('dockerStorage', 'Docker storage', { help: meta ? `Default ${meta.docker.storage}, max ${meta.docker.max_storage}` : undefined })}
+                  {text('dockerCpu', 'Docker CPU limit', { help: meta ? `Max ${meta.docker.max_cpu}` : undefined })}
+                  {text('dockerMemory', 'Docker memory limit', { help: meta ? `Max ${meta.docker.max_memory}` : undefined })}
+                </Box>
+              )}
+            </Box>
+          )}
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }} disabled={!cacheAvailable}>
             <FormLabel component="legend">Workspace cache</FormLabel>
             <FormControlLabel control={<Switch checked={values.cacheEnabled} onChange={(e) => set('cacheEnabled', e.target.checked)} />} label="Cache the workspace in S3" disabled={!cacheAvailable} />

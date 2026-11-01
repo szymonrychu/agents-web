@@ -2217,6 +2217,7 @@ export interface components {
              * @enum {string}
              */
             discard_hook: "none" | "command" | "url";
+            docker: components["schemas"]["MetaDocker"];
             /** Efforts */
             efforts: string[];
             /** Hook Events */
@@ -2272,6 +2273,19 @@ export interface components {
             storage_class: string;
             /** Workdir */
             workdir: string;
+        };
+        /** MetaDocker */
+        MetaDocker: {
+            /** Available */
+            available: boolean;
+            /** Max Cpu */
+            max_cpu: string;
+            /** Max Memory */
+            max_memory: string;
+            /** Max Storage */
+            max_storage: string;
+            /** Storage */
+            storage: string;
         };
         /** MetaHookEvent */
         MetaHookEvent: {
@@ -2603,6 +2617,14 @@ export interface components {
             discard_after_idle_seconds?: number | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
+            /** Docker */
+            docker?: boolean | null;
+            /** Docker Cpu */
+            docker_cpu?: string | null;
+            /** Docker Memory */
+            docker_memory?: string | null;
+            /** Docker Storage */
+            docker_storage?: string | null;
             /** Effort */
             effort?: string | null;
             /**
@@ -2684,6 +2706,14 @@ export interface components {
             discard_after_idle_seconds?: number | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
+            /** Docker */
+            docker?: boolean | null;
+            /** Docker Cpu */
+            docker_cpu?: string | null;
+            /** Docker Memory */
+            docker_memory?: string | null;
+            /** Docker Storage */
+            docker_storage?: string | null;
             /** Effort */
             effort?: string | null;
             /**

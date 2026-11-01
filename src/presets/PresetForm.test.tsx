@@ -16,7 +16,7 @@ const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), ge
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -1027,6 +1027,43 @@ describe('PresetForm', () => {
     await ready()
     expect(field('Kubernetes access').disabled).toBe(false)
     expect(screen.queryByText('Not configured on this orchestrator')).toBeNull()
+  })
+
+  test('docker toggle is hidden when unavailable', async () => {
+    api.getMeta.mockResolvedValue(meta())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.queryByLabelText('Docker (privileged sidecar)')).toBeNull()
+  })
+
+  test('docker toggle shows a warning and the size fields when on, and the payload carries them', async () => {
+    api.getMeta.mockResolvedValue(meta({ docker: { available: true, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' } }))
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(field('Docker (privileged sidecar)').checked).toBe(false)
+    expect(screen.queryByLabelText('Docker storage')).toBeNull()
+    await userEvent.click(field('Docker (privileged sidecar)'))
+    expect(screen.getByText(/privileged container/i)).toBeTruthy()
+    await userEvent.type(field('Docker storage'), '50Gi')
+    await userEvent.type(field('Docker CPU limit'), '2')
+    await userEvent.type(field('Docker memory limit'), '4Gi')
+    await userEvent.type(field('Name'), 'd')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ docker: true, docker_storage: '50Gi', docker_cpu: '2', docker_memory: '4Gi' })
+  })
+
+  test('an existing docker preset round-trips', async () => {
+    api.getMeta.mockResolvedValue(meta({ docker: { available: true, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' } }))
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { docker: true, docker_storage: '50Gi' } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Docker (privileged sidecar)').checked).toBe(true)
+    expect(field('Docker storage').value).toBe('50Gi')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ docker: true, docker_storage: '50Gi' })
   })
 
   const previewReply = (rendered: string | null, error: { line: number | null; message: string } | null = null) => {
