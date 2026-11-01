@@ -2,6 +2,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-11-01 (session-status-ui)
+
+- session-status-ui (web only): the mark state `waiting` is renamed `idle`, because summary.state `waiting` means all agents idle, not waiting on input. `attention` is the new mark for an agent waiting on input; it is fed only by the agent state value `waiting` (typed in `AgentState`), which no backend sends yet, so no fake data. Colours: idle textSecondary, working `TOKENS.info`, attention `TOKENS.attention`, booting warning, error error, deleting/discarded textDisabled. `ContextGauge` takes `state` and colours the ring from it; the auto-compact warning then shows on the label text and the tick. `session_removed` now keeps a client-side tombstone (`SessionEntry.discarded`) until `dismiss` (lost on reload; a snapshot keeps tombstones, a late session_status does not revive one). Preparing progress (`ribbon/sessionStatus.ts`) derives from pushed `status.phase`, `status.message`, `status.cache.{sessions_restore,restore}` and `status.init` running states, else ready/replicas; a durable "discarded" needs a backend soft delete.
+
 ## 2026-11-01
 
 - s3-backup-restore I2 (download auth): verified, no code change. The browser authenticates to the orchestrator API only by the oauth2-proxy session cookie (agents-helmfile values/agents-orchestrator/common.yaml: oauth2-proxy admission sidecar; MEMORY 2026-10-25: both web and api pods share one cookie config on lab.szymonrichert.pl), and `src/api/client.ts` adds no auth header (plain `fetch`). So a plain anchor to `/api/v1/cache/archives/download?key=` carries the cookie like any navigation; the API's 302 to the presigned S3 URL is followed by the browser, which sends no cookie to S3. A JS fetch would not follow it better (cross-origin S3 needs CORS), so the anchor stays. Risk left: an expired cookie makes the anchor land on the Keycloak login instead of a file. Discard dialog: a restore-only cache with no transcripts now says "Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up (reason)" instead of the misleading no-session-cache text.

@@ -9,6 +9,8 @@ export interface SessionEntry {
   session: SessionView
   /** Agents by id, ordered by ordinal when read through `sortedAgents`. */
   agents: Record<string, AgentView>
+  /** Client-side tombstone: the orchestrator removed the session (discard finished). Lost on reload. */
+  discarded?: true
 }
 
 export interface SessionsState {
@@ -23,6 +25,7 @@ export type SessionsAction =
   | { type: 'loaded'; entries: SessionEntry[] }
   | { type: 'failed'; message: string }
   | { type: 'select'; id: string | null }
+  | { type: 'dismiss'; id: string }
 
 export const initialState: SessionsState = { sessions: {}, selectedId: null, loaded: false, error: null }
 
@@ -46,11 +49,13 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
     case 'failed':
       return { ...state, error: action.message, loaded: true }
     case 'snapshot': {
-      const sessions = toRecord(action.sessions)
+      const kept = Object.fromEntries(Object.entries(state.sessions).filter(([, e]) => e.discarded))
+      const sessions = { ...kept, ...toRecord(action.sessions) }
       return { ...state, sessions, loaded: true, error: null, selectedId: keepSelection(state, sessions) }
     }
     case 'session_status': {
       const prev = state.sessions[action.session.id]
+      if (prev?.discarded) return state
       return { ...state, sessions: { ...state.sessions, [action.session.id]: { session: action.session, agents: prev?.agents ?? {} } } }
     }
     case 'agent_status': {
@@ -72,9 +77,13 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
       return { ...state, sessions: { ...state.sessions, [action.sessionId]: { ...prev, session: { ...prev.session, summary } } } }
     }
     case 'session_removed': {
-      if (!(action.sessionId in state.sessions)) return state
+      const prev = state.sessions[action.sessionId]
+      if (!prev) return state
+      return { ...state, sessions: { ...state.sessions, [action.sessionId]: { ...prev, discarded: true } } }
+    }
+    case 'dismiss': {
       const sessions = { ...state.sessions }
-      delete sessions[action.sessionId]
+      delete sessions[action.id]
       return { ...state, sessions, selectedId: keepSelection(state, sessions) }
     }
     case 'select':
@@ -119,5 +128,6 @@ export function useSessions() {
   }, [])
 
   const select = useCallback((id: string | null) => dispatch({ type: 'select', id }), [])
-  return { state, sessions: sortedSessions(state), select }
+  const dismiss = useCallback((id: string) => dispatch({ type: 'dismiss', id }), [])
+  return { state, sessions: sortedSessions(state), select, dismiss }
 }

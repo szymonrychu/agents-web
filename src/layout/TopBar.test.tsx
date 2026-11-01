@@ -16,7 +16,7 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onInitScripts: vi.fn(), settingsCategories: [], ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), settingsCategories: [], ...over }
   render(<ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider>)
   return props
 }
@@ -29,7 +29,7 @@ describe('TopBar', () => {
     expect(tabs[0].getAttribute('aria-selected')).toBe('false')
     expect(tabs[1].getAttribute('aria-selected')).toBe('true')
     expect(within(tabs[0]).getByRole('img', { name: 'state working' })).toBeTruthy()
-    expect(within(tabs[1]).getByRole('img', { name: 'state waiting' })).toBeTruthy()
+    expect(within(tabs[1]).getByRole('img', { name: 'state idle' })).toBeTruthy()
     expect(within(tabs[0]).getByLabelText('context 40%')).toBeTruthy()
     expect(within(tabs[1]).getByLabelText('context 90%')).toBeTruthy()
     expect(within(tabs[0]).getByTestId('context-gauge-tick')).toBeTruthy()
@@ -120,5 +120,23 @@ describe('TopBar', () => {
     expect(getComputedStyle(settings).marginTop).toBe('auto')
     fireEvent.click(within(settings).getByRole('button', { name: 'Presets' }))
     expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  test('discarded tab is greyed, has no gauge or actions and offers dismiss', () => {
+    const gone = { ...session('c3', 'charlie', 'working', 40), discarded: true as const }
+    const { onDismiss } = setup({ sessions: [...SESSIONS, gone] })
+    const tab = screen.getAllByRole('tab')[2]
+    expect(within(tab).getByRole('img', { name: 'state discarded' })).toBeTruthy()
+    expect(within(tab).queryByLabelText('context 40%')).toBeNull()
+    expect(within(tab).queryByRole('button', { name: 'Session actions' })).toBeNull()
+    fireEvent.click(within(tab).getByRole('button', { name: 'Dismiss charlie' }))
+    expect(onDismiss).toHaveBeenCalledWith('c3')
+  })
+
+  test('a preparing tab shows an indeterminate progress bar', () => {
+    const prep = session('c3', 'charlie', 'booting', null)
+    prep.session.status = { phase: 'pending', message: 'init running', init: { state: 'running' } }
+    setup({ sessions: [prep] })
+    expect(within(screen.getByRole('tab')).getByRole('progressbar', { name: 'Preparing charlie' })).toBeTruthy()
   })
 })

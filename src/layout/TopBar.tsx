@@ -3,6 +3,7 @@ import { useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import MenuIcon from '@mui/icons-material/Menu'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
+import CloseIcon from '@mui/icons-material/Close'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -14,6 +15,8 @@ import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ContextGauge } from '../ribbon/ContextGauge'
+import { SessionProgress } from '../ribbon/SessionProgress'
+import { sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
 import type { SessionEntry } from '../ribbon/useSessions'
 import type { SessionView } from '../api/client'
@@ -29,6 +32,8 @@ export interface TopBarProps {
   onNew: () => void
   onInitScripts: (session: SessionView) => void
   onDiscard: (session: SessionView) => void
+  /** Removes a discarded session's tab. */
+  onDismiss: (id: string) => void
   settingsCategories: SettingsCategory[]
 }
 
@@ -37,7 +42,7 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onDiscard, settingsCategories }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onDiscard, onDismiss, settingsCategories }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [actions, setActions] = useState<ActionsMenu | null>(null)
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
@@ -48,17 +53,20 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         <MenuIcon />
       </IconButton>
       <Tabs value={value} variant="scrollable" scrollButtons="auto" aria-label="Sessions" sx={{ flexGrow: 1, minWidth: 0 }}>
-        {sessions.map(({ session }) => (
+        {sessions.map(({ session, agents, discarded }) => {
+          const mark = sessionMarkState(session, Object.values(agents), discarded === true)
+          return (
           <Tab
             key={session.id}
             component="div"
             value={session.id}
             onClick={() => onSelect(session.id)}
             label={
+              <Box component="span" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <StateMark state={session.summary.state} />
+                <StateMark state={mark} />
                 <Box component="span" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
-                  <Box component="span" sx={{ fontWeight: TOKENS.fontWeights.medium }}>{session.slug}</Box>
+                  <Box component="span" sx={{ fontWeight: TOKENS.fontWeights.medium, textDecoration: discarded ? 'line-through' : 'none', color: discarded ? 'text.disabled' : undefined }}>{session.slug}</Box>
                   {session.preset_name ? <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 160, textTransform: 'none' }}>{session.preset_name}</Typography> : null}
                 </Box>
                 {session.status.discard_hook_failed ? (
@@ -66,24 +74,35 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
                     <ErrorOutlineIcon fontSize="small" color="error" role="img" aria-label="discard hook failed" />
                   </Tooltip>
                 ) : null}
-                <Tooltip title={`${session.summary.ready} of ${session.summary.replicas} pods ready`}>
-                  <Box component="span" sx={{ fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' }}>{`${session.summary.ready}/${session.summary.replicas}`}</Box>
-                </Tooltip>
-                <ContextGauge value={session.summary.context_pct_max} autoCompactPct={session.summary.auto_compact_pct} />
-                <IconButton
-                  size="small"
-                  component="span"
-                  role="button"
-                  aria-haspopup="menu"
-                  aria-label="Session actions"
-                  onClick={(e) => { e.stopPropagation(); setActions({ anchor: e.currentTarget, session }) }}
-                >
-                  <MoreVertIcon fontSize="small" />
-                </IconButton>
+                {discarded ? (
+                  <IconButton size="small" component="span" role="button" aria-label={`Dismiss ${session.slug}`} onClick={(e) => { e.stopPropagation(); onDismiss(session.id) }}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                ) : (
+                  <>
+                    <Tooltip title={`${session.summary.ready} of ${session.summary.replicas} pods ready`}>
+                      <Box component="span" sx={{ fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' }}>{`${session.summary.ready}/${session.summary.replicas}`}</Box>
+                    </Tooltip>
+                    <ContextGauge value={session.summary.context_pct_max} autoCompactPct={session.summary.auto_compact_pct} state={mark} />
+                    <IconButton
+                      size="small"
+                      component="span"
+                      role="button"
+                      aria-haspopup="menu"
+                      aria-label="Session actions"
+                      onClick={(e) => { e.stopPropagation(); setActions({ anchor: e.currentTarget, session }) }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </>
+                )}
+              </Box>
+              {discarded ? null : <SessionProgress session={session} />}
               </Box>
             }
           />
-        ))}
+          )
+        })}
       </Tabs>
       <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={onNew} sx={{ flexShrink: 0 }}>New session</Button>
       <Menu anchorEl={actions?.anchor ?? null} open={actions !== null} onClose={() => setActions(null)}>
