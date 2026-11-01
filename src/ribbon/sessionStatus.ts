@@ -24,28 +24,33 @@ function runningGate(status: Dict): string | null {
 }
 
 export interface Issue {
-  kind: 'bootstrap_failure' | 'attention'
+  kind: 'bootstrap_failure' | 'permission_unavailable' | 'attention'
   text: string
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
 const live = (agents: readonly AgentView[]): AgentView[] => agents.filter((a) => !a.gone)
 
-/** What needs a person on one agent: a failed bootstrap step ("install_plugins failed: ...") or the attention reason. */
+/** What needs a person on one agent: a failed bootstrap step ("install_plugins failed: ..."), an unavailable permission mode or the attention reason. */
 export function agentIssue(a: AgentView): Issue | null {
   const f = a.bootstrap_failure
   if (f) return { kind: 'bootstrap_failure', text: f.message ? `${f.step} failed: ${f.message}` : `${f.step} failed` }
+  if (a.permission_mode_state === 'unavailable') return { kind: 'permission_unavailable', text: a.permission_mode_reason ? `Auto mode unavailable: ${a.permission_mode_reason}` : 'Auto mode unavailable' }
   if (a.attention) return { kind: 'attention', text: `waiting: ${a.attention.reason}` }
   return null
 }
 
-/** The most urgent issue of a session: a bootstrap failure first, then attention; agent detail first, summary counts as fallback. */
+/** The most urgent issue of a session: a bootstrap failure first, then an unavailable permission mode, then attention; agent detail first, summary counts as fallback. */
 export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
   const issues = live(agents).map(agentIssue)
   const failure = issues.find((i) => i?.kind === 'bootstrap_failure')
   if (failure) return failure
   const failed = session.summary.bootstrap_failed_agents ?? 0
   if (failed > 0) return { kind: 'bootstrap_failure', text: `${plural(failed, 'agent', 'agents')} failed to bootstrap` }
+  const unavailable = issues.find((i) => i?.kind === 'permission_unavailable')
+  if (unavailable) return unavailable
+  const unavailableCount = session.summary.permission_unavailable_agents ?? 0
+  if (unavailableCount > 0) return { kind: 'permission_unavailable', text: `Auto mode unavailable on ${plural(unavailableCount, 'agent', 'agents')}` }
   const attention = issues.find((i) => i?.kind === 'attention')
   if (attention) return attention
   const waiting = session.summary.attention_agents ?? 0

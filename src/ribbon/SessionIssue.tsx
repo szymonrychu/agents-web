@@ -1,4 +1,4 @@
-/** One line naming what needs a person on a session: a bootstrap failure (error) or an agent waiting for input. */
+/** One line naming what needs a person on a session: a bootstrap failure (error), an unavailable permission mode (warning) or an agent waiting for input. */
 import Box from '@mui/material/Box'
 import type { AgentView, SessionView } from '../api/client'
 import { TOKENS } from '../theme'
@@ -9,7 +9,7 @@ export function SessionIssue({ session, agents }: { session: SessionView; agents
   if (issue === null || session.desired === 'deleting') return null
   const failed = issue.kind === 'bootstrap_failure'
   return (
-    <Box role={failed ? 'alert' : 'status'} sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: failed ? 'error.main' : TOKENS.attention, pt: 0.5, overflowWrap: 'anywhere' }}>
+    <Box role={failed ? 'alert' : 'status'} sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: failed ? 'error.main' : issue.kind === 'permission_unavailable' ? 'warning.main' : TOKENS.attention, pt: 0.5, overflowWrap: 'anywhere' }}>
       {failed ? `Bootstrap failed: ${issue.text}` : issue.text}
     </Box>
   )
