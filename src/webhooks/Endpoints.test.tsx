@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import { EditorView } from '@codemirror/view'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
@@ -13,6 +14,8 @@ import { EndpointsList } from './EndpointsList'
 
 const api = vi.hoisted(() => ({
   createEndpoint: vi.fn(),
+  patchEndpoint: vi.fn(),
+  cloneEndpoint: vi.fn(),
   rotateEndpoint: vi.fn(),
   deleteEndpoint: vi.fn(),
   listEndpoints: vi.fn(),
@@ -35,9 +38,11 @@ const PASSWORD = 'pw-secret-0123456789'
 const view = (over: Partial<EndpointView> = {}): EndpointView =>
   ({
     id: 1, suffix: 'abc', url: 'https://h.example/webhook/abc', type: 'github-pr', preset_id: 'p1', prompt_template: null,
-    username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: { allow: [], deny: [] }, ...over,
+    username: 'user1', created_at: '2026-10-25T10:00:00Z', credentials_rotated_at: null, filters: { allow: [], deny: [] },
+    auth_mode: 'basic', auth_header: null, hmac_algorithm: null, hmac_prefix: null, hmac_timestamp_header: null, has_secret: false,
+    updated_at: '2026-10-25T10:00:00Z', ...over,
   }) as EndpointView
-const created = (over: Partial<EndpointCreated> = {}): EndpointCreated => ({ ...view(), password: PASSWORD, ...over }) as EndpointCreated
+const created = (over: Partial<EndpointCreated> = {}): EndpointCreated => ({ ...view(), password: PASSWORD, secret: null, ...over }) as EndpointCreated
 
 const wrap = (ui: React.ReactElement) => <ThemeProvider theme={theme}>{ui}</ThemeProvider>
 const apiError = (status: number, code: string, message: string) => new ApiError(status, code, message)
@@ -239,6 +244,139 @@ describe('credentials dialog', () => {
     render(wrap(<CredentialsDialog endpoint={created()} onClose={() => {}} />))
     await u.click(screen.getByRole('button', { name: 'Copy password' }))
     expect(writeText).toHaveBeenCalledWith(PASSWORD)
+  })
+})
+
+const SECRET = 'sec-once-0123456789'
+const gitlabView = (over: Partial<EndpointView> = {}) =>
+  view({ id: 3, suffix: 'gl', url: 'https://h.example/webhook/gl', type: 'gitlab-mr', username: null, auth_mode: 'header', auth_header: 'X-Gitlab-Token', has_secret: true, ...over })
+const secretCreated = (over: Partial<EndpointCreated> = {}) => created({ ...gitlabView(), password: null, secret: SECRET, ...over })
+
+describe('credentials dialog for secret modes', () => {
+  test('shows the secret once with the header name and the sender hint, no username or password', () => {
+    render(wrap(<CredentialsDialog endpoint={secretCreated()} onClose={() => {}} />))
+    expect(screen.getByText(SECRET)).toBeTruthy()
+    expect(screen.getByText('X-Gitlab-Token')).toBeTruthy()
+    expect(screen.getByText('https://h.example/webhook/gl')).toBeTruthy()
+    expect(screen.getByText('The secret is shown only now. Rotate the secret to get a new one.')).toBeTruthy()
+    expect(screen.getByText(/Secret token/)).toBeTruthy()
+    expect(screen.queryByText('Username')).toBeNull()
+    expect(screen.queryByText('Password')).toBeNull()
+  })
+
+  test('bearer and hmac show their own hints', () => {
+    const { rerender } = render(wrap(<CredentialsDialog endpoint={secretCreated({ auth_mode: 'bearer', auth_header: null })} onClose={() => {}} />))
+    expect(screen.getByText(/Authorization: Bearer <secret>/)).toBeTruthy()
+    rerender(wrap(<CredentialsDialog endpoint={secretCreated({ auth_mode: 'hmac', auth_header: 'X-Hub-Signature-256', type: 'github-pr' })} onClose={() => {}} />))
+    expect(screen.getByText(/paste the secret into the webhook "Secret" field/)).toBeTruthy()
+  })
+
+  test('copy writes the secret', async () => {
+    const u = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(wrap(<CredentialsDialog endpoint={secretCreated()} onClose={() => {}} />))
+    await u.click(screen.getByRole('button', { name: 'Copy secret' }))
+    expect(writeText).toHaveBeenCalledWith(SECRET)
+  })
+
+  test('closing clears it from the DOM', async () => {
+    const u = userEvent.setup()
+    const Host = () => {
+      const [ep, setEp] = useState<EndpointCreated | null>(secretCreated())
+      return <CredentialsDialog endpoint={ep} onClose={() => setEp(null)} />
+    }
+    render(wrap(<Host />))
+    expect(screen.getByText(SECRET)).toBeTruthy()
+    await u.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByText(SECRET)).toBeNull())
+    expect(document.body.textContent).not.toContain(SECRET)
+  })
+})
+
+describe('list actions', () => {
+  beforeEach(() => {
+    api.listEndpoints.mockResolvedValue([gitlabView()])
+  })
+  const mountList = async (onChanged = vi.fn()) => {
+    render(wrap(<EndpointsList refreshKey={0} onChanged={onChanged} />))
+    const row = (await screen.findByText('https://h.example/webhook/gl')).closest('tr')!
+    return { row, onChanged }
+  }
+
+  test('the list shows the auth mode and never a secret', async () => {
+    const { row } = await mountList()
+    expect(within(row).getByText('header')).toBeTruthy()
+    expect(document.body.textContent).not.toContain(SECRET)
+  })
+
+  test('Edit opens the form prefilled; a save without a mode change shows no credentials', async () => {
+    api.patchEndpoint.mockResolvedValue(created({ ...gitlabView({ suffix: 'gl2' }), password: null, secret: null }))
+    const u = userEvent.setup()
+    const { row, onChanged } = await mountList()
+    await u.click(within(row).getByRole('button', { name: 'Edit' }))
+    const dlg = await screen.findByRole('dialog', { name: 'Edit endpoint' })
+    await u.clear(within(dlg).getByLabelText('Suffix'))
+    await u.type(within(dlg).getByLabelText('Suffix'), 'gl2')
+    await u.click(within(dlg).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.patchEndpoint).toHaveBeenCalledWith('3', { suffix: 'gl2' }))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit endpoint' })).toBeNull())
+    expect(screen.queryByRole('dialog', { name: 'Endpoint credentials' })).toBeNull()
+  })
+
+  test('an edit that changes the auth mode warns, then reveals the new secret once', async () => {
+    api.patchEndpoint.mockResolvedValue(created({ ...gitlabView({ auth_mode: 'bearer', auth_header: null }), password: null, secret: SECRET }))
+    const u = userEvent.setup()
+    const { row } = await mountList()
+    await u.click(within(row).getByRole('button', { name: 'Edit' }))
+    const dlg = await screen.findByRole('dialog', { name: 'Edit endpoint' })
+    await u.click(within(dlg).getByRole('combobox', { name: 'Auth preset' }))
+    await u.click(await screen.findByRole('option', { name: /^Grafana \(bearer/ }))
+    expect(within(dlg).getByText(/new secret is issued/i)).toBeTruthy()
+    await u.click(within(dlg).getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText(SECRET)).toBeTruthy()
+    await u.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByText(SECRET)).toBeNull())
+  })
+
+  test('Rotate from the edit form goes through the rotate confirmation and reveals the new secret', async () => {
+    api.rotateEndpoint.mockResolvedValue(secretCreated())
+    const u = userEvent.setup()
+    const { row } = await mountList()
+    await u.click(within(row).getByRole('button', { name: 'Edit' }))
+    await u.click(await screen.findByRole('button', { name: 'Rotate secret' }))
+    expect(screen.queryByRole('dialog', { name: 'Edit endpoint' })).toBeNull()
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Rotate' }))
+    expect(await screen.findByText(SECRET)).toBeTruthy()
+    expect(api.rotateEndpoint).toHaveBeenCalledWith('3')
+  })
+
+  test('Clone issues a new endpoint and reveals its secret once; the list never shows it', async () => {
+    api.cloneEndpoint.mockResolvedValue(secretCreated({ id: 4, suffix: 'copy', url: 'https://h.example/webhook/copy' }))
+    const u = userEvent.setup()
+    const { row, onChanged } = await mountList()
+    await u.click(within(row).getByRole('button', { name: 'Clone' }))
+    const dlg = await screen.findByRole('dialog', { name: 'Clone endpoint' })
+    await u.click(within(dlg).getByRole('button', { name: 'Clone' }))
+    expect(await screen.findByText(SECRET)).toBeTruthy()
+    expect(api.cloneEndpoint).toHaveBeenCalledWith('3', {})
+    expect(onChanged).toHaveBeenCalled()
+    await u.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByText(SECRET)).toBeNull())
+    expect(document.body.textContent).not.toContain(SECRET)
+  })
+
+  test('uses no browser alert, confirm or prompt', async () => {
+    const spies = [vi.spyOn(window, 'alert'), vi.spyOn(window, 'confirm'), vi.spyOn(window, 'prompt')]
+    const u = userEvent.setup()
+    const { row } = await mountList()
+    await u.click(within(row).getByRole('button', { name: 'Rotate credentials' }))
+    await u.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await u.click(within(row).getByRole('button', { name: 'Delete' }))
+    await u.click(screen.getByRole('button', { name: 'Cancel' }))
+    spies.forEach((spy) => expect(spy).not.toHaveBeenCalled())
   })
 })
 

@@ -1,4 +1,4 @@
-/** Endpoints table: URL, type, preset name, username, times; filters in a dialog; rotate and delete behind a confirm. */
+/** Endpoints table: URL, type, auth mode, preset name, times; edit, clone, filters in dialogs; rotate and delete behind a confirm. */
 import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -15,6 +15,7 @@ import { deleteEndpoint, getMeta, listEndpoints, rotateEndpoint } from './api'
 import type { EndpointCreated, EndpointView, WebhookMeta } from './api'
 import { CopyButton } from './copy'
 import { CredentialsDialog } from './CredentialsDialog'
+import { EndpointFormDialog, type EndpointFormMode } from './EndpointFormDialog'
 import { FiltersDialog } from './FiltersDialog'
 
 export interface EndpointsListProps {
@@ -34,6 +35,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
   const [deleting, setDeleting] = useState<EndpointView | null>(null)
   const [credentials, setCredentials] = useState<EndpointCreated | null>(null)
   const [editing, setEditing] = useState<EndpointView | null>(null)
+  const [form, setForm] = useState<{ mode: EndpointFormMode; endpoint: EndpointView } | null>(null)
   const [meta, setMeta] = useState<WebhookMeta | null>(null)
   const [metaError, setMetaError] = useState<unknown>(null)
 
@@ -70,6 +72,12 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
       setError(e)
     }
   }
+  // A one-time secret or password is shown only when the call issued one (a plain edit issues none).
+  const formDone = (result: EndpointCreated) => {
+    setForm(null)
+    if (result.secret || result.password) setCredentials(result)
+    onChanged()
+  }
   const remove = async () => {
     const target = deleting
     setDeleting(null)
@@ -95,7 +103,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell>Preset</TableCell><TableCell>Username</TableCell>
+              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell>Auth</TableCell><TableCell>Preset</TableCell><TableCell>Username</TableCell>
               <TableCell>Created</TableCell><TableCell>Rotated</TableCell><TableCell />
             </TableRow>
           </TableHead>
@@ -106,11 +114,14 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
                   <span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} />
                 </TableCell>
                 <TableCell>{ep.type}</TableCell>
+                <TableCell>{ep.auth_mode}</TableCell>
                 <TableCell>{presetNames[ep.preset_id] ?? ep.preset_id}</TableCell>
                 <TableCell>{ep.username}</TableCell>
                 <TableCell>{when(ep.created_at)}</TableCell>
                 <TableCell>{when(ep.credentials_rotated_at)}</TableCell>
                 <TableCell align="right">
+                  <Button size="small" onClick={() => setForm({ mode: 'edit', endpoint: ep })}>Edit</Button>
+                  <Button size="small" onClick={() => setForm({ mode: 'clone', endpoint: ep })}>Clone</Button>
                   <Button size="small" onClick={() => setEditing(ep)} disabled={!fieldsOf(ep)}>Filters ({ruleCount(ep)})</Button>
                   <Button size="small" onClick={() => setRotating(ep)}>Rotate credentials</Button>
                   <Button size="small" color="error" onClick={() => setDeleting(ep)}>Delete</Button>
@@ -122,7 +133,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
       )}
       <ConfirmDialog
         open={rotating !== null} title="Rotate credentials?" confirmLabel="Rotate"
-        body={rotating ? `A new password is issued for ${rotating.url}; the old one stops working at once.` : undefined}
+        body={rotating ? `A new ${rotating.auth_mode === 'basic' ? 'password' : 'secret'} is issued for ${rotating.url}; the old one stops working at once.` : undefined}
         onConfirm={() => void rotate()} onCancel={() => setRotating(null)}
       />
       <ConfirmDialog
@@ -134,6 +145,12 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
         <FiltersDialog
           open endpoint={editing} fields={editingFields}
           onClose={() => setEditing(null)} onSaved={() => onChanged()}
+        />
+      )}
+      {form && (
+        <EndpointFormDialog
+          open mode={form.mode} endpoint={form.endpoint} onClose={() => setForm(null)} onDone={formDone}
+          onRotate={() => { setRotating(form.endpoint); setForm(null) }}
         />
       )}
       <CredentialsDialog endpoint={credentials} onClose={() => setCredentials(null)} />
