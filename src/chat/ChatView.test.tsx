@@ -46,4 +46,20 @@ describe('ChatView', () => {
     mount(session(2), [agent('idle', true)])
     expect(screen.queryByRole('alert')).toBeNull()
   })
+
+  test('shows preparing progress with the status message while a gate runs', () => {
+    const s = { ...session(0), status: { phase: 'pending', message: 'cache restore running', cache: { restore: { state: 'running' } } } } as unknown as SessionView
+    mount(s, [agent('unknown', false)])
+    expect(screen.getByRole('progressbar', { name: 'Preparing alpha' })).toBeTruthy()
+    expect(screen.getByText('Preparing alpha: cache restore running')).toBeTruthy()
+  })
+
+  test('shows discarding progress and no progress once ready', () => {
+    const s = { ...session(0), desired: 'deleting', status: { phase: 'deleting', message: 'saving the workspace cache' } } as unknown as SessionView
+    mount(s, [agent('idle', true)])
+    expect(screen.getByText('Discarding alpha: saving the workspace cache')).toBeTruthy()
+    cleanup()
+    mount(session(0), [agent('idle', true)])
+    expect(screen.queryByRole('progressbar')).toBeNull()
+  })
 })

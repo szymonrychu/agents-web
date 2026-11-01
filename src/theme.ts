@@ -22,6 +22,9 @@ export const TOKENS = {
   // state only
   error: '#e5484d',
   warning: '#e2a336',
+  // working (blue) and waiting for input (purple): the terminal palette's blue and magenta
+  info: '#5b9bd5',
+  attention: '#b083d6',
   // shape and density
   radius: 2,
   borderWidth: 1,

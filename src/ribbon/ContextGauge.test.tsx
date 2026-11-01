@@ -64,4 +64,16 @@ describe('ContextGauge', () => {
     setup({ value: 90 })
     expect(screen.queryByTestId('context-gauge-tick')).toBeNull()
   })
+
+  test('state drives the ring colour; the compact warning stays on the label', () => {
+    setup({ value: 50, autoCompactPct: 80, state: 'working' })
+    expect(hex(getComputedStyle(screen.getByRole('progressbar')).color)).toBe(TOKENS.info)
+    cleanup()
+    setup({ value: 50, autoCompactPct: 80, state: 'idle' })
+    expect(hex(getComputedStyle(screen.getByRole('progressbar')).color)).toBe(TOKENS.textSecondary)
+    cleanup()
+    setup({ value: 90, autoCompactPct: 80, state: 'attention' })
+    expect(hex(getComputedStyle(screen.getByRole('progressbar')).color)).toBe(TOKENS.attention)
+    expect(hex(getComputedStyle(screen.getByText('90%')).color)).toBe(TOKENS.warning)
+  })
 })

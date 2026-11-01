@@ -41,6 +41,11 @@ describe('AgentsStrip', () => {
     expect(screen.getByRole('button', { name: 'agent 3' })).toBeTruthy()
   })
 
+  test('typed waiting agent state shows the attention mark', () => {
+    mount([agent('a0', 0, { state: 'waiting' } as never)])
+    expect(within(screen.getByRole('group', { name: 'agent filter' })).getByRole('img', { name: 'state attention' })).toBeTruthy()
+  })
+
   test('no_leaving_label_within_replicas', () => {
     mount([agent('a0', 0), agent('a1', 1)], [], () => {}, undefined, { replicas: 2, drainWaiting: [] })
     expect(screen.queryByText(/leaving/)).toBeNull()
@@ -59,7 +64,7 @@ describe('AgentsStrip', () => {
     expect(within(a0).getByRole('progressbar', { name: 'context 25%' })).toBeTruthy()
     expect(within(a0).queryByText(/free/)).toBeNull()
     expect(within(a1).getByText('alpha-1')).toBeTruthy()
-    expect(within(a1).getByRole('img', { name: 'state waiting' })).toBeTruthy()
+    expect(within(a1).getByRole('img', { name: 'state idle' })).toBeTruthy()
     expect(within(a1).getByText('free 2m')).toBeTruthy()
     expect(within(a1).getByRole('progressbar', { name: 'context 70%' })).toBeTruthy()
     // the free-since age refreshes on a one second clock
