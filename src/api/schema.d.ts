@@ -2783,6 +2783,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Created By Service */
+            created_by_service?: string | null;
+            /** Created By Session */
+            created_by_session?: string | null;
             /**
              * Desired
              * @enum {string}
