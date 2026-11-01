@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { loadConfig, resetConfig } from '../config/backends';
-import { createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, previewTemplate, rotateEndpoint, setEndpointFilters } from './api';
+import { cloneEndpoint, createEndpoint, deleteEndpoint, getEvent, getMeta, listEndpoints, listEvents, patchEndpoint, previewTemplate, rotateEndpoint, setEndpointFilters } from './api';
 
 const BASE = '/webhooks/api/v1';
 let f: ReturnType<typeof vi.fn>;
@@ -30,6 +30,17 @@ describe('webhooks api', () => {
   it('creates an endpoint with a body', async () => {
     await createEndpoint({ suffix: 'gh' } as never);
     expect(call()).toMatchObject({ url: `${BASE}/endpoints`, method: 'POST', body: '{"suffix":"gh"}' });
+  });
+  it('patches an endpoint with only the given fields, encoding the id', async () => {
+    await patchEndpoint('a/b', { auth_mode: 'header', auth_header: 'X-Gitlab-Token' });
+    expect(call()).toMatchObject({ url: `${BASE}/endpoints/a%2Fb`, method: 'PATCH', body: '{"auth_mode":"header","auth_header":"X-Gitlab-Token"}' });
+  });
+  it('clones with and without overrides, encoding the id', async () => {
+    await cloneEndpoint('a/b');
+    expect(call()).toMatchObject({ url: `${BASE}/endpoints/a%2Fb/clone`, method: 'POST', body: undefined });
+    f.mockClear();
+    await cloneEndpoint('x', { suffix: 'new' });
+    expect(call()).toMatchObject({ url: `${BASE}/endpoints/x/clone`, method: 'POST', body: '{"suffix":"new"}' });
   });
   it('rotates with and without a body, encoding the id', async () => {
     await rotateEndpoint('a/b');
