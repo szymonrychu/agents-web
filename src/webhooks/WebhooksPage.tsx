@@ -10,8 +10,8 @@ import { FormError, usePoll } from '../triggers'
 import { listEndpoints, listEvents } from './api'
 import type { EndpointView, EventView } from './api'
 import type { EndpointCreated } from './api'
-import { CreateEndpointDialog } from './CreateEndpointDialog'
 import { CredentialsDialog } from './CredentialsDialog'
+import { EndpointFormDialog } from './EndpointFormDialog'
 import { EndpointsList } from './EndpointsList'
 import { EventsTable } from './EventsTable'
 
@@ -77,10 +77,11 @@ export function WebhooksPage({ onBack }: WebhooksPageProps) {
         </Box>
         <EndpointsList refreshKey={refreshKey} onChanged={refresh} onCreate={() => setCreating(true)} />
       </Box>
-      <CreateEndpointDialog
+      <EndpointFormDialog
         open={creating}
+        mode="create"
         onClose={() => setCreating(false)}
-        onCreated={(created) => { setCreating(false); setCredentials(created); refresh() }}
+        onDone={(created) => { setCreating(false); setCredentials(created); refresh() }}
       />
       <CredentialsDialog endpoint={credentials} onClose={() => setCredentials(null)} />
       <Box sx={{ display: 'flex', gap: 2 }}>

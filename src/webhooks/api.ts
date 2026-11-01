@@ -7,6 +7,8 @@ type S = components['schemas'];
 export type EndpointView = S['EndpointView'];
 export type EndpointIn = S['EndpointIn'];
 export type EndpointCreated = S['EndpointCreated'];
+export type EndpointPatch = S['EndpointPatch'];
+export type CloneIn = S['CloneIn'];
 export type RotateIn = S['RotateIn'];
 export type EventView = S['EventView'];
 export type EventDetail = S['EventDetail'];
@@ -21,9 +23,15 @@ const id = encodeURIComponent;
 const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('webhooks'), method, path, body);
 
 export const listEndpoints = () => req<EndpointView[]>('GET', '/endpoints');
-/** The answer carries the one-time password; it is never shown again. */
+/** The answer carries the one-time password or secret; it is never shown again. */
 export const createEndpoint = (body: EndpointIn) => req<EndpointCreated>('POST', '/endpoints', body);
-/** Issues a new one-time password for the endpoint. */
+/** Changes every field except the secret; the answer carries a new secret only when `auth_mode` changed. */
+export const patchEndpoint = (endpointId: string, body: EndpointPatch) =>
+  req<EndpointCreated>('PATCH', `/endpoints/${id(endpointId)}`, body);
+/** Copies the config into a new endpoint with a new id, suffix and one-time secret. */
+export const cloneEndpoint = (endpointId: string, body?: CloneIn) =>
+  req<EndpointCreated>('POST', `/endpoints/${id(endpointId)}/clone`, body);
+/** Issues a new one-time secret (or password in basic mode) for the endpoint. */
 export const rotateEndpoint = (endpointId: string, body?: RotateIn) =>
   req<EndpointCreated>('POST', `/endpoints/${id(endpointId)}/rotate`, body);
 /** Replaces the endpoint's allow/deny filters wholesale. */

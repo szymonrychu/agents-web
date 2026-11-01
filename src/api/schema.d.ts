@@ -575,6 +575,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/presets/{preset}/secrets/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Preset Secret
+         * @description Set the value of a protected variable (a new version). The value is never echoed.
+         */
+        put: operations["set_preset_secret_api_v1_presets__preset__secrets__name__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions": {
         parameters: {
             query?: never;
@@ -796,6 +816,26 @@ export interface paths {
         put?: never;
         /** Post Message */
         post: operations["post_message_api_v1_sessions__session_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restart Session
+         * @description One restart command per live agent of the session, all in one transaction.
+         */
+        post: operations["restart_session_api_v1_sessions__session_id__restart_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1173,7 +1213,7 @@ export interface components {
             preset_id?: string | null;
             /** Slug */
             slug?: string | null;
-            spec?: components["schemas"]["SessionSpec"] | null;
+            spec?: components["schemas"]["SessionSpecIn"] | null;
         };
         /**
          * CreateTerminal
@@ -1189,6 +1229,30 @@ export interface components {
         DeleteArchives: {
             /** Keys */
             keys: string[];
+        };
+        EnvVar: {
+            [key: string]: unknown;
+        };
+        /**
+         * EnvVarIn
+         * @description The request form of an env variable: a protected one may carry its new value.
+         *
+         *     Only the api sees it; `SessionSpecIn.split` moves the value out so a `SessionSpec` never holds
+         *     one. Without a value a protected variable keeps its stored one.
+         */
+        EnvVarIn: {
+            /**
+             * Expand
+             * @default false
+             */
+            expand: boolean;
+            /**
+             * Protected
+             * @default false
+             */
+            protected: boolean;
+            /** Value */
+            value?: string | null;
         };
         /** EventView */
         EventView: {
@@ -1750,7 +1814,7 @@ export interface components {
              *       "workdir": "workdir"
              *     }
              */
-            spec: components["schemas"]["SessionSpec"];
+            spec: components["schemas"]["SessionSpecIn"];
         };
         /** PresetView */
         PresetView: {
@@ -1844,6 +1908,34 @@ export interface components {
             session_id: string;
         };
         /**
+         * SecretIn
+         * @description The new value of one protected variable; it is never echoed.
+         */
+        SecretIn: {
+            /**
+             * Value
+             * Format: password
+             */
+            value: string;
+        };
+        /**
+         * SecretView
+         * @description Metadata of a protected variable's stored value; the value is never returned.
+         */
+        SecretView: {
+            /** Name */
+            name: string;
+            /** Set */
+            set: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /**
          * SessionBackup
          * @description What a discard would save now; each flag is true only when that save would really run.
          *
@@ -1891,6 +1983,11 @@ export interface components {
             /** Sessions */
             sessions: components["schemas"]["SessionPeer"][];
         };
+        /** SessionRestartAccepted */
+        SessionRestartAccepted: {
+            /** Command Ids */
+            command_ids: number[];
+        };
         /** SessionSpec */
         SessionSpec: {
             /** Any Mcp Config */
@@ -1913,7 +2010,85 @@ export interface components {
              * @default {}
              */
             env: {
-                [key: string]: string;
+                [key: string]: components["schemas"]["EnvVar"];
+            };
+            /** Image */
+            image?: string | null;
+            /**
+             * Init Scripts
+             * @default []
+             */
+            init_scripts: string[];
+            /** Kube Access */
+            kube_access?: boolean | null;
+            /** Leader Lease Seconds */
+            leader_lease_seconds?: number | null;
+            /**
+             * Max Attempts
+             * @default 5
+             */
+            max_attempts: number;
+            /** Max Replicas */
+            max_replicas?: number | null;
+            /** Model */
+            model?: string | null;
+            /**
+             * Peers
+             * @default true
+             */
+            peers: boolean;
+            /** Pvc Size */
+            pvc_size?: string | null;
+            /**
+             * Replicas
+             * @default 1
+             */
+            replicas: number;
+            resources?: components["schemas"]["Resources"] | null;
+            /** Reuse Running Agent */
+            reuse_running_agent?: boolean | null;
+            /** Session Messaging */
+            session_messaging?: boolean | null;
+            /** Start Prompt */
+            start_prompt?: string | null;
+            /**
+             * Static
+             * @default false
+             */
+            static: boolean;
+            /**
+             * Workdir
+             * @default workdir
+             */
+            workdir: string;
+            wrapper?: components["schemas"]["WrapperSettings"] | null;
+        };
+        /**
+         * SessionSpecIn
+         * @description A spec as the api receives it: protected variables may carry a value (`EnvVarIn`).
+         */
+        SessionSpecIn: {
+            /** Any Mcp Config */
+            any_mcp_config?: {
+                [key: string]: unknown;
+            } | null;
+            /** Any Mcp Sources */
+            any_mcp_sources?: string[] | null;
+            /** Auto Compact Pct */
+            auto_compact_pct?: number | null;
+            /** Autoclose After Seconds */
+            autoclose_after_seconds?: number | null;
+            cache?: components["schemas"]["WorkspaceCache"] | null;
+            /** Discard Hook Url */
+            discard_hook_url?: string | null;
+            /** Effort */
+            effort?: string | null;
+            /**
+             * Env
+             * @default {}
+             */
+            env: {
+                [key: string]: components["schemas"]["EnvVarIn"];
             };
             /** Image */
             image?: string | null;
@@ -3540,6 +3715,42 @@ export interface operations {
             };
         };
     };
+    set_preset_secret_api_v1_presets__preset__secrets__name__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preset: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecretIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_sessions_api_v1_sessions_get: {
         parameters: {
             query?: never;
@@ -4098,6 +4309,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restart_session_api_v1_sessions__session_id__restart_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRestartAccepted"];
                 };
             };
             /** @description Validation Error */
