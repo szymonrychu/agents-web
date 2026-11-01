@@ -865,52 +865,94 @@ describe('PresetForm', () => {
     expect(screen.queryByText('Not configured on this orchestrator')).toBeNull()
   })
 
-  test('saves an empty cache when enabled without a key', { timeout: 15000 }, async () => {
+  const previewReply = (rendered: string | null, error: { line: number | null; message: string } | null = null) => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered, error, variables: ['preset_name'] }), { status: 200 }))
+    vi.stubGlobal('fetch', f)
+    return f
+  }
+  const previewOf = async (label: string) => {
+    await userEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: 'Preview' }))
+  }
+
+  test('saves an empty cache when enabled with derived keys', { timeout: 15000 }, async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
     expect(screen.getByText('Workspace cache')).toBeTruthy()
     expect(field('Cache the workspace in S3').checked).toBe(false)
-    expect(field('Cache key').placeholder).toBe('derived from the preset')
-    expect(screen.getByText('Same key, same cache: sessions sharing a key share the workspace (last save wins)')).toBeTruthy()
     await replace('Name', 'c')
     await userEvent.click(field('Cache the workspace in S3'))
     expect(field('Cache the workspace in S3').checked).toBe(true)
+    expect(field('Derive the keys from the preset').checked).toBe(true)
+    expect(screen.queryByRole('group', { name: 'Restore key' })).toBeNull()
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', spec: { cache: {} } })
   })
 
-  test('saves the cache key and excludes', { timeout: 15000 }, async () => {
-    api.createPreset.mockResolvedValue(preset())
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    await replace('Name', 'c')
-    await userEvent.click(field('Cache the workspace in S3'))
-    await paste('Cache key', 'shared.repo-1')
-    await paste('Exclude (one glob per line)', 'node_modules/**\n\n  dist/*  \n')
-    await userEvent.click(button('Create'))
-    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ cache: { key: 'shared.repo-1', exclude: ['node_modules/**', 'dist/*'] } })
+  test('two key editors on the archive_name surface, both keys saved and no old key', { timeout: 30000 }, async () => {
+    const f = previewReply('team/fast/')
+    try {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await replace('Name', 'c')
+      await userEvent.click(field('Cache the workspace in S3'))
+      await userEvent.click(field('Derive the keys from the preset'))
+      await setEditorText('Restore key', 'team/{{ preset_name }}/')
+      await setEditorText('Save key', 'team/{{ preset_name }}/{{ now }}')
+      await userEvent.click(within(screen.getByRole('group', { name: 'Restore key' })).getByRole('button', { name: 'Preview' }))
+      await waitFor(() => expect(within(screen.getByRole('group', { name: 'Restore key' })).getByTestId('template-rendered').textContent).toBe('team/fast/'))
+      expect(JSON.parse(f.mock.calls.find((c) => String(c[0]).endsWith('/templates/preview'))?.[1].body)).toEqual({ template: 'team/{{ preset_name }}/', surface: 'archive_name' })
+      expect(screen.getByText('Restores the newest archive under this prefix')).toBeTruthy()
+      await paste('Exclude (one glob per line)', 'node_modules/**\n\n  dist/*  \n')
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+      const cache = api.createPreset.mock.calls[0][0].spec.cache
+      expect(cache).toEqual({ restore_key: 'team/{{ preset_name }}/', save_key: 'team/{{ preset_name }}/{{ now }}', exclude: ['node_modules/**', 'dist/*'] })
+      expect(cache).not.toHaveProperty('key')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
-  test('rejects an invalid cache key', { timeout: 30000 }, async () => {
+  test('an empty save key says restore only, an empty restore key says fresh start', { timeout: 30000 }, async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.click(field('Cache the workspace in S3'))
+    await userEvent.click(field('Derive the keys from the preset'))
+    expect(screen.getByText('Empty: restore only, nothing is saved')).toBeTruthy()
+    expect(screen.getByText('Empty: fresh start, nothing is restored')).toBeTruthy()
+    await setEditorText('Save key', 'out')
+    await waitFor(() => expect(screen.queryByText('Empty: restore only, nothing is saved')).toBeNull())
+  })
+
+  test('an invalid key template shows the preview error line', { timeout: 30000 }, async () => {
+    previewReply(null, { line: 1, message: 'unexpected end of template' })
+    try {
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await userEvent.click(field('Cache the workspace in S3'))
+      await userEvent.click(field('Derive the keys from the preset'))
+      await setEditorText('Save key', '{{ now')
+      await previewOf('Save key')
+      await waitFor(() => expect(within(screen.getByRole('group', { name: 'Save key' })).getByText(/unexpected end of template/)).toBeTruthy())
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('rejects a key longer than 256 characters and keeps excludes validated', { timeout: 30000 }, async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'c')
     await userEvent.click(field('Cache the workspace in S3'))
-    const keyMessage = "Cache key: lowercase letters, digits, '.', '_' and '-', at most 63"
-    for (const bad of ['Upper', '-lead', 'a b', 'x'.repeat(64)]) {
-      await replace('Cache key', bad)
-      expect(screen.getByText(keyMessage)).toBeTruthy()
-      expect(button('Create').disabled).toBe(true)
-    }
-    await replace('Cache key', 'preset-abc')
-    expect(screen.getByText('cache.key prefix preset- is reserved for preset-derived keys')).toBeTruthy()
+    await userEvent.click(field('Derive the keys from the preset'))
+    await setEditorText('Restore key', 'x'.repeat(257))
+    await waitFor(() => expect(screen.getByText('Restore key: at most 256 characters')).toBeTruthy())
     expect(button('Create').disabled).toBe(true)
-    await replace('Cache key', 'ok')
-    expect(screen.queryByText(keyMessage)).toBeNull()
-    expect(button('Create').disabled).toBe(false)
+    await setEditorText('Restore key', 'ok')
+    await waitFor(() => expect(button('Create').disabled).toBe(false))
     const cases: [string, string][] = [
       ['/abs', "Exclude line 1: must be relative with no '..' segment"],
       ['a/../b', "Exclude line 1: must be relative with no '..' segment"],
@@ -925,21 +967,16 @@ describe('PresetForm', () => {
     }
     await replace('Exclude (one glob per line)', 'fine/**')
     expect(button('Create').disabled).toBe(false)
-    await replace('Cache key', 'BAD')
-    expect(button('Create').disabled).toBe(true)
     await userEvent.click(field('Cache the workspace in S3'))
-    expect(field('Cache key').disabled).toBe(true)
     expect(button('Create').disabled).toBe(false)
     expect(api.createPreset).not.toHaveBeenCalled()
   })
 
-  test('shows the server message for a reserved cache key', { timeout: 15000 }, async () => {
-    const message = 'cache.key prefix preset- is reserved for preset-derived keys'
+  test('shows the server message when a save is refused', { timeout: 15000 }, async () => {
+    const message = 'cache.restore_key prefix preset- is reserved for preset-derived keys'
     api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'invalid', message))
-    wrap(<PresetForm open preset={preset({ spec: { cache: { key: 'preset-0123456789abcdef', exclude: [] } } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open preset={preset({ spec: { cache: { restore_key: 'preset-0123456789abcdef', save_key: 'preset-0123456789abcdef', exclude: [] } } as PresetView['spec'] })} {...noop} />)
     await ready()
-    expect(field('Cache key').value).toBe('preset-0123456789abcdef')
-    expect(screen.queryByText(message)).toBeNull()
     expect(button('Save').disabled).toBe(false)
     await userEvent.click(button('Save'))
     expect((await screen.findByRole('alert')).textContent).toBe(message)
@@ -951,7 +988,7 @@ describe('PresetForm', () => {
     await ready()
     expect(screen.getByText('Workspace cache is not configured on the orchestrator')).toBeTruthy()
     expect(field('Cache the workspace in S3').disabled).toBe(true)
-    expect(field('Cache key').disabled).toBe(true)
+    expect(field('Derive the keys from the preset').disabled).toBe(true)
     expect(field('Exclude (one glob per line)').disabled).toBe(true)
     cleanup()
     api.getMeta.mockResolvedValue(meta())
@@ -962,12 +999,15 @@ describe('PresetForm', () => {
   })
 
   test('loads a stored cache', { timeout: 15000 }, async () => {
-    const stored = { cache: { key: 'team-a', exclude: ['node_modules/**', '*.log'] } }
+    const stored = { cache: { restore_key: 'team-a/', save_key: '', exclude: ['node_modules/**', '*.log'] } }
     api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open preset={preset({ spec: stored as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(field('Cache the workspace in S3').checked).toBe(true)
-    expect(field('Cache key').value).toBe('team-a')
+    expect(field('Derive the keys from the preset').checked).toBe(false)
+    expect(await editorText('Restore key')).toBe('team-a/')
+    expect(await editorText('Save key')).toBe('')
+    expect(screen.getByText('Empty: restore only, nothing is saved')).toBeTruthy()
     expect(field('Exclude (one glob per line)').value).toBe('node_modules/**\n*.log')
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
@@ -977,7 +1017,7 @@ describe('PresetForm', () => {
     wrap(<PresetForm open preset={preset({ spec: { cache: { exclude: [] } } as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(field('Cache the workspace in S3').checked).toBe(true)
-    expect(field('Cache key').value).toBe('')
+    expect(field('Derive the keys from the preset').checked).toBe(true)
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ cache: {} })
@@ -993,7 +1033,7 @@ describe('PresetForm', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('cache')
     cleanup()
-    wrap(<PresetForm open preset={preset({ spec: { replicas: 2, cache: { key: 'team-a', exclude: [] } } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open preset={preset({ spec: { replicas: 2, cache: { restore_key: 'team-a', save_key: 'team-a', exclude: [] } } as PresetView['spec'] })} {...noop} />)
     await ready()
     await userEvent.click(field('Cache the workspace in S3'))
     await userEvent.click(button('Save'))
@@ -1001,12 +1041,12 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
   })
 
-  test('a copy drops a preset-derived cache key', { timeout: 15000 }, async () => {
+  test('a copy drops preset-derived cache keys', { timeout: 15000 }, async () => {
     api.createPreset.mockResolvedValue(preset())
-    wrap(<PresetForm open copyOf={preset({ spec: { cache: { key: 'preset-0123456789abcdef', exclude: ['a'] } } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open copyOf={preset({ spec: { cache: { restore_key: 'preset-0123456789abcdef', save_key: 'preset-0123456789abcdef', exclude: ['a'] } } as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(field('Cache the workspace in S3').checked).toBe(true)
-    expect(field('Cache key').value).toBe('')
+    expect(field('Derive the keys from the preset').checked).toBe(true)
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec).toEqual({ cache: { exclude: ['a'] } })
