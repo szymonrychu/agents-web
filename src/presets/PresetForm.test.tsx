@@ -57,6 +57,8 @@ const pick = async (label: string, option: string) => {
 }
 
 
+const plain = (value: string) => ({ value, protected: false, expand: false })
+
 const noop = { onClose: vi.fn(), onSaved: vi.fn() }
 const optionTexts = () => screen.getAllByRole('option').map((o) => o.textContent)
 
@@ -120,7 +122,7 @@ describe('PresetForm', () => {
     expect(api.createPreset).toHaveBeenLastCalledWith({
       name: 'Fast 1',
       spec: {
-        replicas: 3, model: 'sonnet', peers: false, env: { FOO: 'bar' },
+        replicas: 3, model: 'sonnet', peers: false, env: { FOO: plain('bar') },
         resources: { requests: { cpu: '500m', memory: '1Gi' }, limits: { cpu: '4', memory: '4Gi' } },
       },
     })
@@ -128,7 +130,7 @@ describe('PresetForm', () => {
   })
 
   test('edit_round_trips_stored_fields', async () => {
-    const stored = { replicas: 2, model: 'opus', env: { A: 'b' }, pvc_size: '20Gi', workdir: 'work', image: 'reg/custom:1' }
+    const stored = { replicas: 2, model: 'opus', env: { A: plain('b') }, pvc_size: '20Gi', workdir: 'work', image: 'reg/custom:1' }
     api.updatePreset.mockResolvedValue(preset({ spec: stored }))
     wrap(<PresetForm open preset={preset({ spec: stored })} {...noop} />)
     await ready()
@@ -273,7 +275,7 @@ describe('PresetForm', () => {
 
     test('applying merges pairs, replaces in place, appends in order and submits them', async () => {
       api.updatePreset.mockResolvedValue(preset())
-      wrap(<PresetForm open preset={preset({ spec: { env: { A: 'old', B: 'keep' } } })} {...noop} />)
+      wrap(<PresetForm open preset={preset({ spec: { env: { A: plain('old'), B: plain('keep') } } })} {...noop} />)
       await ready()
       await openPaste('C=3\nA=new\n# note\nD=4\n')
       await userEvent.click(button('Apply'))
@@ -285,7 +287,7 @@ describe('PresetForm', () => {
       expect(field('Env key 4').value).toBe('D')
       await userEvent.click(button('Save'))
       await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
-      expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ A: 'new', B: 'keep', C: '3', D: '4' })
+      expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ A: plain('new'), B: plain('keep'), C: plain('3'), D: plain('4') })
     })
 
     test('a pasted key replaces only the first of duplicate rows', async () => {
@@ -313,7 +315,7 @@ describe('PresetForm', () => {
       await userEvent.click(button('Apply'))
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', spec: { env: { X: '1' } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', spec: { env: { X: plain('1') } } })
     })
 
     test('drops empty rows on a merge', async () => {
@@ -327,7 +329,7 @@ describe('PresetForm', () => {
     })
 
     test('an invalid line applies nothing and lists every error', async () => {
-      wrap(<PresetForm open preset={preset({ spec: { env: { A: 'old' } } })} {...noop} />)
+      wrap(<PresetForm open preset={preset({ spec: { env: { A: plain('old') } } })} {...noop} />)
       await ready()
       await openPaste('A=new\nbroken\nB="x')
       await userEvent.click(button('Apply'))
@@ -349,7 +351,7 @@ describe('PresetForm', () => {
     })
 
     test('cancel closes, clears and leaves rows unchanged', async () => {
-      wrap(<PresetForm open preset={preset({ spec: { env: { A: 'old' } } })} {...noop} />)
+      wrap(<PresetForm open preset={preset({ spec: { env: { A: plain('old') } } })} {...noop} />)
       await ready()
       await openPaste('A=new')
       await userEvent.click(within(screen.getByRole('group', { name: 'Paste .env' })).getByRole('button', { name: 'Cancel' }))
@@ -400,17 +402,17 @@ describe('PresetForm', () => {
       expect(button('Create').disabled).toBe(false)
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', spec: { env: { FOO: '1', API_TOKEN: 'secret' } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', spec: { env: { FOO: plain('1'), API_TOKEN: plain('secret') } } })
     })
 
     test('Save applies a pending paste', async () => {
       api.updatePreset.mockResolvedValue(preset())
-      wrap(<PresetForm open preset={preset({ spec: { env: { A: 'old', B: 'keep' } } })} {...noop} />)
+      wrap(<PresetForm open preset={preset({ spec: { env: { A: plain('old'), B: plain('keep') } } })} {...noop} />)
       await ready()
       await openPaste('C=3\nA=new')
       await userEvent.click(button('Save'))
       await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
-      expect(Object.entries(api.updatePreset.mock.calls[0][1].spec.env)).toEqual([['A', 'new'], ['B', 'keep'], ['C', '3']])
+      expect(Object.entries(api.updatePreset.mock.calls[0][1].spec.env)).toEqual([['A', plain('new')], ['B', plain('keep')], ['C', plain('3')]])
       expect(api.createPreset).not.toHaveBeenCalled()
     })
 
