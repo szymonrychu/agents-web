@@ -17,17 +17,18 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
+import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
-import { createPreset, getMeta, updatePreset } from '../api/client'
+import { createPreset, getMeta, setPresetSecret, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
 import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
 import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
-import type { SessionSpec, Meta, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
+import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, envRow, envValueError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 
 export interface PresetFormProps {
@@ -84,8 +85,11 @@ function mergePaste(text: string, current: EnvRow[]): PasteMerge {
   const rows = current.map((r) => ({ ...r }))
   for (const pair of pairs) {
     const existing = rows.find((r) => r.key === pair.key)
-    if (existing) existing.value = pair.value
-    else rows.push({ ...pair })
+    if (existing) {
+      existing.value = pair.value
+      if (existing.protected) existing.replacing = true
+    }
+    else rows.push(envRow(pair.key, pair.value))
   }
   return { errors: null, rows: rows.filter((r) => r.key !== '' || r.value !== '') }
 }
@@ -169,7 +173,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       multiline={extra.multiline}
     />
   )
-  const setEnv = (index: number, patch: Partial<{ key: string; value: string }>) => set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  const setEnv = (index: number, patch: Partial<EnvRow>) => set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
 
   const closePaste = () => {
     setPasteText(null)
@@ -209,7 +213,12 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setBusy(true)
     setServerError(null)
     try {
-      const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as SessionSpec }
+      if (preset) {
+        // a saved preset takes a replaced protected value through the secret route, so the spec update never carries it
+        for (const r of env.filter((r) => r.protected && r.stored && r.replacing)) await setPresetSecret(preset.id, r.key, r.value)
+        env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
+      }
+      const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
       setServerError(e instanceof Error ? e.message : String(e))
@@ -250,14 +259,44 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('pvcSize', 'PVC size')}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {values.env.map((row, i) => (
-              <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(errors.env?.[i])} helperText={errors.env?.[i]} fullWidth />
-                <TextField size="small" label={`Env value ${i + 1}`} value={row.value} onChange={(e) => setEnv(i, { value: e.target.value })} fullWidth />
-                <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
+              <Box key={i} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {row.legacy && (
+                  <Alert severity="warning" variant="outlined">
+                    {row.key || `Variable ${i + 1}`} is stored in the old plain-string format, which the server no longer accepts. Saving converts it to a plain variable.
+                  </Alert>
+                )}
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env)} fullWidth sx={{ flex: '1 1 12rem' }} />
+                  {row.stored && !row.replacing ? (
+                    <Box sx={{ flex: '1 1 12rem', display: 'flex', alignItems: 'center', gap: 1, minHeight: 40 }}>
+                      <Typography variant="body2">{row.isSet ? `set, updated ${row.updatedAt ?? 'unknown'}` : 'unset'}</Typography>
+                      <Button size="small" aria-label={`Replace value ${i + 1}`} onClick={() => setEnv(i, { replacing: true, value: '' })}>Replace value</Button>
+                    </Box>
+                  ) : (
+                    <Box sx={{ flex: '1 1 12rem', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <TextField
+                        size="small"
+                        label={row.stored ? `New value ${i + 1}` : `Env value ${i + 1}`}
+                        type={row.protected ? 'password' : 'text'}
+                        autoComplete="off"
+                        value={row.value}
+                        onChange={(e) => setEnv(i, { value: e.target.value })}
+                        error={Boolean(envValueError(row))}
+                        helperText={envValueError(row)}
+                        fullWidth
+                      />
+                      {row.stored && <Button size="small" aria-label={`Cancel replace ${i + 1}`} onClick={() => setEnv(i, { replacing: false, value: '' })}>Cancel</Button>}
+                    </Box>
+                  )}
+                  <FormControlLabel control={<Switch size="small" checked={row.protected} disabled={row.stored} onChange={(e) => setEnv(i, { protected: e.target.checked, expand: e.target.checked ? false : row.expand })} slotProps={{ input: { 'aria-label': `Protected ${i + 1}` } }} />} label="Protected" />
+                  <FormControlLabel control={<Switch size="small" checked={row.expand} disabled={row.protected} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
+                  {!row.protected && <Button size="small" aria-label={`Mark protected ${i + 1}`} onClick={() => setEnv(i, { protected: true, expand: false })}>Mark protected</Button>}
+                  <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
+                </Box>
               </Box>
             ))}
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" onClick={() => set('env', [...values.env, { key: '', value: '' }])}>Add env</Button>
+              <Button size="small" onClick={() => set('env', [...values.env, envRow()])}>Add env</Button>
               <Button size="small" onClick={() => setPasteText('')} disabled={pasteText !== null}>Paste .env</Button>
             </Box>
             {pasteText !== null && (
