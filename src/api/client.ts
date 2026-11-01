@@ -94,6 +94,9 @@ export const listPresets = () => request<PresetView[]>('GET', '/presets');
 export const getPreset = (presetId: string) => request<PresetView>('GET', `/presets/${id(presetId)}`);
 export const createPreset = (body: PresetIn) => request<PresetView>('POST', '/presets', body);
 export const updatePreset = (presetId: string, body: PresetIn) => request<PresetView>('PUT', `/presets/${id(presetId)}`, body);
+/** Sets one protected variable of a saved preset (a new version); the response is metadata only. */
+export const setPresetSecret = (presetId: string, name: string, value: string) =>
+  request<S['SecretView']>('PUT', `/presets/${id(presetId)}/secrets/${id(name)}`, { value });
 export const deletePreset = (presetId: string) => request<void>('DELETE', `/presets/${id(presetId)}`);
 /** Copies a preset; the server names the copy when `body.name` is absent. */
 export const copyPreset = (presetId: string, body?: CopyPreset) => request<PresetView>('POST', `/presets/${id(presetId)}/copy`, body);

@@ -1,12 +1,42 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
 import type { SessionSpec, Meta } from '../api/client'
+import type { components } from '../api/schema'
+
+type EnvVarIn = components['schemas']['EnvVarIn']
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import { pluginSourceError } from '../presets/pluginSource'
 
+/**
+ * One env variable, GitLab CI style. A protected variable is write-only: `stored` marks one that came from the server
+ * (it holds no value here, only `isSet`/`updatedAt`), `replacing` means the user is typing a new value, and a protected
+ * row that is neither stored nor replacing is a plain row just marked protected, whose `value` is sent once.
+ */
 export interface EnvRow {
   key: string
   value: string
+  protected: boolean
+  expand: boolean
+  /** Protected row read from the server: its value is never shown. */
+  stored: boolean
+  isSet: boolean
+  updatedAt: string | null
+  /** A stored protected row whose value is being replaced; `value` holds the new one. */
+  replacing: boolean
+  /** The stored entry was an old plain string, which the server no longer accepts. */
+  legacy: boolean
+}
+
+export const envRow = (key = '', value = ''): EnvRow => ({ key, value, protected: false, expand: false, stored: false, isSet: false, updatedAt: null, replacing: false, legacy: false })
+
+/** Whether the row sends a value on save (a plain row always; a protected one only when new or replacing). */
+export const sendsValue = (r: EnvRow): boolean => !r.protected || !r.stored || r.replacing
+
+function envRowFromStored(key: string, entry: unknown): EnvRow {
+  if (typeof entry === 'string') return { ...envRow(key, entry), legacy: true }
+  const e = (entry ?? {}) as { value?: unknown; protected?: unknown; expand?: unknown; set?: unknown; updated_at?: unknown }
+  if (e.protected === true) return { ...envRow(key), protected: true, stored: true, isSet: e.set === true, updatedAt: typeof e.updated_at === 'string' ? e.updated_at : null }
+  return { ...envRow(key, typeof e.value === 'string' ? e.value : ''), expand: e.expand === true }
 }
 
 export interface FormValues {
@@ -153,7 +183,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   text('workdir', 'workdir', spec.workdir)
   text('pvcSize', 'pvcSize', spec.pvc_size)
   if (spec.env) {
-    values.env = Object.entries(spec.env).map(([key, value]) => ({ key, value }))
+    values.env = Object.entries(spec.env).map(([key, entry]) => envRowFromStored(key, entry))
     setKeys.add('env')
   }
   if (spec.any_mcp_config) {
@@ -253,6 +283,11 @@ const intIn = (text: string, min: number, max: number, what: string): string | u
   return n < min || n > max ? `${what} must be ${min} to ${max}` : undefined
 }
 
+/** Error for the value of a row that must send one (a protected variable cannot be saved empty). */
+export function envValueError(r: EnvRow): string | undefined {
+  return r.protected && sendsValue(r) && r.value === '' ? 'A protected variable needs a value' : undefined
+}
+
 export function envKeyError(key: string, all: EnvRow[]): string | undefined {
   if (key === '') return 'Key is required'
   if (!ENV_NAME.test(key)) return 'Key may hold letters, digits and underscores only'
@@ -347,7 +382,7 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
     const problems = validateHooks(JSON.parse(v.hooks) as Hooks, meta.hook_events)
     if (problems.length > 0) e.hooks = problems.map((p) => `${p.path}: ${p.message}`).join('; ')
   }
-  const envErrors = v.env.map((r) => envKeyError(r.key, v.env))
+  const envErrors = v.env.map((r) => envKeyError(r.key, v.env) ?? envValueError(r))
   if (envErrors.some(Boolean)) e.env = envErrors
   const scriptErrors = initScriptErrors(v.initScripts)
   if (scriptErrors) e.initScripts = scriptErrors
@@ -392,7 +427,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('peers')) spec.peers = v.peers
   if (setKeys.has('workdir')) spec.workdir = str(v.workdir)
   if (setKeys.has('pvcSize')) spec.pvc_size = str(v.pvcSize)
-  if (setKeys.has('env') && v.env.length > 0) spec.env = Object.fromEntries(v.env.map((r) => [r.key, r.value]))
+  if (setKeys.has('env') && v.env.length > 0) spec.env = Object.fromEntries(v.env.map((r) => [r.key, envEntry(r)]))
   if (setKeys.has('anyMcp') && v.anyMcp.trim() !== '') spec.any_mcp_config = JSON.parse(v.anyMcp) as Record<string, unknown>
   if (setKeys.has('anyMcpSources') && v.anyMcpSources.length > 0) spec.any_mcp_sources = v.anyMcpSources.map((s) => s.trim())
   if (setKeys.has('initScripts')) spec.init_scripts = [...v.initScripts]
@@ -418,6 +453,12 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<SessionSpec>
+}
+
+/** The request form of a row: protected never carries expand, and carries a value only when it sends one. */
+function envEntry(r: EnvRow): EnvVarIn {
+  if (!r.protected) return { value: r.value, protected: false, expand: r.expand }
+  return sendsValue(r) ? { protected: true, expand: false, value: r.value } : { protected: true, expand: false }
 }
 
 /** The sparse wrapper settings object: only set, non-empty fields. */
