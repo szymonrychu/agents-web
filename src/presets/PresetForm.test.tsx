@@ -607,7 +607,8 @@ describe('PresetForm', () => {
     await userEvent.click(button('Raw JSON'))
     await paste('Hooks JSON', '{"onTurn":[{"type":"command","run":"echo"}]}')
     await paste('MCP servers', '{"s":{"type":"http","url":"http://x"}}')
-    await paste('Plugins', '{"install":[]}')
+    await userEvent.click(button('Plugins raw JSON'))
+    await paste('Plugins JSON', '{"install":[]}')
     await userEvent.click(screen.getByRole('combobox', { name: 'Agent commands' }))
     await userEvent.click(screen.getByRole('option', { name: 'compact' }))
     await userEvent.click(screen.getByRole('option', { name: 'mcp' }))
@@ -640,6 +641,35 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual(spec)
   })
 
+  test('plugins editor round trips through the form', { timeout: 30000 }, async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'plug')
+    await userEvent.click(button('Add marketplace'))
+    await replace('Marketplace name 1', 'acme')
+    await replace('Marketplace repo 1', 'acme/tools')
+    await userEvent.click(button('Add install'))
+    await replace('Install plugin 1', 'jira')
+    await userEvent.selectOptions(screen.getByLabelText('Install marketplace 1'), 'acme')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+    const spec = api.createPreset.mock.calls[0][0].spec
+    expect(spec.wrapper.plugins).toEqual({ marketplaces: [{ name: 'acme', source: 'acme/tools' }], install: [{ plugin: 'jira@acme' }] })
+    cleanup()
+    wrap(<PresetForm open preset={preset({ spec })} {...noop} />)
+    await ready()
+    expect((field('Marketplace name 1')).value).toBe('acme')
+    expect((field('Install plugin 1')).value).toBe('jira')
+  })
+
+  test('unlisted install marketplace blocks save', { timeout: 30000 }, async () => {
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { plugins: { install: [{ plugin: 'p@gone' }] } } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(screen.getByText(/marketplace "gone" is not listed/)).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+  })
+
   test('config validation', { timeout: 30000 }, async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -647,7 +677,8 @@ describe('PresetForm', () => {
     expect(screen.queryByLabelText('Leader lease seconds')).toBeNull()
     await replace('Max replicas', '2')
     expect(screen.getByLabelText('Leader lease seconds')).toBeTruthy()
-    for (const label of ['MCP servers', 'Plugins']) {
+    await userEvent.click(button('Plugins raw JSON'))
+    for (const label of ['MCP servers', 'Plugins JSON']) {
       await paste(label, '{nope')
       expect(screen.getByText(/valid JSON/)).toBeTruthy()
       expect(button('Create').disabled).toBe(true)
