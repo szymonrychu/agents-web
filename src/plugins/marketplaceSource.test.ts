@@ -33,4 +33,17 @@ describe('marketplaceSource', () => {
     expect(sourceError({ kind: 'url', value: 'x', ref: '' })).toMatch(/http/)
     expect(sourceError({ kind: 'directory', value: '', ref: '' })).toMatch(/required/)
   })
+  test('rejects a github: prefix and other non owner/repo strings, accepts what Claude Code accepts', async () => {
+    const { sourceError, parseSource: parse } = await import('./marketplaceSource')
+    const bad = ['github:owner/repo', 'owner', 'owner/', '/repo', 'a/b/c', 'a b/c', 'owner/repo.git:x']
+    for (const v of bad) expect(sourceError({ kind: 'github', value: v, ref: '' }), v).toMatch(/owner\/repo/)
+    for (const v of ['owner/repo', 'my-org/my_repo.v2']) expect(sourceError({ kind: 'github', value: v, ref: '' }), v).toBeNull()
+    for (const v of ['https://host/a/b.git', 'ssh://git@host/a/b.git', 'git://host/a/b', 'git@host:a/b.git']) expect(sourceError({ kind: 'git', value: v, ref: '' }), v).toBeNull()
+    expect(sourceError({ kind: 'git', value: 'github:owner/repo', ref: '' })).toMatch(/git URL/)
+    for (const v of ['./m', '../m', '/abs/m', '~/m']) expect(sourceError({ kind: 'directory', value: v, ref: '' }), v).toBeNull()
+    expect(sourceError({ kind: 'directory', value: 'github:owner/repo', ref: '' })).toMatch(/path/)
+    expect(sourceError({ kind: 'directory', value: 'rel/dir', ref: '' })).toMatch(/path/)
+    // a stored bad string stays visible as invalid instead of being reinterpreted
+    expect(sourceError(parse('github:owner/repo'))).not.toBeNull()
+  })
 })
