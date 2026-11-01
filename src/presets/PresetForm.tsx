@@ -212,16 +212,20 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     }
     setBusy(true)
     setServerError(null)
+    let secretsSaved = false
     try {
       if (preset) {
         // a saved preset takes a replaced protected value through the secret route, so the spec update never carries it
-        for (const r of env.filter((r) => r.protected && r.stored && r.replacing)) await setPresetSecret(preset.id, r.key, r.value)
+        for (const r of env.filter((r) => r.protected && r.stored && r.replacing)) {
+          await setPresetSecret(preset.id, r.key, r.value)
+          secretsSaved = true
+        }
         env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
       }
       const body = { name: values.name, spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'] }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
-      setServerError(e instanceof Error ? e.message : String(e))
+      setServerError((e instanceof Error ? e.message : String(e)) + (secretsSaved ? ' (a replaced protected value was already saved)' : ''))
     } finally {
       setBusy(false)
     }
@@ -266,7 +270,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                   </Alert>
                 )}
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env)} fullWidth sx={{ flex: '1 1 12rem' }} />
+                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env) ?? (row.stored && copyOf ? 'Protected value not copied' : undefined)} disabled={row.stored} fullWidth sx={{ flex: '1 1 12rem' }} />
                   {row.stored && !row.replacing ? (
                     <Box sx={{ flex: '1 1 12rem', display: 'flex', alignItems: 'center', gap: 1, minHeight: 40 }}>
                       <Typography variant="body2">{row.isSet ? `set, updated ${row.updatedAt ?? 'unknown'}` : 'unset'}</Typography>

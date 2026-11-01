@@ -193,4 +193,28 @@ describe('env variables: protected and expand', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ X: { value: '1', protected: false, expand: false } })
   })
+
+  test('the key of a stored protected row cannot be renamed', async () => {
+    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
+    await ready()
+    expect(field('Env key 1').disabled).toBe(true)
+  })
+
+  test('a copy says protected values are not copied', async () => {
+    wrap(<PresetForm open copyOf={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
+    await ready()
+    expect(screen.getByText(/not copied/)).toBeTruthy()
+  })
+
+  test('a failed spec save after a secret was stored says so', async () => {
+    api.setPresetSecret.mockResolvedValue({})
+    api.updatePreset.mockRejectedValue(new Error('boom'))
+    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Replace value 1'))
+    await type('New value 1', MARK)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(screen.getByText(/boom/)).toBeTruthy())
+    expect(screen.getByText(/already saved/)).toBeTruthy()
+  })
 })

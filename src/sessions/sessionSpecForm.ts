@@ -1,5 +1,8 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
 import type { SessionSpec, Meta } from '../api/client'
+import type { components } from '../api/schema'
+
+type EnvVarIn = components['schemas']['EnvVarIn']
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import { pluginSourceError } from '../presets/pluginSource'
@@ -453,7 +456,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
 }
 
 /** The request form of a row: protected never carries expand, and carries a value only when it sends one. */
-function envEntry(r: EnvRow): Record<string, unknown> {
+function envEntry(r: EnvRow): EnvVarIn {
   if (!r.protected) return { value: r.value, protected: false, expand: r.expand }
   return sendsValue(r) ? { protected: true, expand: false, value: r.value } : { protected: true, expand: false }
 }
