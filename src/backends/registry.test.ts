@@ -27,11 +27,11 @@ describe('menuEntries', () => {
   })
 
   test('default_orchestrator_has_sessions_at_10_and_presets_at_40', () => {
-    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['sessions', 10], ['presets', 40]])
+    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['sessions', 10], ['presets', 40], ['backups', 45]])
   })
 
   test('webhooks_sits_between_sessions_and_presets_only_when_configured', () => {
-    expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).toEqual(['sessions', 'webhooks', 'presets'])
+    expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).toEqual(['sessions', 'webhooks', 'presets', 'backups'])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('webhooks')
   })
 
@@ -41,6 +41,7 @@ describe('menuEntries', () => {
       ['webhooks', 20],
       ['schedules', 30],
       ['presets', 40],
+      ['backups', 45],
     ])
   })
 
@@ -64,6 +65,7 @@ describe('menuEntries', () => {
       ['schedules', 30],
       ['chats', 35],
       ['presets', 40],
+      ['backups', 45],
     ])
     expect(menuEntries(config('orchestrator', 'schedules')).map((e) => e.id)).not.toContain('chats')
     const chats = menuEntries(config('matrix')).find((e) => e.id === 'chats')
@@ -77,18 +79,18 @@ describe('menuEntries', () => {
 
   test('filters_by_configured_backends', () => {
     BACKEND_MENUS.extra = [entry('x', 'Extra', 5, 'extra')]
-    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['sessions', 'presets'])
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'sessions', 'presets'])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['sessions', 'presets', 'backups'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'sessions', 'presets', 'backups'])
   })
 
   test('orders_by_order_then_label', () => {
     BACKEND_MENUS.extra = [entry('b', 'Beta', 40, 'extra'), entry('a', 'Alpha', 40, 'extra'), entry('z', 'Zed', 1, 'extra')]
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'sessions', 'a', 'b', 'presets'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'sessions', 'a', 'b', 'presets', 'backups'])
   })
 
   test('warns_once_for_unregistered_id', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['sessions', 'presets'])
+    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['sessions', 'presets', 'backups'])
     expect(warn).toHaveBeenCalledTimes(1)
     expect(String(warn.mock.calls[0][0])).toContain('other')
   })

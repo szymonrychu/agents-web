@@ -53,11 +53,12 @@ const hooksOf = (text: string): Hooks | null => {
 
 const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
 
-/** The copy's spec: a preset-derived cache key belongs to the source, the copy derives its own. */
+/** The copy's spec: preset-derived cache keys belong to the source, the copy derives its own. */
 function copiedSpec(source: PresetView): Partial<SessionSpec> {
   const spec = stored(source)
-  if (!spec.cache?.key?.startsWith(CACHE_KEY_RESERVED_PREFIX)) return spec
-  return { ...spec, cache: { ...spec.cache, key: null } }
+  const { restore_key: restore, save_key: save } = spec.cache ?? {}
+  if (!restore?.startsWith(CACHE_KEY_RESERVED_PREFIX) && !save?.startsWith(CACHE_KEY_RESERVED_PREFIX)) return spec
+  return { ...spec, cache: { ...spec.cache, restore_key: null, save_key: null, exclude: spec.cache?.exclude ?? [] } }
 }
 
 type PasteMerge = { errors: string[] } | { errors: null; rows: EnvRow[] | null }
@@ -126,8 +127,15 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     }
   }, [source])
 
-  const errors = validate(values, meta, stored(preset).cache?.key)
+  const errors = validate(values, meta)
   const cacheAvailable = meta?.cache.available === true
+  // the restore key's last rendered preview, kept with its template so a stale one never shows
+  const [restoreRendered, setRestoreRendered] = useState<{ template: string; rendered: string } | null>(null)
+  const previewRestoreKey = async (template: string) => {
+    const result = await previewFor('archive_name')(template)
+    setRestoreRendered(result.rendered === null ? null : { template, rendered: result.rendered })
+    return result
+  }
   const kubeAccessAvailable = meta?.kube_access.available === true
   const invalid = Object.keys(errors).length > 0 || hooksInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
@@ -322,18 +330,22 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <FormLabel component="legend">Workspace cache</FormLabel>
             <FormControlLabel control={<Switch checked={values.cacheEnabled} onChange={(e) => set('cacheEnabled', e.target.checked)} />} label="Cache the workspace in S3" disabled={!cacheAvailable} />
             {meta && !cacheAvailable && <FormHelperText>Workspace cache is not configured on the orchestrator</FormHelperText>}
-            <TextField
-              size="small"
-              label="Cache key"
-              placeholder="derived from the preset"
-              value={values.cacheKey}
-              onChange={(e) => set('cacheKey', e.target.value)}
-              error={Boolean(errors.cacheKey)}
-              helperText={errors.cacheKey ?? 'Same key, same cache: sessions sharing a key share the workspace (last save wins)'}
-              disabled={!cacheAvailable || !values.cacheEnabled}
-              fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
+            <FormControlLabel control={<Switch checked={values.cacheDerive} onChange={(e) => set('cacheDerive', e.target.checked)} />} label="Derive the keys from the preset" disabled={!cacheAvailable || !values.cacheEnabled} />
+            {values.cacheEnabled && !values.cacheDerive && (
+              <>
+                <Box>
+                  <TemplateEditor label="Restore key" value={values.cacheRestoreKey} onChange={(v) => set('cacheRestoreKey', v)} preview={previewRestoreKey} disabled={!cacheAvailable} />
+                  {errors.cacheRestoreKey && <FormHelperText error>{errors.cacheRestoreKey}</FormHelperText>}
+                  {values.cacheRestoreKey === '' && <FormHelperText>Empty: fresh start, nothing is restored</FormHelperText>}
+                  {restoreRendered?.template === values.cacheRestoreKey && restoreRendered.rendered.endsWith('/') && <FormHelperText>Restores the newest archive under this prefix</FormHelperText>}
+                </Box>
+                <Box>
+                  <TemplateEditor label="Save key" value={values.cacheSaveKey} onChange={(v) => set('cacheSaveKey', v)} preview={previewFor('archive_name')} disabled={!cacheAvailable} />
+                  {errors.cacheSaveKey && <FormHelperText error>{errors.cacheSaveKey}</FormHelperText>}
+                  {values.cacheSaveKey === '' && <FormHelperText>Empty: restore only, nothing is saved</FormHelperText>}
+                </Box>
+              </>
+            )}
             <TextField
               size="small"
               label="Exclude (one glob per line)"

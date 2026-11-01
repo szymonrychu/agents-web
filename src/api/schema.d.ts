@@ -383,6 +383,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cache/archives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Archives */
+        get: operations["list_archives_api_v1_cache_archives_get"];
+        put?: never;
+        post?: never;
+        /** Delete Archives */
+        delete: operations["delete_archives_api_v1_cache_archives_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/archives/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Archive */
+        get: operations["download_archive_api_v1_cache_archives_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/cleanup/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cleanup Preview */
+        get: operations["cleanup_preview_api_v1_cache_cleanup_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/checks/{check_id}": {
         parameters: {
             query?: never;
@@ -888,6 +940,56 @@ export interface components {
             /** State */
             state: string;
         };
+        /** ArchiveDeleteError */
+        ArchiveDeleteError: {
+            /** Code */
+            code: string;
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+        };
+        /** ArchiveDeleteResult */
+        ArchiveDeleteResult: {
+            /** Deleted */
+            deleted: string[];
+            /** Errors */
+            errors: components["schemas"]["ArchiveDeleteError"][];
+            /** Refused */
+            refused: components["schemas"]["ArchiveRefusal"][];
+        };
+        /** ArchivePage */
+        ArchivePage: {
+            /** Items */
+            items: components["schemas"]["ArchiveView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ArchiveRefusal */
+        ArchiveRefusal: {
+            /** Key */
+            key: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ArchiveView */
+        ArchiveView: {
+            /** Key */
+            key: string;
+            /**
+             * Last Modified
+             * Format: date-time
+             */
+            last_modified: string;
+            /** Name */
+            name: string;
+            /** Protected */
+            protected: boolean;
+            /** Referenced By */
+            referenced_by: string[];
+            /** Size */
+            size: number;
+        };
         /** AutoCompact */
         AutoCompact: {
             /** Idle Seconds */
@@ -941,6 +1043,38 @@ export interface components {
             started_at: string | null;
             /** Status */
             status: string;
+        };
+        /** CleanupItem */
+        CleanupItem: {
+            /** Key */
+            key: string;
+            /** Reason */
+            reason: string;
+            /** Size */
+            size: number;
+        };
+        /** CleanupPreview */
+        CleanupPreview: {
+            /** Count */
+            count: number;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /** Keep Newest */
+            keep_newest: number;
+            /** Last Sweep */
+            last_sweep: {
+                [key: string]: unknown;
+            } | null;
+            /** Retention Days */
+            retention_days: number;
+            /** Sweep Dry Run */
+            sweep_dry_run: boolean;
+            /** Sweep Enabled */
+            sweep_enabled: boolean;
+            /** Total Bytes */
+            total_bytes: number;
+            /** Would Delete */
+            would_delete: components["schemas"]["CleanupItem"][];
         };
         /** CommandAccepted */
         CommandAccepted: {
@@ -1020,6 +1154,11 @@ export interface components {
             cols?: number | null;
             /** Rows */
             rows?: number | null;
+        };
+        /** DeleteArchives */
+        DeleteArchives: {
+            /** Keys */
+            keys: string[];
         };
         /** EventView */
         EventView: {
@@ -1626,7 +1765,7 @@ export interface components {
              * Surface
              * @enum {string}
              */
-            surface: "web_chat_start" | "preset_text" | "init_script";
+            surface: "web_chat_start" | "preset_text" | "init_script" | "archive_name";
             /** Template */
             template: string;
         };
@@ -1972,15 +2111,24 @@ export interface components {
             /** When */
             when?: ("busy" | "always") | null;
         };
-        /** WorkspaceCache */
+        /**
+         * WorkspaceCache
+         * @description `restore_key` and `save_key` are Jinja templates (surface `archive_name`).
+         *
+         *     None is unset: a preset-derived session gets `default_cache_key` for both when both are None.
+         *     An empty string is explicit: empty `restore_key` is a fresh start, empty `save_key` is
+         *     restore-only. A restore_key ending in `/` restores the newest archive under that prefix.
+         */
         WorkspaceCache: {
             /**
              * Exclude
              * @default []
              */
             exclude: string[];
-            /** Key */
-            key?: string | null;
+            /** Restore Key */
+            restore_key?: string | null;
+            /** Save Key */
+            save_key?: string | null;
         };
         /**
          * WrapperSettings
@@ -2883,6 +3031,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_archives_api_v1_cache_archives_get: {
+        parameters: {
+            query?: {
+                prefix?: string;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_archives_api_v1_cache_archives_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteArchives"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchiveDeleteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_archive_api_v1_cache_archives_download_get: {
+        parameters: {
+            query: {
+                key: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cleanup_preview_api_v1_cache_cleanup_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
                 };
             };
         };
