@@ -1,6 +1,6 @@
 /**
  * Structured editor for a session spec's `wrapper.plugins`: a marketplaces list, an install list (plugin, marketplace
- * picked from the listed ones plus the built-in claude-plugins-official, scope, required), an optional disable list,
+ * picked from the listed ones plus the built-in claude-plugins-official, scope, required),
  * and a Raw JSON mode over the same value. `value` null is "unset"; an edit that leaves nothing sets it back to null.
  * Inline errors are reported through `onInvalid` so the form can block Save, as HooksEditor does.
  */
@@ -21,8 +21,7 @@ import { SOURCE_KINDS, formatSource, parseSource, sourceError, type SourceKind, 
 type Plugins = components['schemas']['Plugins']
 type Marketplace = components['schemas']['Marketplace']
 type PluginInstall = components['schemas']['PluginInstall']
-/** The generated Plugins type plus the wrapper's `disable` list. */
-export type PluginsValue = Plugins & { disable?: string[] | null }
+export type PluginsValue = Plugins
 
 export const BUILT_IN_MARKETPLACE = 'claude-plugins-official'
 const SCOPES = ['user', 'project', 'local'] as const
@@ -43,9 +42,9 @@ const splitPlugin = (plugin: string) => {
 }
 
 /** `value` with the given lists replaced; empty lists are dropped and an empty result is null. */
-function build(value: PluginsValue | null, patch: { marketplaces?: Marketplace[]; install?: PluginInstall[]; disable?: string[] }): PluginsValue | null {
+function build(value: PluginsValue | null, patch: { marketplaces?: Marketplace[]; install?: PluginInstall[] }): PluginsValue | null {
   const next: Record<string, unknown> = { ...value, ...patch }
-  for (const key of ['marketplaces', 'install', 'disable']) {
+  for (const key of ['marketplaces', 'install']) {
     if (Array.isArray(next[key]) && (next[key] as unknown[]).length === 0) delete next[key]
   }
   return Object.keys(next).length === 0 ? null : (next as PluginsValue)
@@ -79,7 +78,6 @@ function Section({ title, addLabel, onAdd, children }: { title: string; addLabel
 function FormEditor({ value, onChange, onInvalid }: { value: PluginsValue | null; onChange: (v: PluginsValue | null) => void; onInvalid: (m: string | null) => void }): JSX.Element {
   const [rows, setRows] = useState<MarketRow[]>(() => (value?.marketplaces ?? []).map(toRow))
   const install = value?.install ?? []
-  const disable = value?.disable ?? []
   const listed = rows.map((r) => r.name).filter((n) => n !== '')
   const known = [BUILT_IN_MARKETPLACE, ...listed.filter((n) => n !== BUILT_IN_MARKETPLACE)]
 
@@ -90,8 +88,7 @@ function FormEditor({ value, onChange, onInvalid }: { value: PluginsValue | null
     if (!known.includes(market)) return `marketplace "${market}" is not listed`
     return null
   })
-  const disableErrors = disable.map((d) => (/^[^@\s]+@[^@\s]+$/.test(d) ? null : 'must look like name@marketplace'))
-  const first = [...marketErrors, ...installErrors, ...disableErrors].find((e) => e !== null) ?? null
+  const first = [...marketErrors, ...installErrors].find((e) => e !== null) ?? null
   useEffect(() => onInvalid(first), [first, onInvalid])
 
   const setRowsAndEmit = (next: MarketRow[]) => {
@@ -101,7 +98,6 @@ function FormEditor({ value, onChange, onInvalid }: { value: PluginsValue | null
   const patchRow = (i: number, patch: Partial<MarketRow>) => setRowsAndEmit(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const setInstall = (next: PluginInstall[]) => onChange(build(value, { install: next }))
   const patchInstall = (i: number, patch: Partial<PluginInstall>) => setInstall(install.map((p, j) => (j === i ? { ...p, ...patch } : p)))
-  const setDisable = (next: string[]) => onChange(build(value, { disable: next }))
   const err = (m: string | null | undefined) => (m ? <FormHelperText error>{m}</FormHelperText> : null)
 
   return (
@@ -155,14 +151,6 @@ function FormEditor({ value, onChange, onInvalid }: { value: PluginsValue | null
             </Box>
           )
         })}
-      </Section>
-      <Section title="Disable" addLabel="Add disable" onAdd={() => setDisable([...disable, ''])}>
-        {disable.map((d, i) => (
-          <Box key={i} sx={row}>
-            <TextField size="small" label={`Disable plugin ${i + 1}`} placeholder="name@marketplace" value={d} error={disableErrors[i] !== null && d !== ''} helperText={d !== '' ? disableErrors[i] : undefined} onChange={(e) => setDisable(disable.map((x, j) => (j === i ? e.target.value : x)))} fullWidth />
-            <IconButton size="small" aria-label={`Remove disable ${i + 1}`} onClick={() => setDisable(disable.filter((_, j) => j !== i))}>x</IconButton>
-          </Box>
-        ))}
       </Section>
     </Box>
   )

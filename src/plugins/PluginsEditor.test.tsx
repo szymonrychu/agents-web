@@ -79,15 +79,6 @@ describe('PluginsEditor', () => {
     expect(last).toBeNull()
   })
 
-  test('disable list', async () => {
-    mount(null)
-    await click('Add disable')
-    await type('Disable plugin 1', 'x@y')
-    expect(last).toEqual({ disable: ['x@y'] })
-    await click('Remove disable 1')
-    expect(last).toBeNull()
-  })
-
   test('reports validation problems through onInvalid', async () => {
     mount({ marketplaces: [{ name: 'acme', source: 'acme/tools' }], install: [{ plugin: 'p@gone' }] })
     expect(screen.getByText(/marketplace "gone" is not listed/)).toBeTruthy()
