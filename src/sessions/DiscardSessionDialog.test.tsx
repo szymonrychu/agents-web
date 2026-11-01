@@ -68,12 +68,30 @@ describe('DiscardSessionDialog', () => {
     expect(screen.queryByText(/exported to/)).toBeNull()
   })
 
+  test('shows the rendered save target from the status, and the template before it is rendered', () => {
+    const backup = { workdir: true, transcripts: false, reason: 'restore_running', last_transcripts_backup: null }
+    const cache = { restore_key: 'team/', save_key: 'team/{{ now }}', exclude: [] }
+    wrap(<DiscardSessionDialog open session={{ ...existing({ cache }, backup), status: { cache: { save_resolved: 'p/team/20261101T120000Z' } } }} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files.*saved to the S3 cache as p\/team\/20261101T120000Z/)).toBeTruthy()
+    cleanup()
+    wrap(<DiscardSessionDialog open session={existing({ cache }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files.*saved to the S3 cache as team\/\{\{ now \}\} \(rendered when it is saved\)/)).toBeTruthy()
+  })
+
+  test('a restore-only cache says nothing is saved and lists the workspace files as deleted', () => {
+    const backup = { workdir: true, transcripts: false, reason: 'restore_running', last_transcripts_backup: null }
+    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Restore-only cache: nothing is saved to it')).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Backed up' })).toBeNull()
+    expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/The workspace files/)).toBeTruthy()
+  })
+
   test('states what is backed up when the session cache is configured', () => {
     const backup = { workdir: true, transcripts: true, reason: null, last_transcripts_backup: { finished_at: '2026-10-27T10:00:00Z', bytes: 2048 } }
     wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'my-key', save_key: 'my-key', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     const deleted = within(screen.getByRole('list', { name: 'Deleted' }))
     const saved = within(screen.getByRole('list', { name: 'Backed up' }))
-    expect(saved.getByText(/Workspace files.*S3 cache under the key my-key.*restored when a session with the same slug is created/)).toBeTruthy()
+    expect(saved.getByText(/Workspace files.*S3 cache as my-key.*restored when a session with the same slug is created/)).toBeTruthy()
     expect(saved.getByText(/Claude transcripts.*S3 cache.*restored when a session with the same slug is created/)).toBeTruthy()
     expect(screen.getByText(/last transcripts backup finished/i).textContent).toMatch(/2 KB/)
     expect(deleted.getByText(/The agents/)).toBeTruthy()

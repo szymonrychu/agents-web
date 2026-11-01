@@ -89,17 +89,24 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
 
   const target = hookTarget(session, meta)
   const { backup } = session
-  const nothingSaved = !backup.workdir && !backup.transcripts
+  const cache = session.spec.cache
+  const resolved = (session.status.cache as { save_resolved?: unknown } | undefined)?.save_resolved
+  const saveResolved = typeof resolved === 'string' && resolved !== '' ? resolved : null
+  // an explicit empty save_key is a restore-only cache, unless a save already resolved
+  const restoreOnly = saveResolved === null && cache?.save_key === ''
+  const workdirSaved = backup.workdir && !restoreOnly
+  const nothingSaved = !workdirSaved && !backup.transcripts
+  const saveTarget = saveResolved ?? (cache?.save_key ? `${cache.save_key} (rendered when it is saved)` : '(the key derived from the preset)')
   const deleted = [
     'The agents',
     'The workspace PVC',
     "The session's whole chat history (messages, events, turns, commands, checks)",
     ...(backup.transcripts ? [] : ['The Claude transcripts']),
-    ...(backup.workdir ? [] : ['The workspace files']),
+    ...(workdirSaved ? [] : ['The workspace files']),
   ]
   const restored = 'restored when a session with the same slug is created'
   const saved = [
-    ...(backup.workdir ? [`Workspace files: saved to the S3 cache under the key ${session.spec.cache?.save_key || session.spec.cache?.restore_key || '(the session cache key)'}, ${restored}`] : []),
+    ...(workdirSaved ? [`Workspace files: saved to the S3 cache as ${saveTarget}, ${restored}`] : []),
     ...(backup.transcripts ? [`Claude transcripts: saved to the S3 cache, ${restored}`] : []),
   ]
   const lastBackup = backup.last_transcripts_backup
@@ -127,10 +134,11 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
     >
       <ItemList label="Deleted" items={deleted} />
       {saved.length > 0 && <ItemList label="Backed up" items={saved} />}
+      {restoreOnly && <Typography sx={{ mt: 2 }}>Restore-only cache: nothing is saved to it</Typography>}
       {nothingSaved && <Typography sx={{ mt: 2 }}>{`Nothing is backed up: ${backupReasonText(backup.reason)}.`}</Typography>}
       {!nothingSaved && backup.reason !== null && (
         <Typography sx={{ mt: 2 }}>
-          {`The ${backup.workdir ? 'chat history (Claude transcripts) is' : 'workspace files are'} not backed up: ${backupReasonText(backup.reason)}.`}
+          {`The ${workdirSaved ? 'chat history (Claude transcripts) is' : 'workspace files are'} not backed up: ${backupReasonText(backup.reason)}.`}
         </Typography>
       )}
       {backup.transcripts && lastBackup && (
