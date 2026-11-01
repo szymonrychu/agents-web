@@ -453,9 +453,11 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  const fiveHour = setKeys.has('quotaFiveHour') ? int(v.quotaFiveHour) : undefined
+  const sevenDay = setKeys.has('quotaSevenDay') ? int(v.quotaSevenDay) : undefined
   const quota = {
-    ...(setKeys.has('quotaFiveHour') && int(v.quotaFiveHour) !== undefined && { five_hour_pct: int(v.quotaFiveHour) }),
-    ...(setKeys.has('quotaSevenDay') && int(v.quotaSevenDay) !== undefined && { seven_day_pct: int(v.quotaSevenDay) }),
+    ...(fiveHour !== undefined && { five_hour_pct: fiveHour }),
+    ...(sevenDay !== undefined && { seven_day_pct: sevenDay }),
   }
   if (Object.keys(quota).length > 0) spec.usage_quota = quota
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent

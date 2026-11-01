@@ -896,6 +896,20 @@ describe('PresetForm', () => {
     expect(screen.getByText('Empty uses the default (100%)')).toBeTruthy()
   })
 
+  test('usage quota: the refusal helper says it only applies when the usage gate is configured', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByText(/refused at or above this percent of the window, 1 to 100, when the usage gate is configured/)).toBeTruthy()
+    cleanup()
+
+    api.getMeta.mockResolvedValue(meta({ usage: { configured: true, quota_default_pct: 90 } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByText('Empty uses the default (90%)')).toBeTruthy())
+    expect(screen.queryByText(/when the usage gate is configured/)).toBeNull()
+    expect(screen.getByText('Starting or growing a session is refused at or above this percent of the window, 1 to 100')).toBeTruthy()
+  })
+
   test('usage quota: 0 and 101 show "1 to 100" and block save', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()

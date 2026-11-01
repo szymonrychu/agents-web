@@ -377,7 +377,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
               {text('quotaFiveHour', '5-hour quota percent')}
               {text('quotaSevenDay', 'Weekly quota percent')}
             </Box>
-            <FormHelperText>Starting or growing a session is refused at or above this percent of the window, 1 to 100</FormHelperText>
+            <FormHelperText>{`Starting or growing a session is refused at or above this percent of the window, 1 to 100${meta?.usage.configured ? '' : ', when the usage gate is configured'}`}</FormHelperText>
             {meta && <FormHelperText>{`Empty uses the default (${meta.usage.quota_default_pct}%)`}</FormHelperText>}
           </Box>
           <Box>
