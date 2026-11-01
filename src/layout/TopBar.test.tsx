@@ -16,7 +16,7 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), settingsCategories: [], ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), settingsCategories: [], ...over }
   render(<ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider>)
   return props
 }
@@ -63,10 +63,18 @@ describe('TopBar', () => {
     const { onDiscard } = setup()
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Discard'])
+    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
     expect(screen.queryByText('Edit')).toBeNull()
-    fireEvent.click(items[1])
+    fireEvent.click(items[2])
     expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('permissions menu item calls onPermissions', () => {
+    const { onPermissions, onInitScripts } = setup()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Permissions' }))
+    expect(onPermissions).toHaveBeenCalledWith(SESSIONS[0].session)
+    expect(onInitScripts).not.toHaveBeenCalled()
   })
 
   test('init scripts menu item calls onInitScripts', () => {

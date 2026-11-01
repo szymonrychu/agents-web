@@ -93,7 +93,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
               </Box>
             )}
             {issue !== null && (
-              <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: issue.kind === 'bootstrap_failure' ? 'error.main' : TOKENS.attention, flexShrink: 0 }}>
+              <Box component="span" sx={{ fontSize: TOKENS.fontSizes.xs, color: issue.kind === 'bootstrap_failure' ? 'error.main' : issue.kind === 'permission_unavailable' ? 'warning.main' : TOKENS.attention, flexShrink: 0 }}>
                 {issue.text}
               </Box>
             )}

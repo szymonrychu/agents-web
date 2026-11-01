@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import { ChatView } from './chat/ChatView'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
+import { PermissionModeDialog } from './sessions/PermissionModeDialog'
 import { NewSessionDialog } from './sessions/NewSessionDialog'
 import { FilesPanel } from './files/FilesPanel'
 import type { SessionView } from './api/client'
@@ -25,6 +26,7 @@ export default function App() {
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
+  const [permissions, setPermissions] = useState<SessionView | null>(null)
   // The first session by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.sessions ? state.selectedId : (sessions[0]?.session.id ?? null)
   const selected = selectedId === null ? null : state.sessions[selectedId]
@@ -43,6 +45,7 @@ export default function App() {
         onSelect={show}
         onNew={() => setCreating(true)}
         onInitScripts={setInitScripts}
+        onPermissions={setPermissions}
         onDiscard={setDiscarding}
         onDismiss={dismiss}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
@@ -75,6 +78,7 @@ export default function App() {
       </Box>
       <NewSessionDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
       {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
+      {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
     </Box>
   )

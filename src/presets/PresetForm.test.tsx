@@ -21,7 +21,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const preset = (o: Partial<PresetView> = {}): PresetView =>
   ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec: {}, ...o }) as PresetView
@@ -836,6 +836,35 @@ describe('PresetForm', () => {
     const spec = api.createPreset.mock.calls[0][0].spec
     expect(spec).not.toHaveProperty('session_messaging')
     expect(spec).not.toHaveProperty('kube_access')
+  })
+
+  test('permission mode switch: options from meta, unset shows Allow all, untouched is left out', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByRole('combobox', { name: 'Permission mode' }).textContent).toBe('Allow all')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Permission mode' }))
+    expect(optionTexts()).toEqual(['Allow all', 'Auto'])
+    await userEvent.keyboard('{Escape}')
+    await replace('Name', 'pm')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('wrapper')
+  })
+
+  test('permission mode change is sent as wrapper.permission_mode and round-trips', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'pm')
+    await pick('Permission mode', 'Auto')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ wrapper: { permission_mode: 'auto' } })
+    cleanup()
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { permission_mode: 'auto' } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(screen.getByRole('combobox', { name: 'Permission mode' }).textContent).toBe('Auto')
   })
 
   test('session options save and round-trip', async () => {

@@ -154,6 +154,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     return result
   }
   const kubeAccessAvailable = meta?.kube_access.available === true
+  const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
   const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
@@ -370,6 +371,14 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('hookUrl', 'Pre-discard webhook URL')}
           {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
+          <Box>
+            <TextField select size="small" label="Permission mode" value={values.permissionMode || 'bypassPermissions'} onChange={(e) => set('permissionMode', e.target.value)} fullWidth>
+              {permissionModes.map((o) => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </TextField>
+            <FormHelperText>Allow all runs every action; Auto has a classifier review actions, safer for sessions that read untrusted text</FormHelperText>
+          </Box>
           <Box>
             <FormControlLabel control={<Switch checked={values.reuseRunningAgent} onChange={(e) => set('reuseRunningAgent', e.target.checked)} />} label="Reuse running agent" />
             <FormHelperText>Webhook and schedule events for the same item go to the agent still running for it instead of starting a new one</FormHelperText>

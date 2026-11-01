@@ -41,7 +41,7 @@ function setViewport(width: number) {
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
-  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
+  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
 })
 const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
   ({ backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
@@ -49,7 +49,7 @@ const agent = (id: string, ordinal: number): AgentView => ({
   context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', attention: null, bootstrap: null, bootstrap_failure: null,
 })
 const meta = (): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: false, max_bytes: 0 }, kube_access: { available: false }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], cache: { available: false, max_bytes: 0 }, kube_access: { available: false }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -302,7 +302,7 @@ describe('App', () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Discard'])
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
     expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
   })

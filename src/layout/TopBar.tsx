@@ -32,6 +32,7 @@ export interface TopBarProps {
   onSelect: (id: string) => void
   onNew: () => void
   onInitScripts: (session: SessionView) => void
+  onPermissions: (session: SessionView) => void
   onDiscard: (session: SessionView) => void
   /** Removes a discarded session's tab. */
   onDismiss: (id: string) => void
@@ -43,7 +44,7 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onDiscard, onDismiss, settingsCategories }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, settingsCategories }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [actions, setActions] = useState<ActionsMenu | null>(null)
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
@@ -109,6 +110,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
       <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={onNew} sx={{ flexShrink: 0 }}>New session</Button>
       <Menu anchorEl={actions?.anchor ?? null} open={actions !== null} onClose={() => setActions(null)}>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>
+        <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onPermissions(target) }}>Permissions</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onDiscard(target) }}>Discard</MenuItem>
       </Menu>
       <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} />
