@@ -25,6 +25,7 @@ import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
 import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
+import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetView } from '../api/client'
 import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
@@ -46,6 +47,15 @@ const hooksOf = (text: string): Hooks | null => {
   try {
     const v: unknown = JSON.parse(text)
     return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Hooks) : null
+  } catch {
+    return null
+  }
+}
+
+const pluginsOf = (text: string): PluginsValue | null => {
+  try {
+    const v: unknown = JSON.parse(text)
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as PluginsValue) : null
   } catch {
     return null
   }
@@ -93,6 +103,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
+  const [pluginsInvalid, setPluginsInvalid] = useState(false)
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteErrors, setPasteErrors] = useState<string[]>([])
   const touched = useRef(new Set<keyof FormValues>())
@@ -137,7 +148,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     return result
   }
   const kubeAccessAvailable = meta?.kube_access.available === true
-  const invalid = Object.keys(errors).length > 0 || hooksInvalid
+  const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
       touched.current.add(key)
@@ -145,7 +156,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -391,7 +402,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             </Box>
           )}
           {text('mcpServers', 'MCP servers', { multiline: true })}
-          {text('plugins', 'Plugins', { multiline: true })}
+          <PluginsEditor value={pluginsOf(values.plugins)} onChange={(v) => set('plugins', v === null ? '' : JSON.stringify(v, null, 2))} onInvalid={(m) => setPluginsInvalid(m !== null)} />
         </Box>
       </DialogContent>
       <DialogActions>
