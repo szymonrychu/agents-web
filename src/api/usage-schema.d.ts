@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Healthz */
+        get: operations["healthz_healthz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readyz */
+        get: operations["readyz_readyz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/usage/v1/current": {
         parameters: {
             query?: never;
@@ -11,8 +45,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Current windows */
-        get: operations["get_current"];
+        /** Current */
+        get: operations["current_usage_v1_current_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -28,10 +62,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Usage history */
-        get: operations["get_history"];
+        /** History */
+        get: operations["history_usage_v1_history_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/usage/v1/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Sample */
+        post: operations["post_sample_usage_v1_samples_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -45,8 +96,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Session marks */
-        get: operations["get_sessions"];
+        /** Sessions */
+        get: operations["sessions_usage_v1_sessions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -61,9 +112,7 @@ export interface components {
     schemas: {
         /** CurrentView */
         CurrentView: {
-            /** Last Probe */
             last_probe: components["schemas"]["LastProbeView"] | null;
-            /** Last Sample */
             last_sample: components["schemas"]["LastSampleView"] | null;
             /** Windows */
             windows: {
@@ -120,7 +169,10 @@ export interface components {
              */
             at: string;
         };
-        /** MarkView */
+        /**
+         * MarkView
+         * @description One session: `ended_at` is null while it is open (clients run it to now).
+         */
         MarkView: {
             /** Ended At */
             ended_at: string | null;
@@ -165,6 +217,26 @@ export interface components {
              */
             source: "statusline" | "probe";
         };
+        /**
+         * SampleIn
+         * @description What the wrapper of an agent pod posts: its statusLine `rate_limits` as received.
+         */
+        SampleIn: {
+            /**
+             * Agent
+             * @default null
+             */
+            agent: string | null;
+            /**
+             * Cli Version
+             * @default null
+             */
+            cli_version: string | null;
+            /** Rate Limits */
+            rate_limits: {
+                [key: string]: unknown;
+            };
+        };
         /** SessionsView */
         SessionsView: {
             /**
@@ -182,7 +254,10 @@ export interface components {
             /** Truncated */
             truncated: boolean;
         };
-        /** WindowView */
+        /**
+         * WindowView
+         * @description The current reading of one metric: the highest percent of its newest window.
+         */
         WindowView: {
             /**
              * Observed At
@@ -213,7 +288,49 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_current: {
+    healthz_healthz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    readyz_readyz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    current_usage_v1_current_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -231,8 +348,17 @@ export interface operations {
                     "application/json": components["schemas"]["CurrentView"];
                 };
             };
-            /** @description Invalid request */
-            422: {
+            /** @description no or an unknown bearer token on the service or ingest listener (unauthorized) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description source address is not allowed on the UI listener (forbidden) */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -242,16 +368,12 @@ export interface operations {
             };
         };
     };
-    get_history: {
+    history_usage_v1_history_get: {
         parameters: {
             query?: {
-                /** @description Only this metric (five_hour, seven_day) */
-                metric?: string;
-                /** @description Start of the range (default: to minus 7 days) */
-                from?: string;
-                /** @description End of the range (default: now) */
-                to?: string;
-                /** @description Points per metric at most */
+                from?: string | null;
+                to?: string | null;
+                metric?: string | null;
                 max_points?: number;
             };
             header?: never;
@@ -269,7 +391,25 @@ export interface operations {
                     "application/json": components["schemas"]["HistoryView"];
                 };
             };
-            /** @description Invalid request */
+            /** @description no or an unknown bearer token on the service or ingest listener (unauthorized) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description source address is not allowed on the UI listener (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_windows) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -280,13 +420,67 @@ export interface operations {
             };
         };
     };
-    get_sessions: {
+    post_sample_usage_v1_samples_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleIn"];
+            };
+        };
+        responses: {
+            /** @description the sample was stored; the number of windows it held */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Windows */
+                        windows: number;
+                    };
+                };
+            };
+            /** @description no or an unknown bearer token on the service or ingest listener (unauthorized) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description body exceeds 8192 bytes (too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_windows) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sessions_usage_v1_sessions_get: {
         parameters: {
             query?: {
                 /** @description Start of the range (default: to minus 7 days) */
-                from?: string;
+                from?: string | null;
                 /** @description End of the range (default: now) */
-                to?: string;
+                to?: string | null;
                 /** @description Marks at most */
                 limit?: number;
             };
@@ -305,7 +499,25 @@ export interface operations {
                     "application/json": components["schemas"]["SessionsView"];
                 };
             };
-            /** @description Invalid request */
+            /** @description no or an unknown bearer token on the service or ingest listener (unauthorized) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description source address is not allowed on the UI listener (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_windows) */
             422: {
                 headers: {
                     [name: string]: unknown;
