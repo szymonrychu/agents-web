@@ -45,11 +45,51 @@ describe('UsagePage cards', () => {
     expect(c.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('22')
   })
 
+  test('marks only the stale card, with the time it was last seen', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { five_hour: win({ stale: true, observed_at: '2026-11-01T11:00:00Z' }), seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-five_hour')
+    const stale = within(card('five_hour'))
+    expect(stale.getByText('stale, last seen 1h ago')).toBeTruthy()
+    expect(stale.queryByText(/^observed/)).toBeNull()
+    expect(card('five_hour').dataset.stale).toBe('true')
+    const fresh = within(card('seven_day'))
+    expect(fresh.queryByText(/stale/)).toBeNull()
+    expect(fresh.getByText(/observed 2m ago/)).toBeTruthy()
+    expect(card('seven_day').dataset.stale).toBe('false')
+  })
+
   test('has no five_hour card when the window is absent', async () => {
     api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
     mount()
     await screen.findByTestId('usage-card-seven_day')
     expect(screen.queryByTestId('usage-card-five_hour')).toBeNull()
+  })
+
+  test('shows a "No 5-hour window reported" card next to the weekly card when five_hour is absent', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-seven_day')
+    const empty = within(screen.getByTestId('usage-empty-five_hour'))
+    expect(empty.getByText('5-hour window')).toBeTruthy()
+    expect(empty.getByText('No 5-hour window reported')).toBeTruthy()
+    expect(empty.queryByRole('progressbar')).toBeNull()
+    expect(within(card('seven_day')).getByText('22%')).toBeTruthy()
+  })
+
+  test('shows no empty-state card when five_hour is reported', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { five_hour: win(), seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-five_hour')
+    expect(screen.queryByTestId('usage-empty-five_hour')).toBeNull()
+    expect(screen.queryByText('No 5-hour window reported')).toBeNull()
+  })
+
+  test('shows the empty-state card only once the data has loaded', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    expect(screen.queryByTestId('usage-empty-five_hour')).toBeNull()
+    await screen.findByTestId('usage-empty-five_hour')
   })
 
   test('shows five_hour before seven_day', async () => {

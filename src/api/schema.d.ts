@@ -115,6 +115,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/history/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET history /sessions */
+        get: operations["admin_history_get_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/history/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET history /sessions/{session_id} */
+        get: operations["admin_history_get_sessions_session_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/history/sessions/{session_id}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET history /sessions/{session_id}/records */
+        get: operations["admin_history_get_sessions_session_id_records"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/presets": {
         parameters: {
             query?: never;
@@ -1038,6 +1089,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cache/cleanup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Cleanup Run */
+        post: operations["request_cleanup_run_api_v1_cache_cleanup_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/cleanup/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cleanup Settings */
+        get: operations["get_cleanup_settings_api_v1_cache_cleanup_settings_get"];
+        /** Put Cleanup Settings */
+        put: operations["put_cleanup_settings_api_v1_cache_cleanup_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/checks/{check_id}": {
         parameters: {
             query?: never;
@@ -1816,6 +1902,26 @@ export interface components {
             total_bytes: number;
             /** Would Delete */
             would_delete: components["schemas"]["CleanupItem"][];
+        };
+        /** CleanupSettingsView */
+        CleanupSettingsView: {
+            defaults: components["schemas"]["SweepPolicyView"];
+            /** Last Sweep */
+            last_sweep: {
+                [key: string]: unknown;
+            } | null;
+            policy: components["schemas"]["SweepPolicyView"];
+            /** Run Pending */
+            run_pending: boolean;
+            /** Run Requested At */
+            run_requested_at: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "database" | "environment";
+            /** Updated At */
+            updated_at: string | null;
         };
         /** CloseRequest */
         CloseRequest: {
@@ -3039,6 +3145,39 @@ export interface components {
             };
             summary: components["schemas"]["SessionSummary"];
         };
+        /**
+         * SweepPolicyIn
+         * @description The whole sweep policy; every field is required (a PUT replaces the saved policy).
+         */
+        SweepPolicyIn: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /** Interval Seconds */
+            interval_seconds: number;
+            /** Keep Newest */
+            keep_newest: number;
+            /** Retention Days */
+            retention_days: number;
+        };
+        /** SweepPolicyView */
+        SweepPolicyView: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /** Interval Seconds */
+            interval_seconds: number;
+            /** Keep Newest */
+            keep_newest: number;
+            /** Retention Days */
+            retention_days: number;
+        };
         /** TerminalList */
         TerminalList: {
             /** Terminals */
@@ -3429,6 +3568,98 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CommandView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_history_get_sessions: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Smallest id of the upstream page when it was full: pass it as `before_id` */
+                    "X-Next-Before-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_history_get_sessions_session_id: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_history_get_sessions_session_id_records: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6040,6 +6271,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CleanupPreview"];
+                };
+            };
+        };
+    };
+    request_cleanup_run_api_v1_cache_cleanup_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    get_cleanup_settings_api_v1_cache_cleanup_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    put_cleanup_settings_api_v1_cache_cleanup_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SweepPolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

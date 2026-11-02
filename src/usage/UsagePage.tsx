@@ -11,6 +11,8 @@ import { TOKENS } from '../theme'
 import { usePoll } from '../triggers'
 import { getCurrent } from './api'
 import type { WindowView } from './api'
+import { WINDOW_NAMES } from './quotaLabels'
+import type { QuotaWindow } from './quotaLabels'
 
 /** The chart library is large: its chunk loads only when the Usage page opens. */
 const UsageHistory = lazy(() => import('./UsageHistory'))
@@ -40,6 +42,7 @@ function WindowCard({ metric, window, now }: { metric: string; window: WindowVie
   return (
     <Box
       data-testid={`usage-card-${metric}`}
+      data-stale={window.stale}
       sx={{ flex: '1 1 280px', minWidth: 0, p: 2, border: `${TOKENS.borderWidth}px solid ${TOKENS.border}`, borderRadius: `${TOKENS.radius}px`, display: 'flex', flexDirection: 'column', gap: 1 }}
     >
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
@@ -51,11 +54,24 @@ function WindowCard({ metric, window, now }: { metric: string; window: WindowVie
         {`resets in ${formatAge(Date.parse(window.resets_at) - now)} (${utc(window.resets_at)})`}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm }}>
-          {`observed ${formatAge(now - Date.parse(window.observed_at))} ago`}
+        <Typography color={window.stale ? 'warning.main' : 'text.secondary'} sx={{ fontSize: TOKENS.fontSizes.sm }}>
+          {`${window.stale ? 'stale, last seen' : 'observed'} ${formatAge(now - Date.parse(window.observed_at))} ago`}
         </Typography>
         <Chip size="small" variant="outlined" label={SOURCES[window.source]} />
       </Box>
+    </Box>
+  )
+}
+
+/** Shown in place of the 5-hour card when the plan reports no such window (the statusline may never carry it). */
+function MissingWindowCard({ metric }: { metric: string }) {
+  return (
+    <Box
+      data-testid={`usage-empty-${metric}`}
+      sx={{ flex: '1 1 280px', minWidth: 0, p: 2, border: `${TOKENS.borderWidth}px dashed ${TOKENS.border}`, borderRadius: `${TOKENS.radius}px`, display: 'flex', flexDirection: 'column', gap: 1 }}
+    >
+      <Typography component="h2" sx={{ fontSize: TOKENS.fontSizes.lg }}>{TITLES[metric]}</Typography>
+      <Typography color="text.secondary">{`No ${WINDOW_NAMES[metric as QuotaWindow]} window reported`}</Typography>
     </Box>
   )
 }
@@ -82,6 +98,7 @@ export function UsagePage({ onBack }: UsagePageProps) {
       {data && metrics.length === 0 && <Typography color="text.secondary">No usage data yet</Typography>}
       {metrics.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          {!('five_hour' in windows) && <MissingWindowCard metric="five_hour" />}
           {metrics.map((m) => <WindowCard key={m} metric={m} window={windows[m]} now={now} />)}
         </Box>
       )}
