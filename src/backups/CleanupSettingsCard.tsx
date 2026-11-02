@@ -1,4 +1,5 @@
 /** Settings > Backups: the stored cleanup (sweep) policy, edited in place and saved as a whole. */
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -7,13 +8,18 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useEffect, useState } from 'react'
-import { getCleanupSettings, putCleanupSettings } from '../api/archives'
+import { getCleanupSettings, putCleanupSettings, runCleanupNow } from '../api/archives'
 import type { CleanupSettingsView, SweepPolicyIn } from '../api/archives'
 import { formatAge, useNow } from '../chat/agentAge'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import { formatBytes } from './format'
 import { TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import type { FormErrorValue } from '../triggers'
+
+/** While a run request is pending the card re-reads the settings this often, at most `RUN_POLL_MAX_READS` times. */
+export const RUN_POLL_MS = 5000
+const RUN_POLL_MAX_READS = 6
 
 type NumberKey = 'retention_days' | 'keep_newest' | 'interval_seconds' | 'grace_seconds'
 
@@ -64,6 +70,23 @@ const caption = (view: CleanupSettingsView, now: number) => {
   return view.updated_at ? `Saved ${formatAge(now - Date.parse(view.updated_at))} ago` : 'Saved'
 }
 
+/** The last sweep as the orchestrator reported it; `last_sweep` is an untyped object, so every member is checked. */
+const count = (v: unknown) => (typeof v === 'number' ? v : 0)
+const stamp = (v: unknown) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? Date.parse(v) : null)
+
+/** One line for the last sweep. A sweep that failed says so instead of listing counts: the request is consumed either way. */
+function sweepSummary(sweep: Record<string, unknown>, now: number): { line: string; error: string | null } {
+  const at = stamp(sweep.finished_at) ?? stamp(sweep.started_at)
+  const dry = sweep.dry_run === true
+  const head = `Last sweep${at === null ? '' : ` ${formatAge(now - at)} ago`}${dry ? ' (dry run)' : ''}`
+  if (typeof sweep.error === 'string' && sweep.error !== '') return { line: `${head} failed`, error: sweep.error }
+  const failed = count(sweep.failed)
+  const done = dry
+    ? `would delete ${count(sweep.planned)} (${formatBytes(count(sweep.planned_bytes))})`
+    : `deleted ${count(sweep.deleted)} (${formatBytes(count(sweep.deleted_bytes))})${failed > 0 ? `, ${failed} failed` : ''}`
+  return { line: `${head}: listed ${count(sweep.listed)}, ${done}`, error: null }
+}
+
 export function CleanupSettingsCard() {
   const now = useNow()
   const [view, setView] = useState<CleanupSettingsView | null>(null)
@@ -71,6 +94,11 @@ export function CleanupSettingsCard() {
   const [error, setError] = useState<FormErrorValue>(null)
   const [saving, setSaving] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [confirmingRun, setConfirmingRun] = useState(false)
+  const [requesting, setRequesting] = useState(false)
+  const [stalled, setStalled] = useState(false)
+  const [pollEpoch, setPollEpoch] = useState(0)
+  const pending = view?.run_pending === true
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +114,32 @@ export function CleanupSettingsCard() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!pending) return
+    let cancelled = false
+    let reads = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const tick = async () => {
+      reads += 1
+      try {
+        const v = await getCleanupSettings()
+        if (cancelled) return
+        setView(v)
+        if (!v.run_pending) return
+      } catch (e) {
+        if (cancelled) return
+        setError(e instanceof Error ? e : String(e))
+      }
+      if (reads >= RUN_POLL_MAX_READS) setStalled(true)
+      else timer = setTimeout(() => void tick(), RUN_POLL_MS)
+    }
+    timer = setTimeout(() => void tick(), RUN_POLL_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [pending, pollEpoch])
 
   const stored = view ? toForm(view.policy) : null
   const dirty = form !== null && stored !== null && (Object.keys(form) as (keyof Form)[]).some((k) => form[k] !== stored[k])
@@ -107,6 +161,24 @@ export function CleanupSettingsCard() {
       setSaving(false)
     }
   }
+
+  const runNow = async () => {
+    setConfirmingRun(false)
+    setRequesting(true)
+    setError(null)
+    try {
+      setView(await runCleanupNow())
+      setStalled(false)
+      setPollEpoch((n) => n + 1)
+    } catch (e) {
+      setError(e instanceof Error ? e : String(e))
+    } finally {
+      setRequesting(false)
+    }
+  }
+
+  const waiting = pending && !stalled
+  const last = view?.last_sweep ? sweepSummary(view.last_sweep, now) : null
 
   return (
     <Paper variant="outlined" aria-label="Cleanup settings" role="region" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -134,15 +206,28 @@ export function CleanupSettingsCard() {
               )
             })}
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <Button variant="contained" disabled={!dirty || !valid || saving} onClick={() => (realDeletes ? setConfirming(true) : void save())}>Save</Button>
+            <Button
+              variant="outlined" disabled={waiting || requesting}
+              onClick={() => (view.policy.dry_run ? void runNow() : setConfirmingRun(true))}
+            >Run sweep now</Button>
+            {waiting && <Typography variant="body2" color="text.secondary">Sweep requested</Typography>}
+            {pending && stalled && <Typography variant="body2" color="warning.main">Still waiting for the reconciler</Typography>}
           </Box>
+          <Typography variant="body2" color="text.secondary">{last ? last.line : 'No sweep has run yet'}</Typography>
+          {last?.error && <Alert severity="error">{last.error}</Alert>}
         </>
       )}
       <ConfirmDialog
         open={confirming} title="Enable real deletes?" confirmLabel="Enable real deletes"
         body="With dry run off the sweep permanently deletes the archives it selects from S3. Archives a live session references are still kept."
         onConfirm={() => void save()} onCancel={() => setConfirming(false)}
+      />
+      <ConfirmDialog
+        open={confirmingRun} title="Run sweep now?" confirmLabel="Run sweep now"
+        body="Dry run is off, so the matching archives are deleted from S3 permanently. Archives a live session references are still kept."
+        onConfirm={() => void runNow()} onCancel={() => setConfirmingRun(false)}
       />
     </Paper>
   )
