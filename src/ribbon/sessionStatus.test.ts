@@ -113,6 +113,9 @@ describe('pending self-close', () => {
   test('pending close is the first issue', () => {
     expect(sessionIssue(session(closing, SUMMARY), [])).toEqual({ kind: 'closing', text: 'closing when idle: done' })
   })
+  test('no trailing colon when the reason is absent', () => {
+    expect(sessionIssue(session({ ...closing, close_reason: null }, SUMMARY), [])).toEqual({ kind: 'closing', text: 'closing when idle' })
+  })
   test('no closing issue while deleting or without a request', () => {
     expect(sessionIssue(session({ ...closing, desired: 'deleting' }, SUMMARY), [])?.kind).toBe('bootstrap_failure')
     expect(sessionIssue(session({ close_requested_at: null, close_reason: null }, SUMMARY), [])?.kind).toBe('bootstrap_failure')
