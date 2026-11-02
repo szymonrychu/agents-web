@@ -129,6 +129,29 @@ describe('HistorySessionView chat', () => {
     expect(api.listRecords).toHaveBeenLastCalledWith(SID, { kind: 'event', before_id: 500, limit: 200 })
   })
 
+  test('shows an empty state when the stored events are lifecycle records only', async () => {
+    const life = (id: number, type: string, data: unknown): RecordView => ({
+      id,
+      kind: 'event',
+      ts: '2026-10-25T10:00:00Z',
+      truncated: false,
+      body: { kind: 'event', id, agent_id: AGENT_ID, ts: '2026-10-25T10:00:00Z', type, turn_id: null, data },
+    })
+    api.listRecords.mockResolvedValue(
+      page([life(1, 'bootstrap_step', { step: 'clone', status: 'ok' }), life(2, 'session_state', { state: 'ready' }), life(3, 'session_closed', {})]),
+    )
+    mount()
+    expect(await screen.findByText('No chat messages in this session; see Records.')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Records' })).toBeTruthy()
+  })
+
+  test('shows no empty state when there are chat messages', async () => {
+    api.listRecords.mockResolvedValue(page([eventRecord(10, 1, 'some answer')]))
+    mount()
+    await screen.findByText('some answer')
+    expect(screen.queryByText(/No chat messages in this session/)).toBeNull()
+  })
+
   test('never opens an EventSource and never calls the orchestrator API', async () => {
     const source = vi.fn()
     const fetchSpy = vi.fn(async () => new Response('{}'))
