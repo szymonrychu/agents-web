@@ -14,6 +14,7 @@ const BACKENDS = {
   matrix: { repo: "agents-matrix-connector", sibling: "../agents-matrix-connector" },
   usage: { repo: "agents-usage", sibling: "../agents-usage" },
   history: { repo: "agents-history", sibling: "../agents-history" },
+  taskboard: { repo: "agents-taskboard", sibling: "../agents-taskboard" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

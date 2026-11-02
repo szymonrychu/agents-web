@@ -9,6 +9,8 @@ import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { listSessions } from '../api/client'
 import type { SessionView } from '../api/client'
+import { LabelChips } from '../labels/LabelChips'
+import { LabelEditor } from '../labels/LabelEditor'
 import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
@@ -40,6 +42,8 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  // Server-side filter: sessions carrying any of these labels.
+  const [filter, setFilter] = useState<string[]>([])
 
   // Bumped after every create or discard; the effect below refetches the list.
   const [version, setVersion] = useState(0)
@@ -47,7 +51,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
 
   useEffect(() => {
     let cancelled = false
-    listSessions()
+    listSessions(filter)
       .then((list) => {
         if (cancelled) return
         setSessions([...list].sort((a, b) => a.slug.localeCompare(b.slug)))
@@ -60,7 +64,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
     return () => {
       cancelled = true
     }
-  }, [version])
+  }, [version, filter])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
@@ -69,6 +73,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
         <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Sessions</Typography>
         <Button variant="outlined" onClick={() => setCreating(true)}>New session</Button>
       </Box>
+      <LabelEditor label="Filter by label" value={filter} onChange={setFilter} />
       {error && <Alert severity="error" variant="outlined">{error}</Alert>}
       {loaded && !error && sessions.length === 0 && <Typography color="text.secondary">No sessions yet</Typography>}
       <List disablePadding>
@@ -91,6 +96,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
               <Typography component="span">{`${c.summary.ready}/${c.summary.replicas}`}</Typography>
               <Typography component="span">{new Date(c.created_at).toLocaleString()}</Typography>
               <Typography component="span">{timeLeft(c.closes_at)}</Typography>
+              <LabelChips labels={c.labels ?? []} />
             </Box>
           </ListItem>
         ))}

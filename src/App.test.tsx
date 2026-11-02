@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
+import { MemoryRouter } from 'react-router'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, SessionView, Meta, PresetView } from './api/client'
@@ -57,17 +58,19 @@ const meta = (): Meta => ({
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
 }) as Meta
 
-const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, name, spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
+const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
 const PRESETS = [preset('p-default', 'Default', true), preset('p-big', 'Big box')]
 
 function emit(type: string, data: unknown) {
   act(() => stream.opts!.onEvent(data, { type, id: '1' }))
 }
 
-function mount() {
+function mount(path = '/') {
   return render(
     <ThemeProvider theme={theme}>
-      <App />
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
     </ThemeProvider>,
   )
 }
@@ -302,9 +305,31 @@ describe('App', () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Discard'])
     expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
+  })
+  test('deep link /tasks/T-5 renders the task route', () => {
+    mount('/tasks/T-5')
+    expect(screen.getByTestId('task-route').getAttribute('data-key')).toBe('T-5')
+    expect(screen.queryByRole('tab')).toBeNull()
+  })
+
+  test('root path still renders the sessions shell', async () => {
+    mount('/')
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    expect(screen.queryByTestId('task-route')).toBeNull()
+  })
+
+  test('/?session=<id> selects that session', async () => {
+    mount('/?session=c2')
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
+  })
+
+  test('unknown /tasks/x/y shows not found', () => {
+    mount('/tasks/x/y')
+    expect(screen.getByTestId('tasks-not-found')).toBeTruthy()
   })
 })
 
