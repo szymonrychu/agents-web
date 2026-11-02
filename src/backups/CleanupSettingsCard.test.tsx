@@ -2,11 +2,12 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { CleanupSettingsView } from '../api/archives'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
-import { CleanupSettingsCard } from './CleanupSettingsCard'
+import { CleanupSettingsCard, FIELDS } from './CleanupSettingsCard'
 
 const api = vi.hoisted(() => ({ getCleanupSettings: vi.fn(), putCleanupSettings: vi.fn() }))
 vi.mock('../api/archives', async (orig) => ({ ...(await orig<typeof import('../api/archives')>()), ...api }))
@@ -131,9 +132,19 @@ describe('CleanupSettingsCard', () => {
     expect(save().disabled).toBe(false)
   })
 
-  test('shows the deployment default next to grace', async () => {
+  test('shows the deployment default next to grace only', async () => {
     mount()
     expect(await screen.findByText(/default 2400/)).toBeTruthy()
+    expect(screen.getAllByText(/^default /)).toHaveLength(1)
+  })
+
+  test('the field bounds equal the orchestrator OpenAPI bounds', () => {
+    const spec = JSON.parse(readFileSync('openapi/orchestrator.json', 'utf8')) as {
+      components: { schemas: { SweepPolicyIn: { properties: Record<string, { minimum: number; maximum: number }> } } }
+    }
+    const props = spec.components.schemas.SweepPolicyIn.properties
+    expect(FIELDS.map((f) => f.key).sort()).toEqual(['grace_seconds', 'interval_seconds', 'keep_newest', 'retention_days'])
+    for (const f of FIELDS) expect([f.key, f.min, f.max]).toEqual([f.key, props[f.key].minimum, props[f.key].maximum])
   })
 
   test('shows the load error', async () => {

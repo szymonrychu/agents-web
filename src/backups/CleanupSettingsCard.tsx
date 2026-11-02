@@ -18,7 +18,7 @@ import type { FormErrorValue } from '../triggers'
 type NumberKey = 'retention_days' | 'keep_newest' | 'interval_seconds' | 'grace_seconds'
 
 /** Same bounds as the orchestrator (`settings.py` SWEEP_*_MAX and the SQL CHECKs). */
-const FIELDS: { key: NumberKey; label: string; min: number; max: number }[] = [
+export const FIELDS: { key: NumberKey; label: string; min: number; max: number }[] = [
   { key: 'retention_days', label: 'Retention (days)', min: 1, max: 3650 },
   { key: 'keep_newest', label: 'Keep newest per name', min: 1, max: 1000 },
   { key: 'interval_seconds', label: 'Interval (seconds)', min: 60, max: 2592000 },
@@ -127,7 +127,7 @@ export function CleanupSettingsCard() {
               return (
                 <TextField
                   key={f.key} size="small" type="number" label={f.label} value={form[f.key]} error={bad}
-                  helperText={bad ? `Must be ${f.min} to ${f.max}` : `default ${view.defaults[f.key]}`}
+                  helperText={bad ? `Must be ${f.min} to ${f.max}` : f.key === 'grace_seconds' ? `default ${view.defaults.grace_seconds}` : undefined}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                   slotProps={{ htmlInput: { min: f.min, max: f.max, step: 1 } }}
                 />
