@@ -84,7 +84,7 @@ export interface components {
         /** AgentView */
         AgentView: {
             /** Id */
-            id: number;
+            id: string;
             /** Ordinal */
             ordinal: number;
             /** Pod Name */

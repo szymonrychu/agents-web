@@ -28,7 +28,7 @@ export interface HistorySessionViewProps {
 const asError = (e: unknown) => (e instanceof Error ? e : new Error(String(e)))
 
 function HistoryChatTab({ sessionId, detail }: { sessionId: string; detail: SessionDetail }) {
-  const ordinals = useMemo(() => Object.fromEntries(detail.agents.map((a) => [String(a.id), a.ordinal])), [detail.agents])
+  const ordinals = useMemo(() => Object.fromEntries(detail.agents.map((a) => [a.id, a.ordinal])), [detail.agents])
   const chat = useHistoryChat(sessionId, ordinals)
   const view = useMemo(() => splitSubagents(filterByAgents(chat.items, []), chat.subagents), [chat.items, chat.subagents])
   return (

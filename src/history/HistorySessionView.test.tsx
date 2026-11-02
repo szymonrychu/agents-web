@@ -29,6 +29,7 @@ vi.mock('react-virtuoso', () => ({
 }))
 
 const SID = '00000000-0000-4000-8000-000000000042'
+const AGENT_ID = '5b0c1f7e-3d2a-4c8b-9a41-0e6f2d7a9c13'
 
 const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   id: 42,
@@ -45,10 +46,10 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   hits: null,
   matches: [],
   session: {},
-  agents: [{ id: 7, ordinal: 3, pod_name: 'happy-otter-3' }],
+  agents: [{ id: AGENT_ID, ordinal: 3, pod_name: 'happy-otter-3' }],
   ...over,
 })
-const eventRecord = (recordId: number, eventId: number, text: string, agent = '7'): RecordView => ({
+const eventRecord = (recordId: number, eventId: number, text: string, agent = AGENT_ID): RecordView => ({
   id: recordId,
   kind: 'event',
   ts: '2026-10-25T10:00:00Z',
