@@ -10,6 +10,7 @@
  *   40 Presets   (orchestrator, registered below)
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
+ *   55 History (agents-history)
  */
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
@@ -19,6 +20,7 @@ import { schedulesMenu } from '../schedules/menu'
 import { chatsMenu } from '../matrix/menu'
 import { backupsMenu } from '../backups/menu'
 import { usageMenu } from '../usage/menu'
+import { historyMenu } from '../history/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -40,6 +42,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   schedules: [schedulesMenu],
   matrix: [chatsMenu],
   usage: [usageMenu],
+  history: [historyMenu],
 }
 
 export function menuEntries(config: RuntimeConfig): MenuEntry[] {
