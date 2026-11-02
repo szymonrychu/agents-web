@@ -8,7 +8,7 @@ import { theme } from '../theme'
 import type { SessionSummary } from './api'
 import { HistoryPage } from './HistoryPage'
 
-const api = vi.hoisted(() => ({ listSessions: vi.fn() }))
+const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
 const row = (id: number, over: Partial<SessionSummary> = {}): SessionSummary => ({
@@ -27,6 +27,7 @@ const row = (id: number, over: Partial<SessionSummary> = {}): SessionSummary => 
   matches: [],
   ...over,
 })
+const detailOf = (r: SessionSummary) => ({ ...r, session: {}, agents: [] })
 const pageOf = (from: number, count: number) => Array.from({ length: count }, (_, i) => row(from - i))
 
 const mount = (onBack = () => {}) => render(<ThemeProvider theme={theme}><HistoryPage onBack={onBack} /></ThemeProvider>)
@@ -35,6 +36,11 @@ const search = async (user: ReturnType<typeof userEvent.setup>) => user.click(sc
 beforeEach(() => {
   api.listSessions.mockReset()
   api.listSessions.mockResolvedValue([])
+  api.getSession.mockReset()
+  api.listRecords.mockReset()
+  api.listRecords.mockResolvedValue({ records: [], has_more_before: false, next_after_id: null })
+  api.deleteSession.mockReset()
+  api.deleteSession.mockResolvedValue(undefined)
 })
 afterEach(cleanup)
 
@@ -190,14 +196,34 @@ describe('HistoryPage results', () => {
 
   test('opens a session on row click', async () => {
     api.listSessions.mockResolvedValue([row(4)])
+    api.getSession.mockResolvedValue(detailOf(row(4)))
     const user = userEvent.setup()
     mount()
     await search(user)
     await user.click(await screen.findByText('slug-4'))
-    expect(screen.getByRole('heading', { name: 'slug-4' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'slug-4' })).toBeTruthy()
+    expect(api.getSession).toHaveBeenCalledWith(row(4).session_id)
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(await screen.findByRole('heading', { name: 'History' })).toBeTruthy()
     expect(screen.getByText('slug-4')).toBeTruthy()
+  })
+
+  test('deleting the open session returns to the list and refetches the same query', async () => {
+    api.listSessions.mockResolvedValueOnce([row(4), row(3)]).mockResolvedValueOnce([row(3)])
+    api.getSession.mockResolvedValue(detailOf(row(4)))
+    const user = userEvent.setup()
+    mount()
+    await user.type(screen.getByLabelText('Search'), 'needle')
+    await search(user)
+    await user.click(await screen.findByText('slug-4'))
+    await user.click(await screen.findByRole('button', { name: 'Delete' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('heading', { name: 'History' })).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText('slug-4')).toBeNull())
+    expect(screen.getByText('slug-3')).toBeTruthy()
+    expect(api.deleteSession).toHaveBeenCalledWith(row(4).session_id)
+    expect(api.listSessions).toHaveBeenCalledTimes(2)
+    expect(api.listSessions).toHaveBeenLastCalledWith({ q: 'needle', limit: 50 })
   })
 
   test('Back leaves the page', async () => {

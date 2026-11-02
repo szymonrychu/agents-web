@@ -77,12 +77,19 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
     void fetchPage(query, false)
   }
 
+  const afterDelete = () => {
+    setOpen(undefined)
+    setSessions([])
+    setExhausted(false)
+    if (submitted) void fetchPage(submitted, false)
+  }
+
   const loadMore = () => {
     const last = sessions[sessions.length - 1]
     if (submitted && last) void fetchPage({ ...submitted, before_id: last.id }, true)
   }
 
-  if (open) return <HistorySessionView session={open} onBack={() => setOpen(undefined)} />
+  if (open) return <HistorySessionView sessionId={open.session_id} onBack={() => setOpen(undefined)} onDeleted={afterDelete} />
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>

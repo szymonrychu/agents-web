@@ -19,7 +19,7 @@ const COLUMNS = ['Session', 'Preset', 'Created', 'Discarded', 'Records', 'Size',
 const MAX_SNIPPETS = 3
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB']
 
-function formatSize(bytes: number): string {
+export function formatSize(bytes: number): string {
   let value = bytes
   let unit = 0
   while (value >= 1024 && unit < SIZE_UNITS.length - 1) {
@@ -29,7 +29,7 @@ function formatSize(bytes: number): string {
   return unit === 0 ? `${bytes} B` : `${value.toFixed(1)} ${SIZE_UNITS[unit]}`
 }
 
-const formatCounts = (counts: Record<string, number>) =>
+export const formatCounts = (counts: Record<string, number>) =>
   Object.entries(counts).map(([kind, n]) => `${kind} ${n}`).join(', ')
 
 const formatHits = (hits: number) => `${hits} ${hits === 1 ? 'hit' : 'hits'}`
