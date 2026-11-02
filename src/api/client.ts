@@ -98,6 +98,8 @@ export const getSession = (sessionId: string) => request<SessionView>('GET', `/s
 export const createSession = (body: CreateSession) => request<SessionView>('POST', '/sessions', body);
 /** Discards the session; takes no purge parameter. */
 export const deleteSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}`);
+/** Cancels a pending self-close request; 200 even when none is pending, 409 once the session is being discarded. */
+export const cancelSessionClose = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}/close`);
 export const getInitScripts = (sessionId: string) => request<InitScriptsView>('GET', `/sessions/${id(sessionId)}/init-scripts`);
 export const putPermissionMode = (sessionId: string, permissionMode: PermissionMode) =>
   request<PermissionModeView>('PUT', `/sessions/${id(sessionId)}/permission-mode`, { permission_mode: permissionMode });

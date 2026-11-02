@@ -662,6 +662,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close the caller's session once idle (leader only)
+         * @description Checks in order: leader (403 `not_leader`), not a superleader session (422 `own_session`),
+         *     not being discarded (409 `session_deleting`). The sweeper discards the session once it is idle
+         *     for `ORCH_CLOSE_GRACE_SECONDS`; a repeat call keeps the first request.
+         */
+        post: operations["close_agent_v1_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/init-scripts": {
         parameters: {
             query?: never;
@@ -1332,6 +1354,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Session Close
+         * @description Cancel a pending self-close request; 200 even when none is pending, 409 once the
+         *     session is flipped to deleting.
+         */
+        delete: operations["cancel_session_close_api_v1_sessions__session_id__close_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/events": {
         parameters: {
             query?: never;
@@ -1879,6 +1922,30 @@ export interface components {
             source: "database" | "environment";
             /** Updated At */
             updated_at: string | null;
+        };
+        /** CloseRequest */
+        CloseRequest: {
+            /** Reason */
+            reason: string;
+        };
+        /** CloseRequested */
+        CloseRequested: {
+            /** Already Requested */
+            already_requested: boolean;
+            /** Close Reason */
+            close_reason: string;
+            /**
+             * Close Requested At
+             * Format: date-time
+             */
+            close_requested_at: string;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
         };
         /** CommandAccepted */
         CommandAccepted: {
@@ -3015,6 +3082,10 @@ export interface components {
         /** SessionView */
         SessionView: {
             backup: components["schemas"]["SessionBackup"];
+            /** Close Reason */
+            close_reason?: string | null;
+            /** Close Requested At */
+            close_requested_at?: string | null;
             /** Closes At */
             closes_at: string | null;
             /**
@@ -4898,6 +4969,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    close_agent_v1_close_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseRequested"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -6812,6 +6919,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_session_close_api_v1_sessions__session_id__close_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
             /** @description Validation Error */

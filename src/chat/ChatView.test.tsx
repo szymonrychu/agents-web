@@ -42,6 +42,12 @@ describe('ChatView', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/^Agent unavailable: 2 messages queued/)
   })
 
+  test('mounts the closing banner for a pending self-close', () => {
+    const s = { ...session(0), close_requested_at: new Date().toISOString(), close_reason: 'done' } as unknown as SessionView
+    mount(s, [agent('idle', true)])
+    expect(screen.getByRole('button', { name: 'Keep session' })).toBeTruthy()
+  })
+
   test('shows no banner while an agent is alive', () => {
     mount(session(2), [agent('idle', true)])
     expect(screen.queryByRole('alert')).toBeNull()

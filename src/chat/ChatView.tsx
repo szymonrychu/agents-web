@@ -7,6 +7,7 @@ import type { AgentView, SessionView } from '../api/client'
 import { AgentUnavailableBanner } from './AgentUnavailableBanner'
 import { AgentsStrip } from './AgentsStrip'
 import { ChatLog } from './ChatLog'
+import { ClosingBanner } from './ClosingBanner'
 import { Composer } from './Composer'
 import { QueueStrip } from './QueueStrip'
 import { ScaleControl } from './ScaleControl'
@@ -67,6 +68,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
       ) : (
         <ChatLog key={`${session.id}:${selected.join(',')}`} items={view.main} subagents={view} hasMoreBefore={chat.hasMoreBefore} loadingOlder={chat.loadingOlder} onLoadOlder={chat.loadOlder} />
       )}
+      <ClosingBanner session={session} />
       <AgentUnavailableBanner session={session} agents={agents} />
       <QueueStrip sessionId={session.id} />
       <Composer key={session.id} sessionId={session.id} agents={agents} deleting={session.desired === 'deleting'} />
