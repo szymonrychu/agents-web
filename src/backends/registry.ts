@@ -7,6 +7,7 @@
  *   20 Webhooks  (agents-webhook-microservice)
  *   30 Schedules (agents-schedule-microservice)
  *   35 Chats     (agents-matrix-connector)
+ *   38 Tasks     (agents-taskboard, a routed page: the entry navigates to /tasks)
  *   40 Presets   (orchestrator, registered below)
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
@@ -19,6 +20,7 @@ import { schedulesMenu } from '../schedules/menu'
 import { chatsMenu } from '../matrix/menu'
 import { backupsMenu } from '../backups/menu'
 import { usageMenu } from '../usage/menu'
+import { tasksMenu } from '../tasks/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -36,6 +38,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
     backupsMenu,
   ],
+  taskboard: [tasksMenu],
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
   matrix: [chatsMenu],

@@ -90,4 +90,14 @@ describe('SessionsPage', () => {
     await waitFor(() => expect(api.deleteSession).toHaveBeenCalledWith('c1'))
     await waitFor(() => expect(api.listSessions).toHaveBeenCalledTimes(3))
   })
+
+  test('rows show label chips and the label filter reloads with label params', async () => {
+    api.listSessions.mockResolvedValue([{ ...LIST[0], labels: ['mine'] }, LIST[1]])
+    wrap()
+    const r = await screen.findAllByRole('listitem')
+    expect(within(r[0]).getByText('mine')).toBeTruthy()
+    expect(api.listSessions).toHaveBeenLastCalledWith([])
+    await userEvent.type(screen.getByRole('combobox', { name: 'Filter by label' }), 'Mine{Enter}')
+    await waitFor(() => expect(api.listSessions).toHaveBeenLastCalledWith(['mine']))
+  })
 })

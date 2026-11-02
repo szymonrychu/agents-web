@@ -1322,4 +1322,48 @@ describe('PresetForm', () => {
       expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ any_mcp_sources: [GITHUB, GITLAB, 'github.com/acme/third'] })
     })
   })
+
+  test('preset form sends labels', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'tagged')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Labels' }), ' Mine {Enter}')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].labels).toEqual(['mine'])
+  })
+
+  test('editing omits labels when unchanged (the server keeps them)', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const p = preset({ labels: ['a', 'b'] } as Partial<PresetView>)
+    wrap(<PresetForm open preset={p} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1]).not.toHaveProperty('labels')
+  })
+
+  test('removing every label on edit sends an empty list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ labels: ['a'] } as Partial<PresetView>)} {...noop} />)
+    await ready()
+    const input = screen.getByRole('combobox', { name: 'Labels' })
+    await userEvent.click(input)
+    await userEvent.keyboard('{Backspace}')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].labels).toEqual([])
+  })
+
+  test('invalid label is rejected before the request', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'plain')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Labels' }), 'bad label!{Enter}')
+    expect(screen.getByText(/Invalid label "bad label!"/)).toBeTruthy()
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0]).not.toHaveProperty('labels')
+  })
 })

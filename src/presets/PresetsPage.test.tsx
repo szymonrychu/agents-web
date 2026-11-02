@@ -125,4 +125,13 @@ describe('PresetsPage', () => {
     wrap()
     expect((await screen.findByRole('alert')).textContent).toContain('boom')
   })
+
+  test('presets table shows label chips', async () => {
+    api.listPresets.mockResolvedValue([{ ...preset('p-a', 'Alpha'), labels: ['mine', 'ops'] }, preset('p-b', 'Beta')])
+    wrap()
+    await screen.findByText('Alpha')
+    expect(within(row('Alpha')).getByText('mine')).toBeTruthy()
+    expect(within(row('Alpha')).getByText('ops')).toBeTruthy()
+    expect(within(row('Beta')).queryByText('mine')).toBeNull()
+  })
 })

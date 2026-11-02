@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView } from '../api/client'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { theme } from '../theme'
 import { TopBar } from './TopBar'
+
+const api = vi.hoisted(() => ({ setSessionLabels: vi.fn() }))
+vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 afterEach(cleanup)
 
@@ -16,8 +21,8 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), settingsCategories: [], ...over }
-  render(<ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider>)
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], ...over }
+  render(<MemoryRouter><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></MemoryRouter>)
   return props
 }
 
@@ -63,10 +68,17 @@ describe('TopBar', () => {
     const { onDiscard } = setup()
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
+    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Discard'])
     expect(screen.queryByText('Edit')).toBeNull()
-    fireEvent.click(items[2])
+    fireEvent.click(items[3])
     expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('session header links to tasks filtered by session', () => {
+    setup()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    const link = screen.getByRole('menuitem', { name: 'Tasks' })
+    expect(link.getAttribute('href')).toBe('/tasks?session=c1')
   })
 
   test('permissions menu item calls onPermissions', () => {
@@ -146,5 +158,34 @@ describe('TopBar', () => {
     prep.session.status = { phase: 'pending', message: 'init running', init: { state: 'running' } }
     setup({ sessions: [prep] })
     expect(within(screen.getByRole('tab')).getByRole('progressbar', { name: 'Preparing charlie' })).toBeTruthy()
+  })
+
+  test('session header shows labels and edits them via PATCH', async () => {
+    const labelled = session('c3', 'charlie', 'working', 10)
+    labelled.session = { ...labelled.session, labels: ['mine', 'ops'] } as SessionView
+    const updated = { ...labelled.session, labels: ['mine', 'ops', 'new-one'] } as SessionView
+    api.setSessionLabels.mockResolvedValue(updated)
+    const { onSessionUpdated } = setup({ sessions: [...SESSIONS, labelled], selectedId: 'c3' })
+    const header = screen.getByRole('banner')
+    expect(within(header).getByText('mine')).toBeTruthy()
+    expect(within(header).getByText('ops')).toBeTruthy()
+    await userEvent.type(within(header).getByRole('combobox', { name: 'Session labels' }), ' New-One {Enter}')
+    expect(api.setSessionLabels).toHaveBeenCalledWith('c3', ['mine', 'ops', 'new-one'])
+    await waitFor(() => expect(onSessionUpdated).toHaveBeenCalledWith(updated))
+  })
+
+  test('invalid label is rejected before the request', async () => {
+    setup({ selectedId: 'c1' })
+    await userEvent.type(screen.getByRole('combobox', { name: 'Session labels' }), 'bad label!{Enter}')
+    expect(api.setSessionLabels).not.toHaveBeenCalled()
+    expect(screen.getByText(/Invalid label "bad label!"/)).toBeTruthy()
+  })
+
+  test('a failed label save shows the error and keeps the labels', async () => {
+    api.setSessionLabels.mockRejectedValue(new Error('boom'))
+    const { onSessionUpdated } = setup({ selectedId: 'c1' })
+    await userEvent.type(screen.getByRole('combobox', { name: 'Session labels' }), 'x{Enter}')
+    expect(await screen.findByText('boom')).toBeTruthy()
+    expect(onSessionUpdated).not.toHaveBeenCalled()
   })
 })
