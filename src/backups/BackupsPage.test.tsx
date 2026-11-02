@@ -9,10 +9,12 @@ import { theme } from '../theme'
 import type { ArchiveView } from '../api/archives'
 import { BackupsPage } from './BackupsPage'
 
-const api = vi.hoisted(() => ({ listArchives: vi.fn(), deleteArchives: vi.fn(), cleanupPreview: vi.fn() }))
+const api = vi.hoisted(() => ({ listArchives: vi.fn(), deleteArchives: vi.fn(), cleanupPreview: vi.fn(), getCleanupSettings: vi.fn() }))
 vi.mock('../api/archives', async (orig) => ({ ...(await orig<typeof import('../api/archives')>()), ...api }))
 
 const NOW = Date.parse('2026-11-01T12:00:00Z')
+const POLICY = { enabled: true, dry_run: true, retention_days: 30, keep_newest: 3, interval_seconds: 21600, grace_seconds: 2400 }
+const SETTINGS = { policy: POLICY, defaults: POLICY, source: 'environment' as const, updated_at: null, run_requested_at: null, run_pending: false, last_sweep: null }
 const archive = (name: string, o: Partial<ArchiveView> = {}): ArchiveView => ({
   key: `p/${name}.tar.zst`, name, size: 5 * 1024 * 1024, last_modified: '2026-10-30T12:00:00Z', referenced_by: [], protected: false, ...o,
 })
@@ -24,6 +26,7 @@ beforeEach(async () => {
   vi.setSystemTime(NOW)
   Object.values(api).forEach((m) => m.mockReset())
   await loadConfig((async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/orch/api/v1' }] }))) as unknown as typeof fetch)
+  api.getCleanupSettings.mockResolvedValue(SETTINGS)
   api.listArchives.mockResolvedValue({ items: [archive('team-a', { referenced_by: ['slug-1', 'slug-2'], protected: true }), archive('team-b')], next_cursor: null })
 })
 afterEach(() => {
@@ -108,5 +111,15 @@ describe('BackupsPage', () => {
     await screen.findByText('team-b')
     await userEvent.click(screen.getByRole('button', { name: 'Cleanup preview' }))
     expect(await screen.findByRole('dialog', { name: 'Cleanup preview' })).toBeTruthy()
+  })
+
+  test('shows the cleanup settings only when storage is configured', async () => {
+    mount()
+    expect(await screen.findByRole('region', { name: 'Cleanup settings' })).toBeTruthy()
+    cleanup()
+    api.listArchives.mockRejectedValue(new ApiError(503, 'unavailable', 'the cache archives are not configured for the api'))
+    mount()
+    expect(await screen.findByText('Archive storage is not configured on this orchestrator')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Cleanup settings' })).toBeNull()
   })
 })

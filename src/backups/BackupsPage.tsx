@@ -19,6 +19,7 @@ import { TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import type { FormErrorValue } from '../triggers'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
+import { CleanupSettingsCard } from './CleanupSettingsCard'
 import { formatBytes } from './format'
 
 export interface BackupsPageProps {
@@ -89,6 +90,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
         {!notConfigured && <Button variant="outlined" onClick={() => setPreviewing(true)}>Cleanup preview</Button>}
       </Box>
       <FormError error={error} />
+      {!notConfigured && <CleanupSettingsCard />}
       {notConfigured ? (
         <Typography color="text.secondary">Archive storage is not configured on this orchestrator</Typography>
       ) : items && items.length === 0 ? (
