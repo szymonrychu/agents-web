@@ -4,6 +4,8 @@ The web UI of the agents system and its only TypeScript component: a React singl
 
 ## Development
 
+Run `pre-commit install` once per clone to enable the gitleaks hook.
+
 - `npm ci` installs, `npm run dev` starts Vite on `http://localhost:5173`.
 - The dev server proxies the first path segment of every backend in `public/config.json` to `AGENTS_WEB_PROXY_<ID>` (the id upper-cased, `-` replaced by `_`), for example `AGENTS_WEB_PROXY_ORCHESTRATOR=http://localhost:8000 npm run dev`. Put the variables in `.env.local` to keep them.
 - Terminal sockets are cross-origin in dev: list `http://localhost:5173` in the orchestrator's `ORCH_ALLOWED_ORIGINS`.
