@@ -52,6 +52,32 @@ describe('UsagePage cards', () => {
     expect(screen.queryByTestId('usage-card-five_hour')).toBeNull()
   })
 
+  test('shows a "No 5-hour window reported" card next to the weekly card when five_hour is absent', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-seven_day')
+    const empty = within(screen.getByTestId('usage-empty-five_hour'))
+    expect(empty.getByText('5-hour window')).toBeTruthy()
+    expect(empty.getByText('No 5-hour window reported')).toBeTruthy()
+    expect(empty.queryByRole('progressbar')).toBeNull()
+    expect(within(card('seven_day')).getByText('22%')).toBeTruthy()
+  })
+
+  test('shows no empty-state card when five_hour is reported', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { five_hour: win(), seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-five_hour')
+    expect(screen.queryByTestId('usage-empty-five_hour')).toBeNull()
+    expect(screen.queryByText('No 5-hour window reported')).toBeNull()
+  })
+
+  test('shows the empty-state card only once the data has loaded', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    expect(screen.queryByTestId('usage-empty-five_hour')).toBeNull()
+    await screen.findByTestId('usage-empty-five_hour')
+  })
+
   test('shows five_hour before seven_day', async () => {
     api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win(), five_hour: win({ percent: 40.5 }) } }))
     mount()

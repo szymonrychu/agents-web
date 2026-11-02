@@ -44,6 +44,13 @@ afterEach(() => {
 })
 
 describe('UsageHistory', () => {
+  test('passes only the weekly series to the chart when the history has no 5-hour points', async () => {
+    api.getHistory.mockResolvedValue(history([point('seven_day', 30)]))
+    mount()
+    await screen.findByTestId('chart')
+    expect(chart().dataset.series).toBe('seven_day')
+  })
+
   test('default range 7d requests history and sessions with from, to and max_points', async () => {
     mount()
     await screen.findByTestId('chart')
