@@ -22,7 +22,7 @@ import { TasksRoute } from './tasks/routes'
 export const APP_NAME = 'Agent Orchestrator';
 
 function SessionsShell() {
-  const { state, sessions, select, dismiss } = useSessions()
+  const { state, sessions, select, dismiss, update } = useSessions()
   // `/?session=<id>` (the Tasks page links waiting sessions this way) selects that session once it is known, once.
   const wanted = useSearchParams()[0].get('session')
   const applied = useRef<string | null>(null)
@@ -58,6 +58,7 @@ function SessionsShell() {
         onPermissions={setPermissions}
         onDiscard={setDiscarding}
         onDismiss={dismiss}
+        onSessionUpdated={update}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>

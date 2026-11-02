@@ -129,5 +129,7 @@ export function useSessions() {
 
   const select = useCallback((id: string | null) => dispatch({ type: 'select', id }), [])
   const dismiss = useCallback((id: string) => dispatch({ type: 'dismiss', id }), [])
-  return { state, sessions: sortedSessions(state), select, dismiss }
+  /** Applies a session returned by a REST call without waiting for the stream. */
+  const update = useCallback((session: SessionView) => dispatch({ type: 'session_status', session }), [])
+  return { state, sessions: sortedSessions(state), select, dismiss, update }
 }

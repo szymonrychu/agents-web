@@ -20,6 +20,7 @@ import {
   putInitScripts,
   retryMessage,
   scaleSession,
+  setSessionLabels,
   updatePreset,
 } from './client';
 import { listFiles, readFile } from './files';
@@ -145,5 +146,27 @@ describe('configured base path', () => {
     expect(eventStreamUrl('c1')).toBe('/orch/api/v1/sessions/c1/events/stream');
     expect(statusStreamUrl()).toBe('/orch/api/v1/stream');
     expect(terminalSocketUrl('a1', 't1')).toBe('wss://ui.example/orch/api/v1/agents/a1/terminals/t1/attach');
+  });
+});
+
+describe('labels', () => {
+  it('sessions list label filter passes label params', async () => {
+    const f = vi.fn(async () => new Response('[]', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await listSessions();
+    await listSessions(['a b', 'c']);
+    const calls = f.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe('/api/v1/sessions');
+    expect(calls[1][0]).toBe('/api/v1/sessions?label=a+b&label=c');
+  });
+
+  it('patches session labels', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await setSessionLabels('s 1', ['x']);
+    const calls = f.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe('/api/v1/sessions/s%201/labels');
+    expect(calls[0][1].method).toBe('PATCH');
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({ labels: ['x'] });
   });
 });

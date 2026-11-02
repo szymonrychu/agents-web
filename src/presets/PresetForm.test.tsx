@@ -16,7 +16,7 @@ const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), ge
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], usage: { configured: false, quota_default_pct: 0 }, cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -1321,5 +1321,49 @@ describe('PresetForm', () => {
       await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
       expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ any_mcp_sources: [GITHUB, GITLAB, 'github.com/acme/third'] })
     })
+  })
+
+  test('preset form sends labels', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'tagged')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Labels' }), ' Mine {Enter}')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].labels).toEqual(['mine'])
+  })
+
+  test('editing omits labels when unchanged (the server keeps them)', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const p = preset({ labels: ['a', 'b'] } as Partial<PresetView>)
+    wrap(<PresetForm open preset={p} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1]).not.toHaveProperty('labels')
+  })
+
+  test('removing every label on edit sends an empty list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ labels: ['a'] } as Partial<PresetView>)} {...noop} />)
+    await ready()
+    const input = screen.getByRole('combobox', { name: 'Labels' })
+    await userEvent.click(input)
+    await userEvent.keyboard('{Backspace}')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].labels).toEqual([])
+  })
+
+  test('invalid label is rejected before the request', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'plain')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Labels' }), 'bad label!{Enter}')
+    expect(screen.getByText(/Invalid label "bad label!"/)).toBeTruthy()
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0]).not.toHaveProperty('labels')
   })
 })

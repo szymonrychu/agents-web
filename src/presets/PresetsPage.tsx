@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 import { deletePreset, listPresets } from '../api/client'
 import type { PresetView } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import { LabelChips } from '../labels/LabelChips'
 import { TOKENS } from '../theme'
 import { PresetForm } from './PresetForm'
 
@@ -82,7 +83,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
               </Box>
             }
           >
-            <ListItemText primary={p.name} />
+            <ListItemText primary={p.name} secondary={p.labels?.length ? <LabelChips labels={p.labels} /> : undefined} slotProps={{ secondary: { component: 'div' } }} />
             {p.is_default && <Chip size="small" label="Default" sx={{ ml: 1 }} />}
             {p.superleader_manageable && <Chip size="small" label="Superleader" sx={{ ml: 1 }} />}
           </ListItem>
