@@ -133,18 +133,36 @@ describe('HistoryPage results', () => {
     expect(screen.getByText('slug-100')).toBeTruthy()
   })
 
-  test('keeps following the cursor after a short page and stops on an empty one', async () => {
-    api.listSessions.mockResolvedValueOnce(pageOf(10, 2)).mockResolvedValueOnce(pageOf(8, 1)).mockResolvedValueOnce([])
+  test('a short page is the end: no Load more', async () => {
+    api.listSessions.mockResolvedValueOnce(pageOf(10, 2))
     const user = userEvent.setup()
     mount()
     await search(user)
     await screen.findByText('slug-10')
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull()
+  })
+
+  test('a full page keeps Load more and a short page after it ends paging', async () => {
+    api.listSessions.mockResolvedValueOnce(pageOf(100, 50)).mockResolvedValueOnce(pageOf(50, 7))
+    const user = userEvent.setup()
+    mount()
+    await search(user)
+    await screen.findByText('slug-100')
     await user.click(screen.getByRole('button', { name: 'Load more' }))
-    await screen.findByText('slug-8')
-    expect(api.listSessions).toHaveBeenLastCalledWith({ limit: 50, before_id: 9 })
+    await screen.findByText('slug-50')
+    expect(api.listSessions).toHaveBeenLastCalledWith({ limit: 50, before_id: 51 })
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull()
+  })
+
+  test('a full page followed by an empty one ends paging', async () => {
+    api.listSessions.mockResolvedValueOnce(pageOf(100, 50)).mockResolvedValueOnce([])
+    const user = userEvent.setup()
+    mount()
+    await search(user)
+    await screen.findByText('slug-100')
     await user.click(screen.getByRole('button', { name: 'Load more' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull())
-    expect(api.listSessions).toHaveBeenLastCalledWith({ limit: 50, before_id: 8 })
+    expect(api.listSessions).toHaveBeenLastCalledWith({ limit: 50, before_id: 51 })
   })
 
   test('a new search uses the new filters and drops the old rows', async () => {

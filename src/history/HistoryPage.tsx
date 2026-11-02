@@ -52,8 +52,8 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
       const page = await listSessions(query)
       if (ticket !== latest.current) return
       setSessions((prev) => (append ? [...prev, ...page.filter((p) => !prev.some((o) => o.id === p.id))] : page))
-      // A page can come back short or empty while older rows remain; only an empty page ends the paging.
-      setExhausted(page.length === 0)
+      // agents-history applies every filter before the page cut, so a page shorter than the limit is the end.
+      setExhausted(page.length < (query.limit ?? PAGE))
     } catch (e) {
       if (ticket === latest.current) setError(e instanceof Error ? e : new Error(String(e)))
     } finally {
