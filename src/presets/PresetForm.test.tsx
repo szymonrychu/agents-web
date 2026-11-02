@@ -21,7 +21,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const preset = (o: Partial<PresetView> = {}): PresetView =>
   ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec: {}, ...o }) as PresetView
@@ -865,6 +865,63 @@ describe('PresetForm', () => {
     wrap(<PresetForm open preset={preset({ spec: { wrapper: { permission_mode: 'auto' } } as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(screen.getByRole('combobox', { name: 'Permission mode' }).textContent).toBe('Auto')
+  })
+
+  test('usage quota: weekly only is sparse, both empty is left out, stored value loads, helper shows the default', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    api.getMeta.mockResolvedValue(meta({ usage: { configured: true, quota_default_pct: 90 } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByText('Usage quota')).toBeTruthy()
+    expect(screen.getByText('Empty uses the default (90%)')).toBeTruthy()
+    await replace('Name', 'q')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('usage_quota')
+    await replace('Weekly quota percent', '80')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(2))
+    expect(api.createPreset.mock.calls[1][0].spec.usage_quota).toEqual({ seven_day_pct: 80 })
+    await replace('Weekly quota percent', '')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(3))
+    expect(api.createPreset.mock.calls[2][0].spec).not.toHaveProperty('usage_quota')
+    cleanup()
+
+    api.getMeta.mockResolvedValue(meta())
+    wrap(<PresetForm open preset={preset({ spec: { usage_quota: { five_hour_pct: 50 } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('5-hour quota percent').value).toBe('50')
+    expect(field('Weekly quota percent').value).toBe('')
+    expect(screen.getByText('Empty uses the default (100%)')).toBeTruthy()
+  })
+
+  test('usage quota: the refusal helper says it only applies when the usage gate is configured', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByText(/refused at or above this percent of the window, 1 to 100, when the usage gate is configured/)).toBeTruthy()
+    cleanup()
+
+    api.getMeta.mockResolvedValue(meta({ usage: { configured: true, quota_default_pct: 90 } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByText('Empty uses the default (90%)')).toBeTruthy())
+    expect(screen.queryByText(/when the usage gate is configured/)).toBeNull()
+    expect(screen.getByText('Starting or growing a session is refused at or above this percent of the window, 1 to 100')).toBeTruthy()
+  })
+
+  test('usage quota: 0 and 101 show "1 to 100" and block save', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await replace('Name', 'q')
+    for (const [label, bad] of [['5-hour quota percent', '0'], ['5-hour quota percent', '101'], ['Weekly quota percent', '0'], ['Weekly quota percent', '101']]) {
+      await replace(label, bad)
+      expect(screen.getByText(/must be 1 to 100/)).toBeTruthy()
+      expect(button('Create').disabled).toBe(true)
+      await replace(label, '100')
+      expect(button('Create').disabled).toBe(false)
+      await replace(label, '')
+    }
   })
 
   test('session options save and round-trip', async () => {

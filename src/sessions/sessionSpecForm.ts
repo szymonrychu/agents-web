@@ -6,6 +6,7 @@ type EnvVarIn = components['schemas']['EnvVarIn']
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import { pluginSourceError } from '../presets/pluginSource'
+import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
 /**
  * One env variable, GitLab CI style. A protected variable is write-only: `stored` marks one that came from the server
@@ -66,6 +67,9 @@ export interface FormValues {
   hookUrl: string
   leaderLease: string
   autocloseAfter: string
+  /** Usage quota ceilings in percent (1 to 100); empty uses the orchestrator default. */
+  quotaFiveHour: string
+  quotaSevenDay: string
   /** Trigger events for the same item go to the agent still running for it. */
   reuseRunningAgent: boolean
   /** Superleader: the session's leader can message the leaders of all sessions; the spec carries it only when on. */
@@ -115,7 +119,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -145,7 +149,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -171,7 +175,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values[field] = stored
     setKeys.add(key)
   }
-  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter', stored: number | null | undefined) => {
+  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = String(stored)
     setKeys.add(key)
@@ -220,6 +224,8 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   text('startPrompt', 'startPrompt', spec.start_prompt)
   num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
   num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
+  num('quotaFiveHour', 'quotaFiveHour', spec.usage_quota?.five_hour_pct)
+  num('quotaSevenDay', 'quotaSevenDay', spec.usage_quota?.seven_day_pct)
   if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
     values.reuseRunningAgent = spec.reuse_running_agent
     setKeys.add('reuseRunningAgent')
@@ -387,6 +393,8 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   e.hookUrl = hookUrlError(v.hookUrl)
   e.leaderLease = v.leaderLease.trim() === '' ? undefined : intIn(v.leaderLease, 60, 604800, 'Leader lease seconds')
   e.autocloseAfter = v.autocloseAfter.trim() === '' ? undefined : intIn(v.autocloseAfter, 1, 2592000, 'Autoclose after seconds')
+  e.quotaFiveHour = v.quotaFiveHour.trim() === '' ? undefined : intIn(v.quotaFiveHour, 1, 100, QUOTA_FIELD_LABELS.five_hour)
+  e.quotaSevenDay = v.quotaSevenDay.trim() === '' ? undefined : intIn(v.quotaSevenDay, 1, 100, QUOTA_FIELD_LABELS.seven_day)
   e.compactMinTokens = v.compactMinTokens.trim() === '' ? undefined : intIn(v.compactMinTokens, 0, Number.MAX_SAFE_INTEGER, 'Min context tokens')
   e.maxRestarts = v.maxRestarts.trim() === '' ? undefined : intIn(v.maxRestarts, 0, 10, 'Max restarts')
   e.compactIdle = nonNegative(v.compactIdle, 'Auto-compact idle seconds')
@@ -459,6 +467,13 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  const fiveHour = setKeys.has('quotaFiveHour') ? int(v.quotaFiveHour) : undefined
+  const sevenDay = setKeys.has('quotaSevenDay') ? int(v.quotaSevenDay) : undefined
+  const quota = {
+    ...(fiveHour !== undefined && { five_hour_pct: fiveHour }),
+    ...(sevenDay !== undefined && { seven_day_pct: sevenDay }),
+  }
+  if (Object.keys(quota).length > 0) spec.usage_quota = quota
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
   if (setKeys.has('kubeAccess') && v.kubeAccess) spec.kube_access = true

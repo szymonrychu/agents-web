@@ -12,6 +12,7 @@ const BACKENDS = {
   webhooks: { repo: "agents-webhook", sibling: "../agents-webhook" },
   schedules: { repo: "agents-schedule", sibling: "../agents-schedule" },
   matrix: { repo: "agents-matrix-connector", sibling: "../agents-matrix-connector" },
+  usage: { repo: "agents-usage", sibling: "../agents-usage" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
