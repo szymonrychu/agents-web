@@ -1,0 +1,51 @@
+/** "Closing when idle" banner for a pending self-close, with a Keep session button that cancels it; the status stream hides it afterwards. */
+import { useState } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import { ApiError, cancelSessionClose, type SessionView } from '../api/client'
+import { formatAge, useNow } from './agentAge'
+
+const TOO_LATE = 'Too late: the session is already being discarded'
+
+export function ClosingBanner({ session }: { session: SessionView }) {
+  const now = useNow()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<{ sessionId: string; text: string } | null>(null)
+  if (session.desired !== 'active' || !session.close_requested_at) return null
+  const keep = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await cancelSessionClose(session.id)
+    } catch (e) {
+      const text = e instanceof ApiError && e.code === 'session_deleting' ? TOO_LATE : e instanceof Error ? e.message : String(e)
+      setError({ sessionId: session.id, text })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const requestedAt = Date.parse(session.close_requested_at)
+  const age = Number.isFinite(requestedAt) ? `, requested ${formatAge(now - requestedAt)} ago` : ''
+  const reason = session.close_reason ? `: ${session.close_reason}` : ''
+  const shownError = error && error.sessionId === session.id ? error.text : null
+  return (
+    <Alert
+      severity="info"
+      variant="outlined"
+      sx={{ my: 1 }}
+      action={
+        <Button color="inherit" size="small" disabled={busy} onClick={keep}>
+          Keep session
+        </Button>
+      }
+    >
+      {`Closing when idle${age}${reason}`}
+      {shownError ? (
+        <Typography component="div" variant="caption" sx={{ color: 'error.main' }}>
+          {shownError}
+        </Typography>
+      ) : null}
+    </Alert>
+  )
+}
