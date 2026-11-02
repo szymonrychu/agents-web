@@ -36,7 +36,7 @@ function HistoryChatTab({ sessionId, detail }: { sessionId: string; detail: Sess
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
       {chat.loading ? (
         <Typography sx={{ color: 'text.secondary', pt: 1 }}>Loading messages</Typography>
-      ) : chat.items.length === 0 && !chat.hasMoreBefore ? (
+      ) : chat.items.length === 0 && !chat.hasMoreBefore && !chat.error ? (
         <Typography color="text.secondary" sx={{ pt: 1 }}>No chat messages in this session; see Records.</Typography>
       ) : (
         <ChatLog items={view.main} subagents={view} hasMoreBefore={chat.hasMoreBefore} loadingOlder={chat.loadingOlder} onLoadOlder={chat.loadOlder} />

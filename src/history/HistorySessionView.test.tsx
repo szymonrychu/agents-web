@@ -145,6 +145,20 @@ describe('HistorySessionView chat', () => {
     expect(screen.getByRole('tab', { name: 'Records' })).toBeTruthy()
   })
 
+  test('shows no empty state while the chat is loading', async () => {
+    api.listRecords.mockReturnValue(new Promise(() => {}))
+    mount()
+    await screen.findByText('Loading messages')
+    expect(screen.queryByText(/No chat messages in this session/)).toBeNull()
+  })
+
+  test('shows the error and no empty state when the records fail to load', async () => {
+    api.listRecords.mockRejectedValue(new Error('records unavailable'))
+    mount()
+    expect(await screen.findByText('records unavailable')).toBeTruthy()
+    expect(screen.queryByText(/No chat messages in this session/)).toBeNull()
+  })
+
   test('shows no empty state when there are chat messages', async () => {
     api.listRecords.mockResolvedValue(page([eventRecord(10, 1, 'some answer')]))
     mount()
