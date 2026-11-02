@@ -67,6 +67,11 @@ export default function UsageHistory() {
       {error && <Alert severity="warning">Usage history unavailable</Alert>}
       {!error && data && series.length === 0 && <Typography color="text.secondary">No usage history in this range</Typography>}
       {!error && data && series.length > 0 && <UsageChart series={series} quotas={quotas} from={data.from} to={data.to} />}
+      {!error && data?.sessions.truncated && (
+        <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm }}>
+          {`Showing the first ${data.sessions.marks.length} sessions in this range; not all are drawn.`}
+        </Typography>
+      )}
       {!error && data && <SessionTimeline marks={data.sessions.marks} from={data.from} to={data.to} now={data.to} />}
     </Box>
   )

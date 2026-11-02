@@ -45,6 +45,20 @@ describe('UsagePage cards', () => {
     expect(c.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('22')
   })
 
+  test('marks only the stale card, with the time it was last seen', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { five_hour: win({ stale: true, observed_at: '2026-11-01T11:00:00Z' }), seven_day: win() } }))
+    mount()
+    await screen.findByTestId('usage-card-five_hour')
+    const stale = within(card('five_hour'))
+    expect(stale.getByText('stale, last seen 1h ago')).toBeTruthy()
+    expect(stale.queryByText(/^observed/)).toBeNull()
+    expect(card('five_hour').dataset.stale).toBe('true')
+    const fresh = within(card('seven_day'))
+    expect(fresh.queryByText(/stale/)).toBeNull()
+    expect(fresh.getByText(/observed 2m ago/)).toBeTruthy()
+    expect(card('seven_day').dataset.stale).toBe('false')
+  })
+
   test('has no five_hour card when the window is absent', async () => {
     api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
     mount()

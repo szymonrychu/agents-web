@@ -24,7 +24,7 @@ const DAY = 86_400_000
 const point = (metric: string, percent = 22): PointView => ({ metric, observed_at: '2026-11-01T11:00:00Z', percent, resets_at: '2026-11-02T00:00:00Z', source: 'statusline' })
 const history = (points: PointView[]): HistoryView => ({ from: '2026-10-25T12:00:00Z', to: '2026-11-01T12:00:00Z', bucket_seconds: 60, points } as HistoryView)
 const mark: MarkView = { session_id: 's-1', slug: 'alpha', preset_id: null, preset_name: 'fast', origin: 'ui', started_at: '2026-11-01T06:00:00Z', ended_at: null }
-const sessions = (marks: MarkView[] = []): SessionsView => ({ from: '2026-10-25T12:00:00Z', to: '2026-11-01T12:00:00Z', marks, truncated: false })
+const sessions = (marks: MarkView[] = [], truncated = false): SessionsView => ({ from: '2026-10-25T12:00:00Z', to: '2026-11-01T12:00:00Z', marks, truncated })
 const mount = () => render(<ThemeProvider theme={theme}><UsageHistory /></ThemeProvider>)
 const chart = () => screen.getByTestId('chart')
 
@@ -91,6 +91,19 @@ describe('UsageHistory', () => {
     expect(await screen.findByText('No usage history in this range')).toBeTruthy()
     expect(screen.queryByTestId('chart')).toBeNull()
     expect(screen.getByTestId('session-bar-s-1')).toBeTruthy()
+  })
+
+  test('notes the session lane is cut short when the sessions are truncated', async () => {
+    api.getSessions.mockResolvedValue(sessions([mark, { ...mark, session_id: 's-2' }], true))
+    mount()
+    expect(await screen.findByText('Showing the first 2 sessions in this range; not all are drawn.')).toBeTruthy()
+    expect(screen.getByTestId('session-bar-s-1')).toBeTruthy()
+  })
+
+  test('no truncation note when the sessions are complete', async () => {
+    mount()
+    await screen.findByTestId('session-bar-s-1')
+    expect(screen.queryByText(/not all are drawn/)).toBeNull()
   })
 
   test('error state', async () => {

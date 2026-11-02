@@ -42,6 +42,7 @@ function WindowCard({ metric, window, now }: { metric: string; window: WindowVie
   return (
     <Box
       data-testid={`usage-card-${metric}`}
+      data-stale={window.stale}
       sx={{ flex: '1 1 280px', minWidth: 0, p: 2, border: `${TOKENS.borderWidth}px solid ${TOKENS.border}`, borderRadius: `${TOKENS.radius}px`, display: 'flex', flexDirection: 'column', gap: 1 }}
     >
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
@@ -53,8 +54,8 @@ function WindowCard({ metric, window, now }: { metric: string; window: WindowVie
         {`resets in ${formatAge(Date.parse(window.resets_at) - now)} (${utc(window.resets_at)})`}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm }}>
-          {`observed ${formatAge(now - Date.parse(window.observed_at))} ago`}
+        <Typography color={window.stale ? 'warning.main' : 'text.secondary'} sx={{ fontSize: TOKENS.fontSizes.sm }}>
+          {`${window.stale ? 'stale, last seen' : 'observed'} ${formatAge(now - Date.parse(window.observed_at))} ago`}
         </Typography>
         <Chip size="small" variant="outlined" label={SOURCES[window.source]} />
       </Box>
