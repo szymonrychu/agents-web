@@ -8,7 +8,7 @@ import { theme } from '../theme'
 import type { SessionSummary } from './api'
 import { HistoryPage } from './HistoryPage'
 
-const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn() }))
+const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn(), getRetention: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
 const row = (id: number, over: Partial<SessionSummary> = {}): SessionSummary => ({
@@ -41,6 +41,8 @@ beforeEach(() => {
   api.listRecords.mockResolvedValue({ records: [], has_more_before: false, next_after_id: null })
   api.deleteSession.mockReset()
   api.deleteSession.mockResolvedValue(undefined)
+  api.getRetention.mockReset()
+  api.getRetention.mockResolvedValue({ retention_days: 90, updated_at: '2026-10-20T08:00:00Z', last_sweep_at: null, last_sweep_deleted: null })
 })
 afterEach(cleanup)
 
@@ -89,6 +91,15 @@ describe('HistoryPage search', () => {
       session: 'my-slug',
       limit: 50,
     })
+  })
+})
+
+describe('HistoryPage retention', () => {
+  test('shows the retention card above the search', async () => {
+    mount()
+    const card = await screen.findByText('Keep 90 days')
+    const search = screen.getByLabelText('Search')
+    expect(card.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 

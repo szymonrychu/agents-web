@@ -13,6 +13,7 @@ import { listSessions } from './api'
 import type { SessionSummary, SessionsQuery } from './api'
 import { HistoryResults } from './HistoryResults'
 import { HistorySessionView } from './HistorySessionView'
+import { RetentionCard } from './RetentionCard'
 
 export interface HistoryPageProps {
   onBack: () => void
@@ -97,6 +98,7 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
         <Button onClick={onBack}>Back</Button>
         <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>History</Typography>
       </Box>
+      <RetentionCard />
       <Box component="form" onSubmit={submit} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
           <TextField
