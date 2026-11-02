@@ -4,6 +4,7 @@ import { SessionsPage } from '../sessions/SessionsPage'
 import { SchedulesPage } from '../schedules/SchedulesPage'
 import { ChatsPage } from '../matrix/ChatsPage'
 import { UsagePage } from '../usage/UsagePage'
+import { HistoryPage } from '../history/HistoryPage'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -91,6 +92,23 @@ describe('menuEntries', () => {
     const onBack = vi.fn()
     const page = usage!.render(onBack, vi.fn())
     expect(isValidElement(page) && page.type).toBe(UsagePage)
+    expect(isValidElement<{ onBack: unknown }>(page) && page.props).toEqual({ onBack })
+  })
+
+  test('lists History at order 55 when the history backend is configured', () => {
+    expect(menuEntries(config('orchestrator', 'usage', 'history')).map((e) => [e.id, e.order])).toEqual([
+      ['sessions', 10],
+      ['presets', 40],
+      ['backups', 45],
+      ['usage', 50],
+      ['history', 55],
+    ])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('history')
+    const history = menuEntries(config('history')).find((e) => e.id === 'history')
+    expect(history).toMatchObject({ label: 'History', order: 55, backend: 'history' })
+    const onBack = vi.fn()
+    const page = history!.render(onBack, vi.fn())
+    expect(isValidElement(page) && page.type).toBe(HistoryPage)
     expect(isValidElement<{ onBack: unknown }>(page) && page.props).toEqual({ onBack })
   })
 
