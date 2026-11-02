@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useSearchParams } from 'react-router'
 import { ChatView } from './chat/ChatView'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
@@ -23,6 +23,14 @@ export const APP_NAME = 'Agent Orchestrator';
 
 function SessionsShell() {
   const { state, sessions, select, dismiss } = useSessions()
+  // `/?session=<id>` (the Tasks page links waiting sessions this way) selects that session once it is known, once.
+  const wanted = useSearchParams()[0].get('session')
+  const applied = useRef<string | null>(null)
+  useEffect(() => {
+    if (wanted === null || applied.current === wanted || !(wanted in state.sessions)) return
+    applied.current = wanted
+    select(wanted)
+  }, [wanted, state.sessions, select])
   const [creating, setCreating] = useState(false)
   // The main area shows the selected session or a settings page; only /tasks is routed.
   const [view, setView] = useState<string>('session')

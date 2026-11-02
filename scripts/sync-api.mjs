@@ -13,6 +13,7 @@ const BACKENDS = {
   schedules: { repo: "agents-schedule", sibling: "../agents-schedule" },
   matrix: { repo: "agents-matrix-connector", sibling: "../agents-matrix-connector" },
   usage: { repo: "agents-usage", sibling: "../agents-usage" },
+  taskboard: { repo: "agents-taskboard", sibling: "../agents-taskboard" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

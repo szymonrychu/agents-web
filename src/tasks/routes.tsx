@@ -1,16 +1,19 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { Route, Routes, useParams } from 'react-router'
+import { TaskDetail } from './TaskDetail'
+import { TasksPage } from './TasksPage'
+import { taskPath } from './paths'
 
-export const taskPath = (key: string): string => `/tasks/${key}`
+export { taskPath }
 
-function TasksList() {
-  return <Box data-testid="tasks-list-route" />
-}
-
-function TaskDetail() {
+function TaskRoute() {
   const { key = '' } = useParams()
-  return <Box data-testid="task-route" data-key={key} />
+  return (
+    <Box data-testid="task-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
+      <TaskDetail taskKey={key} />
+    </Box>
+  )
 }
 
 function NotFound() {
@@ -25,8 +28,8 @@ function NotFound() {
 export function TasksRoute() {
   return (
     <Routes>
-      <Route index element={<TasksList />} />
-      <Route path=":key" element={<TaskDetail />} />
+      <Route index element={<Box data-testid="tasks-list-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}><TasksPage /></Box>} />
+      <Route path=":key" element={<TaskRoute />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

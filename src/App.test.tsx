@@ -321,6 +321,12 @@ describe('App', () => {
     expect(screen.queryByTestId('task-route')).toBeNull()
   })
 
+  test('/?session=<id> selects that session', async () => {
+    mount('/?session=c2')
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
+  })
+
   test('unknown /tasks/x/y shows not found', () => {
     mount('/tasks/x/y')
     expect(screen.getByTestId('tasks-not-found')).toBeTruthy()

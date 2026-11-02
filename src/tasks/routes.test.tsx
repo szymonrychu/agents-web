@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { TasksRoute, taskPath } from './routes'
+
+// The pages need the taskboard backend config and have their own tests; here only the routing is under test.
+vi.mock('./TasksPage', () => ({ TasksPage: () => null }))
+vi.mock('./TaskDetail', () => ({ TaskDetail: () => null }))
 
 function at(path: string) {
   return render(
