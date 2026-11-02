@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadConfig, resetConfig } from '../config/backends'
-import { archiveDownloadUrl, cleanupPreview, deleteArchives, listArchives } from './archives'
+import { archiveDownloadUrl, cleanupPreview, deleteArchives, getCleanupSettings, listArchives, putCleanupSettings, runCleanupNow } from './archives'
 import { previewFor } from '../sessions/previewFor'
 
 afterEach(() => {
@@ -17,6 +17,11 @@ const stub = (body: unknown) => {
   const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body)))
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
+}
+
+const settingsView = () => {
+  const policy = { enabled: true, dry_run: true, retention_days: 30, keep_newest: 3, interval_seconds: 3600, grace_seconds: 600 }
+  return { policy, defaults: policy, source: 'database', updated_at: null, run_requested_at: null, run_pending: false, last_sweep: null }
 }
 
 describe('archives client', () => {
@@ -53,6 +58,37 @@ describe('archives client', () => {
     expect(url).toBe('/api/v1/cache/archives')
     expect(init?.method).toBe('DELETE')
     expect(JSON.parse(init?.body as string)).toEqual({ keys: ['a'] })
+  })
+
+  it('reads the cleanup settings', async () => {
+    await useBase('/orch/api/v1')
+    const view = settingsView()
+    const fetchMock = stub(view)
+    await expect(getCleanupSettings()).resolves.toEqual(view)
+    expect(fetchMock.mock.calls[0][0]).toBe('/orch/api/v1/cache/cleanup/settings')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
+  })
+
+  it('saves the cleanup settings', async () => {
+    await useBase('/orch/api/v1')
+    const policy = { enabled: true, dry_run: false, retention_days: 30, keep_newest: 3, interval_seconds: 3600, grace_seconds: 600 }
+    const view = settingsView()
+    const fetchMock = stub(view)
+    await expect(putCleanupSettings(policy)).resolves.toEqual(view)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/orch/api/v1/cache/cleanup/settings')
+    expect(init?.method).toBe('PUT')
+    expect(JSON.parse(init?.body as string)).toEqual(policy)
+  })
+
+  it('requests a sweep now', async () => {
+    await useBase('/orch/api/v1')
+    const view = { ...settingsView(), run_pending: true }
+    const fetchMock = stub(view)
+    await expect(runCleanupNow()).resolves.toEqual(view)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/orch/api/v1/cache/cleanup/run')
+    expect(init?.method).toBe('POST')
   })
 
   it('builds the relative download URL with the key query-encoded', async () => {

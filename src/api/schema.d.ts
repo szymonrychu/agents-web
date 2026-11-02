@@ -765,7 +765,8 @@ export interface paths {
         put?: never;
         /**
          * Scale the caller's session (leader only)
-         * @description A scale-up over the usage quota is refused 409 `usage_quota`.
+         * @description A scale-up over the usage quota is refused 409 `usage_quota`, but only for the leader:
+         *     a non-leader is always answered 403 `not_leader`.
          */
         post: operations["scale_agent_v1_scale_post"];
         delete?: never;
@@ -948,6 +949,41 @@ export interface paths {
         /** Cleanup Preview */
         get: operations["cleanup_preview_api_v1_cache_cleanup_preview_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/cleanup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Cleanup Run */
+        post: operations["request_cleanup_run_api_v1_cache_cleanup_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cache/cleanup/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cleanup Settings */
+        get: operations["get_cleanup_settings_api_v1_cache_cleanup_settings_get"];
+        /** Put Cleanup Settings */
+        put: operations["put_cleanup_settings_api_v1_cache_cleanup_settings_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1689,6 +1725,26 @@ export interface components {
             total_bytes: number;
             /** Would Delete */
             would_delete: components["schemas"]["CleanupItem"][];
+        };
+        /** CleanupSettingsView */
+        CleanupSettingsView: {
+            defaults: components["schemas"]["SweepPolicyView"];
+            /** Last Sweep */
+            last_sweep: {
+                [key: string]: unknown;
+            } | null;
+            policy: components["schemas"]["SweepPolicyView"];
+            /** Run Pending */
+            run_pending: boolean;
+            /** Run Requested At */
+            run_requested_at: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "database" | "environment";
+            /** Updated At */
+            updated_at: string | null;
         };
         /** CommandAccepted */
         CommandAccepted: {
@@ -2859,6 +2915,39 @@ export interface components {
                 [key: string]: unknown;
             };
             summary: components["schemas"]["SessionSummary"];
+        };
+        /**
+         * SweepPolicyIn
+         * @description The whole sweep policy; every field is required (a PUT replaces the saved policy).
+         */
+        SweepPolicyIn: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /** Interval Seconds */
+            interval_seconds: number;
+            /** Keep Newest */
+            keep_newest: number;
+            /** Retention Days */
+            retention_days: number;
+        };
+        /** SweepPolicyView */
+        SweepPolicyView: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Grace Seconds */
+            grace_seconds: number;
+            /** Interval Seconds */
+            interval_seconds: number;
+            /** Keep Newest */
+            keep_newest: number;
+            /** Retention Days */
+            retention_days: number;
         };
         /** TerminalList */
         TerminalList: {
@@ -5245,6 +5334,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CleanupPreview"];
+                };
+            };
+        };
+    };
+    request_cleanup_run_api_v1_cache_cleanup_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    get_cleanup_settings_api_v1_cache_cleanup_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    put_cleanup_settings_api_v1_cache_cleanup_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SweepPolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
