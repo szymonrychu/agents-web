@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  cancelSessionClose,
   copyPreset,
   createPreset,
   createSession,
@@ -168,5 +169,15 @@ describe('labels', () => {
     expect(calls[0][0]).toBe('/api/v1/sessions/s%201/labels');
     expect(calls[0][1].method).toBe('PATCH');
     expect(JSON.parse(calls[0][1].body as string)).toEqual({ labels: ['x'] });
+  });
+
+  it('cancels a pending self-close with DELETE on the close sub-resource', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await cancelSessionClose('s 1');
+    const calls = f.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe('/api/v1/sessions/s%201/close');
+    expect(calls[0][1].method).toBe('DELETE');
+    expect(calls[0][1].body).toBeUndefined();
   });
 });

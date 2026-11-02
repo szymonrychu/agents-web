@@ -106,3 +106,16 @@ describe('attention and bootstrap fields', () => {
     expect(preparingProgress(s, [])?.label).toBe('0 of 1 agents ready')
   })
 })
+
+describe('pending self-close', () => {
+  const SUMMARY = { bootstrap_failed_agents: 1 }
+  const closing = { close_requested_at: '2026-11-02T10:00:00Z', close_reason: 'done' }
+  test('pending close is the first issue', () => {
+    expect(sessionIssue(session(closing, SUMMARY), [])).toEqual({ kind: 'closing', text: 'closing when idle: done' })
+  })
+  test('no closing issue while deleting or without a request', () => {
+    expect(sessionIssue(session({ ...closing, desired: 'deleting' }, SUMMARY), [])?.kind).toBe('bootstrap_failure')
+    expect(sessionIssue(session({ close_requested_at: null, close_reason: null }, SUMMARY), [])?.kind).toBe('bootstrap_failure')
+    expect(sessionIssue(session({ close_requested_at: null }), [])).toBeNull()
+  })
+})

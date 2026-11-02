@@ -24,7 +24,7 @@ function runningGate(status: Dict): string | null {
 }
 
 export interface Issue {
-  kind: 'bootstrap_failure' | 'permission_unavailable' | 'attention'
+  kind: 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention'
   text: string
 }
 
@@ -40,8 +40,9 @@ export function agentIssue(a: AgentView): Issue | null {
   return null
 }
 
-/** The most urgent issue of a session: a bootstrap failure first, then an unavailable permission mode, then attention; agent detail first, summary counts as fallback. */
+/** The most urgent issue of a session: a pending self-close first (the session is about to go), then a bootstrap failure, then an unavailable permission mode, then attention; agent detail first, summary counts as fallback. */
 export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
+  if (session.desired === 'active' && session.close_requested_at) return { kind: 'closing', text: `closing when idle: ${session.close_reason ?? ''}` }
   const issues = live(agents).map(agentIssue)
   const failure = issues.find((i) => i?.kind === 'bootstrap_failure')
   if (failure) return failure

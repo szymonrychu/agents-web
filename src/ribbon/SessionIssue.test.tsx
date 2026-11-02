@@ -6,7 +6,7 @@ import type { AgentView, SessionView } from '../api/client'
 import { theme } from '../theme'
 import { SessionIssue } from './SessionIssue'
 
-const session = (summary: Record<string, unknown> = {}) => ({ id: 's', desired: 'running', status: {}, summary: { bootstrap_failed_agents: 0, attention_agents: 0, ...summary } }) as unknown as SessionView
+const session = (summary: Record<string, unknown> = {}, over: Record<string, unknown> = {}) => ({ id: 's', desired: 'running', status: {}, summary: { bootstrap_failed_agents: 0, attention_agents: 0, ...summary }, ...over }) as unknown as SessionView
 const agent = (o: Record<string, unknown> = {}) => ({ id: 'a', gone: false, ...o }) as unknown as AgentView
 const wrap = (s: SessionView, agents: AgentView[]) => render(<ThemeProvider theme={theme}><SessionIssue session={s} agents={agents} /></ThemeProvider>)
 afterEach(cleanup)
@@ -20,5 +20,17 @@ describe('SessionIssue permission mode', () => {
     wrap(session(), [agent({ permission_mode_state: null })])
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
+describe('SessionIssue pending close', () => {
+  test('closing is shown as a status line', () => {
+    wrap(session({}, { desired: 'active', close_requested_at: '2026-11-02T10:00:00Z', close_reason: 'done' }), [])
+    expect(screen.getByRole('status').textContent).toBe('closing when idle: done')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+  test('closing is not shown while the session is being discarded', () => {
+    wrap(session({}, { desired: 'deleting', close_requested_at: '2026-11-02T10:00:00Z', close_reason: 'done' }), [])
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
