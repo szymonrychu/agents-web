@@ -17,9 +17,9 @@ import { TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import type { FormErrorValue } from '../triggers'
 
-/** While a run request is pending the card re-reads the settings this often, at most `RUN_POLL_MAX_READS` times. */
+/** While a run request is pending the card re-reads the settings this often, at most `RUN_POLL_MAX_READS` times (about 2 minutes). */
 export const RUN_POLL_MS = 5000
-const RUN_POLL_MAX_READS = 6
+const RUN_POLL_MAX_READS = 24
 
 type NumberKey = 'retention_days' | 'keep_newest' | 'interval_seconds' | 'grace_seconds'
 
@@ -126,6 +126,7 @@ export function CleanupSettingsCard() {
         const v = await getCleanupSettings()
         if (cancelled) return
         setView(v)
+        setError(null)
         if (!v.run_pending) return
       } catch (e) {
         if (cancelled) return
@@ -214,6 +215,7 @@ export function CleanupSettingsCard() {
             >Run sweep now</Button>
             {waiting && <Typography variant="body2" color="text.secondary">Sweep requested</Typography>}
             {pending && stalled && <Typography variant="body2" color="warning.main">Still waiting for the reconciler</Typography>}
+            <Typography variant="caption" color="text.secondary">Runs the saved settings</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">{last ? last.line : 'No sweep has run yet'}</Typography>
           {last?.error && <Alert severity="error">{last.error}</Alert>}

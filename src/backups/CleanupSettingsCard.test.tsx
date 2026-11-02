@@ -285,24 +285,42 @@ describe('CleanupSettingsCard run polling', () => {
     expect(api.getCleanupSettings).not.toHaveBeenCalled()
   })
 
-  test('gives up after 6 reads and says the reconciler has not run it', async () => {
+  test('gives up after about 2 minutes and says the reconciler has not run it', async () => {
     api.getCleanupSettings.mockResolvedValue(PENDING)
     await mountAndLoad()
     api.getCleanupSettings.mockClear()
-    await flush(6 * RUN_POLL_MS)
-    expect(api.getCleanupSettings).toHaveBeenCalledTimes(6)
+    await flush(23 * RUN_POLL_MS)
+    expect(screen.queryByText('Still waiting for the reconciler')).toBeNull()
+    await flush(RUN_POLL_MS)
+    expect(api.getCleanupSettings).toHaveBeenCalledTimes(24)
     expect(screen.getByText('Still waiting for the reconciler')).toBeTruthy()
     expect(screen.queryByText('Sweep requested')).toBeNull()
     expect(runButton().disabled).toBe(false)
     await flush(4 * RUN_POLL_MS)
-    expect(api.getCleanupSettings).toHaveBeenCalledTimes(6)
+    expect(api.getCleanupSettings).toHaveBeenCalledTimes(24)
+  })
+
+  test('a failed poll read is cleared by the next successful read', async () => {
+    api.getCleanupSettings.mockResolvedValue(PENDING)
+    await mountAndLoad()
+    api.getCleanupSettings.mockRejectedValueOnce(new ApiError(503, 'unavailable', 'database down'))
+    await flush(RUN_POLL_MS)
+    expect(screen.getByText(/database down/)).toBeTruthy()
+    await flush(RUN_POLL_MS)
+    expect(screen.queryByText(/database down/)).toBeNull()
+    expect(screen.getByText('Sweep requested')).toBeTruthy()
+  })
+
+  test('says Run sweep now uses the saved settings', async () => {
+    await mountAndLoad()
+    expect(screen.getByText('Runs the saved settings')).toBeTruthy()
   })
 
   test('asking again after giving up polls again', async () => {
     api.getCleanupSettings.mockResolvedValue(PENDING)
     api.runCleanupNow.mockResolvedValue(PENDING)
     await mountAndLoad()
-    await flush(6 * RUN_POLL_MS)
+    await flush(24 * RUN_POLL_MS)
     expect(screen.getByText('Still waiting for the reconciler')).toBeTruthy()
     api.getCleanupSettings.mockClear()
     await click(runButton())
