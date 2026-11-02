@@ -24,6 +24,13 @@ const referenceLines = (c: HTMLElement) => [...c.querySelectorAll('.MuiChartsRef
 afterEach(cleanup)
 
 describe('UsageChart', () => {
+  test('draws no 5-hour line and no 5-hour legend entry when only the weekly series is given', () => {
+    const { container } = mount([week])
+    expect(container.querySelectorAll('path.MuiLineChart-line')).toHaveLength(1)
+    expect(line(container, 'five_hour')).toBeNull()
+    expect([...container.querySelectorAll('.MuiChartsLegend-label')].map((e) => e.textContent)).toEqual(['Weekly'])
+  })
+
   test('draws one line per series', () => {
     const { container } = mount([five, week])
     expect(container.querySelectorAll('path.MuiLineChart-line')).toHaveLength(2)
