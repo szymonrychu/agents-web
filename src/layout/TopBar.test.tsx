@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView } from '../api/client'
 import type { SessionEntry } from '../ribbon/useSessions'
@@ -17,7 +18,7 @@ const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
   const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), settingsCategories: [], ...over }
-  render(<ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider>)
+  render(<MemoryRouter><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></MemoryRouter>)
   return props
 }
 
@@ -63,10 +64,17 @@ describe('TopBar', () => {
     const { onDiscard } = setup()
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Discard'])
+    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Discard'])
     expect(screen.queryByText('Edit')).toBeNull()
-    fireEvent.click(items[2])
+    fireEvent.click(items[3])
     expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('session header links to tasks filtered by session', () => {
+    setup()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    const link = screen.getByRole('menuitem', { name: 'Tasks' })
+    expect(link.getAttribute('href')).toBe('/tasks?session=c1')
   })
 
   test('permissions menu item calls onPermissions', () => {
