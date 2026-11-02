@@ -96,7 +96,7 @@ export function RetentionCard() {
       <ConfirmDialog
         open={confirming}
         title="Lower the retention?"
-        body={`Sessions older than ${days} days will be deleted now.`}
+        body={`Discarded sessions older than ${days} days will be deleted now.`}
         confirmLabel="Lower retention"
         confirmDisabled={saving}
         onConfirm={() => void save()}

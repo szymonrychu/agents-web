@@ -106,7 +106,7 @@ describe('RetentionCard', () => {
     await screen.findByText('Keep 90 days')
     await setDays(user, '30')
     await user.click(saveButton())
-    expect(await screen.findByText('Sessions older than 30 days will be deleted now.')).toBeTruthy()
+    expect(await screen.findByText('Discarded sessions older than 30 days will be deleted now.')).toBeTruthy()
     expect(api.putRetention).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Lower retention' }))
     await waitFor(() => expect(api.putRetention).toHaveBeenCalledWith(30))
