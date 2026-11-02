@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import { Route, Routes, useSearchParams } from 'react-router'
 import { ChatView } from './chat/ChatView'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
@@ -16,13 +17,22 @@ import { menuEntries } from './backends/registry'
 import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
 import { TOKENS } from './theme'
+import { TasksRoute } from './tasks/routes'
 
 export const APP_NAME = 'Agent Orchestrator';
 
-export default function App() {
-  const { state, sessions, select, dismiss } = useSessions()
+function SessionsShell() {
+  const { state, sessions, select, dismiss, update } = useSessions()
+  // `/?session=<id>` (the Tasks page links waiting sessions this way) selects that session once it is known, once.
+  const wanted = useSearchParams()[0].get('session')
+  const applied = useRef<string | null>(null)
+  useEffect(() => {
+    if (wanted === null || applied.current === wanted || !(wanted in state.sessions)) return
+    applied.current = wanted
+    select(wanted)
+  }, [wanted, state.sessions, select])
   const [creating, setCreating] = useState(false)
-  // The main area shows the selected session or a settings page; no router.
+  // The main area shows the selected session or a settings page; only /tasks is routed.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
@@ -48,6 +58,7 @@ export default function App() {
         onPermissions={setPermissions}
         onDiscard={setDiscarding}
         onDismiss={dismiss}
+        onSessionUpdated={update}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
@@ -81,5 +92,14 @@ export default function App() {
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
     </Box>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/tasks/*" element={<TasksRoute />} />
+      <Route path="*" element={<SessionsShell />} />
+    </Routes>
   )
 }

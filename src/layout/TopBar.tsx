@@ -14,6 +14,7 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import { Link as RouterLink } from 'react-router'
 import { ContextGauge } from '../ribbon/ContextGauge'
 import { SessionIssue } from '../ribbon/SessionIssue'
 import { SessionProgress } from '../ribbon/SessionProgress'
@@ -21,6 +22,7 @@ import { sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
 import type { SessionEntry } from '../ribbon/useSessions'
 import type { SessionView } from '../api/client'
+import { SessionLabels } from '../sessions/SessionLabels'
 import { TOKENS } from '../theme'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
@@ -36,6 +38,8 @@ export interface TopBarProps {
   onDiscard: (session: SessionView) => void
   /** Removes a discarded session's tab. */
   onDismiss: (id: string) => void
+  /** A session returned by a REST call (the label edit), to show before the stream catches up. */
+  onSessionUpdated: (session: SessionView) => void
   settingsCategories: SettingsCategory[]
 }
 
@@ -44,13 +48,15 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, settingsCategories }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [actions, setActions] = useState<ActionsMenu | null>(null)
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
   const value = sessions.some((e) => e.session.id === selectedId) ? selectedId : false
+  const labelled = sessions.find((e) => e.session.id === selectedId && !e.discarded)
   return (
-    <Box component="header" sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
+    <Box component="header" sx={{ borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
       <IconButton aria-label="Open menu" onClick={() => setMenuOpen(true)}>
         <MenuIcon />
       </IconButton>
@@ -111,9 +117,16 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
       <Menu anchorEl={actions?.anchor ?? null} open={actions !== null} onClose={() => setActions(null)}>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onPermissions(target) }}>Permissions</MenuItem>
+        <MenuItem component={RouterLink} to={`/tasks?session=${encodeURIComponent(actions?.session.id ?? '')}`} onClick={() => setActions(null)}>Tasks</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onDiscard(target) }}>Discard</MenuItem>
       </Menu>
       <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} />
+    </Box>
+    {labelled && (
+      <Box sx={{ px: 1, pb: 1 }}>
+        <SessionLabels key={labelled.session.id} session={labelled.session} onUpdated={onSessionUpdated} />
+      </Box>
+    )}
     </Box>
   )
 }

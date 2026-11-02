@@ -83,7 +83,16 @@ export async function requestAt<T>(basePath: string, method: string, path: strin
 
 const id = encodeURIComponent;
 
-export const listSessions = () => request<SessionView[]>('GET', '/sessions');
+/** `labels` is the repeatable `?label=` filter: sessions carrying any of them. */
+export const listSessions = (labels: string[] = []) => {
+  const q = new URLSearchParams();
+  for (const l of labels) q.append('label', l);
+  const s = q.toString();
+  return request<SessionView[]>('GET', `/sessions${s ? `?${s}` : ''}`);
+};
+/** Replaces the session's labels. */
+export const setSessionLabels = (sessionId: string, labels: string[]) =>
+  request<SessionView>('PATCH', `/sessions/${id(sessionId)}/labels`, { labels });
 export const getSession = (sessionId: string) => request<SessionView>('GET', `/sessions/${id(sessionId)}`);
 /** Body: exactly one of `spec` or `preset_id` (the server answers 422 otherwise); `slug` is optional with a preset. */
 export const createSession = (body: CreateSession) => request<SessionView>('POST', '/sessions', body);

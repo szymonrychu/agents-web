@@ -140,3 +140,33 @@ test("reads usage from the sibling agents-usage checkout by default", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readFileSync(join(proj, "openapi/usage.source"), "utf8"), `agents-usage ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the history backend and records agents-history", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "history", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/history.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/history.source"), "utf8"), `agents-history ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("reads history from the sibling agents-history checkout by default", () => {
+  const doc = '{"openapi":"3.1.0","paths":{"/history/v1/sessions":{}}}\n';
+  const parent = mkdtempSync(join(tmpdir(), "sync-parent-"));
+  const src = makeSource(doc, join(parent, "agents-history"));
+  const proj = makeProject(join(parent, "agents-web"));
+  const r = run(proj, "history");
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/history.source"), "utf8"), `agents-history ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("knows the taskboard backend and records agents-taskboard", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "taskboard", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/taskboard.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/taskboard.source"), "utf8"), `agents-taskboard ${git(src, "rev-parse", "HEAD")}\n`);
+});
