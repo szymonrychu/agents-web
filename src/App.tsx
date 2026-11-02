@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import { Route, Routes } from 'react-router'
 import { ChatView } from './chat/ChatView'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
@@ -16,13 +17,14 @@ import { menuEntries } from './backends/registry'
 import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
 import { TOKENS } from './theme'
+import { TasksRoute } from './tasks/routes'
 
 export const APP_NAME = 'Agent Orchestrator';
 
-export default function App() {
+function SessionsShell() {
   const { state, sessions, select, dismiss } = useSessions()
   const [creating, setCreating] = useState(false)
-  // The main area shows the selected session or a settings page; no router.
+  // The main area shows the selected session or a settings page; only /tasks is routed.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
@@ -81,5 +83,14 @@ export default function App() {
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
     </Box>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/tasks/*" element={<TasksRoute />} />
+      <Route path="*" element={<SessionsShell />} />
+    </Routes>
   )
 }

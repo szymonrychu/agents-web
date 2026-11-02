@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
+import { BrowserRouter } from 'react-router'
 import App from './App'
 import { ConfigError, loadConfig } from './config/backends'
 import { theme } from './theme'
@@ -15,7 +16,9 @@ loadConfig().then(
       <StrictMode>
         <ThemeProvider theme={theme}>
           <CssBaseline enableColorScheme />
-          <App />
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
         </ThemeProvider>
       </StrictMode>,
     ),

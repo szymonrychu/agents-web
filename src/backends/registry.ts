@@ -36,6 +36,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
     backupsMenu,
   ],
+  taskboard: [],
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
   matrix: [chatsMenu],
