@@ -12,6 +12,7 @@
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
+ *   60 Devices (agents-app-connector admin API)
  */
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
@@ -19,6 +20,7 @@ import { SessionsPage } from '../sessions/SessionsPage'
 import { webhooksMenu } from '../webhooks/menu'
 import { schedulesMenu } from '../schedules/menu'
 import { chatsMenu } from '../matrix/menu'
+import { devicesMenu } from '../devices/menu'
 import { backupsMenu } from '../backups/menu'
 import { usageMenu } from '../usage/menu'
 import { historyMenu } from '../history/menu'
@@ -44,6 +46,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
   matrix: [chatsMenu],
+  devices: [devicesMenu],
   usage: [usageMenu],
   history: [historyMenu],
 }
