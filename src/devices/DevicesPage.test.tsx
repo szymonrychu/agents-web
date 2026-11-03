@@ -70,6 +70,50 @@ describe('DevicesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Pair' }))
     await user.click(await screen.findByRole('button', { name: 'Copy token' }))
     expect(writeText).toHaveBeenCalledWith('tok')
+    expect(await screen.findByText('Copied')).toBeTruthy()
+  })
+
+  test('copy failure shows a message instead of an unhandled rejection', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+    api.pairDevice.mockResolvedValue({ device_id: 'd3', name: 'Boox', plugin: 'sketch', token: 'tok' })
+    mount()
+    await user.type(await screen.findByLabelText('Device name'), 'Boox')
+    await user.click(screen.getByRole('button', { name: 'Pair' }))
+    await user.click(await screen.findByRole('button', { name: 'Copy token' }))
+    expect(await screen.findByText(/copy failed/i)).toBeTruthy()
+    expect(screen.queryByText('Copied')).toBeNull()
+  })
+
+  test('unmounting drops the token and a fresh mount never shows it', async () => {
+    const user = userEvent.setup()
+    api.pairDevice.mockResolvedValue({ device_id: 'd3', name: 'Boox', plugin: 'sketch', token: 'secret-token-123' })
+    const view = mount()
+    await user.type(await screen.findByLabelText('Device name'), 'Boox')
+    await user.click(screen.getByRole('button', { name: 'Pair' }))
+    await screen.findByDisplayValue('secret-token-123')
+    view.unmount()
+    expect(screen.queryByDisplayValue('secret-token-123')).toBeNull()
+    mount()
+    await screen.findByText('Tab d1')
+    expect(screen.queryByDisplayValue('secret-token-123')).toBeNull()
+    expect(screen.queryByLabelText('Device token')).toBeNull()
+  })
+
+  test('list refresh failure after a successful pair keeps the token and shows no pair error', async () => {
+    const user = userEvent.setup()
+    api.pairDevice.mockResolvedValue({ device_id: 'd3', name: 'Boox', plugin: 'sketch', token: 'secret-token-123' })
+    mount()
+    await user.type(await screen.findByLabelText('Device name'), 'Boox')
+    api.listDevices.mockRejectedValue(new TypeError('Failed to fetch'))
+    await user.click(screen.getByRole('button', { name: 'Pair' }))
+    expect(await screen.findByDisplayValue('secret-token-123')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pair' })).toBeTruthy()
+  })
+
+  test('device name input is limited to 80 characters', async () => {
+    mount()
+    expect((await screen.findByLabelText('Device name')).getAttribute('maxlength')).toBe('80')
   })
 
   test('revoke asks for confirmation and then revokes', async () => {
@@ -82,6 +126,30 @@ describe('DevicesPage', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Revoke' }))
     await waitFor(() => expect(api.revokeDevice).toHaveBeenCalledWith('d1'))
+  })
+
+  test('revoking a stale device (404) explains it and refreshes the list', async () => {
+    const user = userEvent.setup()
+    api.revokeDevice.mockRejectedValue(new ApiError(404, 'http_error', 'not found'))
+    mount()
+    const row = (await screen.findByText('Tab d1')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    const before = api.listDevices.mock.calls.length
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
+    expect(await screen.findByText(/already revoked or no longer exists/i)).toBeTruthy()
+    await waitFor(() => expect(api.listDevices.mock.calls.length).toBeGreaterThan(before))
+  })
+
+  test('revoke failure shows the error and refreshes the list', async () => {
+    const user = userEvent.setup()
+    api.revokeDevice.mockRejectedValue(new ApiError(500, 'http_error', 'boom'))
+    mount()
+    const row = (await screen.findByText('Tab d1')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    const before = api.listDevices.mock.calls.length
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
+    expect(await screen.findByText('boom')).toBeTruthy()
+    await waitFor(() => expect(api.listDevices.mock.calls.length).toBeGreaterThan(before))
   })
 
   test('cancelling the confirm does not revoke', async () => {
@@ -97,6 +165,22 @@ describe('DevicesPage', () => {
     api.listDevices.mockRejectedValue(new ApiError(403, 'http_error', 'Forbidden'))
     mount()
     expect(await screen.findByText(/forbidden/i)).toBeTruthy()
+  })
+
+  test('401 shows a sign-in message', async () => {
+    api.listDevices.mockRejectedValue(new ApiError(401, 'http_error', 'Unauthorized'))
+    mount()
+    expect(await screen.findByText(/not signed in/i)).toBeTruthy()
+  })
+
+  test('pair 403 shows a forbidden message and no token', async () => {
+    const user = userEvent.setup()
+    api.pairDevice.mockRejectedValue(new ApiError(403, 'http_error', 'Forbidden'))
+    mount()
+    await user.type(await screen.findByLabelText('Device name'), 'Boox')
+    await user.click(screen.getByRole('button', { name: 'Pair' }))
+    expect(await screen.findByText(/forbidden/i)).toBeTruthy()
+    expect(screen.queryByLabelText('Device token')).toBeNull()
   })
 
   test('network error on pairing is shown and no token appears', async () => {
