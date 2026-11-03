@@ -82,6 +82,23 @@ describe('ClosingBanner', () => {
     expect(screen.getByText('boom')).toBeTruthy()
   })
 
+  test('shows the inactivity deadline', async () => {
+    const f = vi.fn(async () => json(200, {}))
+    vi.stubGlobal('fetch', f)
+    mount(session({ close_kind: 'inactivity', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'quiet for 4 h' }))
+    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity at 14:05Z: quiet for 4 h')
+    await act(async () => fireEvent.click(keep()))
+    expect(f).toHaveBeenCalledTimes(1)
+    const calls = f.mock.calls as unknown as [string, RequestInit][]
+    expect(calls[0][0]).toBe('/api/v1/sessions/s1/close')
+    expect(calls[0][1].method).toBe('DELETE')
+  })
+
+  test('self-close banner unchanged', () => {
+    mount(session({ close_kind: 'self', close_deadline_at: null }))
+    expect(screen.getByRole('alert').textContent).toContain('Closing when idle, requested 2m ago: done')
+  })
+
   test('reason is plain text', () => {
     const { container } = mount(session({ close_reason: '<b>x</b>' }))
     expect(container.querySelector('b')).toBeNull()

@@ -73,6 +73,11 @@ export function QueueStrip({ sessionId }: { sessionId: string }) {
             {m.status}
           </Typography>
           <Box sx={{ flex: 1, minWidth: 0 }}>
+            {m.notice ? (
+              <Typography variant="caption" sx={{ color: 'info.main', display: 'block' }}>
+                orchestrator notice
+              </Typography>
+            ) : null}
             <Typography noWrap>{m.text}</Typography>
             {detail(m) ? (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>

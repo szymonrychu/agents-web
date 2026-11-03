@@ -1,9 +1,10 @@
-/** "Closing when idle" banner for a pending self-close, with a Keep session button that cancels it; the status stream hides it afterwards. */
+/** "Closing when idle" banner for a pending self-close ("Closing for inactivity at HH:MMZ" for an inactivity close), with a Keep session button that cancels it; the status stream hides it afterwards. */
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { ApiError, cancelSessionClose, type SessionView } from '../api/client'
+import { utcClock } from '../ribbon/sessionStatus'
 import { formatAge, useNow } from './agentAge'
 
 const TOO_LATE = 'Too late: the session is already being discarded'
@@ -26,8 +27,10 @@ export function ClosingBanner({ session }: { session: SessionView }) {
     }
   }
   const requestedAt = Date.parse(session.close_requested_at)
+  const deadline = session.close_kind === 'inactivity' ? utcClock(session.close_deadline_at) : null
   const age = Number.isFinite(requestedAt) ? `, requested ${formatAge(now - requestedAt)} ago` : ''
   const reason = session.close_reason ? `: ${session.close_reason}` : ''
+  const lead = session.close_kind === 'inactivity' ? (deadline === null ? `Closing for inactivity${age}` : `Closing for inactivity at ${deadline}`) : `Closing when idle${age}`
   const shownError = error && error.sessionId === session.id ? error.text : null
   return (
     <Alert
@@ -40,7 +43,7 @@ export function ClosingBanner({ session }: { session: SessionView }) {
         </Button>
       }
     >
-      {`Closing when idle${age}${reason}`}
+      {`${lead}${reason}`}
       {shownError ? (
         <Typography component="div" variant="caption" sx={{ color: 'error.main' }}>
           {shownError}
