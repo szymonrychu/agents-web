@@ -501,9 +501,11 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  const reminder = setKeys.has('inactivityReminder') ? int(v.inactivityReminder) : undefined
+  const close = setKeys.has('inactivityClose') ? int(v.inactivityClose) : undefined
   const inactivity = {
-    ...(setKeys.has('inactivityReminder') && int(v.inactivityReminder) !== undefined && { reminder_seconds: int(v.inactivityReminder) }),
-    ...(setKeys.has('inactivityClose') && int(v.inactivityClose) !== undefined && { close_seconds: int(v.inactivityClose) }),
+    ...(reminder !== undefined && { reminder_seconds: reminder }),
+    ...(close !== undefined && { close_seconds: close }),
   }
   if (Object.keys(inactivity).length > 0) spec.inactivity = inactivity
   const fiveHour = setKeys.has('quotaFiveHour') ? int(v.quotaFiveHour) : undefined

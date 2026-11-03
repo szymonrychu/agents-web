@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { SessionSpec } from '../api/client'
-import type { Meta } from '../api/client'
+import type { Meta, SessionSpec } from '../api/client'
 import { humanizeSeconds, stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
 
 describe('start_prompt', () => {
