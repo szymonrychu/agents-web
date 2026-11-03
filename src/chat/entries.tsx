@@ -98,6 +98,14 @@ export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: Sub
           <ChatMarkdown text={item.text} sx={{ color: 'text.primary', fontWeight: TOKENS.fontWeights.medium }} />
         </Row>
       )
+    case 'notice':
+      return (
+        <Row item={item} label="orchestrator notice">
+          <Typography component="span" variant="caption" sx={{ ...bodyText, color: 'info.main' }}>
+            {item.text}
+          </Typography>
+        </Row>
+      )
     case 'session':
       return (
         <Row item={item} label={`session ${item.from}`} markdown>

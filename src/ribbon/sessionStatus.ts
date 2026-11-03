@@ -1,5 +1,6 @@
 /** Session level status derived from what /api/v1/stream already pushes: the mark state and the preparing/discarding progress. */
 import type { AgentView, SessionView } from '../api/client'
+import { humanizeSeconds } from '../sessions/sessionSpecForm'
 import { agentMark } from './stateMark'
 import type { MarkState } from './stateMark'
 
@@ -24,12 +25,37 @@ function runningGate(status: Dict): string | null {
 }
 
 export interface Issue {
-  kind: 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention'
+  kind: 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
   text: string
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
 const live = (agents: readonly AgentView[]): AgentView[] => agents.filter((a) => !a.gone)
+
+/** `HH:MMZ` (UTC) of an ISO timestamp, null when absent or unparsable. */
+export function utcClock(iso: string | null | undefined): string | null {
+  const t = iso ? Date.parse(iso) : NaN
+  if (!Number.isFinite(t)) return null
+  const d = new Date(t)
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}Z`
+}
+
+/** The pending close of a session as text: `closing for inactivity at 14:05Z` or `closing when idle: reason`. */
+function closingText(session: SessionView): string {
+  if (session.close_kind === 'inactivity') {
+    const at = utcClock(session.close_deadline_at)
+    return at === null ? 'closing for inactivity' : `closing for inactivity at ${at}`
+  }
+  return session.close_reason ? `closing when idle: ${session.close_reason}` : 'closing when idle'
+}
+
+/** Set once the orchestrator has sent the inactivity reminder and nothing has happened since: how long the session was quiet when it was reminded. */
+function quietReminded(session: SessionView): string | null {
+  const reminded = session.inactivity_reminded_at ? Date.parse(session.inactivity_reminded_at) : NaN
+  const updated = session.last_update_at ? Date.parse(session.last_update_at) : NaN
+  if (!Number.isFinite(reminded) || !Number.isFinite(updated) || reminded < updated) return null
+  return `quiet for ${humanizeSeconds(Math.round((reminded - updated) / 1000))}, reminder sent`
+}
 
 /** What needs a person on one agent: a failed bootstrap step ("install_plugins failed: ..."), an unavailable permission mode or the attention reason. */
 export function agentIssue(a: AgentView): Issue | null {
@@ -40,9 +66,9 @@ export function agentIssue(a: AgentView): Issue | null {
   return null
 }
 
-/** The most urgent issue of a session: a pending self-close first (the session is about to go), then a bootstrap failure, then an unavailable permission mode, then attention; agent detail first, summary counts as fallback. */
+/** The most urgent issue of a session: a pending self-close first (the session is about to go), then a bootstrap failure, then an unavailable permission mode, then attention, then the quiet line after an inactivity reminder; agent detail first, summary counts as fallback. */
 export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
-  if (session.desired === 'active' && session.close_requested_at) return { kind: 'closing', text: session.close_reason ? `closing when idle: ${session.close_reason}` : 'closing when idle' }
+  if (session.desired === 'active' && session.close_requested_at) return { kind: 'closing', text: closingText(session) }
   const issues = live(agents).map(agentIssue)
   const failure = issues.find((i) => i?.kind === 'bootstrap_failure')
   if (failure) return failure
@@ -55,7 +81,9 @@ export function sessionIssue(session: SessionView, agents: readonly AgentView[])
   const attention = issues.find((i) => i?.kind === 'attention')
   if (attention) return attention
   const waiting = session.summary.attention_agents ?? 0
-  return waiting > 0 ? { kind: 'attention', text: `${plural(waiting, 'agent', 'agents')} waiting for input` } : null
+  if (waiting > 0) return { kind: 'attention', text: `${plural(waiting, 'agent', 'agents')} waiting for input` }
+  const quiet = quietReminded(session)
+  return quiet === null ? null : { kind: 'quiet', text: quiet }
 }
 
 /** The bootstrap step an agent is running now, for the preparing label. */

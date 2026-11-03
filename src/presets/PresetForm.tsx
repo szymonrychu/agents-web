@@ -29,7 +29,7 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, envRow, envValueError, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, envRow, envValueError, humanizeSeconds, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
@@ -63,6 +63,10 @@ const pluginsOf = (text: string): PluginsValue | null => {
     return null
   }
 }
+
+/** Helper under an inactivity field: the orchestrator default, or just the 0 rule before /meta loads. */
+const inactivityHelp = (defaultSeconds: number | undefined): string =>
+  defaultSeconds === undefined ? '0 turns it off' : `Empty uses the default (${defaultSeconds === 0 ? 'off' : humanizeSeconds(defaultSeconds)}); 0 turns it off`
 
 const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
 
@@ -384,6 +388,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('hookUrl', 'Pre-discard webhook URL')}
           {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
+          {text('inactivityReminder', 'Reminder after quiet seconds', { help: inactivityHelp(meta?.inactivity.reminder_seconds) })}
+          {text('inactivityClose', 'Close after quiet seconds', { help: inactivityHelp(meta?.inactivity.close_seconds) })}
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <FormLabel component="legend">Usage quota</FormLabel>
             <Box sx={{ display: 'flex', gap: 1 }}>

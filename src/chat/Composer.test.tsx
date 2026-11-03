@@ -176,4 +176,11 @@ describe('QueueStrip', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry anyway' }))
     await waitFor(() => expect(api.retryMessage).toHaveBeenCalledWith('3'))
   })
+
+  test('queue strip labels an orchestrator notice', async () => {
+    api.listMessages.mockResolvedValue([msg({ id: 1, text: 'plain one' }), msg({ id: 2, text: 'notice two', notice: 'inactivity_reminder' })])
+    wrap(<QueueStrip sessionId="c1" />)
+    expect(await screen.findByText('notice two')).toBeTruthy()
+    expect(screen.getAllByText('orchestrator notice')).toHaveLength(1)
+  })
 })

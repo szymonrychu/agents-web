@@ -200,7 +200,8 @@ export interface paths {
         delete: operations["delete_preset_agent_v1_admin_presets__ref__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Patch Preset */
+        patch: operations["patch_preset_agent_v1_admin_presets__ref__patch"];
         trace?: never;
     };
     "/agent/v1/admin/presets/{ref}/copy": {
@@ -2202,6 +2203,17 @@ export interface components {
             /** To */
             to?: string | null;
         };
+        /**
+         * InactivityLimits
+         * @description Per-preset inactivity limits, in seconds, overriding `ORCH_INACTIVITY_REMINDER_SECONDS` and
+         *     `ORCH_INACTIVITY_CLOSE_SECONDS`: unset uses the setting, 0 turns the limit off.
+         */
+        InactivityLimits: {
+            /** Close Seconds */
+            close_seconds?: number | null;
+            /** Reminder Seconds */
+            reminder_seconds?: number | null;
+        };
         /** InitScriptsIn */
         InitScriptsIn: {
             /** Scripts */
@@ -2416,10 +2428,32 @@ export interface components {
              */
             status: "queued";
         };
+        /** MessageAttachment */
+        MessageAttachment: {
+            /** Data B64 */
+            data_b64: string;
+            /** Mime */
+            mime: string;
+            /** Name */
+            name: string;
+        };
+        /** MessageAttachmentView */
+        MessageAttachmentView: {
+            /** Mime */
+            mime: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Size */
+            size: number;
+        };
         /** MessageView */
         MessageView: {
             /** Agent Id */
             agent_id: string | null;
+            /** Attachments */
+            attachments: components["schemas"]["MessageAttachmentView"][];
             /** Attempts */
             attempts: number;
             /**
@@ -2442,6 +2476,8 @@ export interface components {
             max_attempts: number;
             /** Next Attempt At */
             next_attempt_at: string | null;
+            /** Notice */
+            notice?: ("inactivity_reminder" | "inactivity_close") | null;
             /**
              * Session Id
              * Format: uuid
@@ -2479,6 +2515,7 @@ export interface components {
             efforts: string[];
             /** Hook Events */
             hook_events: components["schemas"]["MetaHookEvent"][];
+            inactivity: components["schemas"]["MetaInactivity"];
             kube_access: components["schemas"]["MetaKubeAccess"];
             /** Models */
             models: string[];
@@ -2558,6 +2595,15 @@ export interface components {
             supports_matcher: boolean;
             /** Supports When */
             supports_when: boolean;
+        };
+        /** MetaInactivity */
+        MetaInactivity: {
+            /** Close Seconds */
+            close_seconds: number;
+            /** Handoff Seconds */
+            handoff_seconds: number;
+            /** Reminder Seconds */
+            reminder_seconds: number;
         };
         /** MetaKubeAccess */
         MetaKubeAccess: {
@@ -2663,6 +2709,11 @@ export interface components {
         /** PostMessage */
         PostMessage: {
             /**
+             * Attachments
+             * @default []
+             */
+            attachments: components["schemas"]["MessageAttachment"][];
+            /**
              * Lane
              * @default regular
              * @enum {string}
@@ -2694,6 +2745,20 @@ export interface components {
             spec: components["schemas"]["SessionSpecIn"];
             /** Superleader Manageable */
             superleader_manageable?: boolean | null;
+        };
+        /**
+         * PresetPatch
+         * @description Admin partial edit: `spec` is an RFC 7396 merge patch of the stored spec.
+         */
+        PresetPatch: {
+            /** Labels */
+            labels?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Spec */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** PresetView */
         PresetView: {
@@ -2889,8 +2954,6 @@ export interface components {
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
             cache?: components["schemas"]["WorkspaceCache"] | null;
-            /** Discard After Idle Seconds */
-            discard_after_idle_seconds?: number | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -2912,6 +2975,7 @@ export interface components {
             };
             /** Image */
             image?: string | null;
+            inactivity?: components["schemas"]["InactivityLimits"] | null;
             /**
              * Init Scripts
              * @default []
@@ -2978,8 +3042,6 @@ export interface components {
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
             cache?: components["schemas"]["WorkspaceCache"] | null;
-            /** Discard After Idle Seconds */
-            discard_after_idle_seconds?: number | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -3001,6 +3063,7 @@ export interface components {
             };
             /** Image */
             image?: string | null;
+            inactivity?: components["schemas"]["InactivityLimits"] | null;
             /**
              * Init Scripts
              * @default []
@@ -3082,6 +3145,10 @@ export interface components {
         /** SessionView */
         SessionView: {
             backup: components["schemas"]["SessionBackup"];
+            /** Close Deadline At */
+            close_deadline_at?: string | null;
+            /** Close Kind */
+            close_kind?: ("self" | "inactivity") | null;
             /** Close Reason */
             close_reason?: string | null;
             /** Close Requested At */
@@ -3111,6 +3178,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Inactivity Closes At */
+            inactivity_closes_at?: string | null;
+            /** Inactivity Reminded At */
+            inactivity_reminded_at?: string | null;
             /** Init Edited Since Run */
             init_edited_since_run: boolean;
             /**
@@ -3118,6 +3189,8 @@ export interface components {
              * @default []
              */
             labels: string[];
+            /** Last Update At */
+            last_update_at?: string | null;
             /** Leader Agent Id */
             leader_agent_id: string | null;
             /** Leader Epoch */
@@ -3134,6 +3207,8 @@ export interface components {
             preset_id: string | null;
             /** Preset Name */
             preset_name: string | null;
+            /** Reminder At */
+            reminder_at?: string | null;
             /** Slug */
             slug: string;
             spec: components["schemas"]["SessionSpec"];
@@ -3832,6 +3907,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_preset_agent_v1_admin_presets__ref__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresetPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetView"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -249,4 +249,21 @@ describe('subagents', () => {
     ]);
     expect(splitSubagents(s.items, s.subagents).main).toHaveLength(3);
   });
+
+  it('classifies orchestrator notices', () => {
+    const reminder = 'Orchestrator notice (inactivity reminder): this session has been quiet for 1 h.'
+    const limit = 'Orchestrator notice (inactivity limit): this session closes at 14:05Z.'
+    const s = applyEvents(
+      fresh(),
+      [
+        row(1, 'user_message', { text: reminder, origin: 'user' }),
+        row(2, 'user_message', { text: limit, origin: 'user' }),
+        row(3, 'user_message', { text: 'Orchestrator notice: something else', origin: 'user' }),
+        row(4, 'user_message', { text: `please explain: ${reminder}`, origin: 'user' }),
+      ],
+    );
+    expect(s.items.map((i) => i.kind)).toEqual(['notice', 'notice', 'user_message', 'user_message']);
+    expect(s.items[0]).toMatchObject({ kind: 'notice', text: reminder, notice: 'inactivity_reminder' });
+    expect(s.items[1]).toMatchObject({ kind: 'notice', text: limit, notice: 'inactivity_close' });
+  });
 });

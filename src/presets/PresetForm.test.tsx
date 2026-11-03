@@ -21,7 +21,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const preset = (o: Partial<PresetView> = {}): PresetView =>
   ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec: {}, ...o }) as PresetView
@@ -894,6 +894,31 @@ describe('PresetForm', () => {
     expect(field('5-hour quota percent').value).toBe('50')
     expect(field('Weekly quota percent').value).toBe('')
     expect(screen.getByText('Empty uses the default (100%)')).toBeTruthy()
+  })
+
+  test('inactivity: helper text shows the defaults, stored values load, a save is sparse', async () => {
+    api.createPreset.mockResolvedValue(preset())
+    api.getMeta.mockResolvedValue(meta({ inactivity: { reminder_seconds: 3600, close_seconds: 14400, handoff_seconds: 300 } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.getByText('Empty uses the default (1 h); 0 turns it off')).toBeTruthy()
+    expect(screen.getByText('Empty uses the default (4 h); 0 turns it off')).toBeTruthy()
+    await replace('Name', 'i')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('inactivity')
+    await replace('Close after quiet seconds', '0')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(2))
+    expect(api.createPreset.mock.calls[1][0].spec.inactivity).toEqual({ close_seconds: 0 })
+    cleanup()
+
+    api.getMeta.mockResolvedValue(meta())
+    wrap(<PresetForm open preset={preset({ spec: { inactivity: { reminder_seconds: 600 } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Reminder after quiet seconds').value).toBe('600')
+    expect(field('Close after quiet seconds').value).toBe('')
+    expect(screen.getAllByText('Empty uses the default (off); 0 turns it off')).toHaveLength(2)
   })
 
   test('usage quota: the refusal helper says it only applies when the usage gate is configured', async () => {

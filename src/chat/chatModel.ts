@@ -26,6 +26,8 @@ interface Base {
 
 export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
+  /** An orchestrator inactivity notice (reminder or close warning): a system line, not a user bubble. */
+  | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' })
   | (Base & { kind: 'session'; text: string; from: string; messageId: number })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
@@ -89,6 +91,14 @@ const USER_ORIGINS = new Set(['user', 'hook', 'restart', 'command']);
 // Contract with agents-orchestrator dispatcher/session_frame.py:frame; the trailer line after the closing tag is dropped.
 const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S]*?)\n<\/session-message>(?:\n|$)/;
 
+// Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
+const NOTICE_PREFIXES = [
+  ['Orchestrator notice (inactivity reminder):', 'inactivity_reminder'],
+  ['Orchestrator notice (inactivity limit):', 'inactivity_close'],
+] as const;
+
+const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
+
 const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 function toolItem(base: Base, d: Record<string, unknown>, res?: ToolResult): ChatItem {
@@ -129,6 +139,8 @@ function toItem(row: EventRow, ordinals: Readonly<Record<string, number>>, orpha
       const m = SESSION_FRAME.exec(text);
       if (m) return { ...base, kind: 'session', text: unescapeBody(m[3]), from: m[1], messageId: Number(m[2]) };
       if (origin === 'peer') return { ...base, kind: 'peer', text, from: d.from == null ? undefined : str(d.from) };
+      const notice = noticeOf(text);
+      if (notice) return { ...base, kind: 'notice', text, notice };
       return { ...base, kind: 'user_message', text, origin: USER_ORIGINS.has(origin) ? origin : 'user' };
     }
     case 'peer_message_received':
