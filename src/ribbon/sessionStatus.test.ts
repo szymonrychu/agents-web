@@ -126,7 +126,7 @@ describe('pending self-close', () => {
 describe('inactivity issues', () => {
   test('issue text for inactivity close', () => {
     const s = session({ close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'inactivity', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'quiet for 4 h' })
-    expect(sessionIssue(s, [])).toEqual({ kind: 'closing', text: 'closing for inactivity at 14:05Z' })
+    expect(sessionIssue(s, [])).toEqual({ kind: 'closing', text: 'closing for inactivity, by 14:05Z' })
   })
   test('self-close issue text is unchanged', () => {
     expect(sessionIssue(session({ close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'self', close_reason: 'done' }), [])).toEqual({ kind: 'closing', text: 'closing when idle: done' })

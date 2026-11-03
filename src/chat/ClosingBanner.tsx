@@ -1,4 +1,4 @@
-/** "Closing when idle" banner for a pending self-close ("Closing for inactivity at HH:MMZ" for an inactivity close), with a Keep session button that cancels it; the status stream hides it afterwards. */
+/** "Closing when idle" banner for a pending self-close ("Closing for inactivity when idle, by HH:MMZ at the latest" for an inactivity close), with a Keep session button that cancels it; the status stream hides it afterwards. */
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -30,7 +30,7 @@ export function ClosingBanner({ session }: { session: SessionView }) {
   const deadline = session.close_kind === 'inactivity' ? utcClock(session.close_deadline_at) : null
   const age = Number.isFinite(requestedAt) ? `, requested ${formatAge(now - requestedAt)} ago` : ''
   const reason = session.close_reason ? `: ${session.close_reason}` : ''
-  const lead = session.close_kind === 'inactivity' ? (deadline === null ? `Closing for inactivity${age}` : `Closing for inactivity at ${deadline}`) : `Closing when idle${age}`
+  const lead = session.close_kind === 'inactivity' ? (deadline === null ? `Closing for inactivity${age}` : `Closing for inactivity when idle, by ${deadline} at the latest`) : `Closing when idle${age}`
   const shownError = error && error.sessionId === session.id ? error.text : null
   return (
     <Alert

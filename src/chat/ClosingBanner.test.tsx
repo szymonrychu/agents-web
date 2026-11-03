@@ -86,7 +86,7 @@ describe('ClosingBanner', () => {
     const f = vi.fn(async () => json(200, {}))
     vi.stubGlobal('fetch', f)
     mount(session({ close_kind: 'inactivity', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'quiet for 4 h' }))
-    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity at 14:05Z: quiet for 4 h')
+    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity when idle, by 14:05Z at the latest: quiet for 4 h')
     await act(async () => fireEvent.click(keep()))
     expect(f).toHaveBeenCalledTimes(1)
     const calls = f.mock.calls as unknown as [string, RequestInit][]
