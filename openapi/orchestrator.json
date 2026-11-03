@@ -1548,6 +1548,36 @@
         "title": "HandoverIn",
         "type": "object"
       },
+      "InactivityLimits": {
+        "additionalProperties": false,
+        "description": "Per-preset inactivity limits, in seconds, overriding `ORCH_INACTIVITY_REMINDER_SECONDS` and\n`ORCH_INACTIVITY_CLOSE_SECONDS`: unset uses the setting, 0 turns the limit off.",
+        "properties": {
+          "close_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Seconds"
+          },
+          "reminder_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reminder Seconds"
+          }
+        },
+        "title": "InactivityLimits",
+        "type": "object"
+      },
       "InitScriptsIn": {
         "properties": {
           "scripts": {
@@ -2178,6 +2208,58 @@
         "title": "MessageAccepted",
         "type": "object"
       },
+      "MessageAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "data_b64": {
+            "title": "Data B64",
+            "type": "string"
+          },
+          "mime": {
+            "title": "Mime",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "mime",
+          "data_b64"
+        ],
+        "title": "MessageAttachment",
+        "type": "object"
+      },
+      "MessageAttachmentView": {
+        "properties": {
+          "mime": {
+            "title": "Mime",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "mime",
+          "size",
+          "path"
+        ],
+        "title": "MessageAttachmentView",
+        "type": "object"
+      },
       "MessageView": {
         "properties": {
           "agent_id": {
@@ -2191,6 +2273,13 @@
               }
             ],
             "title": "Agent Id"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachmentView"
+            },
+            "title": "Attachments",
+            "type": "array"
           },
           "attempts": {
             "title": "Attempts",
@@ -2252,6 +2341,21 @@
               }
             ],
             "title": "Next Attempt At"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inactivity_reminder",
+                  "inactivity_close"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
           },
           "session_id": {
             "format": "uuid",
@@ -2323,7 +2427,8 @@
           "error",
           "created_at",
           "dispatched_at",
-          "turn"
+          "turn",
+          "attachments"
         ],
         "title": "MessageView",
         "type": "object"
@@ -2376,6 +2481,9 @@
             "title": "Hook Events",
             "type": "array"
           },
+          "inactivity": {
+            "$ref": "#/components/schemas/MetaInactivity"
+          },
           "kube_access": {
             "$ref": "#/components/schemas/MetaKubeAccess"
           },
@@ -2410,7 +2518,8 @@
           "docker",
           "hook_events",
           "permission_modes",
-          "usage"
+          "usage",
+          "inactivity"
         ],
         "title": "Meta",
         "type": "object"
@@ -2593,6 +2702,29 @@
           "interval_required"
         ],
         "title": "MetaHookEvent",
+        "type": "object"
+      },
+      "MetaInactivity": {
+        "properties": {
+          "close_seconds": {
+            "title": "Close Seconds",
+            "type": "integer"
+          },
+          "handoff_seconds": {
+            "title": "Handoff Seconds",
+            "type": "integer"
+          },
+          "reminder_seconds": {
+            "title": "Reminder Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reminder_seconds",
+          "close_seconds",
+          "handoff_seconds"
+        ],
+        "title": "MetaInactivity",
         "type": "object"
       },
       "MetaKubeAccess": {
@@ -2892,6 +3024,14 @@
       "PostMessage": {
         "additionalProperties": false,
         "properties": {
+          "attachments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MessageAttachment"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
           "lane": {
             "default": "regular",
             "enum": [
@@ -2976,6 +3116,51 @@
           "name"
         ],
         "title": "PresetIn",
+        "type": "object"
+      },
+      "PresetPatch": {
+        "additionalProperties": false,
+        "description": "Admin partial edit: `spec` is an RFC 7396 merge patch of the stored spec.",
+        "properties": {
+          "labels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          }
+        },
+        "title": "PresetPatch",
         "type": "object"
       },
       "PresetView": {
@@ -3478,19 +3663,6 @@
               }
             ]
           },
-          "discard_after_idle_seconds": {
-            "anyOf": [
-              {
-                "maximum": 2592000.0,
-                "minimum": 60.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Discard After Idle Seconds"
-          },
           "discard_hook_url": {
             "anyOf": [
               {
@@ -3578,6 +3750,16 @@
               }
             ],
             "title": "Image"
+          },
+          "inactivity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InactivityLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "init_scripts": {
             "default": [],
@@ -3810,19 +3992,6 @@
               }
             ]
           },
-          "discard_after_idle_seconds": {
-            "anyOf": [
-              {
-                "maximum": 2592000.0,
-                "minimum": 60.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Discard After Idle Seconds"
-          },
           "discard_hook_url": {
             "anyOf": [
               {
@@ -3910,6 +4079,16 @@
               }
             ],
             "title": "Image"
+          },
+          "inactivity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InactivityLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "init_scripts": {
             "default": [],
@@ -4166,6 +4345,33 @@
           "backup": {
             "$ref": "#/components/schemas/SessionBackup"
           },
+          "close_deadline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Deadline At"
+          },
+          "close_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "self",
+                  "inactivity"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Kind"
+          },
           "close_reason": {
             "anyOf": [
               {
@@ -4250,6 +4456,30 @@
             "title": "Id",
             "type": "string"
           },
+          "inactivity_closes_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inactivity Closes At"
+          },
+          "inactivity_reminded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inactivity Reminded At"
+          },
           "init_edited_since_run": {
             "title": "Init Edited Since Run",
             "type": "boolean"
@@ -4261,6 +4491,18 @@
             },
             "title": "Labels",
             "type": "array"
+          },
+          "last_update_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Update At"
           },
           "leader_agent_id": {
             "anyOf": [
@@ -4338,6 +4580,18 @@
               }
             ],
             "title": "Preset Name"
+          },
+          "reminder_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reminder At"
           },
           "slug": {
             "title": "Slug",
@@ -6023,6 +6277,88 @@
           }
         },
         "summary": "Get Preset",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_preset_agent_v1_admin_presets__ref__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-orch-session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Orch-Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresetPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresetView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Preset",
         "tags": [
           "admin"
         ]

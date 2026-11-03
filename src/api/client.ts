@@ -10,7 +10,8 @@ export type CreateSession = S['CreateSession'];
 export type AgentView = S['AgentView'];
 export type MessageView = S['MessageView'];
 export type MessageAccepted = S['MessageAccepted'];
-export type PostMessage = S['PostMessage'];
+/** The server defaults attachments to none, so a caller may leave them out. */
+export type PostMessage = Omit<S['PostMessage'], 'attachments'> & { attachments?: S['PostMessage']['attachments'] };
 export type CommandAccepted = S['CommandAccepted'];
 export type CommandView = S['CommandView'];
 export type EventView = S['EventView'];
