@@ -67,6 +67,9 @@ export interface FormValues {
   hookUrl: string
   leaderLease: string
   autocloseAfter: string
+  /** Inactivity limits in seconds: empty uses the orchestrator setting, 0 turns the limit off. */
+  inactivityReminder: string
+  inactivityClose: string
   /** Usage quota ceilings in percent (1 to 100); empty uses the orchestrator default. */
   quotaFiveHour: string
   quotaSevenDay: string
@@ -119,7 +122,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -149,7 +152,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -175,7 +178,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values[field] = stored
     setKeys.add(key)
   }
-  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
+  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = String(stored)
     setKeys.add(key)
@@ -224,6 +227,8 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   text('startPrompt', 'startPrompt', spec.start_prompt)
   num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
   num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
+  num('inactivityReminder', 'inactivityReminder', spec.inactivity?.reminder_seconds)
+  num('inactivityClose', 'inactivityClose', spec.inactivity?.close_seconds)
   num('quotaFiveHour', 'quotaFiveHour', spec.usage_quota?.five_hour_pct)
   num('quotaSevenDay', 'quotaSevenDay', spec.usage_quota?.seven_day_pct)
   if (spec.reuse_running_agent !== null && spec.reuse_running_agent !== undefined) {
@@ -297,6 +302,24 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
 /** Name for a copy: the source cut so the whole name fits MAX_NAME, right-trimmed, then " copy". */
 export function copyName(source: string): string {
   return source.slice(0, MAX_NAME - COPY_SUFFIX.length).trimEnd() + COPY_SUFFIX
+}
+
+/** Seconds as the orchestrator words them: `30 s`, `55 min` (floored), else hours floored to one decimal. */
+export function humanizeSeconds(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min`
+  const tenths = Math.floor(seconds / 360)
+  const whole = Math.floor(tenths / 10)
+  return tenths % 10 === 0 ? `${whole} h` : `${whole}.${tenths % 10} h`
+}
+
+const MAX_INACTIVITY = 2592000
+
+/** 0 (off) or 60 to 2592000; empty is never an error. */
+const inactivityError = (text: string, what: string): string | undefined => {
+  if (text.trim() === '') return undefined
+  const n = /^\d+$/.test(text.trim()) ? Number(text) : NaN
+  return n === 0 || (n >= 60 && n <= MAX_INACTIVITY) ? undefined : `${what}: 0 or 60 to ${MAX_INACTIVITY}`
 }
 
 const intIn = (text: string, min: number, max: number, what: string): string | undefined => {
@@ -393,6 +416,17 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   e.hookUrl = hookUrlError(v.hookUrl)
   e.leaderLease = v.leaderLease.trim() === '' ? undefined : intIn(v.leaderLease, 60, 604800, 'Leader lease seconds')
   e.autocloseAfter = v.autocloseAfter.trim() === '' ? undefined : intIn(v.autocloseAfter, 1, 2592000, 'Autoclose after seconds')
+  e.inactivityReminder = inactivityError(v.inactivityReminder, 'Reminder after quiet seconds')
+  e.inactivityClose = inactivityError(v.inactivityClose, 'Close after quiet seconds')
+  if (!e.inactivityReminder && !e.inactivityClose) {
+    const effective = (own: string, fallback: number | undefined) => (own.trim() === '' ? fallback ?? 0 : Number(own))
+    const reminder = effective(v.inactivityReminder, meta?.inactivity.reminder_seconds)
+    const close = effective(v.inactivityClose, meta?.inactivity.close_seconds)
+    if (reminder > 0 && close > 0 && reminder >= close) {
+      if (v.inactivityReminder.trim() !== '') e.inactivityReminder = 'Reminder after quiet seconds must be below close after quiet seconds'
+      else if (v.inactivityClose.trim() !== '') e.inactivityClose = 'Close after quiet seconds must be above reminder after quiet seconds'
+    }
+  }
   e.quotaFiveHour = v.quotaFiveHour.trim() === '' ? undefined : intIn(v.quotaFiveHour, 1, 100, QUOTA_FIELD_LABELS.five_hour)
   e.quotaSevenDay = v.quotaSevenDay.trim() === '' ? undefined : intIn(v.quotaSevenDay, 1, 100, QUOTA_FIELD_LABELS.seven_day)
   e.compactMinTokens = v.compactMinTokens.trim() === '' ? undefined : intIn(v.compactMinTokens, 0, Number.MAX_SAFE_INTEGER, 'Min context tokens')
@@ -467,6 +501,11 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
   if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
+  const inactivity = {
+    ...(setKeys.has('inactivityReminder') && int(v.inactivityReminder) !== undefined && { reminder_seconds: int(v.inactivityReminder) }),
+    ...(setKeys.has('inactivityClose') && int(v.inactivityClose) !== undefined && { close_seconds: int(v.inactivityClose) }),
+  }
+  if (Object.keys(inactivity).length > 0) spec.inactivity = inactivity
   const fiveHour = setKeys.has('quotaFiveHour') ? int(v.quotaFiveHour) : undefined
   const sevenDay = setKeys.has('quotaSevenDay') ? int(v.quotaSevenDay) : undefined
   const quota = {

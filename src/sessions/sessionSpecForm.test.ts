@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import type { SessionSpec } from '../api/client'
-import { stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
+import type { Meta } from '../api/client'
+import { humanizeSeconds, stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
 
 describe('start_prompt', () => {
   test('a stored start prompt loads and round-trips', () => {
@@ -119,5 +120,60 @@ describe('docker sidecar', () => {
     const { values, setKeys } = stateFromPreset(null, 'p', { replicas: 2 })
     expect(values.docker).toBe(false)
     expect(toPresetSpec(values, setKeys)).not.toHaveProperty('docker')
+  })
+})
+
+describe('inactivity limits', () => {
+  const metaWith = (reminder: number, close: number) => ({ defaults: { replicas: 1 }, caps: { max_replicas: 16 }, hook_events: [], inactivity: { reminder_seconds: reminder, close_seconds: close, handoff_seconds: 300 } }) as unknown as Meta
+
+  test('maps stored inactivity to the form and back', () => {
+    const spec = { inactivity: { reminder_seconds: 600 } } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(values.inactivityReminder).toBe('600')
+    expect(values.inactivityClose).toBe('')
+    const out = toPresetSpec(values, setKeys)
+    expect(out).toEqual({ inactivity: { reminder_seconds: 600 } })
+    expect(out.inactivity).not.toHaveProperty('close_seconds')
+  })
+
+  test('round-trips inactivity unchanged', () => {
+    const spec = { inactivity: { reminder_seconds: 0, close_seconds: 14400 } } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(values.inactivityReminder).toBe('0')
+    expect(toPresetSpec(values, setKeys)).toEqual(spec)
+  })
+
+  test('empty inactivity is not sent', () => {
+    const unset = stateFromPreset(null, 'p', { replicas: 2 })
+    expect(toPresetSpec(unset.values, unset.setKeys)).not.toHaveProperty('inactivity')
+    const set = stateFromPreset(null, 'p', { inactivity: { reminder_seconds: 600 } } as Partial<SessionSpec>)
+    expect(toPresetSpec({ ...set.values, inactivityReminder: '' }, set.setKeys)).not.toHaveProperty('inactivity')
+  })
+
+  test('validates inactivity values', () => {
+    const { values } = stateFromPreset(null, 'p', {})
+    expect(validate({ ...values, inactivityReminder: '30' }, null).inactivityReminder).toBe('Reminder after quiet seconds: 0 or 60 to 2592000')
+    expect(validate({ ...values, inactivityReminder: '0' }, null).inactivityReminder).toBeUndefined()
+    expect(validate({ ...values, inactivityReminder: '60' }, null).inactivityReminder).toBeUndefined()
+    expect(validate({ ...values, inactivityReminder: '2592001' }, null).inactivityReminder).toBe('Reminder after quiet seconds: 0 or 60 to 2592000')
+    expect(validate({ ...values, inactivityReminder: 'x' }, null).inactivityReminder).toBe('Reminder after quiet seconds: 0 or 60 to 2592000')
+    expect(validate({ ...values, inactivityClose: '30' }, null).inactivityClose).toBe('Close after quiet seconds: 0 or 60 to 2592000')
+    expect(validate({ ...values, inactivityClose: '' }, null).inactivityClose).toBeUndefined()
+  })
+
+  test('reminder must be below close', () => {
+    const { values } = stateFromPreset(null, 'p', {})
+    const meta = metaWith(3600, 14400)
+    expect(validate({ ...values, inactivityReminder: '14400' }, meta).inactivityReminder).toBe('Reminder after quiet seconds must be below close after quiet seconds')
+    expect(validate({ ...values, inactivityReminder: '0', inactivityClose: '600' }, meta).inactivityReminder).toBeUndefined()
+    expect(validate({ ...values, inactivityReminder: '0', inactivityClose: '600' }, meta).inactivityClose).toBeUndefined()
+    expect(validate({ ...values, inactivityReminder: '600', inactivityClose: '600' }, meta).inactivityReminder).toBeDefined()
+    expect(validate({ ...values, inactivityReminder: '600', inactivityClose: '0' }, meta).inactivityReminder).toBeUndefined()
+    expect(validate({ ...values, inactivityClose: '600' }, meta).inactivityClose).toBe('Close after quiet seconds must be above reminder after quiet seconds')
+    expect(validate({ ...values, inactivityReminder: '600', inactivityClose: '900' }, meta).inactivityReminder).toBeUndefined()
+  })
+
+  test('humanizeSeconds matches the orchestrator rule', () => {
+    expect([30, 59, 60, 600, 3300, 3599, 3600, 5400, 14400, 5460].map(humanizeSeconds)).toEqual(['30 s', '59 s', '1 min', '10 min', '55 min', '59 min', '1 h', '1.5 h', '4 h', '1.5 h'])
   })
 })
