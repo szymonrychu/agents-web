@@ -40,11 +40,11 @@ export function utcClock(iso: string | null | undefined): string | null {
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}Z`
 }
 
-/** The pending close of a session as text: `closing for inactivity at 14:05Z` or `closing when idle: reason`. */
+/** The pending close of a session as text: `closing for inactivity, by 14:05Z` or `closing when idle: reason`. */
 function closingText(session: SessionView): string {
   if (session.close_kind === 'inactivity') {
     const at = utcClock(session.close_deadline_at)
-    return at === null ? 'closing for inactivity' : `closing for inactivity at ${at}`
+    return at === null ? 'closing for inactivity' : `closing for inactivity, by ${at}`
   }
   return session.close_reason ? `closing when idle: ${session.close_reason}` : 'closing when idle'
 }
