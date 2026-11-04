@@ -2,14 +2,19 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 
-export type RunStatus = 'new' | 'in-progress' | 'handled' | 'ignored' | 'failed'
+/** Run and inbound statuses, plus `pending` and `sent` of the matrix connector's outbound replies. */
+export type RunStatus = 'new' | 'in-progress' | 'handled' | 'ignored' | 'failed' | 'pending' | 'sent'
 
-const STYLE: Record<RunStatus, { color: 'default' | 'info' | 'success' | 'error'; outlined?: boolean }> = {
+type Style = { color: 'default' | 'info' | 'success' | 'error'; outlined?: boolean }
+
+const STYLE: Record<RunStatus, Style> = {
   new: { color: 'default' },
   'in-progress': { color: 'info' },
   handled: { color: 'success' },
   ignored: { color: 'default', outlined: true },
   failed: { color: 'error' },
+  pending: { color: 'default' },
+  sent: { color: 'success' },
 }
 
 export interface RunStatusChipProps {
@@ -17,9 +22,10 @@ export interface RunStatusChipProps {
   reason?: string
 }
 
-/** One chip per run status; the reason is the tooltip and part of the aria-label. */
+/** One chip per run status; the reason is the tooltip and part of the aria-label. A status the
+ * backend adds later renders as a plain chip, never an exception that blanks the page. */
 export function RunStatusChip({ status, reason }: RunStatusChipProps) {
-  const { color, outlined } = STYLE[status]
+  const { color, outlined }: Style = STYLE[status] ?? { color: 'default' }
   const label = reason ? `${status}: ${reason}` : status
   const chip = (
     <Chip

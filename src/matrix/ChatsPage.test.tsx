@@ -218,6 +218,26 @@ describe('ChatsPage', () => {
     expect(within(drawer).getByText('ancient')).toBeTruthy()
   })
 
+  test('opens a room whose feed has sent and pending agent replies (Matrix v12 room id)', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const v12 = '!AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcde'
+    rooms = [room(v12, { name: 'V12 DM', preset_id: '00000000-0000-0000-0000-000000000001' })]
+    api.listRoomMessages.mockResolvedValue([
+      msg('out-2', { direction: 'out', body: 'queued reply', status: 'pending' }),
+      msg('out-1', { direction: 'out', body: 'agent hello', status: 'sent' }),
+    ])
+    mount()
+    await flush()
+    await user.click(screen.getByText('V12 DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    expect(api.getRoom).toHaveBeenCalledWith(v12)
+    expect(within(drawer).getByText('agent hello')).toBeTruthy()
+    expect(within(drawer).getByLabelText('sent')).toBeTruthy()
+    expect(within(drawer).getByLabelText('pending')).toBeTruthy()
+    expect(within(drawer).getByRole('combobox', { name: 'Preset' })).toBeTruthy()
+  })
+
   test('warns on unhealthy sync', async () => {
     api.getMeta.mockResolvedValue({ user_id: '@bot:hs', sync: { healthy: false, last_sync_at: null }, default_policy: 'deny', group_trigger: 'mention', homeserver_url: 'h', rule_kinds: {} })
     mount()

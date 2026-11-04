@@ -22,6 +22,8 @@ describe('RunStatusChip', () => {
     ['handled', 'MuiChip-colorSuccess', false],
     ['ignored', 'MuiChip-colorDefault', true],
     ['failed', 'MuiChip-colorError', false],
+    ['pending', 'MuiChip-colorDefault', false],
+    ['sent', 'MuiChip-colorSuccess', false],
   ]
   test.each(cases)('%s renders its color and label', (status, colorClass, outlined) => {
     wrap(<RunStatusChip status={status as 'new'} />)
@@ -29,6 +31,13 @@ describe('RunStatusChip', () => {
     expect(chip.className).toContain(colorClass)
     expect(chip.className.includes('MuiChip-outlined')).toBe(outlined)
     expect(chip.textContent).toContain(status)
+  })
+
+  test('an unknown status renders a plain chip instead of crashing', () => {
+    wrap(<RunStatusChip status={'refused' as 'new'} />)
+    const chip = screen.getByLabelText('refused')
+    expect(chip.className).toContain('MuiChip-colorDefault')
+    expect(chip.textContent).toContain('refused')
   })
 
   test('in-progress has a spinner', () => {
