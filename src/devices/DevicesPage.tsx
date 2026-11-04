@@ -1,4 +1,4 @@
-/** Devices: pair a sketch device (token shown once) and list or revoke paired devices. */
+/** Devices: pair a sketch device with a 6-digit code typed on the tablet, and list or revoke devices. */
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -14,10 +14,20 @@ import { ApiError } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
-import { listDevices, pairDevice, revokeDevice } from './api'
-import type { DeviceView, PairedDevice } from './api'
+import { listDevices, pairDevice, regenerateCode, revokeDevice } from './api'
+import type { DeviceView, NewCode } from './api'
+import { PairingCode } from './PairingCode'
 
 const POLL_MS = 15_000
+const CODE_POLL_MS = 3_000
+
+const STATE_LABEL = { pending: 'Waiting for code', active: 'Active' } as const
+
+/** The code on screen: only ever held in component state. */
+interface Shown extends NewCode {
+  device_id: string
+  name: string
+}
 
 /** Words for the failures an operator can act on; anything else keeps its own message. */
 export function describeError(e: unknown): string {
@@ -36,23 +46,19 @@ export interface DevicesPageProps {
 }
 
 export function DevicesPage({ onBack }: DevicesPageProps) {
-  const { data, error, refresh } = usePoll(listDevices, POLL_MS, [])
+  const [shown, setShown] = useState<Shown | null>(null)
+  const [pairedName, setPairedName] = useState<string | null>(null)
+  const { data, error, refresh } = usePoll(listDevices, shown ? CODE_POLL_MS : POLL_MS, [])
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  // The token lives in this component's state only: never storage, logs or the URL.
-  const [paired, setPaired] = useState<PairedDevice | null>(null)
   const [revoking, setRevoking] = useState<DeviceView | null>(null)
-  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
 
-  const copyToken = async (token: string) => {
-    try {
-      if (!navigator.clipboard) throw new Error('no clipboard')
-      await navigator.clipboard.writeText(token)
-      setCopy('copied')
-    } catch {
-      setCopy('failed')
-    }
+  // The device row turning active means the tablet redeemed the code: switch to Paired and drop the code.
+  const activated = shown ? data?.find((d) => d.device_id === shown.device_id && d.state === 'active') : undefined
+  if (shown && activated) {
+    setPairedName(activated.name)
+    setShown(null)
   }
 
   const pair = async () => {
@@ -61,8 +67,9 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
     setBusy(true)
     setActionError(null)
     try {
-      setPaired(await pairDevice(trimmed))
-      setCopy('idle')
+      const { device_id, name: deviceName, code, expires_at, expires_in } = await pairDevice(trimmed)
+      setPairedName(null)
+      setShown({ device_id, name: deviceName, code, expires_at, expires_in })
       setName('')
     } catch (e) {
       setActionError(describeError(e))
@@ -71,6 +78,20 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
     }
     setBusy(false)
     // The pairing succeeded: a list refresh failure surfaces through the poll error, not as a pair error.
+    await refresh().catch(() => {})
+  }
+
+  const newCode = async () => {
+    if (!shown) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      const { code, expires_at, expires_in } = await regenerateCode(shown.device_id)
+      setShown({ ...shown, code, expires_at, expires_in })
+    } catch (e) {
+      setActionError(e instanceof ApiError && e.status === 404 ? `${shown.name} was revoked or no longer exists.` : describeError(e))
+    }
+    setBusy(false)
     await refresh().catch(() => {})
   }
 
@@ -106,20 +127,26 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
       </Box>
       <FormError error={actionError} />
       <FormError error={error ? describeError(error) : null} />
-      {paired && (
-        <Alert severity="warning" action={<Button color="inherit" size="small" onClick={() => setPaired(null)}>Done</Button>}>
+      {shown && (
+        <Alert severity="info" action={<Button color="inherit" size="small" onClick={() => setShown(null)}>Done</Button>}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Typography>
-              Device {paired.name} is paired. This token will not be shown again; copy it now and enter it in the app with the server origin.
+              On the tablet, enter the server origin and type this code to pair {shown.name}.
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <TextField size="small" fullWidth label="Device token" value={paired.token} slotProps={{ input: { readOnly: true } }} />
-              <Button size="small" onClick={() => void copyToken(paired.token)}>Copy token</Button>
-              {copy === 'copied' && <Typography role="status" color="success.main">Copied</Typography>}
-              {copy === 'failed' && <Typography role="alert" color="error">Copy failed: select the token field and copy it by hand.</Typography>}
-            </Box>
+            <PairingCode
+              code={shown.code}
+              expiresIn={shown.expires_in}
+              locked={data?.find((d) => d.device_id === shown.device_id)?.code_status === 'locked'}
+              busy={busy}
+              onNewCode={() => void newCode()}
+            />
             <TextField size="small" fullWidth label="Server origin" value={window.location.origin} slotProps={{ input: { readOnly: true } }} />
           </Box>
+        </Alert>
+      )}
+      {pairedName && (
+        <Alert severity="success" action={<Button color="inherit" size="small" onClick={() => setPairedName(null)}>Done</Button>}>
+          {pairedName} is paired.
         </Alert>
       )}
       <Table size="small">
@@ -132,7 +159,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
               <TableCell>{d.name}</TableCell>
               <TableCell>{d.plugin}</TableCell>
               <TableCell>{when(d.created_at)}</TableCell>
-              <TableCell>{d.revoked_at ? `Revoked ${when(d.revoked_at)}` : 'Active'}</TableCell>
+              <TableCell>{d.revoked_at ? `Revoked ${when(d.revoked_at)}` : STATE_LABEL[d.state as keyof typeof STATE_LABEL] ?? d.state}</TableCell>
               <TableCell>
                 {!d.revoked_at && <Button size="small" color="error" onClick={() => setRevoking(d)}>Revoke</Button>}
               </TableCell>

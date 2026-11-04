@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { loadConfig, resetConfig } from '../config/backends';
-import { listDevices, pairDevice, revokeDevice } from './api';
+import { listDevices, pairDevice, regenerateCode, revokeDevice } from './api';
 
 const BASE = '/app/admin/v1';
 let f: ReturnType<typeof vi.fn>;
@@ -23,14 +23,24 @@ describe('devices api', () => {
     expect(f.mock.calls[0]).toEqual([`${BASE}/devices`, { method: 'GET', headers: undefined, body: undefined }]);
   });
 
-  it('pairs a sketch device', async () => {
-    f.mockResolvedValue(new Response('{"device_id":"d1","name":"Tab","plugin":"sketch","token":"t"}', { status: 201 }));
+  it('pairs a sketch device and returns the pairing code', async () => {
+    f.mockResolvedValue(new Response('{"device_id":"d1","name":"Tab","plugin":"sketch","code":"123456","expires_at":"2026-11-04T10:10:00Z","expires_in":600}', { status: 201 }));
     const out = await pairDevice('Tab');
     const [url, init] = f.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${BASE}/devices`);
     expect(init.method).toBe('POST');
     expect(init.body).toBe('{"name":"Tab","plugin":"sketch"}');
-    expect(out.token).toBe('t');
+    expect(out.code).toBe('123456');
+    expect(out.expires_in).toBe(600);
+  });
+
+  it('regenerates a code for a device with an encoded id', async () => {
+    f.mockResolvedValue(new Response('{"code":"654321","expires_at":"2026-11-04T10:10:00Z","expires_in":600}', { status: 201 }));
+    const out = await regenerateCode('a/b');
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/devices/a%2Fb/code`);
+    expect(init.method).toBe('POST');
+    expect(out.code).toBe('654321');
   });
 
   it('revokes a device with an encoded id', async () => {
