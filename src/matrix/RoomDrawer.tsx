@@ -44,6 +44,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const [preset, setPreset] = useState('')
   const [trigger, setTrigger] = useState('')
   const [mayInitiate, setMayInitiate] = useState(false)
+  const [anonymize, setAnonymize] = useState(false)
   const [error, setError] = useState<Error>()
   const [pending, setPending] = useState<Pending | null>(null)
   const [reload, setReload] = useState(0)
@@ -56,6 +57,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
       setPreset(r.preset_id ?? '')
       setTrigger(r.trigger ?? '')
       setMayInitiate(r.agents_may_initiate)
+      setAnonymize(r.anonymize_names)
     }, (e: unknown) => !cancelled && setError(e instanceof Error ? e : new Error(String(e))))
     return () => { cancelled = true }
   }, [roomId])
@@ -80,7 +82,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const save = async () => {
     setError(undefined)
     try {
-      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate })
+      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate, anonymize_names: anonymize })
       setRoom(updated)
       onChanged()
     } catch (e) {
@@ -138,6 +140,8 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               <MenuItem value="mention">Only when mentioned</MenuItem>
             </TextField>
             <FormControlLabel control={<Switch checked={mayInitiate} onChange={(e) => setMayInitiate(e.target.checked)} />} label="Agents may start chats" />
+            <FormControlLabel control={<Switch checked={anonymize} onChange={(e) => setAnonymize(e.target.checked)} />} label="Anonymize names" />
+            <Typography variant="caption" color="text.secondary">Senders are shown to the agent as user-&lt;hash&gt; / admin-&lt;hash&gt;.</Typography>
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
           </Box>
           <Typography component="h3" variant="subtitle1">Members</Typography>

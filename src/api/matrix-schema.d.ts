@@ -89,6 +89,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/matrix/api/v1/rooms/{room_id}/allow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allow Room
+         * @description Allow the room in one transaction: its settings, an `allow/room` rule (reused when it
+         *     exists) and, for a Messenger message request or a room still at `invite`, an accept
+         *     request the bot executes once the room is joined.
+         */
+        post: operations["allow_room_matrix_api_v1_rooms__room_id__allow_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/matrix/api/v1/rooms/{room_id}/messages": {
         parameters: {
             query?: never;
@@ -264,6 +286,15 @@ export interface components {
             /** Slug */
             slug: string | null;
         };
+        /** DeniedSender */
+        DeniedSender: {
+            /** Display Name */
+            display_name: string | null;
+            /** Facebook Id */
+            facebook_id: string | null;
+            /** User Id */
+            user_id: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -330,14 +361,54 @@ export interface components {
             /** User Id */
             user_id: string;
         };
-        /** RoomDetail */
-        RoomDetail: {
+        /**
+         * PendingView
+         * @description Why a room is waiting: not allowed yet, an open invite, a Messenger message request, and
+         *     the messages the policy refused (count and senders, never bodies).
+         */
+        PendingView: {
+            /** Allowed */
+            allowed: boolean;
+            /** Denied Count */
+            denied_count: number;
+            /** Denied Senders */
+            denied_senders: components["schemas"]["DeniedSender"][];
+            /** Invited */
+            invited: boolean;
+            /** Inviter */
+            inviter: string | null;
+            /** Last Denied At */
+            last_denied_at: string | null;
+            /** Message Request */
+            message_request: boolean;
+        };
+        /**
+         * RoomAllowIn
+         * @description As `RoomSettingsIn`: preset and trigger are stored as sent (omitted clears), a null
+         *     `agents_may_initiate` keeps the stored flag.
+         */
+        RoomAllowIn: {
+            /** Agents May Initiate */
+            agents_may_initiate?: boolean | null;
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Trigger */
+            trigger?: ("all" | "mention") | null;
+        };
+        /** RoomAllowView */
+        RoomAllowView: {
+            /** Accept Request Id */
+            accept_request_id: number | null;
             access: components["schemas"]["AccessView"];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
             /** Alias */
             alias: string | null;
+            /** Anonymize Names */
+            anonymize_names: boolean;
             binding: components["schemas"]["BindingView"] | null;
+            /** Effective Preset Id */
+            effective_preset_id: string | null;
             /**
              * Effective Trigger
              * @enum {string}
@@ -359,6 +430,53 @@ export interface components {
             message_request: boolean;
             /** Name */
             name: string | null;
+            pending: components["schemas"]["PendingView"];
+            /** Preset Id */
+            preset_id: string | null;
+            /** Queued */
+            queued: number;
+            /** Room Id */
+            room_id: string;
+            /** Rule Id */
+            rule_id: number;
+            session: components["schemas"]["SessionView"] | null;
+            /** Trigger */
+            trigger: ("all" | "mention") | null;
+        };
+        /** RoomDetail */
+        RoomDetail: {
+            access: components["schemas"]["AccessView"];
+            /** Agents May Initiate */
+            agents_may_initiate: boolean;
+            /** Alias */
+            alias: string | null;
+            /** Anonymize Names */
+            anonymize_names: boolean;
+            binding: components["schemas"]["BindingView"] | null;
+            /** Effective Preset Id */
+            effective_preset_id: string | null;
+            /**
+             * Effective Trigger
+             * @enum {string}
+             */
+            effective_trigger: "all" | "mention";
+            /** Encrypted */
+            encrypted: boolean;
+            /** Kind */
+            kind: string | null;
+            /** Last Event At */
+            last_event_at: string | null;
+            /** Member Count */
+            member_count: number;
+            /** Members */
+            members: components["schemas"]["MemberView"][];
+            /** Membership */
+            membership: string;
+            /** Message Request */
+            message_request: boolean;
+            /** Name */
+            name: string | null;
+            pending: components["schemas"]["PendingView"];
             /** Preset Id */
             preset_id: string | null;
             /** Queued */
@@ -373,6 +491,8 @@ export interface components {
         RoomSettingsIn: {
             /** Agents May Initiate */
             agents_may_initiate?: boolean | null;
+            /** Anonymize Names */
+            anonymize_names?: boolean | null;
             /** Preset Id */
             preset_id?: string | null;
             /** Trigger */
@@ -385,7 +505,11 @@ export interface components {
             agents_may_initiate: boolean;
             /** Alias */
             alias: string | null;
+            /** Anonymize Names */
+            anonymize_names: boolean;
             binding: components["schemas"]["BindingView"] | null;
+            /** Effective Preset Id */
+            effective_preset_id: string | null;
             /**
              * Effective Trigger
              * @enum {string}
@@ -405,6 +529,7 @@ export interface components {
             message_request: boolean;
             /** Name */
             name: string | null;
+            pending: components["schemas"]["PendingView"];
             /** Preset Id */
             preset_id: string | null;
             /** Queued */
@@ -679,6 +804,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoomDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    allow_room_matrix_api_v1_rooms__room_id__allow_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Orch-Session"?: string | null;
+                "X-Orch-Slug"?: string | null;
+            };
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomAllowIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomAllowView"];
                 };
             };
             /** @description Validation Error */
