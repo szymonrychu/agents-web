@@ -493,7 +493,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Session */
+        /**
+         * Get Session
+         * @description A superleader reads its own or a manageable session; any other leader its own.
+         */
         get: operations["get_session_agent_v1_admin_sessions__slug__get"];
         put?: never;
         post?: never;
@@ -505,7 +508,12 @@ export interface paths {
         delete: operations["discard_session_agent_v1_admin_sessions__slug__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Patch Session
+         * @description RFC 7396 merge patch of a live session's spec: a superleader on its own or a manageable
+         *     session, any other leader on its own. The source preset is never written.
+         */
+        patch: operations["patch_session_agent_v1_admin_sessions__slug__patch"];
         trace?: never;
     };
     "/agent/v1/admin/sessions/{slug}/agents/{pod}/restart": {
@@ -3309,6 +3317,16 @@ export interface components {
             workdir: string;
             wrapper?: components["schemas"]["WrapperSettings"] | null;
         };
+        /**
+         * SessionSpecPatch
+         * @description Agent edit of a live session: `spec` is an RFC 7396 merge patch of the stored spec.
+         */
+        SessionSpecPatch: {
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
         /** SessionSummary */
         SessionSummary: {
             /** Attention Agents */
@@ -4864,6 +4882,44 @@ export interface operations {
             };
         };
     };
+    patch_session_agent_v1_admin_sessions__slug__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionSpecPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     restart_agent_agent_v1_admin_sessions__slug__agents__pod__restart_post: {
         parameters: {
             query?: never;
@@ -5318,13 +5374,25 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
+            /** @description The chat upstream's status and JSON body, unchanged, or ChatRelayed when the room is held by another session and the post was relayed through it */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        /** Message Id */
+                        message_id: number | null;
+                        /** Send Id */
+                        send_id: string;
+                        /**
+                         * Status
+                         * @constant
+                         */
+                        status: "relayed";
+                        /** Via */
+                        via: string;
+                    };
                 };
             };
             /** @description unauthorized: missing or invalid agent credentials */
