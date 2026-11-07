@@ -597,12 +597,11 @@ describe('PresetForm', () => {
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
     const sparse = api.createPreset.mock.calls[0][0].spec
-    for (const k of ['leader_lease_seconds', 'autoclose_after_seconds', 'wrapper']) expect(sparse).not.toHaveProperty(k)
+    for (const k of ['autoclose_after_seconds', 'wrapper']) expect(sparse).not.toHaveProperty(k)
     expect(screen.getByText(/300 s minimum/)).toBeTruthy()
     expect(screen.getByText(/agent's credentials/)).toBeTruthy()
 
     await replace('Max replicas', '3')
-    await replace('Leader lease seconds', '120')
     await replace('Autoclose after seconds', '600')
     await replace('Auto-compact idle seconds', '30')
     await setEditorText('Auto-compact instructions', 'keep it short')
@@ -627,7 +626,8 @@ describe('PresetForm', () => {
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(2))
     const spec = api.createPreset.mock.calls[1][0].spec
-    expect(spec).toMatchObject({ max_replicas: 3, leader_lease_seconds: 120, autoclose_after_seconds: 600 })
+    expect(spec).toMatchObject({ max_replicas: 3, autoclose_after_seconds: 600 })
+    expect(spec).not.toHaveProperty('leader_lease_seconds')
     expect(spec.wrapper).toEqual({
       auto_compact: { idle_seconds: 30, instructions: 'keep it short', min_context_tokens: 5000 },
       system_append: 'be nice', restart_continue_prompt: 'go on', turn_stall_seconds: 90, max_restarts: 2, turn_max_seconds: 600,
@@ -636,9 +636,8 @@ describe('PresetForm', () => {
     })
     cleanup()
 
-    wrap(<PresetForm open preset={preset({ spec: { max_replicas: 3, leader_lease_seconds: 120, autoclose_after_seconds: 600, wrapper: spec.wrapper } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open preset={preset({ spec: { max_replicas: 3, autoclose_after_seconds: 600, wrapper: spec.wrapper } as PresetView['spec'] })} {...noop} />)
     await ready()
-    expect(field('Leader lease seconds').value).toBe('120')
     expect(field('Autoclose after seconds').value).toBe('600')
     expect(field('Auto-compact min context tokens').value).toBe('5000')
     expect(field('Permissions allow').value).toBe('Bash, Read')
@@ -686,7 +685,7 @@ describe('PresetForm', () => {
     await replace('Name', 'v')
     expect(screen.queryByLabelText('Leader lease seconds')).toBeNull()
     await replace('Max replicas', '2')
-    expect(screen.getByLabelText('Leader lease seconds')).toBeTruthy()
+    expect(screen.queryByLabelText('Leader lease seconds')).toBeNull()
     await userEvent.click(button('Plugins raw JSON'))
     for (const label of ['MCP servers', 'Plugins JSON']) {
       await paste(label, '{nope')

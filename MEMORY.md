@@ -22,6 +22,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-11-07 (voluntary-handover)
+
+- The preset form no longer has "Leader lease seconds": the orchestrator removed `spec.leader_lease_seconds` (422 if sent), so the web drops the field, its validation and the spec round trip. Leadership handover notices (`Orchestrator notice (leadership handover):`, from the orchestrator's `HANDOVER_PREFIX`) are matched by text prefix like the inactivity ones and render as a `notice` item (`notice: 'handover'`). Schema synced with `npm run sync:api -- orchestrator --from ../agents-orchestrator` from the voluntary-handover worktree at f4fca8f (PR #77, unmerged); re-sync from merged orchestrator main before this PR merges.
+
 ## 2026-11-03
 
 - pair-device page (`src/devices`, backend id `devices`, basePath `/app/admin/v1`, menu order 60): the browser calls the agents-app-connector admin API directly on the UI host with the SSO session. Why it works: the admin ingress path `/app/admin` has no source-range annotation; the allowlist (`adminAllowedCidrs: 127.0.0.1/32`) is evaluated by the app behind the oauth2-proxy sidecar on the admin pod, which sees loopback, so the client IP never matters; SSO is the sidecar (admission annotations), and the cookie is host-scoped like the orchestrator's. A 403 therefore means the sidecar or app refused, shown as a Forbidden message. The helmfile `agents-web` `backends` list must gain `{id: devices, label: Devices, basePath: /app/admin/v1}` for the menu entry to appear. The device token lives only in `DevicesPage` state (shown once, cleared on Done or unmount); never storage, logs or URLs. The connector's error body is `{"error": code, "detail": text}`, not the orchestrator shape, so `toError` keeps the status text and the page words 401, 403 and network failures itself.

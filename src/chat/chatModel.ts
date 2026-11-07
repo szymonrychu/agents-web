@@ -26,8 +26,8 @@ interface Base {
 
 export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
-  /** An orchestrator inactivity notice (reminder or close warning): a system line, not a user bubble. */
-  | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' })
+  /** An orchestrator notice (inactivity reminder, close warning or leadership handover): a system line, not a user bubble. */
+  | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' | 'handover' })
   | (Base & { kind: 'session'; text: string; from: string; messageId: number })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
@@ -91,13 +91,14 @@ const USER_ORIGINS = new Set(['user', 'hook', 'restart', 'command']);
 // Contract with agents-orchestrator dispatcher/session_frame.py:frame; the trailer line after the closing tag is dropped.
 const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S]*?)\n<\/session-message>(?:\n|$)/;
 
-// Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
+// Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX) and handover_transcript.py (HANDOVER_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
 const NOTICE_PREFIXES = [
   ['Orchestrator notice (inactivity reminder):', 'inactivity_reminder'],
   ['Orchestrator notice (inactivity limit):', 'inactivity_close'],
+  ['Orchestrator notice (leadership handover):', 'handover'],
 ] as const;
 
-const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
+const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | 'handover' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
 
 const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
