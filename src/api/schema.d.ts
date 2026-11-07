@@ -2449,8 +2449,19 @@ export interface components {
         };
         /** LeadershipRequested */
         LeadershipRequested: {
+            /**
+             * Applies
+             * @default when your turn has ended and your background agents have reported
+             */
+            applies: string;
             /** Request Id */
             request_id: number;
+            /**
+             * Status
+             * @default pending
+             * @constant
+             */
+            status: "pending";
         };
         /** LockCheckOut */
         LockCheckOut: {
@@ -2662,7 +2673,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover") | null;
             /**
              * Session Id
              * Format: uuid
@@ -3182,8 +3193,6 @@ export interface components {
             kube_namespace_access?: {
                 [key: string]: ("read" | "port-forward" | "exec" | "edit" | "admin")[];
             } | null;
-            /** Leader Lease Seconds */
-            leader_lease_seconds?: number | null;
             /**
              * Max Attempts
              * @default 5
@@ -3274,8 +3283,6 @@ export interface components {
             kube_namespace_access?: {
                 [key: string]: ("read" | "port-forward" | "exec" | "edit" | "admin")[];
             } | null;
-            /** Leader Lease Seconds */
-            leader_lease_seconds?: number | null;
             /**
              * Max Attempts
              * @default 5

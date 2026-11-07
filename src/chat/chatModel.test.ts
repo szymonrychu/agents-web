@@ -250,6 +250,12 @@ describe('subagents', () => {
     expect(splitSubagents(s.items, s.subagents).main).toHaveLength(3);
   });
 
+  it('classifies a leadership handover notice', () => {
+    const text = 'Orchestrator notice (leadership handover): you are now the leader of this hive.'
+    const s = applyEvents(fresh(), [row(1, 'user_message', { text, origin: 'user' })]);
+    expect(s.items[0]).toMatchObject({ kind: 'notice', text, notice: 'handover' });
+  });
+
   it('classifies orchestrator notices', () => {
     const reminder = 'Orchestrator notice (inactivity reminder): this session has been quiet for 1 h.'
     const limit = 'Orchestrator notice (inactivity limit): this session closes at 14:05Z.'

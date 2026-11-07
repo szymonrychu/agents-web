@@ -66,7 +66,6 @@ export interface FormValues {
   memRequest: string
   memLimit: string
   hookUrl: string
-  leaderLease: string
   autocloseAfter: string
   /** Inactivity limits in seconds: empty uses the orchestrator setting, 0 turns the limit off. */
   inactivityReminder: string
@@ -125,7 +124,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -155,7 +154,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -181,7 +180,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values[field] = stored
     setKeys.add(key)
   }
-  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
+  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = String(stored)
     setKeys.add(key)
@@ -228,7 +227,6 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   text('hookUrl', 'hookUrl', spec.discard_hook_url)
   text('image', 'image', spec.image)
   text('startPrompt', 'startPrompt', spec.start_prompt)
-  num('leaderLease', 'leaderLease', spec.leader_lease_seconds)
   num('autocloseAfter', 'autocloseAfter', spec.autoclose_after_seconds)
   num('inactivityReminder', 'inactivityReminder', spec.inactivity?.reminder_seconds)
   num('inactivityClose', 'inactivityClose', spec.inactivity?.close_seconds)
@@ -435,7 +433,6 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   e.autoCompact = v.autoCompact.trim() === '' ? undefined : intIn(v.autoCompact, 1, 100, 'Auto-compact percent')
   e.anyMcp = anyMcpError(v.anyMcp)
   e.hookUrl = hookUrlError(v.hookUrl)
-  e.leaderLease = v.leaderLease.trim() === '' ? undefined : intIn(v.leaderLease, 60, 604800, 'Leader lease seconds')
   e.autocloseAfter = v.autocloseAfter.trim() === '' ? undefined : intIn(v.autocloseAfter, 1, 2592000, 'Autoclose after seconds')
   e.inactivityReminder = inactivityError(v.inactivityReminder, 'Reminder after quiet seconds')
   e.inactivityClose = inactivityError(v.inactivityClose, 'Close after quiet seconds')
@@ -522,7 +519,6 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('hookUrl')) spec.discard_hook_url = str(v.hookUrl)
   if (setKeys.has('image')) spec.image = str(v.image)
   if (setKeys.has('startPrompt')) spec.start_prompt = str(v.startPrompt)
-  if (setKeys.has('leaderLease')) spec.leader_lease_seconds = int(v.leaderLease)
   if (setKeys.has('autocloseAfter')) spec.autoclose_after_seconds = int(v.autocloseAfter)
   const reminder = setKeys.has('inactivityReminder') ? int(v.inactivityReminder) : undefined
   const close = setKeys.has('inactivityClose') ? int(v.inactivityClose) : undefined

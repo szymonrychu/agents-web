@@ -125,7 +125,6 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const touched = useRef(new Set<keyof FormValues>())
   const { values, setKeys } = state
   const editing = preset !== undefined
-  const hive = /^\d+$/.test(values.maxReplicas.trim()) && Number(values.maxReplicas) > 1
 
   useEffect(() => {
     let cancelled = false
@@ -388,7 +387,6 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {text('memLimit', 'Memory limit')}
           </Box>
           {text('hookUrl', 'Pre-discard webhook URL')}
-          {hive && text('leaderLease', 'Leader lease seconds', { help: 'Hive leader lease, 60 to 604800 seconds' })}
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
           {text('inactivityReminder', 'Reminder after quiet seconds', { help: inactivityHelp(meta?.inactivity.reminder_seconds) })}
           {text('inactivityClose', 'Close after quiet seconds', { help: inactivityHelp(meta?.inactivity.close_seconds) })}
