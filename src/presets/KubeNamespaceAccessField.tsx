@@ -42,6 +42,7 @@ export function KubeNamespaceAccessField({ rows, onChange, namespaces, tiers, er
       {rows.map((row, i) => {
         const taken = new Set(rows.filter((_, j) => j !== i).map((r) => r.namespace))
         const options = namespaces.filter((ns) => !taken.has(ns))
+        if (row.namespace && !options.includes(row.namespace)) options.unshift(row.namespace)
         const error = errors?.[i]
         return (
           <Box key={i} role="group" aria-label={`Namespace access ${i + 1}`} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>

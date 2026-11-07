@@ -70,6 +70,17 @@ describe('KubeNamespaceAccessField', () => {
     expect(onChange).toHaveBeenCalledWith([{ namespace: 'b', tiers: [] }])
   })
 
+  test('a stored namespace missing from the allowlist stays in its row options', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    setup({ rows: [{ namespace: 'gone', tiers: ['read'] }] })
+    const select = screen.getByRole('combobox', { name: 'Namespace 1' })
+    expect(select.textContent).toBe('gone')
+    await userEvent.click(select)
+    expect(within(screen.getByRole('listbox')).getByRole('option', { name: 'gone' })).toBeTruthy()
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('out-of-range'))).toHaveLength(0)
+    warn.mockRestore()
+  })
+
   test('ignoredNote renders as helper text', () => {
     setup({ ignoredNote: 'Ignored while cluster access is on' })
     expect(screen.getByText('Ignored while cluster access is on')).toBeTruthy()
