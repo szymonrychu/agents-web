@@ -57,7 +57,7 @@ export interface FormValues {
   /** any-mcp plugin sources, one per row, in order. */
   anyMcpSources: string[]
   initScripts: string[]
-  /** Jinja template sent before the session, webhook, chat or cron prompt, in one message. */
+  /** Jinja template delivered as the session's first turn, before the session, webhook, chat or cron prompts. */
   startPrompt: string
   maxAttempts: string
   autoCompact: string
