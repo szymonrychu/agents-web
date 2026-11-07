@@ -16,7 +16,7 @@ const GUARDED = ['.']
  * Two classes of third-party phrases, never the orchestrator's unit: Kubernetes, CNPG or kind phrases, and npm package
  * names (find-cluster-break, the dependency of @codemirror/state, written into package-lock.json).
  */
-const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info', 'find-cluster-break']
+const ALLOWED = ['cluster.local', 'ClusterIP', 'clusterIP', 'ClusterIssuer', 'cluster-issuer', 'ClusterRole', 'in-cluster', 'cluster-internal', 'cluster node', 'cluster-info', 'find-cluster-break', 'kube_cluster_access', 'kubeClusterAccess', 'KubeClusterAccess', 'Kube Cluster Access', 'Kubernetes cluster access', 'cluster-admin', 'cluster access']
 
 /** Old names exactly as the retirement tests that pin them as gone spell them. */
 const RETIRED = [
