@@ -375,7 +375,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {errors.initScripts?.map((m, i) => (m ? <FormHelperText key={i} error>{m}</FormHelperText> : null))}
             <FormHelperText>Runs once when a session starts, in the shared workdir; agents can read and edit it; edits apply to the next session.</FormHelperText>
           </Box>
-          {template('startPrompt', 'Start prompt', 'web_chat_start', 'Sent before the session, webhook, chat or cron prompt, in one message.')}
+          {template('startPrompt', 'Start prompt', 'web_chat_start', 'Delivered as the first turn of the session; the session, webhook, chat or cron prompts follow after it.')}
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}
           <Box sx={{ display: 'flex', gap: 1 }}>

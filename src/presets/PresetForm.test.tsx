@@ -707,7 +707,7 @@ describe('PresetForm', () => {
       api.createPreset.mockResolvedValue(preset())
       wrap(<PresetForm open {...noop} />)
       await ready()
-      expect(screen.getByText('Sent before the session, webhook, chat or cron prompt, in one message.')).toBeTruthy()
+      expect(screen.getByText('Delivered as the first turn of the session; the session, webhook, chat or cron prompts follow after it.')).toBeTruthy()
       await replace('Name', 's')
       await setEditorText('Start prompt', 'hi {{ user }}')
       await userEvent.click(within(screen.getByRole('group', { name: 'Start prompt' })).getByRole('button', { name: 'Preview' }))
