@@ -64,6 +64,11 @@ const plain = (value: string) => ({ value, protected: false, expand: false })
 const noop = { onClose: vi.fn(), onSaved: vi.fn() }
 const optionTexts = () => screen.getAllByRole('option').map((o) => o.textContent)
 
+/** No element mentions secrets except the cluster access helper ("... Secrets included ..."). */
+function expectNoSecretWarning() {
+  expect(screen.queryAllByText(/secret/i).filter((el) => !/cluster-admin/.test(el.textContent ?? ''))).toEqual([])
+}
+
 describe('PresetForm', () => {
   test('keeps edits made before meta loads', async () => {
     let resolveMeta: (m: Meta) => void = () => {}
@@ -250,7 +255,7 @@ describe('PresetForm', () => {
     await paste('Name', 'ok')
     await userEvent.click(button('Add env'))
     await userEvent.type(field('Env key 1'), 'API_TOKEN')
-    expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
+    expectNoSecretWarning()
     expect(field('Env key 1').getAttribute('aria-invalid')).toBe('false')
     expect(button('Create').disabled).toBe(false)
     await replace('Env key 1', 'DB_PASSWORD')
@@ -371,7 +376,7 @@ describe('PresetForm', () => {
       await openPaste('API_TOKEN=x\nCCW_X=y')
       await userEvent.click(button('Apply'))
       expect(screen.getByText(/reserved/i)).toBeTruthy()
-      expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
+      expectNoSecretWarning()
       expect(button('Create').disabled).toBe(true)
     })
 
@@ -392,7 +397,7 @@ describe('PresetForm', () => {
       await userEvent.click(button('Apply'))
       expect(field(`Env key ${SECRET_NAMED.length}`).value).toBe(SECRET_NAMED[SECRET_NAMED.length - 1])
       for (let i = 1; i <= SECRET_NAMED.length; i++) expect(field(`Env key ${i}`).getAttribute('aria-invalid')).toBe('false')
-      expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
+      expectNoSecretWarning()
       expect(button('Create').disabled).toBe(false)
     })
 

@@ -77,7 +77,7 @@ export interface FormValues {
   reuseRunningAgent: boolean
   /** Superleader: the session's leader can message the leaders of all sessions; the spec carries it only when on. */
   sessionMessaging: boolean
-  /** Agents get read-write access to every namespace and resource; the spec carries it only when on. */
+  /** Agents get cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session; the spec carries it only when on. */
   kubeClusterAccess: boolean
   /** Privileged Docker-in-Docker sidecar; the spec carries it, and the three sizes, only when on. */
   docker: boolean
