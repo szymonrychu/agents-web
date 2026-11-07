@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Meta, SessionSpec } from '../api/client'
-import { humanizeSeconds, stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
+import { humanizeSeconds, kubeNamespaceAccessErrors, stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
 
 describe('start_prompt', () => {
   test('a stored start prompt loads and round-trips', () => {
@@ -174,5 +174,43 @@ describe('inactivity limits', () => {
 
   test('humanizeSeconds matches the orchestrator rule', () => {
     expect([30, 59, 60, 600, 3300, 3599, 3600, 5400, 14400, 5460].map(humanizeSeconds)).toEqual(['30 s', '59 s', '1 min', '10 min', '55 min', '59 min', '1 h', '1.5 h', '4 h', '1.5 h'])
+  })
+})
+
+describe('kube_namespace_access', () => {
+  test('round-trips', () => {
+    const spec = { kube_namespace_access: { media: ['read', 'port-forward'] } } as Partial<SessionSpec>
+    const st = stateFromPreset(null, 'p', spec)
+    expect(st.values.kubeNamespaceAccess).toEqual([{ namespace: 'media', tiers: ['read', 'port-forward'] }])
+    expect(toPresetSpec(st.values, st.setKeys)).toEqual(spec)
+  })
+
+  test('omits an empty map', () => {
+    const st = stateFromPreset(null, 'p', { kube_namespace_access: { media: ['read'] } } as Partial<SessionSpec>)
+    expect(toPresetSpec({ ...st.values, kubeNamespaceAccess: [] }, st.setKeys)).not.toHaveProperty('kube_namespace_access')
+    const unset = stateFromPreset(null, 'p', { replicas: 2 })
+    expect(unset.values.kubeNamespaceAccess).toEqual([])
+    expect(toPresetSpec(unset.values, unset.setKeys)).not.toHaveProperty('kube_namespace_access')
+  })
+
+  test('writes tiers in canonical order and namespaces sorted', () => {
+    const st = stateFromPreset(null, 'p', { kube_namespace_access: { media: ['read'] } } as Partial<SessionSpec>)
+    const values = { ...st.values, kubeNamespaceAccess: [{ namespace: 'zeta', tiers: ['admin', 'read'] }, { namespace: 'alpha', tiers: ['exec', 'port-forward', 'edit'] }] }
+    const spec = toPresetSpec(values, st.setKeys)
+    expect(spec.kube_namespace_access).toEqual({ alpha: ['port-forward', 'exec', 'edit'], zeta: ['read', 'admin'] })
+    expect(Object.keys(spec.kube_namespace_access ?? {})).toEqual(['alpha', 'zeta'])
+  })
+
+  test('flags a row without tiers or without a namespace', () => {
+    expect(kubeNamespaceAccessErrors([{ namespace: 'media', tiers: [] }])).toEqual(['Pick at least one tier'])
+    expect(kubeNamespaceAccessErrors([{ namespace: '', tiers: ['read'] }])).toEqual(['Pick a namespace'])
+    expect(kubeNamespaceAccessErrors([{ namespace: 'media', tiers: ['read'] }])).toBeUndefined()
+    expect(kubeNamespaceAccessErrors([])).toBeUndefined()
+  })
+
+  test('validate carries the row errors', () => {
+    const st = stateFromPreset(null, 'p', {})
+    const e = validate({ ...st.values, name: 'ok', kubeNamespaceAccess: [{ namespace: 'media', tiers: [] }] }, null)
+    expect(e.kubeNamespaceAccess).toEqual(['Pick at least one tier'])
   })
 })

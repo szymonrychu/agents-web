@@ -1059,6 +1059,66 @@ describe('PresetForm', () => {
     expect(screen.queryByText('Not configured on this orchestrator')).toBeNull()
   })
 
+  describe('namespace access', () => {
+
+    test('saves rows, with canonical tier order, next to cluster access with a note', async () => {
+      api.createPreset.mockResolvedValue(preset())
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await replace('Name', 'ns')
+      expect(screen.queryByText('Ignored while Kubernetes cluster access is on')).toBeNull()
+      await userEvent.click(button('Add namespace'))
+      await pick('Namespace 1', 'media')
+      await userEvent.click(field('exec 1'))
+      await userEvent.click(field('read 1'))
+      await userEvent.click(field('Kubernetes cluster access'))
+      expect(screen.getByText('Ignored while Kubernetes cluster access is on')).toBeTruthy()
+      await userEvent.click(button('Create'))
+      await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+      expect(api.createPreset.mock.calls[0][0].spec).toEqual({ kube_cluster_access: true, kube_namespace_access: { media: ['read', 'exec'] } })
+    })
+
+    test('save is disabled while a row has no tier', async () => {
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      await replace('Name', 'ns')
+      await userEvent.click(button('Add namespace'))
+      await pick('Namespace 1', 'media')
+      expect(screen.getByText('Pick at least one tier')).toBeTruthy()
+      expect(button('Create').disabled).toBe(true)
+      await userEvent.click(field('read 1'))
+      expect(button('Create').disabled).toBe(false)
+    })
+
+    test('hidden when unavailable and the spec has none', async () => {
+      api.getMeta.mockResolvedValue(meta({ kube_namespace_access: { available: false, namespaces: [], tiers: [] } }))
+      wrap(<PresetForm open {...noop} />)
+      await ready()
+      expect(screen.queryByText('Kubernetes namespace access')).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Add namespace' })).toBeNull()
+    })
+
+    test('shown disabled when unavailable but the spec has a map, and saved unchanged', async () => {
+      api.getMeta.mockResolvedValue(meta({ kube_namespace_access: { available: false, namespaces: [], tiers: [] } }))
+      api.updatePreset.mockResolvedValue(preset())
+      wrap(<PresetForm open preset={preset({ spec: { kube_namespace_access: { media: ['read'] } } as PresetView['spec'] })} {...noop} />)
+      await ready()
+      await waitFor(() => expect(field('read 1').disabled).toBe(true))
+      expect(button('Add namespace').disabled).toBe(true)
+      await userEvent.click(button('Save'))
+      await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+      expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ kube_namespace_access: { media: ['read'] } })
+    })
+
+    test('a stored map loads into rows', async () => {
+      wrap(<PresetForm open preset={preset({ spec: { kube_namespace_access: { media: ['read', 'edit'] } } as PresetView['spec'] })} {...noop} />)
+      await ready()
+      expect(field('read 1').checked).toBe(true)
+      expect(field('edit 1').checked).toBe(true)
+      expect(field('exec 1').checked).toBe(false)
+    })
+  })
+
   test('docker toggle is hidden when unavailable', async () => {
     api.getMeta.mockResolvedValue(meta())
     wrap(<PresetForm open {...noop} />)

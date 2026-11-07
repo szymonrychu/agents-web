@@ -5,6 +5,7 @@ import type { components } from '../api/schema'
 type EnvVarIn = components['schemas']['EnvVarIn']
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
+import type { KubeNamespaceRow } from '../presets/KubeNamespaceAccessField'
 import { pluginSourceError } from '../presets/pluginSource'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
@@ -79,6 +80,8 @@ export interface FormValues {
   sessionMessaging: boolean
   /** Agents get cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session; the spec carries it only when on. */
   kubeClusterAccess: boolean
+  /** Namespace-scoped Kubernetes access: one row per namespace with its tiers; the spec carries it only when there are rows. */
+  kubeNamespaceAccess: KubeNamespaceRow[]
   /** Privileged Docker-in-Docker sidecar; the spec carries it, and the three sizes, only when on. */
   docker: boolean
   dockerStorage: string
@@ -116,13 +119,13 @@ export interface FormValues {
   cacheExclude: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
 
 type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -152,7 +155,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -242,6 +245,10 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.kube_cluster_access) {
     values.kubeClusterAccess = true
     setKeys.add('kubeClusterAccess')
+  }
+  if (spec.kube_namespace_access) {
+    values.kubeNamespaceAccess = Object.entries(spec.kube_namespace_access).map(([namespace, tiers]) => ({ namespace, tiers: canonicalTiers(tiers) }))
+    setKeys.add('kubeNamespaceAccess')
   }
   if (spec.docker) {
     values.docker = true
@@ -363,6 +370,20 @@ export function jsonObjectError(text: string): string | undefined {
 
 export const anyMcpError = jsonObjectError
 
+const TIER_ORDER = ['read', 'port-forward', 'exec', 'edit', 'admin']
+
+/** Tiers in the canonical order (read, port-forward, exec, edit, admin); a tier outside it sorts last. */
+export function canonicalTiers(tiers: string[]): string[] {
+  const rank = (t: string) => (TIER_ORDER.includes(t) ? TIER_ORDER.indexOf(t) : TIER_ORDER.length)
+  return [...tiers].sort((a, b) => rank(a) - rank(b))
+}
+
+/** Per-row errors for the namespace access rows (a row needs a namespace and at least one tier); undefined when all are fine. */
+export function kubeNamespaceAccessErrors(rows: KubeNamespaceRow[]): (string | undefined)[] | undefined {
+  const errors = rows.map((r): string | undefined => (r.namespace === '' ? 'Pick a namespace' : r.tiers.length === 0 ? 'Pick at least one tier' : undefined))
+  return errors.some(Boolean) ? errors : undefined
+}
+
 /** Per-script errors mirroring the server (at most 20, each non-empty after trim and at most 16384 characters); undefined when all are fine. */
 export function initScriptErrors(scripts: string[]): (string | undefined)[] | undefined {
   const errors = scripts.map((s, i): string | undefined => {
@@ -442,6 +463,8 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   }
   const envErrors = v.env.map((r) => envKeyError(r.key, v.env) ?? envValueError(r))
   if (envErrors.some(Boolean)) e.env = envErrors
+  const namespaceErrors = kubeNamespaceAccessErrors(v.kubeNamespaceAccess)
+  if (namespaceErrors) e.kubeNamespaceAccess = namespaceErrors
   const scriptErrors = initScriptErrors(v.initScripts)
   if (scriptErrors) e.initScripts = scriptErrors
   const sourceErrors = v.anyMcpSources.map(pluginSourceError)
@@ -518,6 +541,10 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
   if (setKeys.has('kubeClusterAccess') && v.kubeClusterAccess) spec.kube_cluster_access = true
+  if (setKeys.has('kubeNamespaceAccess') && v.kubeNamespaceAccess.length > 0) {
+    const rows = [...v.kubeNamespaceAccess].sort((a, b) => (a.namespace < b.namespace ? -1 : a.namespace > b.namespace ? 1 : 0))
+    spec.kube_namespace_access = Object.fromEntries(rows.map((r) => [r.namespace, canonicalTiers(r.tiers)])) as NonNullable<SessionSpec['kube_namespace_access']>
+  }
   if (setKeys.has('docker') && v.docker) {
     spec.docker = true
     if (v.dockerStorage !== '') spec.docker_storage = v.dockerStorage
