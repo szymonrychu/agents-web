@@ -29,8 +29,9 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, copyName, envKeyError, envRow, envValueError, humanizeSeconds, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, envValueError, humanizeSeconds, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
+import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
 export interface PresetFormProps {
@@ -163,7 +164,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     return result
   }
   const dockerAvailable = meta?.docker.available === true
-  const kubeAccessAvailable = meta?.kube_access.available === true
+  const kubeClusterAccessAvailable = meta?.kube_cluster_access.available === true
+  const kubeNamespaceAvailable = meta?.kube_namespace_access.available === true
   const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
   const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
@@ -173,7 +175,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -420,9 +422,20 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <FormHelperText>The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them</FormHelperText>
           </Box>
           <Box>
-            <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />
-            <FormHelperText>{meta && !kubeAccessAvailable ? 'Not configured on this orchestrator' : 'Agents get full read-write access to every namespace and resource'}</FormHelperText>
+            <FormControlLabel control={<Switch checked={values.kubeClusterAccess} onChange={(e) => set('kubeClusterAccess', e.target.checked)} />} label="Kubernetes cluster access" disabled={!kubeClusterAccessAvailable} />
+            <FormHelperText>{meta && !kubeClusterAccessAvailable ? 'Not configured on this orchestrator' : 'cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session'}</FormHelperText>
           </Box>
+          {(kubeNamespaceAvailable || values.kubeNamespaceAccess.length > 0) && (
+            <KubeNamespaceAccessField
+              rows={values.kubeNamespaceAccess}
+              onChange={(rows) => set('kubeNamespaceAccess', rows.map((r) => ({ ...r, tiers: canonicalTiers(r.tiers) })))}
+              namespaces={meta?.kube_namespace_access.namespaces ?? []}
+              tiers={canonicalTiers([...new Set([...(meta?.kube_namespace_access.tiers ?? []), ...values.kubeNamespaceAccess.flatMap((r) => r.tiers)])])}
+              errors={errors.kubeNamespaceAccess}
+              ignoredNote={values.kubeClusterAccess ? 'Ignored while Kubernetes cluster access is on' : undefined}
+              disabled={!kubeNamespaceAvailable}
+            />
+          )}
           {(dockerAvailable || values.docker) && (
             <Box>
               <FormControlLabel control={<Switch checked={values.docker} onChange={(e) => set('docker', e.target.checked)} />} label="Docker (privileged sidecar)" disabled={!dockerAvailable} />

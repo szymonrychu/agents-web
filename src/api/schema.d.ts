@@ -26,6 +26,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/chats/room-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST connector /room-requests */
+        post: operations["admin_connector_post_room_requests"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/room-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET connector /room-requests/{request_id} */
+        get: operations["admin_connector_get_room_requests_request_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/room-requests/{request_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST connector /room-requests/{request_id}/confirm
+         * @description Confirm or reject a room request from the answer to its attached decision.
+         */
+        post: operations["admin_connector_post_room_requests_request_id_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/chats/rooms": {
         parameters: {
             query?: never;
@@ -37,6 +91,40 @@ export interface paths {
         get: operations["admin_connector_get_rooms"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/rooms/{room_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET connector /rooms/{room_id} */
+        get: operations["admin_connector_get_rooms_room_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/rooms/{room_id}/allow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST connector /rooms/{room_id}/allow */
+        post: operations["admin_connector_post_rooms_room_id_allow"];
         delete?: never;
         options?: never;
         head?: never;
@@ -90,6 +178,23 @@ export interface paths {
         post?: never;
         /** DELETE connector /rules/{rule_id} */
         delete: operations["admin_connector_delete_rules_rule_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET connector /users */
+        get: operations["admin_connector_get_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -392,7 +497,11 @@ export interface paths {
         get: operations["get_session_agent_v1_admin_sessions__slug__get"];
         put?: never;
         post?: never;
-        /** Discard Session */
+        /**
+         * Discard Session
+         * @description `?force=true` abandons the target's owed pre-discard hooks, also when it is already
+         *     deleting (a discard stuck on a hook receiver that is down).
+         */
         delete: operations["discard_session_agent_v1_admin_sessions__slug__delete"];
         options?: never;
         head?: never;
@@ -434,6 +543,28 @@ export interface paths {
          *     cooldown and gets one note, all in the same transaction as the commands.
          */
         post: operations["restart_session_agent_v1_admin_sessions__slug__restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage
+         * @description The account's five_hour and seven_day windows, read-only, from the same cached
+         *     `UsageSource` the usage gate reads. An unconfigured or unreachable usage service answers
+         *     200 with `available` false and null windows: the gate allows then, and so does this.
+         */
+        get: operations["get_usage_agent_v1_admin_usage_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1314,8 +1445,35 @@ export interface paths {
         get: operations["get_session_api_v1_sessions__session_id__get"];
         put?: never;
         post?: never;
-        /** Discard Session */
+        /**
+         * Discard Session
+         * @description Discard the session. On the service port a service may discard only a session it created
+         *     itself; any other session answers 404 `not_found`, like an unknown one. `?force=true` (main
+         *     port only) abandons the owed pre-discard hooks, also of a session already deleting.
+         */
         delete: operations["discard_session_api_v1_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/agent-token/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check an agent token of a live session the calling service created
+         * @description Service port only. 200 when `token` is the agent token of this session, the session is
+         *     active and the calling service created it; every other case (also the main port) answers
+         *     the same 404 `not_found`, so the answer never says which part was wrong.
+         */
+        post: operations["verify_agent_token_api_v1_sessions__session_id__agent_token_verify_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1731,6 +1889,25 @@ export interface components {
             used_tokens: number | null;
             /** Window Tokens */
             window_tokens: number | null;
+        };
+        /**
+         * AgentTokenIn
+         * @description An agent token a service was handed by one of its sessions' agents, to be checked.
+         */
+        AgentTokenIn: {
+            /**
+             * Token
+             * Format: password
+             */
+            token: string;
+        };
+        /** AgentTokenVerified */
+        AgentTokenVerified: {
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
         };
         /** AgentView */
         AgentView: {
@@ -2516,7 +2693,8 @@ export interface components {
             /** Hook Events */
             hook_events: components["schemas"]["MetaHookEvent"][];
             inactivity: components["schemas"]["MetaInactivity"];
-            kube_access: components["schemas"]["MetaKubeAccess"];
+            kube_cluster_access: components["schemas"]["MetaKubeClusterAccess"];
+            kube_namespace_access: components["schemas"]["MetaKubeNamespaceAccess"];
             /** Models */
             models: string[];
             /** Permission Modes */
@@ -2605,10 +2783,19 @@ export interface components {
             /** Reminder Seconds */
             reminder_seconds: number;
         };
-        /** MetaKubeAccess */
-        MetaKubeAccess: {
+        /** MetaKubeClusterAccess */
+        MetaKubeClusterAccess: {
             /** Available */
             available: boolean;
+        };
+        /** MetaKubeNamespaceAccess */
+        MetaKubeNamespaceAccess: {
+            /** Available */
+            available: boolean;
+            /** Namespaces */
+            namespaces: string[];
+            /** Tiers */
+            tiers: string[];
         };
         /** MetaPermissionMode */
         MetaPermissionMode: {
@@ -2981,8 +3168,12 @@ export interface components {
              * @default []
              */
             init_scripts: string[];
-            /** Kube Access */
-            kube_access?: boolean | null;
+            /** Kube Cluster Access */
+            kube_cluster_access?: boolean | null;
+            /** Kube Namespace Access */
+            kube_namespace_access?: {
+                [key: string]: ("read" | "port-forward" | "exec" | "edit" | "admin")[];
+            } | null;
             /** Leader Lease Seconds */
             leader_lease_seconds?: number | null;
             /**
@@ -3069,8 +3260,12 @@ export interface components {
              * @default []
              */
             init_scripts: string[];
-            /** Kube Access */
-            kube_access?: boolean | null;
+            /** Kube Cluster Access */
+            kube_cluster_access?: boolean | null;
+            /** Kube Namespace Access */
+            kube_namespace_access?: {
+                [key: string]: ("read" | "port-forward" | "exec" | "edit" | "admin")[];
+            } | null;
             /** Leader Lease Seconds */
             leader_lease_seconds?: number | null;
             /**
@@ -3322,6 +3517,38 @@ export interface components {
             /** Seven Day Pct */
             seven_day_pct?: number | null;
         };
+        /**
+         * UsageView
+         * @description The account's usage windows as the usage gate reads them (read-only).
+         */
+        UsageView: {
+            /** Available */
+            available: boolean;
+            /** Configured */
+            configured: boolean;
+            five_hour: components["schemas"]["UsageWindowView"] | null;
+            seven_day: components["schemas"]["UsageWindowView"] | null;
+            /** Source */
+            source: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** UsageWindowView */
+        UsageWindowView: {
+            /** Observed At */
+            observed_at: string | null;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+            /** Source */
+            source: string | null;
+            /** Stale */
+            stale: boolean;
+            /** Utilization Pct */
+            utilization_pct: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -3471,7 +3698,173 @@ export interface operations {
             };
         };
     };
+    admin_connector_post_room_requests: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_get_room_requests_request_id: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_post_room_requests_request_id_confirm: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No decision existed; it was asked and attached */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_pending, or decision_open (the user has not answered yet) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_connector_get_rooms: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_get_rooms_room_id: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_post_rooms_room_id_allow: {
         parameters: {
             query?: never;
             header?: {
@@ -3605,6 +3998,36 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_get_users: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4406,7 +4829,10 @@ export interface operations {
     };
     discard_session_agent_v1_admin_sessions__slug__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Abandon the session's owed pre-discard hooks (reason `forced`) so the discard finishes without them, also for a session already deleting; the workspace PVC is kept as the backup. Refused on the service port. */
+                force?: boolean;
+            };
             header?: {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
@@ -4494,6 +4920,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionRestartAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_agent_v1_admin_usage_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageView"];
                 };
             };
             /** @description Validation Error */
@@ -6950,7 +7408,10 @@ export interface operations {
     };
     discard_session_api_v1_sessions__session_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Abandon the session's owed pre-discard hooks (reason `forced`) so the discard finishes without them, also for a session already deleting; the workspace PVC is kept as the backup. Refused on the service port. */
+                force?: boolean;
+            };
             header?: never;
             path: {
                 session_id: string;
@@ -6966,6 +7427,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_agent_token_api_v1_sessions__session_id__agent_token_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTokenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTokenVerified"];
                 };
             };
             /** @description Validation Error */
