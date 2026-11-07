@@ -163,7 +163,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     return result
   }
   const dockerAvailable = meta?.docker.available === true
-  const kubeAccessAvailable = meta?.kube_access.available === true
+  const kubeClusterAccessAvailable = meta?.kube_cluster_access.available === true
   const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
   const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
@@ -173,7 +173,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -420,8 +420,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <FormHelperText>The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them</FormHelperText>
           </Box>
           <Box>
-            <FormControlLabel control={<Switch checked={values.kubeAccess} onChange={(e) => set('kubeAccess', e.target.checked)} />} label="Kubernetes access" disabled={!kubeAccessAvailable} />
-            <FormHelperText>{meta && !kubeAccessAvailable ? 'Not configured on this orchestrator' : 'Agents get full read-write access to every namespace and resource'}</FormHelperText>
+            <FormControlLabel control={<Switch checked={values.kubeClusterAccess} onChange={(e) => set('kubeClusterAccess', e.target.checked)} />} label="Kubernetes cluster access" disabled={!kubeClusterAccessAvailable} />
+            <FormHelperText>{meta && !kubeClusterAccessAvailable ? 'Not configured on this orchestrator' : 'cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session'}</FormHelperText>
           </Box>
           {(dockerAvailable || values.docker) && (
             <Box>

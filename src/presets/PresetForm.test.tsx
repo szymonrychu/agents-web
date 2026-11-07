@@ -16,7 +16,7 @@ const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), ge
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_access: { available: true }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -250,7 +250,7 @@ describe('PresetForm', () => {
     await paste('Name', 'ok')
     await userEvent.click(button('Add env'))
     await userEvent.type(field('Env key 1'), 'API_TOKEN')
-    expect(screen.queryByText(/secret/i)).toBeNull()
+    expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
     expect(field('Env key 1').getAttribute('aria-invalid')).toBe('false')
     expect(button('Create').disabled).toBe(false)
     await replace('Env key 1', 'DB_PASSWORD')
@@ -371,7 +371,7 @@ describe('PresetForm', () => {
       await openPaste('API_TOKEN=x\nCCW_X=y')
       await userEvent.click(button('Apply'))
       expect(screen.getByText(/reserved/i)).toBeTruthy()
-      expect(screen.queryByText(/secret/i)).toBeNull()
+      expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
       expect(button('Create').disabled).toBe(true)
     })
 
@@ -392,7 +392,7 @@ describe('PresetForm', () => {
       await userEvent.click(button('Apply'))
       expect(field(`Env key ${SECRET_NAMED.length}`).value).toBe(SECRET_NAMED[SECRET_NAMED.length - 1])
       for (let i = 1; i <= SECRET_NAMED.length; i++) expect(field(`Env key ${i}`).getAttribute('aria-invalid')).toBe('false')
-      expect(screen.queryByText(/secret/i)).toBeNull()
+      expect(screen.queryByText(/secret value|secrets are/i)).toBeNull()
       expect(button('Create').disabled).toBe(false)
     })
 
@@ -827,15 +827,15 @@ describe('PresetForm', () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     expect(field('Superleader').checked).toBe(false)
-    expect(field('Kubernetes access').checked).toBe(false)
+    expect(field('Kubernetes cluster access').checked).toBe(false)
     expect(screen.getByText('superleader: can message the leaders of all sessions')).toBeTruthy()
-    expect(screen.getByText('Agents get full read-write access to every namespace and resource')).toBeTruthy()
+    expect(screen.getByText('cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session')).toBeTruthy()
     await replace('Name', 's')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     const spec = api.createPreset.mock.calls[0][0].spec
     expect(spec).not.toHaveProperty('session_messaging')
-    expect(spec).not.toHaveProperty('kube_access')
+    expect(spec).not.toHaveProperty('kube_cluster_access')
   })
 
   test('permission mode switch: options from meta, unset shows Allow all, untouched is left out', async () => {
@@ -955,22 +955,22 @@ describe('PresetForm', () => {
     await ready()
     await replace('Name', 'o')
     await userEvent.click(field('Superleader'))
-    await userEvent.click(field('Kubernetes access'))
+    await userEvent.click(field('Kubernetes cluster access'))
     expect(field('Superleader').checked).toBe(true)
-    expect(field('Kubernetes access').checked).toBe(true)
+    expect(field('Kubernetes cluster access').checked).toBe(true)
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', superleader_manageable: false, spec: { session_messaging: true, kube_access: true } })
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', superleader_manageable: false, spec: { session_messaging: true, kube_cluster_access: true } })
     cleanup()
 
     api.updatePreset.mockResolvedValue(preset())
-    wrap(<PresetForm open preset={preset({ spec: { session_messaging: true, kube_access: true } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open preset={preset({ spec: { session_messaging: true, kube_cluster_access: true } as PresetView['spec'] })} {...noop} />)
     await ready()
     expect(field('Superleader').checked).toBe(true)
-    expect(field('Kubernetes access').checked).toBe(true)
+    expect(field('Kubernetes cluster access').checked).toBe(true)
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ session_messaging: true, kube_access: true })
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ session_messaging: true, kube_cluster_access: true })
     cleanup()
 
     api.createPreset.mockClear()
@@ -1028,29 +1028,29 @@ describe('PresetForm', () => {
   })
 
   test('kube access disabled when unavailable', async () => {
-    api.getMeta.mockResolvedValue(meta({ kube_access: { available: false } }))
+    api.getMeta.mockResolvedValue(meta({ kube_cluster_access: { available: false } }))
     wrap(<PresetForm open {...noop} />)
     await ready()
-    await waitFor(() => expect(field('Kubernetes access').disabled).toBe(true))
+    await waitFor(() => expect(field('Kubernetes cluster access').disabled).toBe(true))
     expect(screen.getByText('Not configured on this orchestrator')).toBeTruthy()
-    expect(screen.queryByText('Agents get full read-write access to every namespace and resource')).toBeNull()
+    expect(screen.queryByText('cluster-admin in every namespace, Secrets included, through a ServiceAccount of this session')).toBeNull()
     expect(field('Superleader').disabled).toBe(false)
     cleanup()
 
     api.updatePreset.mockResolvedValue(preset())
-    wrap(<PresetForm open preset={preset({ spec: { kube_access: true } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open preset={preset({ spec: { kube_cluster_access: true } as PresetView['spec'] })} {...noop} />)
     await ready()
-    expect(field('Kubernetes access').checked).toBe(true)
-    expect(field('Kubernetes access').disabled).toBe(true)
+    expect(field('Kubernetes cluster access').checked).toBe(true)
+    expect(field('Kubernetes cluster access').disabled).toBe(true)
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ kube_access: true })
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ kube_cluster_access: true })
     cleanup()
 
-    api.getMeta.mockResolvedValue(meta({ kube_access: { available: true } }))
+    api.getMeta.mockResolvedValue(meta({ kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] } }))
     wrap(<PresetForm open {...noop} />)
     await ready()
-    expect(field('Kubernetes access').disabled).toBe(false)
+    expect(field('Kubernetes cluster access').disabled).toBe(false)
     expect(screen.queryByText('Not configured on this orchestrator')).toBeNull()
   })
 

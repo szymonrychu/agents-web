@@ -78,7 +78,7 @@ export interface FormValues {
   /** Superleader: the session's leader can message the leaders of all sessions; the spec carries it only when on. */
   sessionMessaging: boolean
   /** Agents get read-write access to every namespace and resource; the spec carries it only when on. */
-  kubeAccess: boolean
+  kubeClusterAccess: boolean
   /** Privileged Docker-in-Docker sidecar; the spec carries it, and the three sizes, only when on. */
   docker: boolean
   dockerStorage: string
@@ -122,7 +122,7 @@ type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' |
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'leaderLease' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -152,7 +152,7 @@ export function blankValues(meta: Meta | null): FormValues {
     maxAttempts: d ? String(d.max_attempts) : '', autoCompact: d ? String(d.auto_compact_pct) : '',
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
-    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
+    leaderLease: '', autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
@@ -239,9 +239,9 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values.sessionMessaging = true
     setKeys.add('sessionMessaging')
   }
-  if (spec.kube_access) {
-    values.kubeAccess = true
-    setKeys.add('kubeAccess')
+  if (spec.kube_cluster_access) {
+    values.kubeClusterAccess = true
+    setKeys.add('kubeClusterAccess')
   }
   if (spec.docker) {
     values.docker = true
@@ -517,7 +517,7 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   if (Object.keys(quota).length > 0) spec.usage_quota = quota
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
-  if (setKeys.has('kubeAccess') && v.kubeAccess) spec.kube_access = true
+  if (setKeys.has('kubeClusterAccess') && v.kubeClusterAccess) spec.kube_cluster_access = true
   if (setKeys.has('docker') && v.docker) {
     spec.docker = true
     if (v.dockerStorage !== '') spec.docker_storage = v.dockerStorage
