@@ -9,6 +9,7 @@
  *   35 Chats     (agents-matrix-connector)
  *   38 Tasks     (agents-taskboard, a routed page: the entry navigates to /tasks)
  *   40 Presets   (orchestrator, registered below)
+ *   42 Proposals (orchestrator, preset change proposals)
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
@@ -25,6 +26,7 @@ import { backupsMenu } from '../backups/menu'
 import { usageMenu } from '../usage/menu'
 import { historyMenu } from '../history/menu'
 import { tasksMenu } from '../tasks/menu'
+import { proposalsMenu } from '../proposals/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -40,6 +42,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   orchestrator: [
     { id: 'sessions', label: 'Sessions', order: 10, backend: 'orchestrator', render: (onBack, openSession) => createElement(SessionsPage, { onBack, onOpen: openSession }) },
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
+    proposalsMenu,
     backupsMenu,
   ],
   taskboard: [tasksMenu],

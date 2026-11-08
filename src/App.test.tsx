@@ -9,12 +9,15 @@ import App from './App'
 import { BACKEND_MENUS } from './backends/registry'
 import { loadConfig, resetConfig } from './config/backends'
 import { theme } from './theme'
+import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn() }))
+const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
 const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, close: vi.fn() }))
 
 vi.mock('./api/client', async (orig) => ({ ...(await orig<typeof import('./api/client')>()), ...api, statusStreamUrl: () => '/api/v1/stream' }))
+vi.mock('./proposals/api', () => proposals)
 vi.mock('./api/terminals', async (orig) => ({ ...(await orig<typeof import('./api/terminals')>()), listTerminals: async () => ({ terminals: [], unavailable_agents: [] }) }))
 vi.mock('./api/stream', async (orig) => ({
   ...(await orig<typeof import('./api/stream')>()),
@@ -87,6 +90,7 @@ beforeEach(() => {
   api.listAgents.mockImplementation(async (id: string) => (id === 'c1' ? [agent('a0', 0), agent('a1', 1)] : []))
   api.getMeta.mockResolvedValue(meta())
   api.listPresets.mockResolvedValue(PRESETS)
+  proposals.listProposals.mockResolvedValue([])
 })
 afterEach(() => {
   cleanup()
@@ -97,6 +101,17 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  test('proposals_chip_opens_the_page_and_auto_open_shows_the_dialog', async () => {
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
+    mount()
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(await screen.findByRole('button', { name: /Proposals, 1 waiting/ }))
+    expect(await screen.findByRole('heading', { name: 'Proposals' })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   test('top_bar_replaces_ribbon', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
@@ -199,7 +214,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -209,7 +224,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -217,7 +232,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups', 'Second'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -239,7 +254,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Sessions' }))
     expect(await within(main).findByRole('heading', { name: 'Sessions' })).toBeTruthy()
     // Open selects that session and returns to its workspace.
