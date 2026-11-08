@@ -1,70 +1,197 @@
 /** One proposal item: path, chips, current/proposed diff and the reviewer's choice. */
-import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
-import Paper from '@mui/material/Paper'
-import Skeleton from '@mui/material/Skeleton'
-import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import Typography from '@mui/material/Typography'
-import { lazy, Suspense, type JSX } from 'react'
-import type { ProposalItemView, ProposalView } from './api'
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Paper from "@mui/material/Paper";
+import Skeleton from "@mui/material/Skeleton";
+import TextField from "@mui/material/TextField";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { lazy, Suspense, type JSX } from "react";
+import type { ProposalItemView, ProposalView } from "./api";
 
 // ValueDiff pulls in CodeMirror: keep it out of the main chunk
-const ValueDiff = lazy(() => import('./ValueDiff'))
+const ValueDiff = lazy(() => import("./ValueDiff"));
 
-export type Choice = 'approve' | 'rework' | 'deny'
+export type Choice = "approve" | "rework" | "deny";
 
 /**
  * A secret item's `before` is the redacted base declaration, which also carries `set` and `version`;
  * the proposed one never does, so those keys are dropped for display instead of reading as removed.
  */
 function displayBefore(item: ProposalItemView): unknown {
-  if (item.secret === null || typeof item.before !== 'object' || item.before === null || Array.isArray(item.before)) return item.before
-  return Object.fromEntries(Object.entries(item.before).filter(([k]) => k !== 'set' && k !== 'version'))
+  if (
+    item.secret === null ||
+    typeof item.before !== "object" ||
+    item.before === null ||
+    Array.isArray(item.before)
+  )
+    return item.before;
+  return Object.fromEntries(
+    Object.entries(item.before).filter(([k]) => k !== "set" && k !== "version"),
+  );
+}
+
+const promptText = (v: unknown): string => (typeof v === "string" ? v : "");
+
+/** Narrow screens: the prompt as two stacked labeled blocks (the stacked MergeView collapses to zero height there). */
+function PromptStack({
+  before,
+  after,
+}: {
+  before: unknown;
+  after: unknown;
+}): JSX.Element {
+  const block = (
+    label: string,
+    value: unknown,
+    testId: string,
+  ): JSX.Element => {
+    const text = promptText(value);
+    return (
+      <Box>
+        <Typography variant="caption" color="text.secondary">
+          {label}
+        </Typography>
+        <Box
+          data-testid={testId}
+          sx={{
+            fontFamily: "monospace",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            maxHeight: 240,
+            overflowY: "auto",
+            p: 1,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 1,
+          }}
+        >
+          {text === "" ? <em>(empty)</em> : text}
+        </Box>
+      </Box>
+    );
+  };
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      {block("Current", before, "prompt-before")}
+      {block("Proposed", after, "prompt-after")}
+    </Box>
+  );
 }
 
 export interface ItemCardProps {
-  item: ProposalItemView
+  item: ProposalItemView;
   /** The proposal kind: a schedule's `prompt` is diffed as text. */
-  kind?: ProposalView['kind']
-  choice: Choice | undefined
-  note: string
-  readOnly: boolean
-  stale: boolean
+  kind?: ProposalView["kind"];
+  choice: Choice | undefined;
+  note: string;
+  readOnly: boolean;
+  stale: boolean;
   /** The proposed value differs from revision `previous`. */
-  changed: boolean
-  previous?: number
-  onChoice: (c: Choice) => void
-  onNote: (n: string) => void
+  changed: boolean;
+  previous?: number;
+  onChoice: (c: Choice) => void;
+  onNote: (n: string) => void;
 }
 
-export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, previous, onChoice, onNote }: ItemCardProps): JSX.Element {
+export function ItemCard({
+  item,
+  kind,
+  choice,
+  note,
+  readOnly,
+  stale,
+  changed,
+  previous,
+  onChoice,
+  onNote,
+}: ItemCardProps): JSX.Element {
+  const narrow = useMediaQuery(useTheme().breakpoints.down("md"));
+  const isPrompt = kind === "schedule" && item.path === "prompt";
+  const stacked = narrow && isPrompt;
   return (
-    <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Typography component="span" sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
+    <Paper
+      variant="outlined"
+      data-testid="item-card"
+      data-path={item.path}
+      sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}
+    >
+      <Box
+        sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}
+      >
+        <Typography
+          component="span"
+          sx={{ fontFamily: "monospace", overflowWrap: "anywhere" }}
+        >
           {item.path}
         </Typography>
         {item.grant && <Chip size="small" color="warning" label="grant" />}
-        {item.security && <Chip size="small" color="warning" variant="outlined" label="security" />}
+        {item.security && (
+          <Chip
+            size="small"
+            color="warning"
+            variant="outlined"
+            label="security"
+          />
+        )}
         {item.secret !== null && <Chip size="small" label="secret" />}
-        {changed && previous !== undefined && <Chip size="small" color="info" variant="outlined" label={`changed since r${previous}`} />}
+        {changed && previous !== undefined && (
+          <Chip
+            size="small"
+            color="info"
+            variant="outlined"
+            label={`changed since r${previous}`}
+          />
+        )}
       </Box>
-      {item.secret !== null && <Typography variant="body2">{item.secret === 'set' ? 'value set' : 'value changed'}</Typography>}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
-        <Typography variant="caption" color="text.secondary">
-          Current
+      {item.secret !== null && (
+        <Typography variant="body2">
+          {item.secret === "set" ? "value set" : "value changed"}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-          Proposed
-        </Typography>
-      </Box>
-      <Suspense fallback={<Skeleton variant="rectangular" height={80} />}>
-        <ValueDiff before={displayBefore(item)} after={item.after} text={kind === 'schedule' && item.path === 'prompt'} />
-      </Suspense>
+      )}
+      {!stacked && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: 1,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            Current
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: { xs: "none", md: "block" } }}
+          >
+            Proposed
+          </Typography>
+        </Box>
+      )}
+      {stacked ? (
+        <PromptStack before={item.before} after={item.after} />
+      ) : (
+        <Suspense fallback={<Skeleton variant="rectangular" height={80} />}>
+          <ValueDiff
+            before={displayBefore(item)}
+            after={item.after}
+            text={isPrompt}
+          />
+        </Suspense>
+      )}
       {readOnly ? (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <Chip size="small" label={item.decision} />
           {item.note && <Typography variant="body2">{item.note}</Typography>}
         </Box>
@@ -81,12 +208,12 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
             <ToggleButton value="rework">Rework</ToggleButton>
             <ToggleButton value="deny">Deny</ToggleButton>
           </ToggleButtonGroup>
-          {(choice === 'rework' || choice === 'deny') && (
+          {(choice === "rework" || choice === "deny") && (
             <TextField
               size="small"
               multiline
-              required={choice === 'rework'}
-              label={choice === 'rework' ? 'What to change' : 'Note (optional)'}
+              required={choice === "rework"}
+              label={choice === "rework" ? "What to change" : "Note (optional)"}
               value={note}
               onChange={(e) => onNote(e.target.value)}
             />
@@ -94,5 +221,5 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
         </>
       )}
     </Paper>
-  )
+  );
 }
