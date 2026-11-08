@@ -5,6 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -24,6 +25,8 @@ import type { SessionEntry } from '../ribbon/useSessions'
 import type { SessionView } from '../api/client'
 import { SessionLabels } from '../sessions/SessionLabels'
 import { TOKENS } from '../theme'
+import type { ProposalView } from '../proposals/api'
+import { useActiveProposals } from '../proposals/useActiveProposals'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
 
@@ -41,6 +44,13 @@ export interface TopBarProps {
   /** A session returned by a REST call (the label edit), to show before the stream catches up. */
   onSessionUpdated: (session: SessionView) => void
   settingsCategories: SettingsCategory[]
+  /**
+   * Opens a proposal's review dialog (a new open revision, or the chip when exactly one waits) or, with
+   * none, the proposals page. Returns false when it declines an auto-open (a review is already open).
+   */
+  onOpenProposals?: (proposal?: ProposalView) => boolean | void
+  /** Changing it refetches the proposals at once (after a review was submitted). */
+  proposalsRefreshKey?: unknown
 }
 
 interface ActionsMenu {
@@ -48,7 +58,9 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey }: TopBarProps) {
+  const { proposals, count: proposalCount } = useActiveProposals(onOpenProposals, proposalsRefreshKey)
+  const waiting = proposals.filter((p) => p.status === 'open' || p.status === 'stale')
   const [menuOpen, setMenuOpen] = useState(false)
   const [actions, setActions] = useState<ActionsMenu | null>(null)
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
@@ -113,6 +125,11 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
           )
         })}
       </Tabs>
+      {proposalCount > 0 && (
+        <Button size="small" color="warning" variant="outlined" aria-label={`Proposals, ${proposalCount} waiting`} onClick={() => (waiting.length === 1 ? onOpenProposals?.(waiting[0]) : onOpenProposals?.())} sx={{ flexShrink: 0 }}>
+          <Badge badgeContent={proposalCount} color="warning" sx={{ pr: 1 }}>Proposals</Badge>
+        </Button>
+      )}
       <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={onNew} sx={{ flexShrink: 0 }}>New session</Button>
       <Menu anchorEl={actions?.anchor ?? null} open={actions !== null} onClose={() => setActions(null)}>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>

@@ -9,12 +9,15 @@ import App from './App'
 import { BACKEND_MENUS } from './backends/registry'
 import { loadConfig, resetConfig } from './config/backends'
 import { theme } from './theme'
+import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn() }))
+const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
 const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, close: vi.fn() }))
 
 vi.mock('./api/client', async (orig) => ({ ...(await orig<typeof import('./api/client')>()), ...api, statusStreamUrl: () => '/api/v1/stream' }))
+vi.mock('./proposals/api', () => proposals)
 vi.mock('./api/terminals', async (orig) => ({ ...(await orig<typeof import('./api/terminals')>()), listTerminals: async () => ({ terminals: [], unavailable_agents: [] }) }))
 vi.mock('./api/stream', async (orig) => ({
   ...(await orig<typeof import('./api/stream')>()),
@@ -87,6 +90,9 @@ beforeEach(() => {
   api.listAgents.mockImplementation(async (id: string) => (id === 'c1' ? [agent('a0', 0), agent('a1', 1)] : []))
   api.getMeta.mockResolvedValue(meta())
   api.listPresets.mockResolvedValue(PRESETS)
+  proposals.listProposals.mockResolvedValue([])
+  // the review dialog fetches the full view of the proposal it shows
+  proposals.getProposal.mockImplementation(async (id: number) => ((await proposals.listProposals('active')) as { id: number }[]).find((p) => p.id === id))
 })
 afterEach(() => {
   cleanup()
@@ -97,6 +103,63 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  test('proposals_auto_open_shows_the_dialog_and_the_chip_reopens_it', async () => {
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
+    mount()
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(await screen.findByRole('button', { name: /Proposals, 1 waiting/ }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'preset worker' })).toBeTruthy()
+  })
+
+  test('proposals_chip_opens_the_page_when_several_wait', async () => {
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal({ status: 'stale', stale: true }), proposal({ id: 9, status: 'stale', stale: true })] : []))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: /Proposals, 2 waiting/ }))
+    expect(await screen.findByRole('heading', { name: 'Proposals' })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('a fresh proposal never replaces an open review; it opens after the review closes', async () => {
+    let active = [proposal()]
+    // every poll is a fresh response, as from the server
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [...active] : []))
+    mount()
+    const dialog = await screen.findByRole('dialog')
+    const model = within(dialog).getByText('model').closest('[data-testid="item-card"]') as HTMLElement
+    fireEvent.click(within(model).getByRole('button', { name: 'Approve' }))
+    active = [proposal(), proposal({ id: 9, target_name: 'other' })]
+    const polls = proposals.listProposals.mock.calls.length
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    await waitFor(() => expect(proposals.listProposals.mock.calls.length).toBeGreaterThan(polls))
+    await act(async () => {})
+    expect(screen.getByRole('heading', { name: 'preset worker' })).toBeTruthy()
+    expect(within(model).getByRole('button', { name: 'Approve' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    expect(await screen.findByRole('heading', { name: 'preset other' })).toBeTruthy()
+  })
+
+  test('a submitted review refreshes the proposals chip at once', async () => {
+    let active = [proposal()]
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? active : []))
+    proposals.reviewProposal.mockImplementation(async () => {
+      active = []
+      return proposal({ status: 'applied' })
+    })
+    mount()
+    await screen.findByRole('dialog')
+    // the modal dialog hides the top bar from the accessibility tree
+    expect(screen.getByRole('button', { name: /Proposals, 1 waiting/, hidden: true })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Submit review' }))
+    expect(await screen.findByText(/Review submitted/)).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Proposals, \d+ waiting/, hidden: true })).toBeNull())
+  })
+
   test('top_bar_replaces_ribbon', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
@@ -199,7 +262,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -209,7 +272,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -217,7 +280,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups', 'Second'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -239,7 +302,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
     fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Sessions' }))
     expect(await within(main).findByRole('heading', { name: 'Sessions' })).toBeTruthy()
     // Open selects that session and returns to its workspace.

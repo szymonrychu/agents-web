@@ -343,6 +343,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Own Proposals
+         * @description The caller's own proposals, newest first, current revision only.
+         */
+        get: operations["list_own_proposals_agent_v1_admin_proposals_get"];
+        put?: never;
+        /**
+         * Create Proposal
+         * @description 201 with the new proposal; 200 with the first one on a `client_key` replay.
+         */
+        post: operations["create_proposal_agent_v1_admin_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Proposal */
+        get: operations["get_own_proposal_agent_v1_admin_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/proposals/{proposal_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revise Proposal */
+        post: operations["revise_proposal_agent_v1_admin_proposals__proposal_id__revise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/proposals/{proposal_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw Proposal */
+        post: operations["withdraw_proposal_agent_v1_admin_proposals__proposal_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/schedules/runs": {
         parameters: {
             query?: never;
@@ -1415,6 +1490,63 @@ export interface paths {
         /** Set Preset Secret */
         put: operations["set_preset_secret_api_v1_presets__preset__secrets__name__put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proposals
+         * @description Every session's proposals, newest first, current revision only.
+         */
+        get: operations["list_proposals_api_v1_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Proposal */
+        get: operations["get_proposal_api_v1_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proposals/{proposal_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Proposal
+         * @description The human decides every item of the current revision (plan 3.4 step 4, 3.5).
+         */
+        post: operations["review_proposal_api_v1_proposals__proposal_id__review_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2673,7 +2805,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close" | "handover") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal") | null;
             /**
              * Session Id
              * Format: uuid
@@ -3025,6 +3157,140 @@ export interface components {
             /** Variables */
             variables: string[];
         };
+        /**
+         * ProposalIn
+         * @description A change proposal (plan 3.4): an RFC 7396 merge `patch` of the target's spec, plus new
+         *     values of protected variables in `secrets`; a value is never stored or echoed.
+         */
+        ProposalIn: {
+            /** Client Key */
+            client_key?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "preset" | "schedule" | "session";
+            /** Patch */
+            patch: {
+                [key: string]: unknown;
+            };
+            /** Reason */
+            reason: string;
+            /**
+             * Secrets
+             * @default {}
+             */
+            secrets: {
+                [key: string]: string;
+            };
+            /** Target */
+            target: string;
+        };
+        /** ProposalItemView */
+        ProposalItemView: {
+            /** After */
+            after: unknown;
+            /** Before */
+            before: unknown;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "pending" | "approved" | "rework" | "denied";
+            /** Grant */
+            grant: boolean;
+            /** Note */
+            note: string | null;
+            /** Path */
+            path: string;
+            /** Secret */
+            secret: ("set" | "changed") | null;
+            /** Security */
+            security: boolean;
+        };
+        /**
+         * ProposalRevise
+         * @description A new revision: a full proposal against the target as it is now, not a delta.
+         */
+        ProposalRevise: {
+            /** Patch */
+            patch: {
+                [key: string]: unknown;
+            };
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Secrets
+             * @default {}
+             */
+            secrets: {
+                [key: string]: string;
+            };
+        };
+        /** ProposalRevisionView */
+        ProposalRevisionView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Items */
+            items: components["schemas"]["ProposalItemView"][];
+            /** Outcome */
+            outcome: string | null;
+            /** Reason */
+            reason: string;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Revision */
+            revision: number;
+        };
+        /** ProposalView */
+        ProposalView: {
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "preset" | "schedule" | "session";
+            /** Proposer Slug */
+            proposer_slug: string;
+            /** Proposer Superleader */
+            proposer_superleader: boolean;
+            /** Revision */
+            revision: number;
+            /** Revisions */
+            revisions: components["schemas"]["ProposalRevisionView"][];
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "rework" | "stale" | "applied" | "denied" | "withdrawn" | "expired" | "target_gone";
+            /** Target Id */
+            target_id: string;
+            /** Target Name */
+            target_name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** Resources */
         Resources: {
             /**
@@ -3041,6 +3307,28 @@ export interface components {
             requests: {
                 [key: string]: string;
             };
+        };
+        /**
+         * ReviewIn
+         * @description A human review of the proposal's current revision: one decision per item (plan 3.4).
+         */
+        ReviewIn: {
+            /** Items */
+            items: components["schemas"]["ReviewItemIn"][];
+            /** Revision */
+            revision: number;
+        };
+        /** ReviewItemIn */
+        ReviewItemIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "rework" | "deny";
+            /** Note */
+            note?: string | null;
+            /** Path */
+            path: string;
         };
         /** ScaleRequest */
         ScaleRequest: {
@@ -4469,6 +4757,184 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SecretView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_own_proposals_agent_v1_admin_proposals_get: {
+        parameters: {
+            query?: {
+                /** @description active, open, closed or all */
+                status?: string;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_proposal_agent_v1_admin_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_own_proposal_agent_v1_admin_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revise_proposal_agent_v1_admin_proposals__proposal_id__revise_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalRevise"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_proposal_agent_v1_admin_proposals__proposal_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
                 };
             };
             /** @description Validation Error */
@@ -7373,6 +7839,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SecretView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_proposals_api_v1_proposals_get: {
+        parameters: {
+            query?: {
+                /** @description active, open, closed or all */
+                status?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proposal_api_v1_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_proposal_api_v1_proposals__proposal_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
                 };
             };
             /** @description Validation Error */
