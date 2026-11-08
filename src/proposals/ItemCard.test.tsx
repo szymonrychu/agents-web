@@ -26,6 +26,10 @@ describe('ItemCard', () => {
     expect(container.querySelector('input[type=password], input[type=text], textarea')).toBeNull()
     render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'changed', after: { name: 'K' } })} />)
     expect(screen.getByText('value changed')).toBeTruthy()
+    cleanup()
+    render(<ItemCard {...base} choice="rework" item={item({ path: 'env.K', secret: 'set', after: { name: 'K' } })} />)
+    expect(screen.getAllByRole('textbox').length).toBe(1)
+    expect(screen.getByRole('textbox').getAttribute('type')).not.toBe('password')
   })
 
   it('the changed chip names the previous revision', () => {

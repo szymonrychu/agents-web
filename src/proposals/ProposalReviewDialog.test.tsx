@@ -99,6 +99,8 @@ describe('ProposalReviewDialog', () => {
   it('the stale flag alone also stales the dialog', () => {
     mount(proposal({ stale: true }))
     expect(screen.getByText(/stale: the target changed/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Approve all' })).toBeNull()
   })
 
   it.each(['proposal_stale', 'revision_changed'])('409 %s refetches and shows the banner', async (code) => {
@@ -110,6 +112,34 @@ describe('ProposalReviewDialog', () => {
     await waitFor(() => expect(api.getProposal).toHaveBeenCalledWith(7))
     expect(await screen.findByText(/stale: the target changed since this revision/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Approve all' })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Submit review' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(api.reviewProposal).toHaveBeenCalledTimes(1)
+  })
+
+  it('after a stale refetch Submit needs a stale-mode decision for every item', async () => {
+    api.reviewProposal.mockRejectedValue(new ApiError(409, 'proposal_stale', 'nope'))
+    api.getProposal.mockResolvedValue(proposal({ status: 'stale', stale: true }))
+    mount()
+    await click('Approve all')
+    await click('Submit review')
+    await screen.findByText(/stale: the target changed since this revision/)
+    const submit = screen.getByRole('button', { name: 'Submit review' }) as HTMLButtonElement
+    await click('Deny', within(card('kube_access')))
+    await click('Deny', within(card('env.API_KEY')))
+    expect(submit.disabled).toBe(true)
+    await click('Deny', within(card('model')))
+    expect(submit.disabled).toBe(false)
+  })
+
+  it('409 with a new revision resets the choices', async () => {
+    api.reviewProposal.mockRejectedValue(new ApiError(409, 'revision_changed', 'nope'))
+    api.getProposal.mockResolvedValue(proposal({ revision: 3, revisions: [...proposal().revisions, { ...proposal().revisions[1], revision: 3 }] }))
+    mount()
+    await click('Approve all')
+    await click('Submit review')
+    await waitFor(() => expect(screen.getByText(/r3 of 3/)).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'Submit review' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryAllByRole('button', { pressed: true }).length).toBe(0)
   })
 
   it('422 invalid_spec shows the error and keeps the choices', async () => {
@@ -127,6 +157,13 @@ describe('ProposalReviewDialog', () => {
     expect(screen.queryByRole('button', { name: 'Submit review' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Approve all' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+  })
+
+  it('rework is read-only too', () => {
+    mount(proposal({ status: 'rework' }))
+    expect(screen.queryByRole('button', { name: 'Submit review' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Deny' })).toBeNull()
   })
 
   it('Later closes; earlier revisions sit in a collapsible history', async () => {

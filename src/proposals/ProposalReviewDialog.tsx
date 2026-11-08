@@ -41,11 +41,14 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
   const [error, setError] = useState<unknown>(null)
   const [submitted, setSubmitted] = useState<ProposalView | null>(null)
 
-  const map = choices.revision === view.revision ? choices.map : {}
   const current = view.revisions.find((r) => r.revision === view.revision) ?? view.revisions[view.revisions.length - 1]
   const previous = view.revisions.find((r) => r.revision === view.revision - 1)
   const earlier = view.revisions.filter((r) => r.revision < view.revision)
   const stale = view.status === 'stale' || view.stale
+  // a stale proposal cannot be approved: approvals are dropped so Submit needs a Rework or Deny per item
+  const map = Object.fromEntries(
+    Object.entries(choices.revision === view.revision ? choices.map : {}).filter(([, e]) => !stale || e.decision !== 'approve'),
+  )
   const readOnly = (view.status !== 'open' && view.status !== 'stale') || submitted !== null
   const items = orderItems(current?.items ?? [])
   const changed = current ? changedPaths(current, previous) : new Set<string>()
