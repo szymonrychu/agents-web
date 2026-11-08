@@ -72,6 +72,42 @@ describe('useActiveProposals', () => {
     expect(onOpen.mock.calls[1][0].revision).toBe(2)
   })
 
+  test('opens one fresh proposal per poll; the others stay unseen for the next poll', async () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    // every poll is a fresh response, as from the server
+    api.listProposals.mockImplementation(async () => [prop(1, 'open'), prop(2, 'open')])
+    renderHook(() => useActiveProposals(onOpen))
+    await act(async () => {})
+    expect(onOpen.mock.calls.map((c) => c[0].id)).toEqual([1])
+    await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
+    expect(onOpen.mock.calls.map((c) => c[0].id)).toEqual([1, 2])
+  })
+
+  test('a declined auto-open (false) is not marked seen and is offered again', async () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn().mockReturnValueOnce(false)
+    api.listProposals.mockImplementation(async () => [prop(1, 'open')])
+    renderHook(() => useActiveProposals(onOpen))
+    await act(async () => {})
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
+    expect(onOpen).toHaveBeenCalledTimes(2)
+    await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
+    expect(onOpen).toHaveBeenCalledTimes(2)
+  })
+
+  test('a refresh key change refetches at once', async () => {
+    vi.useFakeTimers()
+    api.listProposals.mockResolvedValue([])
+    const { rerender } = renderHook(({ k }) => useActiveProposals(undefined, k), { initialProps: { k: 0 } })
+    await act(async () => {})
+    expect(api.listProposals).toHaveBeenCalledTimes(1)
+    rerender({ k: 1 })
+    await act(async () => {})
+    expect(api.listProposals).toHaveBeenCalledTimes(2)
+  })
+
   test('seen keys survive a remount through localStorage', async () => {
     const onOpen = vi.fn()
     api.listProposals.mockResolvedValue([prop(1, 'open')])

@@ -40,6 +40,13 @@ function SessionsShell() {
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
   const [permissions, setPermissions] = useState<SessionView | null>(null)
   const [proposal, setProposal] = useState<ProposalView | null>(null)
+  const [proposalsRefresh, setProposalsRefresh] = useState(0)
+  // an open review is never replaced: a declined auto-open stays unseen and opens on a later poll
+  const openProposal = (p?: ProposalView) => {
+    if (!p) return setView('proposals')
+    if (proposal) return false
+    setProposal(p)
+  }
   // The first session by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.sessions ? state.selectedId : (sessions[0]?.session.id ?? null)
   const selected = selectedId === null ? null : state.sessions[selectedId]
@@ -62,7 +69,8 @@ function SessionsShell() {
         onDiscard={setDiscarding}
         onDismiss={dismiss}
         onSessionUpdated={update}
-        onOpenProposals={(p) => (p ? setProposal(p) : setView('proposals'))}
+        onOpenProposals={openProposal}
+        proposalsRefreshKey={proposalsRefresh}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
@@ -92,7 +100,7 @@ function SessionsShell() {
         )}
       </Box>
       <NewSessionDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
-      {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} />}
+      {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} onChanged={() => setProposalsRefresh((n) => n + 1)} />}
       {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}

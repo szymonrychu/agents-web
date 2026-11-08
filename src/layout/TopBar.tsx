@@ -44,8 +44,13 @@ export interface TopBarProps {
   /** A session returned by a REST call (the label edit), to show before the stream catches up. */
   onSessionUpdated: (session: SessionView) => void
   settingsCategories: SettingsCategory[]
-  /** Opens the proposals view; a proposal is passed when it opens by itself (a new open revision), none from the chip. */
-  onOpenProposals?: (proposal?: ProposalView) => void
+  /**
+   * Opens a proposal's review dialog (a new open revision, or the chip when exactly one waits) or, with
+   * none, the proposals page. Returns false when it declines an auto-open (a review is already open).
+   */
+  onOpenProposals?: (proposal?: ProposalView) => boolean | void
+  /** Changing it refetches the proposals at once (after a review was submitted). */
+  proposalsRefreshKey?: unknown
 }
 
 interface ActionsMenu {
@@ -53,8 +58,9 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals }: TopBarProps) {
-  const { count: proposalCount } = useActiveProposals(onOpenProposals)
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey }: TopBarProps) {
+  const { proposals, count: proposalCount } = useActiveProposals(onOpenProposals, proposalsRefreshKey)
+  const waiting = proposals.filter((p) => p.status === 'open' || p.status === 'stale')
   const [menuOpen, setMenuOpen] = useState(false)
   const [actions, setActions] = useState<ActionsMenu | null>(null)
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
@@ -120,7 +126,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         })}
       </Tabs>
       {proposalCount > 0 && (
-        <Button size="small" color="warning" variant="outlined" aria-label={`Proposals, ${proposalCount} waiting`} onClick={() => onOpenProposals?.()} sx={{ flexShrink: 0 }}>
+        <Button size="small" color="warning" variant="outlined" aria-label={`Proposals, ${proposalCount} waiting`} onClick={() => (waiting.length === 1 ? onOpenProposals?.(waiting[0]) : onOpenProposals?.())} sx={{ flexShrink: 0 }}>
           <Badge badgeContent={proposalCount} color="warning" sx={{ pr: 1 }}>Proposals</Badge>
         </Button>
       )}

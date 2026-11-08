@@ -103,15 +103,61 @@ afterEach(() => {
 })
 
 describe('App', () => {
-  test('proposals_chip_opens_the_page_and_auto_open_shows_the_dialog', async () => {
+  test('proposals_auto_open_shows_the_dialog_and_the_chip_reopens_it', async () => {
     proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
     mount()
     expect(await screen.findByRole('dialog')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Later' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     fireEvent.click(await screen.findByRole('button', { name: /Proposals, 1 waiting/ }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'preset worker' })).toBeTruthy()
+  })
+
+  test('proposals_chip_opens_the_page_when_several_wait', async () => {
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal({ status: 'stale', stale: true }), proposal({ id: 9, status: 'stale', stale: true })] : []))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: /Proposals, 2 waiting/ }))
     expect(await screen.findByRole('heading', { name: 'Proposals' })).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('a fresh proposal never replaces an open review; it opens after the review closes', async () => {
+    let active = [proposal()]
+    // every poll is a fresh response, as from the server
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [...active] : []))
+    mount()
+    const dialog = await screen.findByRole('dialog')
+    const model = within(dialog).getByText('model').closest('[data-testid="item-card"]') as HTMLElement
+    fireEvent.click(within(model).getByRole('button', { name: 'Approve' }))
+    active = [proposal(), proposal({ id: 9, target_name: 'other' })]
+    const polls = proposals.listProposals.mock.calls.length
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    await waitFor(() => expect(proposals.listProposals.mock.calls.length).toBeGreaterThan(polls))
+    await act(async () => {})
+    expect(screen.getByRole('heading', { name: 'preset worker' })).toBeTruthy()
+    expect(within(model).getByRole('button', { name: 'Approve' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    expect(await screen.findByRole('heading', { name: 'preset other' })).toBeTruthy()
+  })
+
+  test('a submitted review refreshes the proposals chip at once', async () => {
+    let active = [proposal()]
+    proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? active : []))
+    proposals.reviewProposal.mockImplementation(async () => {
+      active = []
+      return proposal({ status: 'applied' })
+    })
+    mount()
+    await screen.findByRole('dialog')
+    // the modal dialog hides the top bar from the accessibility tree
+    expect(screen.getByRole('button', { name: /Proposals, 1 waiting/, hidden: true })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Submit review' }))
+    expect(await screen.findByText(/Review submitted/)).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Proposals, \d+ waiting/, hidden: true })).toBeNull())
   })
 
   test('top_bar_replaces_ribbon', async () => {
