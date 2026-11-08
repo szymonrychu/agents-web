@@ -106,6 +106,20 @@ describe('ValueDiff', () => {
     expect(view.b.state.doc.toString()).toBe('line one\nnew line')
   })
 
+  it('keeps the merge view a block so the editors row spans it, with both panes holding their own text', () => {
+    const { container } = render(<ValueDiff text before={'same\nold line'} after={'same\nnew line'} />)
+    const view = container.querySelector('.cm-mergeView') as HTMLElement
+    expect(getComputedStyle(view).display).not.toBe('flex')
+    const editors = view.querySelector('.cm-mergeViewEditors') as HTMLElement
+    expect(getComputedStyle(editors).display).toBe('flex')
+    const panes = editors.querySelectorAll(':scope > .cm-mergeViewEditor')
+    expect(panes).toHaveLength(2)
+    expect(panes[0].textContent).toContain('old line')
+    expect(panes[0].textContent).not.toContain('new line')
+    expect(panes[1].textContent).toContain('new line')
+    expect(panes[1].textContent).not.toContain('old line')
+  })
+
   it('text mode treats a missing side as empty text', () => {
     render(<ValueDiff text before={null} after="hello" />)
     const view = built.views[0] as MergeView

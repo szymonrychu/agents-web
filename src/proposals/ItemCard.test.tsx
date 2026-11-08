@@ -3,10 +3,21 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ItemCard } from './ItemCard'
+import { toYaml } from './diffText'
 import { item } from './proposalFixture'
 
 vi.mock('./ValueDiff', () => ({ default: ({ before, after, text }: { before: unknown; after: unknown; text?: boolean }) => <div data-testid="diff" data-text={String(Boolean(text))}>{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
 afterEach(cleanup)
+
+/** Installs a matchMedia that evaluates min-width / max-width queries against `width`. */
+function setViewport(width: number) {
+  window.matchMedia = ((query: string) => {
+    const min = /min-width:\s*([\d.]+)px/.exec(query)
+    const max = /max-width:\s*([\d.]+)px/.exec(query)
+    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
+    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
+  }) as typeof window.matchMedia
+}
 
 const base = { choice: undefined, note: '', readOnly: false, stale: false, changed: false, onChoice: vi.fn(), onNote: vi.fn() }
 
@@ -76,5 +87,60 @@ describe('ItemCard', () => {
     expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
     rerender(<ItemCard {...base} kind="preset" item={item({ path: 'prompt', before: 'a', after: 'b' })} />)
     expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
+  })
+
+  describe('narrow screens', () => {
+    const prompt = item({ path: 'prompt', before: 'old line one\nold line two', after: 'new prompt text' })
+
+    it('a schedule prompt stacks Current and Proposed with both full texts, no diff', () => {
+      setViewport(400)
+      render(<ItemCard {...base} kind="schedule" item={prompt} />)
+      expect(screen.getByText('Current')).toBeTruthy()
+      expect(screen.getByText('Proposed')).toBeTruthy()
+      expect(screen.getByTestId('stack-before').textContent).toBe('old line one\nold line two')
+      expect(screen.getByTestId('stack-after').textContent).toBe('new prompt text')
+      expect(screen.queryByTestId('diff')).toBeNull()
+    })
+
+    it('an empty or missing prompt value shows a placeholder', () => {
+      setViewport(400)
+      render(<ItemCard {...base} kind="schedule" item={item({ path: 'prompt', before: null, after: '' })} />)
+      expect(screen.getAllByText('(empty)').length).toBe(2)
+    })
+
+    it('a structured item stacks the YAML of before and after, no diff', () => {
+      setViewport(400)
+      const before = { url: 'http://a', args: ['x'] }
+      const after = { url: 'http://b', args: ['x', 'y'] }
+      render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before, after })} />)
+      expect(screen.getByText('Current')).toBeTruthy()
+      expect(screen.getByText('Proposed')).toBeTruthy()
+      expect(screen.getByTestId('stack-before').textContent).toBe(toYaml(before))
+      expect(screen.getByTestId('stack-after').textContent).toBe(toYaml(after))
+      expect(screen.queryByTestId('diff')).toBeNull()
+    })
+
+    it('a secret item keeps the diff and never stacks values', async () => {
+      setViewport(400)
+      render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'set', before: null, after: { name: 'K' } })} />)
+      expect(await screen.findByTestId('diff')).toBeTruthy()
+      expect(screen.queryByTestId('stack-after')).toBeNull()
+    })
+
+    it('scalar items keep the diff', async () => {
+      setViewport(400)
+      render(<ItemCard {...base} kind="schedule" item={item({ path: 'cron', before: 'a', after: 'b' })} />)
+      expect(await screen.findByTestId('diff')).toBeTruthy()
+    })
+
+    it('wide screens keep the diff for prompts and structured items', async () => {
+      setViewport(1200)
+      render(<ItemCard {...base} kind="schedule" item={prompt} />)
+      expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('true')
+      cleanup()
+      render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before: { a: 1 }, after: { a: 2 } })} />)
+      expect(await screen.findByTestId('diff')).toBeTruthy()
+      expect(screen.queryByTestId('stack-before')).toBeNull()
+    })
   })
 })
