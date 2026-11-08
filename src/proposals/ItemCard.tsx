@@ -15,6 +15,15 @@ const ValueDiff = lazy(() => import('./ValueDiff'))
 
 export type Choice = 'approve' | 'rework' | 'deny'
 
+/**
+ * A secret item's `before` is the redacted base declaration, which also carries `set` and `version`;
+ * the proposed one never does, so those keys are dropped for display instead of reading as removed.
+ */
+function displayBefore(item: ProposalItemView): unknown {
+  if (item.secret === null || typeof item.before !== 'object' || item.before === null || Array.isArray(item.before)) return item.before
+  return Object.fromEntries(Object.entries(item.before).filter(([k]) => k !== 'set' && k !== 'version'))
+}
+
 export interface ItemCardProps {
   item: ProposalItemView
   choice: Choice | undefined
@@ -50,7 +59,7 @@ export function ItemCard({ item, choice, note, readOnly, stale, changed, previou
         </Typography>
       </Box>
       <Suspense fallback={<Skeleton variant="rectangular" height={80} />}>
-        <ValueDiff before={item.before} after={item.after} />
+        <ValueDiff before={displayBefore(item)} after={item.after} />
       </Suspense>
       {readOnly ? (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>

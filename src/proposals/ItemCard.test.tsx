@@ -32,6 +32,11 @@ describe('ItemCard', () => {
     expect(screen.getByRole('textbox').getAttribute('type')).not.toBe('password')
   })
 
+  it('a secret item diffs the declarations without the base-only set and version keys', async () => {
+    render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'changed', before: { protected: true, expand: false, set: true, version: 3 }, after: { protected: true, expand: false } })} />)
+    expect((await screen.findByTestId('diff')).textContent).toBe('{"protected":true,"expand":false}=>{"protected":true,"expand":false}')
+  })
+
   it('the changed chip names the previous revision', () => {
     render(<ItemCard {...base} changed previous={1} item={item()} />)
     expect(screen.getByText('changed since r1')).toBeTruthy()
