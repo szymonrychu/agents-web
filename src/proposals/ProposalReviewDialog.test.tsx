@@ -18,7 +18,7 @@ afterEach(cleanup)
 
 const mount = (p = proposal(), onClose = vi.fn()) => render(<ProposalReviewDialog proposal={p} onClose={onClose} />)
 const card = (path: string) => screen.getByText(path).closest('[data-testid="item-card"]') as HTMLElement
-const click = (name: string, scope: HTMLElement | typeof screen = screen) => userEvent.click(scope.getByRole('button', { name }))
+const click = (name: string, scope: Pick<typeof screen, 'getByRole'> = screen) => userEvent.click(scope.getByRole('button', { name }))
 
 describe('ProposalReviewDialog', () => {
   it('shows the header facts and the reason as plain text', () => {

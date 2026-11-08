@@ -36,7 +36,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
   const now = useNow()
   const [view, setView] = useState(proposal)
   // choices belong to one revision; a newer revision starts clean
-  const [choices, setChoices] = useState<{ revision: number; map: Record<string, Entry> }>({ revision: proposal.revision, map: {} })
+  const [choices, setChoices] = useState<{ revision: number; map: Partial<Record<string, Entry>> }>({ revision: proposal.revision, map: {} })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [submitted, setSubmitted] = useState<ProposalView | null>(null)
@@ -46,8 +46,8 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
   const earlier = view.revisions.filter((r) => r.revision < view.revision)
   const stale = view.status === 'stale' || view.stale
   // a stale proposal cannot be approved: approvals are dropped so Submit needs a Rework or Deny per item
-  const map = Object.fromEntries(
-    Object.entries(choices.revision === view.revision ? choices.map : {}).filter(([, e]) => !stale || e.decision !== 'approve'),
+  const map: Partial<Record<string, Entry>> = Object.fromEntries(
+    Object.entries(choices.revision === view.revision ? choices.map : {}).filter(([, e]) => !stale || e?.decision !== 'approve'),
   )
   const readOnly = (view.status !== 'open' && view.status !== 'stale') || submitted !== null
   const items = orderItems(current?.items ?? [])
@@ -57,7 +57,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
     setChoices({ revision: view.revision, map: { ...map, [path]: { decision: 'approve', note: '', ...map[path], ...patch } } })
   const decided = items.every((i) => map[i.path])
   const reworking = items.some((i) => map[i.path]?.decision === 'rework')
-  const complete = decided && items.every((i) => map[i.path]?.decision !== 'rework' || map[i.path].note.trim() !== '')
+  const complete = decided && items.every((i) => map[i.path]?.decision !== 'rework' || map[i.path]?.note.trim() !== '')
 
   const adopt = (p: ProposalView) => {
     setView(p)
@@ -67,8 +67,9 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
   const submit = async () => {
     setBusy(true)
     setError(null)
+    // Submit is enabled only when every item is decided
     const body: ReviewItemIn[] = items.map((i) => {
-      const e = map[i.path]
+      const e = map[i.path] as Entry
       const note = e.decision === 'approve' ? '' : e.note.trim()
       return note ? { path: i.path, decision: e.decision, note } : { path: i.path, decision: e.decision }
     })
