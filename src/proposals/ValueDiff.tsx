@@ -8,8 +8,8 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import Box from '@mui/material/Box'
 import { useLayoutEffect, useRef, type JSX } from 'react'
-import { stringify } from 'yaml'
 import { editorAppearance } from '../editor/highlight'
+import { isStructured, toDoc } from './diffText'
 
 export interface ValueDiffProps {
   before: unknown
@@ -17,12 +17,6 @@ export interface ValueDiffProps {
   /** Strings diff as raw multi-line text (a schedule prompt) instead of YAML. */
   text?: boolean
 }
-
-const isStructured = (v: unknown): boolean => typeof v === 'object' && v !== null
-
-const toYaml = (v: unknown): string => stringify(v, { sortMapEntries: true })
-
-const toDoc = (v: unknown, text?: boolean): string => (text ? (typeof v === 'string' ? v : '') : toYaml(v))
 
 const scalarText = (v: unknown): string => (typeof v === 'string' ? v : v === undefined ? '' : JSON.stringify(v))
 
