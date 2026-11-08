@@ -9,7 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import { useTheme } from '@mui/material/styles'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { ApiError } from '../api/client'
 import { formatAge, useNow } from '../chat/agentAge'
 import { FormError } from '../triggers'
@@ -40,6 +40,22 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [submitted, setSubmitted] = useState<ProposalView | null>(null)
+
+  // the list endpoint carries only the current revision; the full view adds the earlier ones (history,
+  // changed chips). It replaces the view only while nothing newer (a submit or a refetch) has landed.
+  useEffect(() => {
+    let live = true
+    getProposal(proposal.id).then(
+      (full) => {
+        if (live) setView((cur) => (cur === proposal ? full : cur))
+      },
+      // the list view stays usable without its history
+      () => {},
+    )
+    return () => {
+      live = false
+    }
+  }, [proposal])
 
   const current = view.revisions.find((r) => r.revision === view.revision) ?? view.revisions[view.revisions.length - 1]
   const previous = view.revisions.find((r) => r.revision === view.revision - 1)
@@ -101,7 +117,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
       </DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Typography variant="body2" color="text.secondary">
-          {`proposed by ${view.proposer_slug}${view.proposer_superleader ? ' (superleader)' : ''} - r${view.revision} of ${view.revisions.length} - ${formatAge(now - Date.parse(view.created_at))} ago - expires ${new Date(view.expires_at).toLocaleString()}`}
+          {`proposed by ${view.proposer_slug}${view.proposer_superleader ? ' (superleader)' : ''} - r${view.revision} of ${view.revision} - ${formatAge(now - Date.parse(view.created_at))} ago - expires ${new Date(view.expires_at).toLocaleString()}`}
         </Typography>
         {current && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{current.reason}</Typography>}
         {stale && <Alert severity="warning">stale: the target changed since this revision. Only Rework and Deny are offered.</Alert>}

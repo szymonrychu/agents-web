@@ -91,6 +91,8 @@ beforeEach(() => {
   api.getMeta.mockResolvedValue(meta())
   api.listPresets.mockResolvedValue(PRESETS)
   proposals.listProposals.mockResolvedValue([])
+  // the review dialog fetches the full view of the proposal it shows
+  proposals.getProposal.mockImplementation(async (id: number) => ((await proposals.listProposals('active')) as { id: number }[]).find((p) => p.id === id))
 })
 afterEach(() => {
   cleanup()

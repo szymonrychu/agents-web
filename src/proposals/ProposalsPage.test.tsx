@@ -22,6 +22,8 @@ beforeEach(() => {
       ? [proposal({ id: 7, target_name: 'worker' })]
       : [proposal({ id: 8, kind: 'schedule', target_name: 'nightly', proposer_slug: 'lead-2', proposer_superleader: false, status: 'applied', revision: 1, revisions: [proposal().revisions[0]] })],
   )
+  // the dialog fetches the full view of the row it opens
+  api.getProposal.mockImplementation(async (id: number) => [...(await api.listProposals('active')), ...(await api.listProposals('closed'))].find((p: { id: number }) => p.id === id))
 })
 afterEach(() => {
   cleanup()

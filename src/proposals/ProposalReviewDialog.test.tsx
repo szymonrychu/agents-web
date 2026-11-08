@@ -16,7 +16,11 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const mount = (p = proposal(), onClose = vi.fn()) => render(<ProposalReviewDialog proposal={p} onClose={onClose} />)
+// the dialog fetches the full view (all revisions) on mount; by default the server returns the same view
+const mount = (p = proposal(), onClose = vi.fn()) => {
+  api.getProposal.mockResolvedValueOnce(p)
+  return render(<ProposalReviewDialog proposal={p} onClose={onClose} />)
+}
 const card = (path: string) => screen.getByText(path).closest('[data-testid="item-card"]') as HTMLElement
 const click = (name: string, scope: Pick<typeof screen, 'getByRole'> = screen) => userEvent.click(scope.getByRole('button', { name }))
 
@@ -164,6 +168,26 @@ describe('ProposalReviewDialog', () => {
     expect(screen.queryByRole('button', { name: 'Submit review' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Deny' })).toBeNull()
+  })
+
+  it('fetches the full view: a list view with only the current revision gains history and changed chips', async () => {
+    const listView = proposal({ revisions: [proposal().revisions[1]] })
+    api.getProposal.mockResolvedValueOnce(proposal())
+    render(<ProposalReviewDialog proposal={listView} onClose={vi.fn()} />)
+    expect(api.getProposal).toHaveBeenCalledWith(7)
+    expect(screen.getByText(/r2 of 2/)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /earlier revisions/i })).toBeTruthy()
+    expect(within(card('model')).getByText('changed since r1')).toBeTruthy()
+  })
+
+  it('choices made before the full view arrives are kept', async () => {
+    let resolve: (p: ReturnType<typeof proposal>) => void = () => {}
+    api.getProposal.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+    render(<ProposalReviewDialog proposal={proposal({ revisions: [proposal().revisions[1]] })} onClose={vi.fn()} />)
+    await click('Approve', within(card('model')))
+    resolve(proposal())
+    expect(await screen.findByRole('button', { name: /earlier revisions/i })).toBeTruthy()
+    expect(within(card('model')).getByRole('button', { name: 'Approve' }).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('Later closes; earlier revisions sit in a collapsible history', async () => {
