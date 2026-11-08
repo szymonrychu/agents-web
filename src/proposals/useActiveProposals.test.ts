@@ -14,6 +14,7 @@ beforeEach(() => {
   api.listProposals.mockReset()
 })
 afterEach(() => {
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   cleanup()
   vi.useRealTimers()
   vi.restoreAllMocks()
@@ -36,6 +37,22 @@ describe('useActiveProposals', () => {
     expect(api.listProposals).toHaveBeenCalledTimes(1)
     await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
     expect(api.listProposals).toHaveBeenCalledTimes(2)
+  })
+
+  test('does not poll while the tab is hidden, and resumes when it shows', async () => {
+    vi.useFakeTimers()
+    const visibility = (v: 'visible' | 'hidden') => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+    visibility('hidden')
+    api.listProposals.mockResolvedValue([])
+    renderHook(() => useActiveProposals())
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000) })
+    expect(api.listProposals).not.toHaveBeenCalled()
+    visibility('visible')
+    await act(async () => {})
+    expect(api.listProposals).toHaveBeenCalledTimes(1)
   })
 
   test('auto-opens a new open revision once, not on a repeat', async () => {
