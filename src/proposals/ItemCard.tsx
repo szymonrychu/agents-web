@@ -8,7 +8,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { lazy, Suspense, type JSX } from 'react'
-import type { ProposalItemView } from './api'
+import type { ProposalItemView, ProposalView } from './api'
 
 // ValueDiff pulls in CodeMirror: keep it out of the main chunk
 const ValueDiff = lazy(() => import('./ValueDiff'))
@@ -26,6 +26,8 @@ function displayBefore(item: ProposalItemView): unknown {
 
 export interface ItemCardProps {
   item: ProposalItemView
+  /** The proposal kind: a schedule's `prompt` is diffed as text. */
+  kind?: ProposalView['kind']
   choice: Choice | undefined
   note: string
   readOnly: boolean
@@ -37,7 +39,7 @@ export interface ItemCardProps {
   onNote: (n: string) => void
 }
 
-export function ItemCard({ item, choice, note, readOnly, stale, changed, previous, onChoice, onNote }: ItemCardProps): JSX.Element {
+export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, previous, onChoice, onNote }: ItemCardProps): JSX.Element {
   return (
     <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -59,7 +61,7 @@ export function ItemCard({ item, choice, note, readOnly, stale, changed, previou
         </Typography>
       </Box>
       <Suspense fallback={<Skeleton variant="rectangular" height={80} />}>
-        <ValueDiff before={displayBefore(item)} after={item.after} />
+        <ValueDiff before={displayBefore(item)} after={item.after} text={kind === 'schedule' && item.path === 'prompt'} />
       </Suspense>
       {readOnly ? (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>

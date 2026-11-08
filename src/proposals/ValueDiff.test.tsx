@@ -96,4 +96,20 @@ describe('ValueDiff', () => {
       expect(side.contentDOM.getAttribute('contenteditable')).toBe('false')
     }
   })
+
+  it('text mode diffs two strings as raw text in a merge view, not YAML', () => {
+    const { container } = render(<ValueDiff text before={'line one\nold line'} after={'line one\nnew line'} />)
+    expect(container.querySelectorAll('.cm-mergeView')).toHaveLength(1)
+    expect(container.querySelector('[data-testid="value-diff-before"]')).toBeNull()
+    const view = built.views[0] as MergeView
+    expect(view.a.state.doc.toString()).toBe('line one\nold line')
+    expect(view.b.state.doc.toString()).toBe('line one\nnew line')
+  })
+
+  it('text mode treats a missing side as empty text', () => {
+    render(<ValueDiff text before={null} after="hello" />)
+    const view = built.views[0] as MergeView
+    expect(view.a.state.doc.toString()).toBe('')
+    expect(view.b.state.doc.toString()).toBe('hello')
+  })
 })

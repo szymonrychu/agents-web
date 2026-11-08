@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ItemCard } from './ItemCard'
 import { item } from './proposalFixture'
 
-vi.mock('./ValueDiff', () => ({ default: ({ before, after }: { before: unknown; after: unknown }) => <div data-testid="diff">{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
+vi.mock('./ValueDiff', () => ({ default: ({ before, after, text }: { before: unknown; after: unknown; text?: boolean }) => <div data-testid="diff" data-text={String(Boolean(text))}>{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
 afterEach(cleanup)
 
 const base = { choice: undefined, note: '', readOnly: false, stale: false, changed: false, onChoice: vi.fn(), onNote: vi.fn() }
@@ -67,5 +67,14 @@ describe('ItemCard', () => {
     expect(screen.queryByRole('button')).toBeNull()
     expect(screen.getByText('rework')).toBeTruthy()
     expect(screen.getByText('use haiku')).toBeTruthy()
+  })
+
+  it('a schedule prompt is diffed as text and cron as a plain value', async () => {
+    const { rerender } = render(<ItemCard {...base} kind="schedule" item={item({ path: 'prompt', before: 'a\nb', after: 'a\nc' })} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('true')
+    rerender(<ItemCard {...base} kind="schedule" item={item({ path: 'cron', before: '0 3 * * *', after: '0 4 * * *' })} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
+    rerender(<ItemCard {...base} kind="preset" item={item({ path: 'prompt', before: 'a', after: 'b' })} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
   })
 })

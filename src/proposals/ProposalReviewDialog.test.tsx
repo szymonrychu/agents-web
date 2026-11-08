@@ -197,4 +197,18 @@ describe('ProposalReviewDialog', () => {
     await click('Later')
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('a schedule proposal is titled with the schedule name and links to the Schedules page', async () => {
+    const onOpenSchedule = vi.fn()
+    api.getProposal.mockResolvedValue(proposal({ kind: 'schedule', target_name: 'nightly' }))
+    render(<ProposalReviewDialog proposal={proposal({ kind: 'schedule', target_name: 'nightly' })} onClose={vi.fn()} onOpenSchedule={onOpenSchedule} />)
+    expect(screen.getByText('schedule nightly')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Open schedules' }))
+    expect(onOpenSchedule).toHaveBeenCalledTimes(1)
+  })
+
+  it('a preset proposal has no schedules link', () => {
+    mount()
+    expect(screen.queryByRole('button', { name: 'Open schedules' })).toBeNull()
+  })
 })

@@ -100,7 +100,7 @@ function SessionsShell() {
         )}
       </Box>
       <NewSessionDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
-      {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} onChanged={() => setProposalsRefresh((n) => n + 1)} />}
+      {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} onOpenSchedule={entries.some((e) => e.id === 'schedules') ? () => { setProposal(null); setView('schedules') } : undefined} onChanged={() => setProposalsRefresh((n) => n + 1)} />}
       {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
