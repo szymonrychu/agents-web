@@ -1,0 +1,62 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ItemCard } from './ItemCard'
+import { item } from './proposalFixture'
+
+vi.mock('./ValueDiff', () => ({ default: ({ before, after }: { before: unknown; after: unknown }) => <div data-testid="diff">{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
+afterEach(cleanup)
+
+const base = { choice: undefined, note: '', readOnly: false, stale: false, changed: false, onChoice: vi.fn(), onNote: vi.fn() }
+
+describe('ItemCard', () => {
+  it('shows the path, the chips and the lazy diff', async () => {
+    render(<ItemCard {...base} item={item({ path: 'kube_access', before: false, after: true, grant: true, security: true })} />)
+    expect(screen.getByText('kube_access')).toBeTruthy()
+    expect(screen.getByText('grant')).toBeTruthy()
+    expect(screen.getByText('security')).toBeTruthy()
+    expect((await screen.findByTestId('diff')).textContent).toBe('false=>true')
+  })
+
+  it('a secret item says value set and never renders a value or an input for one', async () => {
+    const { container } = render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'set', security: true, before: null, after: { name: 'K' } })} />)
+    expect(screen.getByText('secret')).toBeTruthy()
+    expect(screen.getByText('value set')).toBeTruthy()
+    expect(container.querySelector('input[type=password], input[type=text], textarea')).toBeNull()
+    render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'changed', after: { name: 'K' } })} />)
+    expect(screen.getByText('value changed')).toBeTruthy()
+  })
+
+  it('the changed chip names the previous revision', () => {
+    render(<ItemCard {...base} changed previous={1} item={item()} />)
+    expect(screen.getByText('changed since r1')).toBeTruthy()
+  })
+
+  it('offers Approve, Rework and Deny, and only Rework and Deny when stale', async () => {
+    const onChoice = vi.fn()
+    const { rerender } = render(<ItemCard {...base} onChoice={onChoice} item={item()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Rework' }))
+    expect(onChoice).toHaveBeenCalledWith('rework')
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy()
+    rerender(<ItemCard {...base} stale item={item()} />)
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Deny' })).toBeTruthy()
+  })
+
+  it('rework shows a required note field, deny an optional one, approve none', () => {
+    const { rerender } = render(<ItemCard {...base} choice="approve" item={item()} />)
+    expect(screen.queryByRole('textbox')).toBeNull()
+    rerender(<ItemCard {...base} choice="rework" item={item()} />)
+    expect((screen.getByRole('textbox') as HTMLInputElement).required).toBe(true)
+    rerender(<ItemCard {...base} choice="deny" item={item()} />)
+    expect((screen.getByRole('textbox') as HTMLInputElement).required).toBe(false)
+  })
+
+  it('read-only shows the verdict and note, no buttons', () => {
+    render(<ItemCard {...base} readOnly item={item({ decision: 'rework', note: 'use haiku' })} />)
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.getByText('rework')).toBeTruthy()
+    expect(screen.getByText('use haiku')).toBeTruthy()
+  })
+})

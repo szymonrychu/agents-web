@@ -12,3 +12,11 @@ export type ProposalFilter = 'active' | 'open' | 'closed' | 'all'
 
 export const listProposals = (status: ProposalFilter = 'active', limit?: number) =>
   request<ProposalView[]>('GET', `/proposals${query({ status, limit })}`)
+
+export type ReviewIn = components['schemas']['ReviewIn']
+export type ReviewItemIn = components['schemas']['ReviewItemIn']
+
+export const getProposal = (id: number) => request<ProposalView>('GET', `/proposals/${id}`)
+
+/** Decide every item of the proposal's current revision; 409 `proposal_stale` / `revision_changed`, 422 `invalid_spec`. */
+export const reviewProposal = (id: number, review: ReviewIn) => request<ProposalView>('POST', `/proposals/${id}/review`, review)

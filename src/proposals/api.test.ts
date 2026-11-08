@@ -27,3 +27,14 @@ test('the filter defaults to active and a limit is appended', async () => {
   await listProposals('closed', 5)
   expect(f.mock.calls[1][0]).toBe('/api/v1/proposals?status=closed&limit=5')
 })
+
+test('gets one proposal and posts a review with the revision', async () => {
+  const { getProposal, reviewProposal } = await import('./api')
+  await getProposal(7)
+  expect(f.mock.calls.at(-1)?.[0]).toBe('/api/v1/proposals/7')
+  await reviewProposal(7, { revision: 2, items: [{ path: 'model', decision: 'approve' }] })
+  const [url, init] = f.mock.calls.at(-1) as [string, RequestInit]
+  expect(url).toBe('/api/v1/proposals/7/review')
+  expect(init.method).toBe('POST')
+  expect(JSON.parse(init.body as string)).toEqual({ revision: 2, items: [{ path: 'model', decision: 'approve' }] })
+})
