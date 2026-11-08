@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView } from '../api/client'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { theme } from '../theme'
@@ -11,7 +11,14 @@ import { TopBar } from './TopBar'
 
 const api = vi.hoisted(() => ({ setSessionLabels: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
+const proposals = vi.hoisted(() => ({ listProposals: vi.fn() }))
+vi.mock('../proposals/api', () => proposals)
 
+beforeEach(() => {
+  localStorage.clear()
+  proposals.listProposals.mockReset()
+  proposals.listProposals.mockResolvedValue([])
+})
 afterEach(cleanup)
 
 const session = (id: string, slug: string, state: SessionView['summary']['state'], pct: number | null): SessionEntry => ({
@@ -21,7 +28,7 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), ...over }
   render(<MemoryRouter><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></MemoryRouter>)
   return props
 }
@@ -187,5 +194,22 @@ describe('TopBar', () => {
     await userEvent.type(screen.getByRole('combobox', { name: 'Session labels' }), 'x{Enter}')
     expect(await screen.findByText('boom')).toBeTruthy()
     expect(onSessionUpdated).not.toHaveBeenCalled()
+  })
+
+  test('proposals chip counts open and stale, opens the view, and is hidden at zero', async () => {
+    proposals.listProposals.mockResolvedValue([{ id: 1, revision: 1, status: 'open' }, { id: 2, revision: 1, status: 'stale' }, { id: 3, revision: 1, status: 'rework' }])
+    const onOpenProposals = vi.fn()
+    setup({ onOpenProposals })
+    const chip = await screen.findByRole('button', { name: 'Proposals, 2 waiting' })
+    await waitFor(() => expect(onOpenProposals).toHaveBeenCalledTimes(1))
+    expect(onOpenProposals.mock.calls[0][0].id).toBe(1)
+    fireEvent.click(chip)
+    expect(onOpenProposals).toHaveBeenLastCalledWith()
+  })
+
+  test('proposals chip is hidden when nothing waits', async () => {
+    setup()
+    await waitFor(() => expect(proposals.listProposals).toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: /Proposals/ })).toBeNull()
   })
 })
