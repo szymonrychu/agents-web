@@ -1,3 +1,7 @@
+## 2026-11-08 (vault-page, T-72)
+
+- Vault page (menu order 43, backend `vault`, base path /vault/v1) in `src/vault/`. It has its own fetch wrapper instead of `requestAt` because the 409 `vault_entry_attached` body carries `error.attachments`, which the shared `toError` drops; `VaultApiError` keeps them. Dialogs are mounted only while open so typed protected values die with the dialog. The list is filtered client-side (one GET); the env list is fixed at create, so Edit patches only name, description, labels and readable values, and Rotate replaces all protected values at once (PUT /value). The protected "set, vN" uses the entry version because EnvView has no per-env version.
+
 ## 2026-11-04 (chat-preset-blank-page)
 
 - Opening a room in Chats (the only way to change its preset) blanked the whole page once the room's feed held an agent reply. `RoomMessages` renders every message status through `RunStatusChip`, whose `STYLE` knew only run and inbound statuses (`new`, `in-progress`, `handled`, `ignored`, `failed`); the matrix connector's outbound replies carry `pending` or `sent` (`outbound.status`), so `STYLE[status]` was undefined, the destructure threw during render and React unmounted the app (no error boundary). Not the preset and not the Matrix v12 room id: both reached the drawer fine. Fix: `pending` (default) and `sent` (success) styles, and any other status falls back to a plain default chip, because `MessageView.status` is an open `string` in the schema and a new backend status must never blank the page again.

@@ -10,6 +10,7 @@
  *   38 Tasks     (agents-taskboard, a routed page: the entry navigates to /tasks)
  *   40 Presets   (orchestrator, registered below)
  *   42 Proposals (orchestrator, preset change proposals)
+ *   43 Vault     (agents-vault, secret env entries)
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
@@ -27,6 +28,7 @@ import { usageMenu } from '../usage/menu'
 import { historyMenu } from '../history/menu'
 import { tasksMenu } from '../tasks/menu'
 import { proposalsMenu } from '../proposals/menu'
+import { vaultMenu } from '../vault/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -52,6 +54,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
   devices: [devicesMenu],
   usage: [usageMenu],
   history: [historyMenu],
+  vault: [vaultMenu],
 }
 
 export function menuEntries(config: RuntimeConfig): MenuEntry[] {
