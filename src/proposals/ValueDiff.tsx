@@ -58,8 +58,7 @@ function MergeDiff({ before, after, text }: ValueDiffProps): JSX.Element {
       sx={{
         height: 360,
         overflow: 'auto',
-        // below md the two columns stack
-        '& .cm-mergeView': { display: 'flex', flexDirection: { xs: 'column', md: 'row' } },
+        // below md the two columns stack; .cm-mergeView stays a block so the editors row spans its full width
         '& .cm-mergeViewEditors': { flexDirection: { xs: 'column', md: 'row' } },
       }}
     />
