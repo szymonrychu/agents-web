@@ -170,3 +170,13 @@ test("knows the taskboard backend and records agents-taskboard", () => {
   assert.equal(readFileSync(join(proj, "openapi/taskboard.json"), "utf8"), doc);
   assert.equal(readFileSync(join(proj, "openapi/taskboard.source"), "utf8"), `agents-taskboard ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the vault backend and records agents-vault", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "vault", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/vault.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/vault.source"), "utf8"), `agents-vault ${git(src, "rev-parse", "HEAD")}\n`);
+});

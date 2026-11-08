@@ -5,6 +5,7 @@ import { SchedulesPage } from '../schedules/SchedulesPage'
 import { ChatsPage } from '../matrix/ChatsPage'
 import { UsagePage } from '../usage/UsagePage'
 import { HistoryPage } from '../history/HistoryPage'
+import { VaultPage } from '../vault/VaultPage'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -113,6 +114,23 @@ describe('menuEntries', () => {
     const onBack = vi.fn()
     const page = history!.render(onBack, vi.fn())
     expect(isValidElement(page) && page.type).toBe(HistoryPage)
+    expect(isValidElement<{ onBack: unknown }>(page) && page.props).toEqual({ onBack })
+  })
+
+  test('lists Vault at order 43 between Proposals and Backups only with the vault backend', () => {
+    expect(menuEntries(config('orchestrator', 'vault')).map((e) => [e.id, e.order])).toEqual([
+      ['sessions', 10],
+      ['presets', 40],
+      ['proposals', 42],
+      ['vault', 43],
+      ['backups', 45],
+    ])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('vault')
+    const vault = menuEntries(config('vault')).find((e) => e.id === 'vault')
+    expect(vault).toMatchObject({ label: 'Vault', order: 43, backend: 'vault' })
+    const onBack = vi.fn()
+    const page = vault!.render(onBack, vi.fn())
+    expect(isValidElement(page) && page.type).toBe(VaultPage)
     expect(isValidElement<{ onBack: unknown }>(page) && page.props).toEqual({ onBack })
   })
 

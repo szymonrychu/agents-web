@@ -34,11 +34,14 @@ export type AgentCommand = 'compact' | 'interrupt' | 'restart';
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string, message: string) {
+  /** Extra fields of the error body (everything in `error` besides code and message), e.g. `attachments`. */
+  readonly details: Record<string, unknown>;
+  constructor(status: number, code: string, message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -48,16 +51,19 @@ export const base = () => backendBase('orchestrator');
 async function toError(res: Response): Promise<ApiError> {
   let code = 'http_error';
   let message = res.statusText || `HTTP ${res.status}`;
+  let details: Record<string, unknown> = {};
   try {
-    const body = (await res.json()) as { error?: { code?: string; message?: string } };
+    const body = (await res.json()) as { error?: { code?: string; message?: string } & Record<string, unknown> };
     if (body.error) {
-      code = body.error.code ?? code;
-      message = body.error.message ?? message;
+      const { code: c, message: m, ...rest } = body.error;
+      code = c ?? code;
+      message = m ?? message;
+      details = rest;
     }
   } catch {
     // non-JSON error body: keep the defaults
   }
-  return new ApiError(res.status, code, message);
+  return new ApiError(res.status, code, message, details);
 }
 
 export function query(params: Record<string, string | number | undefined>): string {
