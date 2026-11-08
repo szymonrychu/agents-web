@@ -23,6 +23,8 @@ export interface ProposalReviewDialogProps {
   onClose: () => void
   /** Called with the server's view after a submit or a refetch. */
   onChanged?: (p: ProposalView) => void
+  /** Opens the Schedules page; offered for schedule proposals only. */
+  onOpenSchedule?: () => void
 }
 
 interface Entry {
@@ -30,7 +32,7 @@ interface Entry {
   note: string
 }
 
-export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalReviewDialogProps): JSX.Element {
+export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSchedule }: ProposalReviewDialogProps): JSX.Element {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'))
   const now = useNow()
@@ -119,6 +121,11 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
         <Typography variant="body2" color="text.secondary">
           {`proposed by ${view.proposer_slug}${view.proposer_superleader ? ' (superleader)' : ''} - r${view.revision} of ${view.revision} - ${formatAge(now - Date.parse(view.created_at))} ago - expires ${new Date(view.expires_at).toLocaleString()}`}
         </Typography>
+        {view.kind === 'schedule' && onOpenSchedule && (
+          <Box>
+            <Button size="small" onClick={onOpenSchedule}>Open schedules</Button>
+          </Box>
+        )}
         {current && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{current.reason}</Typography>}
         {stale && <Alert severity="warning">stale: the target changed since this revision. Only Rework and Deny are offered.</Alert>}
         {submitted && <Alert severity="success">{`Review submitted: ${counts}.`}</Alert>}
@@ -127,6 +134,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged }: ProposalR
           <ItemCard
             key={i.path}
             item={i}
+            kind={view.kind}
             choice={map[i.path]?.decision}
             note={map[i.path]?.note ?? ''}
             readOnly={readOnly}

@@ -14,11 +14,15 @@ import { editorAppearance } from '../editor/highlight'
 export interface ValueDiffProps {
   before: unknown
   after: unknown
+  /** Strings diff as raw multi-line text (a schedule prompt) instead of YAML. */
+  text?: boolean
 }
 
 const isStructured = (v: unknown): boolean => typeof v === 'object' && v !== null
 
 const toYaml = (v: unknown): string => stringify(v, { sortMapEntries: true })
+
+const toDoc = (v: unknown, text?: boolean): string => (text ? (typeof v === 'string' ? v : '') : toYaml(v))
 
 const scalarText = (v: unknown): string => (typeof v === 'string' ? v : v === undefined ? '' : JSON.stringify(v))
 
@@ -30,17 +34,17 @@ const sideExtensions: Extension = [
   editorAppearance,
 ]
 
-function MergeDiff({ before, after }: ValueDiffProps): JSX.Element {
+function MergeDiff({ before, after, text }: ValueDiffProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   // the view is built once from the props of the first render
-  const initial = useRef({ before, after })
+  const initial = useRef({ before, after, text })
 
   // created once per mount
   useLayoutEffect(() => {
     const view = new MergeView({
       parent: host.current ?? undefined,
-      a: { doc: toYaml(initial.current.before), extensions: sideExtensions },
-      b: { doc: toYaml(initial.current.after), extensions: sideExtensions },
+      a: { doc: toDoc(initial.current.before, initial.current.text), extensions: sideExtensions },
+      b: { doc: toDoc(initial.current.after, initial.current.text), extensions: sideExtensions },
       orientation: 'a-b',
       collapseUnchanged: { margin: 3 },
     })
@@ -62,8 +66,8 @@ function MergeDiff({ before, after }: ValueDiffProps): JSX.Element {
   )
 }
 
-export default function ValueDiff({ before, after }: ValueDiffProps): JSX.Element {
-  if (isStructured(before) || isStructured(after)) return <MergeDiff before={before} after={after} />
+export default function ValueDiff({ before, after, text }: ValueDiffProps): JSX.Element {
+  if (text || isStructured(before) || isStructured(after)) return <MergeDiff before={before} after={after} text={text} />
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1, fontFamily: 'monospace' }}>
       <Box data-testid="value-diff-before" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
