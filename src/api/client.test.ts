@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  requestAt,
   cancelSessionClose,
   copyPreset,
   createPreset,
@@ -179,5 +180,14 @@ describe('labels', () => {
     expect(calls[0][0]).toBe('/api/v1/sessions/s%201/close');
     expect(calls[0][1].method).toBe('DELETE');
     expect(calls[0][1].body).toBeUndefined();
+  });
+});
+
+describe('ApiError details', () => {
+  it('copies extra error fields into details', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { code: 'c', message: 'm', attachments: [1], missing: ['A'] } }), { status: 409 })));
+    const e = (await requestAt('/x', 'GET', '/y').catch((err: unknown) => err)) as ApiError;
+    vi.unstubAllGlobals();
+    expect(e).toMatchObject({ status: 409, code: 'c', message: 'm', details: { attachments: [1], missing: ['A'] } });
   });
 });

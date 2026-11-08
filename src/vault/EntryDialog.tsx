@@ -101,7 +101,7 @@ export function EntryDialog({ init = BLANK, onClose, onCreated }: EntryDialogPro
               sx={{ minWidth: 220 }}
             />
             <FormControlLabel
-              control={<Switch checked={r.protected} onChange={(e) => patch(r.key, { protected: e.target.checked })} />}
+              control={<Switch checked={r.protected} onChange={(e) => patch(r.key, { protected: e.target.checked, value: '' })} />}
               label="Protected"
             />
             {r.protected ? (

@@ -8,8 +8,8 @@ import { FormError } from '../triggers'
 import { getEntry, listEvents, listPins } from './api'
 import type { EntryDetail, EventView, PinView } from './api'
 
-/** Detail of one entry: envs, attachments per env, pins and recent events. */
-export function DetailPanel({ entryId, onClose }: { entryId: string; onClose: () => void }) {
+/** Detail of one entry: envs, attachments per env, pins and recent events. Reloads when `refresh` changes. */
+export function DetailPanel({ entryId, refresh, onClose }: { entryId: string; refresh: number; onClose: () => void }) {
   const [detail, setDetail] = useState<EntryDetail>()
   const [pins, setPins] = useState<PinView[]>([])
   const [events, setEvents] = useState<EventView[]>([])
@@ -28,7 +28,7 @@ export function DetailPanel({ entryId, onClose }: { entryId: string; onClose: ()
     return () => {
       live = false
     }
-  }, [entryId])
+  }, [entryId, refresh])
 
   return (
     <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }} aria-label="Entry detail" role="region">

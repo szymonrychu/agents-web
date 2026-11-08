@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
-import { VaultApiError } from './api'
+import { ApiError } from '../api/client'
 import type { EntryView } from './api'
 import { envNameError, parseLabels } from './validate'
 import { VaultPage } from './VaultPage'
@@ -109,7 +109,7 @@ describe('list', () => {
     expect(screen.getByRole('article', { name: 'Entry github' })).toBeTruthy()
   })
   test('shows the API error code and message', async () => {
-    api.listEntries.mockRejectedValue(new VaultApiError(403, 'forbidden', 'source address not allowed', []))
+    api.listEntries.mockRejectedValue(new ApiError(403, 'forbidden', 'source address not allowed'))
     mount()
     expect((await screen.findByRole('alert')).textContent).toContain('forbidden: source address not allowed')
   })
@@ -182,7 +182,7 @@ describe('create', () => {
     await waitFor(() => expect((screen.getByLabelText('Value') as HTMLInputElement).value).toBe('QUJDRA=='))
   })
   test('shows the API error and clears secrets when the dialog is closed', async () => {
-    api.createEntry.mockRejectedValue(new VaultApiError(409, 'vault_name_taken', 'name taken', []))
+    api.createEntry.mockRejectedValue(new ApiError(409, 'vault_name_taken', 'name taken'))
     const u = user()
     mount()
     await openCreate(u)
@@ -219,6 +219,49 @@ describe('duplicate as new', () => {
     expect((r2.getByLabelText('Value') as HTMLInputElement).value).toBe('')
     expect((r2.getByRole('switch') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByRole('button', { name: 'Create' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+describe('protected toggle', () => {
+  test('toggling Protected clears the typed value in both directions', async () => {
+    const u = user()
+    mount()
+    await openCreate(u)
+    const row = within(screen.getByRole('group', { name: 'Env row 1' }))
+    await u.type(row.getByLabelText('Value'), 'plain')
+    await u.click(row.getByRole('switch'))
+    expect((row.getByLabelText('Value') as HTMLInputElement).value).toBe('')
+    await u.type(row.getByLabelText('Value'), 'hidden')
+    await u.click(row.getByRole('switch'))
+    const field = row.getByLabelText('Value') as HTMLInputElement
+    expect(field.type).toBe('text')
+    expect(field.value).toBe('')
+  })
+})
+
+describe('reload', () => {
+  test('a failed reload clears the stale entries', async () => {
+    const u = user()
+    mount()
+    await screen.findByText('registry')
+    api.listEntries.mockRejectedValue(new ApiError(503, 'unavailable', 'down'))
+    await u.click(card('registry').getByRole('button', { name: 'Delete' }))
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(screen.queryByRole('article', { name: 'Entry registry' })).toBeNull())
+    expect((await screen.findByRole('alert')).textContent).toContain('unavailable: down')
+  })
+  test('the open detail panel refreshes after an edit', async () => {
+    const detail = (name: string) => ({ ...entry(), name, versions: [], attachments: [], mismatched_attachments: [] })
+    api.getEntry.mockResolvedValueOnce(detail('github')).mockResolvedValue(detail('github-renamed'))
+    const u = user()
+    mount()
+    await screen.findByText('registry')
+    await u.click(card('github').getByRole('button', { name: 'Details' }))
+    await within(await screen.findByRole('region', { name: 'Entry detail' })).findByText('github (v3)')
+    await u.click(card('github').getByRole('button', { name: 'Edit' }))
+    await u.type(screen.getByLabelText('Name'), '-renamed')
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    await within(screen.getByRole('region', { name: 'Entry detail' })).findByText('github-renamed (v3)')
   })
 })
 
@@ -272,6 +315,42 @@ describe('rotate', () => {
   })
 })
 
+describe('rotate back and secrecy', () => {
+  const protectedEntry = entry({ envs: [{ env: 'A_KEY', protected: true, value: null, updated_at: TS }] })
+  test('Back from the confirm step keeps the values and cancel sends nothing', async () => {
+    api.listEntries.mockResolvedValue([protectedEntry])
+    const u = user()
+    mount()
+    await screen.findByText('github')
+    await u.click(card('github').getByRole('button', { name: 'Rotate' }))
+    await u.type(screen.getByLabelText('A_KEY'), 'one')
+    await u.click(screen.getByRole('button', { name: 'Rotate' }))
+    expect(screen.getByText(/as a new version/)).toBeTruthy()
+    await u.click(screen.getByRole('button', { name: 'Back' }))
+    expect((screen.getByLabelText('A_KEY') as HTMLInputElement).value).toBe('one')
+    await u.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(api.rotateEntry).not.toHaveBeenCalled()
+    await u.click(card('github').getByRole('button', { name: 'Rotate' }))
+    expect((screen.getByLabelText('A_KEY') as HTMLInputElement).value).toBe('')
+  })
+  test('no console output carries a typed value, even when the API fails', async () => {
+    api.listEntries.mockResolvedValue([protectedEntry])
+    api.rotateEntry.mockRejectedValue(new ApiError(500, 'boom', 'failed'))
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}))
+    const u = user()
+    mount()
+    await screen.findByText('github')
+    await u.click(card('github').getByRole('button', { name: 'Rotate' }))
+    await u.type(screen.getByLabelText('A_KEY'), 'tops3cret')
+    await u.click(screen.getByRole('button', { name: 'Rotate' }))
+    await u.click(screen.getByRole('button', { name: 'Confirm rotate' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('boom: failed')
+    expect(screen.getByRole('alert').textContent).not.toContain('tops3cret')
+    expect(JSON.stringify(spies.flatMap((s) => s.mock.calls))).not.toContain('tops3cret')
+  })
+})
+
 describe('delete', () => {
   test('confirms and deletes', async () => {
     const u = user()
@@ -283,9 +362,9 @@ describe('delete', () => {
   })
   test('a 409 shows the attachment list from the response', async () => {
     api.deleteEntry.mockRejectedValue(
-      new VaultApiError(409, 'vault_entry_attached', 'the entry is referenced by presets', [
-        { preset_id: 'p1', preset_name: 'reviewer', env: 'GITHUB_TOKEN', entry_env: 'GH_TOKEN' },
-      ]),
+      new ApiError(409, 'vault_entry_attached', 'the entry is referenced by presets', {
+        attachments: [{ preset_id: 'p1', preset_name: 'reviewer', env: 'GITHUB_TOKEN', entry_env: 'GH_TOKEN' }],
+      }),
     )
     const u = user()
     mount()

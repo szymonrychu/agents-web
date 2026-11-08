@@ -45,7 +45,11 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
         setEntries(list)
         setError(undefined)
       })
-      .catch((e: unknown) => live && setError(e))
+      .catch((e: unknown) => {
+        if (!live) return
+        setEntries([])
+        setError(e)
+      })
       .finally(() => live && setLoaded(true))
     return () => {
       live = false
@@ -84,7 +88,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
         </TextField>
       </Box>
       <FormError error={error instanceof Error ? error : undefined} />
-      {detailId && <DetailPanel key={detailId} entryId={detailId} onClose={() => setDetailId(undefined)} />}
+      {detailId && <DetailPanel key={detailId} entryId={detailId} refresh={tick} onClose={() => setDetailId(undefined)} />}
       {loaded && !error && shown.length === 0 && <Typography color="text.secondary">No entries.</Typography>}
       {shown.map((e) => (
         <Paper key={e.id} variant="outlined" component="article" aria-label={`Entry ${e.name}`} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>

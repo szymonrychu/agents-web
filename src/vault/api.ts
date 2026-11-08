@@ -1,5 +1,5 @@
 /** Typed access to the agents-vault user API, over the `vault` backend's base path. */
-import { ApiError, query } from '../api/client';
+import { ApiError, query, requestAt } from '../api/client';
 import { backendBase, isConfigured } from '../config/backends';
 import type { components } from '../api/vault-schema';
 
@@ -22,43 +22,11 @@ export interface DeleteAttachment {
   entry_env: string;
 }
 
-/** An API error that keeps the `attachments` list a 409 carries inside `error`. */
-export class VaultApiError extends ApiError {
-  readonly attachments: DeleteAttachment[];
-  constructor(status: number, code: string, message: string, attachments: DeleteAttachment[]) {
-    super(status, code, message);
-    this.name = 'VaultApiError';
-    this.attachments = attachments;
-  }
-}
+const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('vault'), method, path, body);
 
-async function toError(res: Response): Promise<VaultApiError> {
-  let code = 'http_error';
-  let message = res.statusText || `HTTP ${res.status}`;
-  let attachments: DeleteAttachment[] = [];
-  try {
-    const body = (await res.json()) as { error?: { code?: string; message?: string; attachments?: DeleteAttachment[] } };
-    if (body.error) {
-      code = body.error.code ?? code;
-      message = body.error.message ?? message;
-      if (Array.isArray(body.error.attachments)) attachments = body.error.attachments;
-    }
-  } catch {
-    // non-JSON error body: keep the defaults
-  }
-  return new VaultApiError(res.status, code, message, attachments);
-}
-
-async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${backendBase('vault')}${path}`, {
-    method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw await toError(res);
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
+/** The attachments a 409 `vault_entry_attached` error lists (empty for any other error). */
+export const errorAttachments = (e: unknown): DeleteAttachment[] =>
+  e instanceof ApiError && Array.isArray(e.details.attachments) ? (e.details.attachments as DeleteAttachment[]) : [];
 
 const id = encodeURIComponent;
 

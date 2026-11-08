@@ -43,7 +43,7 @@ export function RotateDialog({ entry, onClose, onRotated }: RotateDialogProps) {
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
         {confirming ? (
           <Typography>
-            Replace the values of {names.join(', ')} with new ones as version {entry.version + 1}? Running sessions keep the version they pinned.
+            Replace the values of {names.join(', ')} with new ones as a new version? Running sessions keep the version they pinned.
           </Typography>
         ) : (
           <>

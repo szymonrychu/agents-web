@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { loadConfig, resetConfig } from '../config/backends';
-import { createEntry, deleteEntry, listEntries, listEvents, listPins, patchEntry, rotateEntry, VaultApiError, vaultEnabled } from './api';
+import { createEntry, deleteEntry, errorAttachments, listEntries, listEvents, listPins, patchEntry, rotateEntry, vaultEnabled } from './api';
 
 const BASE = '/vault/v1';
 let f: ReturnType<typeof vi.fn>;
@@ -52,8 +53,10 @@ describe('vault api routes', () => {
   it('keeps code, message and attachments of an error', async () => {
     const att = [{ preset_id: 'p', preset_name: 'Pre', env: 'E', entry_env: 'A' }];
     f.mockImplementation(async () => new Response(JSON.stringify({ error: { code: 'vault_entry_attached', message: 'attached', attachments: att } }), { status: 409 }));
-    const err = (await deleteEntry('i').catch((e: unknown) => e)) as VaultApiError;
-    expect(err).toBeInstanceOf(VaultApiError);
-    expect(err).toMatchObject({ status: 409, code: 'vault_entry_attached', message: 'attached', attachments: att });
+    const err = (await deleteEntry('i').catch((e: unknown) => e)) as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 409, code: 'vault_entry_attached', message: 'attached', details: { attachments: att } });
+    expect(errorAttachments(err)).toEqual(att);
+    expect(errorAttachments(new Error('x'))).toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import { FormError } from '../triggers'
-import { deleteEntry, VaultApiError } from './api'
+import { deleteEntry, errorAttachments } from './api'
 import type { DeleteAttachment, EntryView } from './api'
 
 export interface DeleteDialogProps {
@@ -28,7 +28,7 @@ export function DeleteDialog({ entry, onClose, onDeleted }: DeleteDialogProps) {
       onDeleted()
     } catch (e) {
       setError(e)
-      setAttachments(e instanceof VaultApiError ? e.attachments : [])
+      setAttachments(errorAttachments(e))
       setBusy(false)
     }
   }
