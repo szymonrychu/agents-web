@@ -87,13 +87,13 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
                 <Chip size="small" variant="outlined" label={p.project} />
                 {p.is_default && <Chip size="small" label="Default" />}
                 {p.spec.session_messaging === true && (
-                  <Tooltip title={SUPERLEADER_HELP}>
-                    <Chip size="small" label="Superleader" />
+                  <Tooltip describeChild title={SUPERLEADER_HELP}>
+                    <Chip size="small" tabIndex={0} label="Superleader" />
                   </Tooltip>
                 )}
                 {p.superleader_manageable && (
-                  <Tooltip title={SUPERLEADER_MANAGEABLE_HELP}>
-                    <Chip size="small" label="Superleader-managed" />
+                  <Tooltip describeChild title={SUPERLEADER_MANAGEABLE_HELP}>
+                    <Chip size="small" tabIndex={0} label="Superleader-managed" />
                   </Tooltip>
                 )}
               </Box>

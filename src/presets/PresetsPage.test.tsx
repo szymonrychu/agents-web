@@ -73,13 +73,28 @@ describe('PresetsPage', () => {
     })
 
     test('badges explain themselves with the form helper text', async () => {
+      const user = userEvent.setup()
       api.listPresets.mockResolvedValue([flagged('p-3', 'Both', true, true)])
       wrap()
       await screen.findByText('Both')
-      expect(screen.getByText('Superleader', { selector: '.MuiChip-label' }).closest('[aria-label]')?.getAttribute('aria-label')).toBe('superleader: can message the leaders of all sessions')
-      expect(screen.getByText('Superleader-managed', { selector: '.MuiChip-label' }).closest('[aria-label]')?.getAttribute('aria-label')).toBe(
+      const leader = screen.getByText('Superleader', { selector: '.MuiChip-label' }).closest('.MuiChip-root') as HTMLElement
+      const managed = screen.getByText('Superleader-managed', { selector: '.MuiChip-label' }).closest('.MuiChip-root') as HTMLElement
+      expect(leader.getAttribute('aria-label')).toBeNull()
+      expect(managed.getAttribute('aria-label')).toBeNull()
+      const description = (el: HTMLElement) => document.getElementById(el.getAttribute('aria-describedby') ?? '')?.textContent
+      expect(leader.textContent).toBe('Superleader')
+      expect(managed.textContent).toBe('Superleader-managed')
+      await user.hover(leader)
+      await screen.findByRole('tooltip')
+      expect(description(leader)).toBe('superleader: can message the leaders of all sessions')
+      await user.unhover(leader)
+      await user.hover(managed)
+      await waitFor(() => expect(description(managed)).toBeTruthy())
+      expect(description(managed)).toBe(
         'The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them',
       )
+      expect(leader.tabIndex).toBe(0)
+      expect(managed.tabIndex).toBe(0)
     })
   })
 
