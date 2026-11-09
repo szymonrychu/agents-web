@@ -131,7 +131,7 @@ export function TasksPage() {
       </Table>
       {!loading && items.length === 0 && !error && <Typography color="text.secondary">No tasks</Typography>}
       {next !== null && <Box><Button onClick={() => void loadMore()}>Load more</Button></Box>}
-      <CreateTaskDialog open={creating} onClose={() => setCreating(false)} onCreated={(t) => { setCreating(false); navigate(taskPath(t.key)) }} />
+      {creating && <CreateTaskDialog open onClose={() => setCreating(false)} onCreated={(t) => { setCreating(false); navigate(taskPath(t.key)) }} />}
     </Box>
   )
 }

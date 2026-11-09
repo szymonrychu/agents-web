@@ -113,4 +113,16 @@ describe('tasks list', () => {
     ctx.project = null
     await waitFor(() => expect(loc()).toBe('/tasks/T-7'))
   })
+
+  test('create dialog defaults to the project selected when it opens', async () => {
+    ctx.projects = [{ slug: 'infra', name: 'Infra' }, { slug: 'ops', name: 'Ops' }]
+    ctx.project = 'infra'
+    mountTasks('/tasks')
+    await screen.findByText('First task')
+    ctx.project = 'ops'
+    await userEvent.click(screen.getByRole('button', { name: 'New' }))
+    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Project' }).textContent).toBe('Ops')
+    ctx.project = null
+    ctx.projects = []
+  })
 })
