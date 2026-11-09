@@ -42,7 +42,7 @@ describe('ProjectsPage', () => {
     mount()
     await user.click(await screen.findByRole('button', { name: 'New project' }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText('Slug'), 'Bad Slug')
+    await user.type(within(dialog).getByLabelText('Slug'), '-bad')
     await user.type(within(dialog).getByLabelText('Name'), 'Beta')
     expect(within(dialog).getByText(/lowercase letters, digits and dashes/)).toBeTruthy()
     expect((within(dialog).getByRole('button', { name: 'Create' }) as HTMLButtonElement).disabled).toBe(true)
@@ -50,6 +50,20 @@ describe('ProjectsPage', () => {
     await user.type(within(dialog).getByLabelText('Slug'), 'beta-1')
     await user.click(within(dialog).getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(api.createProject).toHaveBeenCalledWith({ slug: 'beta-1', name: 'Beta', description: '' }))
+  })
+
+  test('archived-only switch lists archived projects and Restore unarchives', async () => {
+    api.patchProject.mockResolvedValue(project('old'))
+    const user = userEvent.setup()
+    mount()
+    await screen.findByText('Name alpha')
+    api.listProjects.mockResolvedValue([project('old', { archived: true })])
+    await user.click(screen.getByLabelText('Archived only'))
+    await waitFor(() => expect(api.listProjects).toHaveBeenLastCalledWith(true))
+    const row = (await screen.findByText('Name old')).closest('tr')!
+    expect(screen.queryByText('Name alpha')).toBeNull()
+    await user.click(within(row).getByRole('button', { name: 'Restore' }))
+    await waitFor(() => expect(api.patchProject).toHaveBeenCalledWith('old', { archived: false }))
   })
 
   test('edit changes name and description, slug is fixed', async () => {

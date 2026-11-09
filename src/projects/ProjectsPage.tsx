@@ -23,7 +23,9 @@ import { createProject, listProjects, patchProject, projectsSummary } from './ap
 import type { Project, ProjectSummary } from './api'
 
 const POLL_MS = 15_000
-export const SLUG_PATTERN = /^[a-z0-9-]{1,40}$/
+const NAME_MAX = 80
+const DESCRIPTION_MAX = 4000
+export const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/
 
 type Editing = { mode: 'create' } | { mode: 'edit'; project: Project }
 
@@ -35,7 +37,9 @@ function ProjectDialog({ editing, onClose, onSaved }: { editing: Editing; onClos
   const [error, setError] = useState<Error | null>(null)
   const [busy, setBusy] = useState(false)
   const slugBad = project === null && slug !== '' && !SLUG_PATTERN.test(slug)
-  const valid = name.trim() !== '' && (project !== null || SLUG_PATTERN.test(slug))
+  const nameBad = name.length > NAME_MAX
+  const descriptionBad = description.length > DESCRIPTION_MAX
+  const valid = name.trim() !== '' && !nameBad && !descriptionBad && (project !== null || SLUG_PATTERN.test(slug))
 
   const save = async () => {
     setBusy(true)
@@ -61,11 +65,11 @@ function ProjectDialog({ editing, onClose, onSaved }: { editing: Editing; onClos
           value={slug}
           disabled={project !== null}
           error={slugBad}
-          helperText={slugBad ? 'Use 1 to 40 lowercase letters, digits and dashes.' : 'Cannot be changed later.'}
+          helperText={slugBad ? 'Use 1 to 40 lowercase letters, digits and dashes, starting with a letter or digit.' : 'Cannot be changed later.'}
           onChange={(e) => setSlug(e.target.value)}
         />
-        <TextField size="small" label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <TextField size="small" label="Description" value={description} multiline minRows={2} onChange={(e) => setDescription(e.target.value)} />
+        <TextField size="small" label="Name" value={name} error={nameBad} helperText={`1 to ${NAME_MAX} characters.`} onChange={(e) => setName(e.target.value)} />
+        <TextField size="small" label="Description" value={description} error={descriptionBad} helperText={`Up to ${DESCRIPTION_MAX} characters.`} multiline minRows={2} onChange={(e) => setDescription(e.target.value)} />
         <FormError error={error} />
       </DialogContent>
       <DialogActions>
@@ -107,7 +111,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Button onClick={onBack}>Back</Button>
         <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Projects</Typography>
-        <FormControlLabel control={<Switch checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />} label="Show archived" />
+        <FormControlLabel control={<Switch checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />} label="Archived only" />
         <Button variant="contained" onClick={() => setEditing({ mode: 'create' })}>New project</Button>
       </Box>
       <FormError error={actionError} />
