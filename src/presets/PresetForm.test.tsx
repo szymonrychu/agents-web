@@ -61,7 +61,7 @@ const pick = async (label: string, option: string) => {
 }
 
 
-const plain = (value: string) => ({ value, protected: false, expand: false })
+const plain = (value: string) => ({ value, expand: false })
 
 const noop = { onClose: vi.fn(), onSaved: vi.fn() }
 const optionTexts = () => screen.getAllByRole('option').map((o) => o.textContent)

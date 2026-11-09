@@ -20,15 +20,6 @@ const ValueDiff = lazy(() => import('./ValueDiff'))
 
 export type Choice = 'approve' | 'rework' | 'deny'
 
-/**
- * A secret item's `before` is the redacted base declaration, which also carries `set` and `version`;
- * the proposed one never does, so those keys are dropped for display instead of reading as removed.
- */
-function displayBefore(item: ProposalItemView): unknown {
-  if (item.secret === null || typeof item.before !== 'object' || item.before === null || Array.isArray(item.before)) return item.before
-  return Object.fromEntries(Object.entries(item.before).filter(([k]) => k !== 'set' && k !== 'version'))
-}
-
 const NO_ENTRIES: ReadonlyMap<string, EntryView> = new Map()
 
 /** A vault reference reads as `vault <entry name> / <ENV>` (refText already supplies `vault <8 chars>` for unknown entries); any other value is unchanged. */
@@ -79,10 +70,9 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
   const narrow = useMediaQuery(useTheme().breakpoints.down('md'))
   const isPrompt = kind === 'schedule' && item.path === 'prompt'
   const hasRef = isVaultRef(item.before) || isVaultRef(item.after)
-  const before = refDisplay(displayBefore(item), entries)
+  const before = refDisplay(item.before, entries)
   const after = refDisplay(item.after, entries)
-  // secret items keep the diff: they only ever say set or changed
-  const stacked = narrow && item.secret === null && (isPrompt || isStructured(before) || isStructured(after))
+  const stacked = narrow && (isPrompt || isStructured(before) || isStructured(after))
   return (
     <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, ...(item.grant && { borderColor: 'warning.main', borderWidth: 2 }), display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -91,11 +81,9 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
         </Typography>
         {item.grant && <Chip size="small" color="warning" label="grant" />}
         {item.security && <Chip size="small" color="warning" variant="outlined" label="security" />}
-        {item.secret !== null && <Chip size="small" label="secret" />}
         {hasRef && <Chip size="small" label="vault" />}
         {changed && previous !== undefined && <Chip size="small" color="info" variant="outlined" label={`changed since r${previous}`} />}
       </Box>
-      {item.secret !== null && <Typography variant="body2">{item.secret === 'set' ? 'value set' : 'value changed'}</Typography>}
       {!stacked && (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
           <Typography variant="caption" color="text.secondary">

@@ -17,13 +17,12 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
-import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
 import { ProjectField } from '../projects/ProjectField'
 import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
-import { createPreset, getMeta, setPresetSecret, updatePreset } from '../api/client'
+import { createPreset, getMeta, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
 import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
@@ -31,7 +30,7 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, envValueError, humanizeSeconds, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
@@ -85,22 +84,16 @@ type PasteMerge = { errors: string[] } | { errors: null; rows: EnvRow[] | null }
 
 /**
  * Parses pasted .env text and merges its pairs into the rows: an existing key is replaced in place (first match),
- * a new key is appended, and empty rows are dropped. `rows` is null when the text holds no pairs (nothing to change).
+ * a new key is appended, and empty rows are dropped. A key whose current row is a vault reference is refused, never
+ * overwritten. `rows` is null when the text holds no pairs (nothing to change).
  */
 function mergePaste(text: string, current: EnvRow[]): PasteMerge {
   const { pairs, errors } = parseDotenv(text)
   if (errors.length > 0) return { errors: errors.map((e) => `line ${e.line}: ${e.message}`) }
   if (pairs.length === 0) return { errors: null, rows: null }
-  const rows = current.map((r) => ({ ...r }))
-  for (const pair of pairs) {
-    const existing = rows.find((r) => r.key === pair.key)
-    if (existing) {
-      existing.value = pair.value
-      if (existing.protected) existing.replacing = true
-    }
-    else rows.push(envRow(pair.key, pair.value))
-  }
-  return { errors: null, rows: rows.filter((r) => r.key !== '' || r.value !== '') }
+  const refused = pairs.filter((pair) => current.some((r) => r.key === pair.key && r.vault !== null))
+  if (refused.length > 0) return { errors: refused.map((pair) => `${pair.key} is a vault reference; remove that row first`) }
+  return { errors: null, rows: mergeEnvRows(current, pairs.map((pair) => envRow(pair.key, pair.value))) }
 }
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
@@ -232,16 +225,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     }
     setBusy(true)
     setServerError(null)
-    let secretsSaved = false
     try {
-      if (preset) {
-        // a saved preset takes a replaced protected value through the secret route, so the spec update never carries it
-        for (const r of env.filter((r) => r.protected && r.stored && r.replacing)) {
-          await setPresetSecret(preset.id, r.key, r.value)
-          secretsSaved = true
-        }
-        env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
-      }
       const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
       const body: PresetIn = {
         name: values.name,
@@ -253,7 +237,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
-      setServerError((e instanceof Error ? e.message : String(e)) + (secretsSaved ? ' (a replaced protected value was already saved)' : ''))
+      setServerError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
@@ -300,31 +284,20 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                   </Alert>
                 )}
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env) ?? (row.stored && copyOf ? 'Protected value not copied' : undefined)} disabled={row.stored} fullWidth sx={{ flex: '1 1 12rem' }} />
-                  {row.stored && !row.replacing ? (
-                    <Box sx={{ flex: '1 1 12rem', display: 'flex', alignItems: 'center', gap: 1, minHeight: 40 }}>
-                      <Typography variant="body2">{row.isSet ? `set, updated ${row.updatedAt ?? 'unknown'}` : 'unset'}</Typography>
-                      <Button size="small" aria-label={`Replace value ${i + 1}`} onClick={() => setEnv(i, { replacing: true, value: '' })}>Replace value</Button>
-                    </Box>
-                  ) : (
-                    <Box sx={{ flex: '1 1 12rem', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <TextField
-                        size="small"
-                        label={row.stored ? `New value ${i + 1}` : `Env value ${i + 1}`}
-                        type={row.protected ? 'password' : 'text'}
-                        autoComplete="off"
-                        value={row.value}
-                        onChange={(e) => setEnv(i, { value: e.target.value })}
-                        error={Boolean(envValueError(row))}
-                        helperText={envValueError(row)}
-                        fullWidth
-                      />
-                      {row.stored && <Button size="small" aria-label={`Cancel replace ${i + 1}`} onClick={() => setEnv(i, { replacing: false, value: '' })}>Cancel</Button>}
-                    </Box>
-                  )}
-                  <FormControlLabel control={<Switch size="small" checked={row.protected} disabled={row.stored} onChange={(e) => setEnv(i, { protected: e.target.checked, expand: e.target.checked ? false : row.expand })} slotProps={{ input: { 'aria-label': `Protected ${i + 1}` } }} />} label="Protected" />
-                  <FormControlLabel control={<Switch size="small" checked={row.expand} disabled={row.protected} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
-                  {!row.protected && <Button size="small" aria-label={`Mark protected ${i + 1}`} onClick={() => setEnv(i, { protected: true, expand: false })}>Mark protected</Button>}
+                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env)} fullWidth sx={{ flex: '1 1 12rem' }} />
+                  <Box sx={{ flex: '1 1 12rem', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                    <TextField
+                      size="small"
+                      label={`Env value ${i + 1}`}
+                      type="text"
+                      autoComplete="off"
+                      value={row.vault ? `vault ${row.vault.vault.slice(0, 8)} / ${row.vault.env}` : row.value}
+                      disabled={row.vault !== null}
+                      onChange={(e) => setEnv(i, { value: e.target.value })}
+                      fullWidth
+                    />
+                  </Box>
+                  <FormControlLabel control={<Switch size="small" checked={row.expand} disabled={row.vault !== null} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
                   <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
                 </Box>
               </Box>
@@ -333,6 +306,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
               <Button size="small" onClick={() => set('env', [...values.env, envRow()])}>Add env</Button>
               <Button size="small" onClick={() => setPasteText('')} disabled={pasteText !== null}>Paste .env</Button>
             </Box>
+            {errors.envSection && <FormHelperText error>{errors.envSection}</FormHelperText>}
             {pasteText !== null && (
               <Box role="group" aria-label="Paste .env" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <TextField
