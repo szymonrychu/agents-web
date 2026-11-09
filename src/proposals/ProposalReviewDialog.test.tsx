@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
-import { proposal } from './proposalFixture'
+import { item, proposal } from './proposalFixture'
 import { ProposalReviewDialog } from './ProposalReviewDialog'
 
 const api = vi.hoisted(() => ({ getProposal: vi.fn(), reviewProposal: vi.fn() }))
@@ -210,5 +210,37 @@ describe('ProposalReviewDialog', () => {
   it('a preset proposal has no schedules link', () => {
     mount()
     expect(screen.queryByRole('button', { name: 'Open schedules' })).toBeNull()
+  })
+
+  it('a session proposal from a regular leader is titled, marked, links to the session and lists the grant first', async () => {
+    const onOpenSession = vi.fn()
+    const p = proposal({
+      kind: 'session',
+      target_id: 'sess-1',
+      target_name: 'worker-1',
+      proposer_superleader: false,
+      revisions: [
+        {
+          ...proposal().revisions[1],
+          items: [item({ path: 'model', after: 'haiku' }), item({ path: 'session_messaging', before: false, after: true, grant: true, security: true })],
+        },
+      ],
+      revision: 2,
+    })
+    api.getProposal.mockResolvedValue(p)
+    render(<ProposalReviewDialog proposal={p} onClose={vi.fn()} onOpenSession={onOpenSession} />)
+    expect(screen.getByText('session worker-1')).toBeTruthy()
+    expect(screen.getByText('leader of its own session')).toBeTruthy()
+    expect(screen.queryByText(/\(superleader\)/)).toBeNull()
+    expect(screen.getAllByTestId('item-card').map((c) => c.getAttribute('data-path'))).toEqual(['session_messaging', 'model'])
+    expect(within(card('session_messaging')).getByText('grant')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Open session' }))
+    expect(onOpenSession).toHaveBeenCalledWith('sess-1')
+  })
+
+  it('a superleader proposal has no leader marker and a preset has no session link', () => {
+    mount()
+    expect(screen.queryByText('leader of its own session')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open session' })).toBeNull()
   })
 })

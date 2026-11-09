@@ -2,6 +2,7 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -25,6 +26,8 @@ export interface ProposalReviewDialogProps {
   onChanged?: (p: ProposalView) => void
   /** Opens the Schedules page; offered for schedule proposals only. */
   onOpenSchedule?: () => void
+  /** Selects the target session in the app; offered for session proposals only. */
+  onOpenSession?: (id: string) => void
 }
 
 interface Entry {
@@ -32,7 +35,7 @@ interface Entry {
   note: string
 }
 
-export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSchedule }: ProposalReviewDialogProps): JSX.Element {
+export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSchedule, onOpenSession }: ProposalReviewDialogProps): JSX.Element {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'))
   const now = useNow()
@@ -124,6 +127,12 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSched
         {view.kind === 'schedule' && onOpenSchedule && (
           <Box>
             <Button size="small" onClick={onOpenSchedule}>Open schedules</Button>
+          </Box>
+        )}
+        {view.kind === 'session' && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {!view.proposer_superleader && <Chip size="small" color="warning" label="leader of its own session" />}
+            {onOpenSession && <Button size="small" onClick={() => onOpenSession(view.target_id)}>Open session</Button>}
           </Box>
         )}
         {current && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{current.reason}</Typography>}
