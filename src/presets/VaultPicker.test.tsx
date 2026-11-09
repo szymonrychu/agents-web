@@ -27,6 +27,13 @@ const btn = (name: string) => screen.getByRole('button', { name }) as HTMLButton
 afterEach(cleanup)
 
 describe('VaultPicker', () => {
+  test('test_loading_state', () => {
+    open({ entries: [], status: 'loading' })
+    expect(screen.getByText('Loading vault entries...')).toBeTruthy()
+    expect(screen.queryByLabelText('Search entries')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Entry / })).toBeNull()
+  })
+
   test('test_lists_entries_with_values', async () => {
     open()
     expect(screen.getByText('GitHub')).toBeTruthy()

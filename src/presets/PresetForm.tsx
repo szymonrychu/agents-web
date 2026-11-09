@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -18,6 +19,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import { parseDotenv } from '../sessions/dotenv'
 import { ProjectField } from '../projects/ProjectField'
 import { useProject } from '../projects/ProjectContext'
@@ -34,8 +36,6 @@ import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRo
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
-import Chip from '@mui/material/Chip'
-import Typography from '@mui/material/Typography'
 import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
 import { useVaultEntries } from '../vault/useVaultEntries'
 import { VaultPicker } from './VaultPicker'
@@ -243,10 +243,17 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       multiline={extra.multiline}
     />
   )
-  const setEnv = (index: number, patch: Partial<EnvRow>) => {
+  const clearRowError = (index: number) => {
     const old = values.env[index]
     if (old && rowErrors[old.key] !== undefined) setRowErrors((errs) => Object.fromEntries(Object.entries(errs).filter(([k]) => k !== old.key)))
+  }
+  const setEnv = (index: number, patch: Partial<EnvRow>) => {
+    clearRowError(index)
     set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+  const removeEnv = (index: number) => {
+    clearRowError(index)
+    set('env', values.env.filter((_, j) => j !== index))
   }
   const targetLabels = effectiveLabels(labels, project)
   // edit mode only: names the preset lost its vault references for, minus the keys the rows now hold
@@ -371,7 +378,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                       <FormControlLabel control={<Switch size="small" checked={row.expand} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
                     </>
                   )}
-                  <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
+                  <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => removeEnv(i)}>x</IconButton>
                 </Box>
               </Box>
             ))}
