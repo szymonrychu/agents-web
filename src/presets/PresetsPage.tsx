@@ -7,6 +7,7 @@ import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemText from '@mui/material/ListItemText'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { deletePreset, listPresets } from '../api/client'
 import type { PresetView } from '../api/client'
@@ -22,6 +23,10 @@ export interface PresetsPageProps {
 
 /** The open editor: a new preset, an edit of one, or a copy of one. */
 type Editor = { mode: 'new' } | { mode: 'edit'; preset: PresetView } | { mode: 'copy'; preset: PresetView }
+
+// The helper texts of the matching switches in PresetForm
+const SUPERLEADER_HELP = 'superleader: can message the leaders of all sessions'
+const SUPERLEADER_MANAGEABLE_HELP = 'The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them'
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -74,21 +79,30 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
       {error && <Alert severity="error" variant="outlined">{error}</Alert>}
       <List disablePadding>
         {presets.map((p) => (
-          <ListItem
-            key={p.id}
-            divider
-            secondaryAction={
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button size="small" aria-label={`Edit ${p.name}`} onClick={() => setEditor({ mode: 'edit', preset: p })}>Edit</Button>
-                <Button size="small" aria-label={`Copy ${p.name}`} onClick={() => setEditor({ mode: 'copy', preset: p })}>Copy</Button>
-                {!p.is_default && <Button size="small" color="error" aria-label={`Delete ${p.name}`} onClick={() => setDeleting(p)}>Delete</Button>}
+          <ListItem key={p.id} divider sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, rowGap: 0.5 }}>
+            <Box sx={{ flex: '1 1 16rem', minWidth: 0 }}>
+              <ListItemText primary={p.name} secondary={p.labels?.length ? <LabelChips labels={p.labels} /> : undefined} slotProps={{ secondary: { component: 'div' } }} sx={{ overflowWrap: 'anywhere' }} />
+              {/* One wrapping container for every badge: add further chips here, no layout change needed */}
+              <Box data-testid="preset-chips" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <Chip size="small" variant="outlined" label={p.project} />
+                {p.is_default && <Chip size="small" label="Default" />}
+                {p.spec.session_messaging === true && (
+                  <Tooltip describeChild title={SUPERLEADER_HELP}>
+                    <Chip size="small" tabIndex={0} label="Superleader" />
+                  </Tooltip>
+                )}
+                {p.superleader_manageable && (
+                  <Tooltip describeChild title={SUPERLEADER_MANAGEABLE_HELP}>
+                    <Chip size="small" tabIndex={0} label="Superleader-managed" />
+                  </Tooltip>
+                )}
               </Box>
-            }
-          >
-            <ListItemText primary={p.name} secondary={p.labels?.length ? <LabelChips labels={p.labels} /> : undefined} slotProps={{ secondary: { component: 'div' } }} />
-            <Chip size="small" variant="outlined" label={p.project} sx={{ ml: 1 }} />
-            {p.is_default && <Chip size="small" label="Default" sx={{ ml: 1 }} />}
-            {p.superleader_manageable && <Chip size="small" label="Superleader" sx={{ ml: 1 }} />}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+              <Button size="small" aria-label={`Edit ${p.name}`} onClick={() => setEditor({ mode: 'edit', preset: p })}>Edit</Button>
+              <Button size="small" aria-label={`Copy ${p.name}`} onClick={() => setEditor({ mode: 'copy', preset: p })}>Copy</Button>
+              {!p.is_default && <Button size="small" color="error" aria-label={`Delete ${p.name}`} onClick={() => setDeleting(p)}>Delete</Button>}
+            </Box>
           </ListItem>
         ))}
       </List>
