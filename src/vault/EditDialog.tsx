@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -28,8 +28,16 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
   const [error, setError] = useState<unknown>()
   const [busy, setBusy] = useState(false)
   const [attached, setAttached] = useState<DeleteAttachment[]>()
+  const refused = useRef<EntryPatch | undefined>(undefined)
 
-  const submit = async (force = false) => {
+  /** Any field change drops the 409 state: the changed edit must go through a normal save first. */
+  const edit = <T,>(set: (v: T) => void) => (v: T) => {
+    refused.current = undefined
+    setAttached(undefined)
+    set(v)
+  }
+
+  const buildPatch = (): EntryPatch => {
     const patch: EntryPatch = {}
     if (name.trim() !== entry.name) patch.name = name.trim()
     if (description !== entry.description) patch.description = description
@@ -37,6 +45,12 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
     if (nextLabels.join('\n') !== entry.labels.join('\n')) patch.labels = nextLabels
     const changed = readable.filter((e) => values[e.env] !== (e.value ?? ''))
     if (changed.length > 0) patch.envs = Object.fromEntries(changed.map((e) => [e.env, values[e.env]]))
+    return patch
+  }
+
+  const submit = async () => {
+    const force = refused.current !== undefined
+    const patch = refused.current ?? buildPatch()
     if (Object.keys(patch).length === 0) return onClose()
     setBusy(true)
     setError(undefined)
@@ -45,7 +59,10 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
       await (force ? patchEntry(entry.id, patch, true) : patchEntry(entry.id, patch))
       onSaved()
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'vault_entry_attached') setAttached(errorAttachments(e))
+      if (e instanceof ApiError && e.code === 'vault_entry_attached') {
+        refused.current = patch
+        setAttached(errorAttachments(e))
+      }
       else setError(e)
       setBusy(false)
     }
@@ -55,11 +72,11 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Edit {entry.name}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-        <TextField size="small" label="Name" value={name} onChange={(e) => setName(e.target.value)} sx={{ mt: 1 }} />
-        <TextField size="small" label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <TextField size="small" label="Labels" helperText="Comma separated" value={labels} onChange={(e) => setLabels(e.target.value)} />
+        <TextField size="small" label="Name" value={name} onChange={(e) => edit(setName)(e.target.value)} sx={{ mt: 1 }} />
+        <TextField size="small" label="Description" value={description} onChange={(e) => edit(setDescription)(e.target.value)} />
+        <TextField size="small" label="Labels" helperText="Comma separated" value={labels} onChange={(e) => edit(setLabels)(e.target.value)} />
         {readable.map((e) => (
-          <TextField key={e.env} size="small" label={e.env} value={values[e.env]} onChange={(ev) => setValues((o) => ({ ...o, [e.env]: ev.target.value }))} />
+          <TextField key={e.env} size="small" label={e.env} value={values[e.env]} onChange={(ev) => { edit(setValues)({ ...values, [e.env]: ev.target.value }) }} />
         ))}
         {entry.envs.some((e) => e.protected) && (
           <Typography variant="body2" color="text.secondary">Protected envs are changed with Rotate.</Typography>
@@ -88,7 +105,7 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit(attached !== undefined)}>
+        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit()}>
           {attached ? 'Save anyway' : 'Save'}
         </Button>
       </DialogActions>
