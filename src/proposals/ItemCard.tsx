@@ -72,7 +72,7 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
   // secret items keep the diff: they only ever say set or changed
   const stacked = narrow && item.secret === null && (isPrompt || isStructured(before) || isStructured(item.after))
   return (
-    <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, ...(item.grant && { borderColor: 'warning.main', borderWidth: 2 }), display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography component="span" sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
           {item.path}
