@@ -157,7 +157,7 @@ describe('ItemCard', () => {
 
     it('test_ref_item_unknown_entry_short_id', async () => {
       render(<ItemCard {...base} item={item({ path: 'env.G', before: { vault: '0123456789abcdef', env: 'T' }, after: { vault: 'ffffffffeeee', env: 'T' } })} />)
-      expect((await screen.findByTestId('diff')).textContent).toBe('"vault vault 01234567 / T"=>"vault vault ffffffff / T"')
+      expect((await screen.findByTestId('diff')).textContent).toBe('"vault 01234567 / T"=>"vault ffffffff / T"')
       expect(screen.getByText('vault')).toBeTruthy()
     })
 
