@@ -10,9 +10,11 @@ export interface ProjectState {
   project: string | null
   setProject: (project: string | null) => void
   projects: Project[]
+  /** Reload the project list (after create, archive or restore). */
+  refreshProjects: () => void
 }
 
-const ProjectContext = createContext<ProjectState>({ project: null, setProject: () => {}, projects: [] })
+const ProjectContext = createContext<ProjectState>({ project: null, setProject: () => {}, projects: [], refreshProjects: () => {} })
 
 export const useProject = () => useContext(ProjectContext)
 
@@ -22,6 +24,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [params, setParams] = useSearchParams()
   const [stored, setStored] = useState<string | null>(() => loadJson<string | null>('project', null, isSlug))
   const [projects, setProjects] = useState<Project[]>([])
+  const [tick, setTick] = useState(0)
+  const refreshProjects = useCallback(() => setTick((n) => n + 1), [])
   useEffect(() => {
     let live = true
     listProjects().then(
@@ -29,7 +33,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       () => { if (live) setProjects([]) },
     )
     return () => { live = false }
-  }, [])
+  }, [tick])
   const fromUrl = params.get('project') || null
   const setProject = useCallback((next: string | null) => {
     setStored(next)
@@ -41,6 +45,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       return copy
     }, { replace: true })
   }, [setParams])
-  const value = useMemo(() => ({ project: fromUrl ?? stored, setProject, projects }), [fromUrl, stored, setProject, projects])
+  const value = useMemo(() => ({ project: fromUrl ?? stored, setProject, projects, refreshProjects }), [fromUrl, stored, setProject, projects, refreshProjects])
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
 }

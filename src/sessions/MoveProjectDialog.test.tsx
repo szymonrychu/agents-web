@@ -38,7 +38,7 @@ describe('MoveProjectDialog', () => {
   })
 
   test('shows the 409 refusal', async () => {
-    api.moveSessionProject.mockRejectedValue(new ApiError(409, 'conflict', 'session is closing'))
+    api.moveSessionProject.mockRejectedValue(new ApiError(409, 'session_deleting', 'session is closing'))
     const onMoved = vi.fn()
     mount(onMoved)
     await pick('Infra')

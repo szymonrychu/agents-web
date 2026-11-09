@@ -10,7 +10,7 @@ export type ProjectPatch = S['ProjectPatch']
 
 const id = encodeURIComponent
 
-/** Active projects by default; `archived` true also lists the archived ones. */
+/** Active projects by default; `archived=true` lists ONLY the archived ones. */
 export const listProjects = (archived?: boolean) => request<Project[]>('GET', `/projects${query({ archived: archived === undefined ? undefined : String(archived) })}`)
 export const getProject = (slug: string) => request<Project>('GET', `/projects/${id(slug)}`)
 export const createProject = (body: ProjectIn) => request<Project>('POST', '/projects', body)

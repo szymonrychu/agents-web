@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
+import { useProject } from './ProjectContext'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
 
@@ -82,6 +83,7 @@ function ProjectDialog({ editing, onClose, onSaved }: { editing: Editing; onClos
 
 export function ProjectsPage({ onBack }: { onBack: () => void }) {
   const [showArchived, setShowArchived] = useState(false)
+  const { refreshProjects } = useProject()
   const { data, error, refresh } = usePoll(() => listProjects(showArchived), POLL_MS, [showArchived])
   const board = usePoll(() => projectsSummary().catch((): ProjectSummary[] => []), POLL_MS, [])
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -98,6 +100,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
     } catch (e) {
       setActionError(e instanceof Error ? e : new Error(String(e)))
     }
+    refreshProjects()
     await refresh().catch(() => {})
   }
   const confirmArchive = () => {
@@ -161,6 +164,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
+            refreshProjects()
             void refresh().catch(() => {})
           }}
         />

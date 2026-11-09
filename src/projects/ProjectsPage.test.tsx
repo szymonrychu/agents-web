@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { Project } from './api'
+import { MemoryRouter } from 'react-router'
+import { ProjectProvider, useProject } from './ProjectContext'
 import { ProjectsPage } from './ProjectsPage'
 
 const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn() }))
@@ -14,7 +16,10 @@ vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), .
 const project = (slug: string, over: Partial<Project> = {}): Project => ({
   slug, name: `Name ${slug}`, description: `About ${slug}`, archived: false, created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-01T10:00:00Z', presets: 3, sessions: 5, ...over,
 })
-const mount = () => render(<ThemeProvider theme={theme}><ProjectsPage onBack={() => {}} /></ThemeProvider>)
+function Selector() {
+  return <div data-testid="selector">{useProject().projects.map((p) => p.slug).join(',')}</div>
+}
+const mount = () => render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><Selector /><ProjectsPage onBack={() => {}} /></ThemeProvider></ProjectProvider></MemoryRouter>)
 
 beforeEach(() => {
   for (const f of Object.values(api)) f.mockReset()
@@ -50,6 +55,20 @@ describe('ProjectsPage', () => {
     await user.type(within(dialog).getByLabelText('Slug'), 'beta-1')
     await user.click(within(dialog).getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(api.createProject).toHaveBeenCalledWith({ slug: 'beta-1', name: 'Beta', description: '' }))
+  })
+
+  test('creating a project refreshes the shared project list', async () => {
+    api.createProject.mockResolvedValue(project('beta'))
+    const user = userEvent.setup()
+    mount()
+    await waitFor(() => expect(screen.getByTestId('selector').textContent).toBe('default,alpha'))
+    api.listProjects.mockResolvedValue([project('default'), project('alpha'), project('beta')])
+    await user.click(await screen.findByRole('button', { name: 'New project' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Slug'), 'beta')
+    await user.type(within(dialog).getByLabelText('Name'), 'Beta')
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(screen.getByTestId('selector').textContent).toBe('default,alpha,beta'))
   })
 
   test('archived-only switch lists archived projects and Restore unarchives', async () => {
