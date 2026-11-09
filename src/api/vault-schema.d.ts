@@ -253,7 +253,10 @@ export interface components {
         };
         /** EventView */
         EventView: {
-            /** Actor */
+            /**
+             * Actor
+             * @description who acted: user:<email> (SSO identity), user, orchestrator or sweeper
+             */
             actor: string;
             /** Data */
             data: {
@@ -396,7 +399,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached) */
+            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached; a patch that changes or drops a project: label needs force=true) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -519,7 +522,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached) */
+            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached; a patch that changes or drops a project: label needs force=true) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -537,7 +540,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description attachments cannot be checked, nothing was deleted (orchestrator_unavailable) */
+            /** @description attachments cannot be checked, nothing was changed (orchestrator_unavailable) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -550,7 +553,9 @@ export interface operations {
     };
     patch_entry_vault_v1_entries__entry_id__patch: {
         parameters: {
-            query?: never;
+            query?: {
+                force?: boolean;
+            };
             header?: never;
             path: {
                 entry_id: string;
@@ -590,7 +595,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached) */
+            /** @description name taken, case-insensitively (vault_name_taken) or entry still attached to presets (vault_entry_attached; a patch that changes or drops a project: label needs force=true) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -601,6 +606,15 @@ export interface operations {
             };
             /** @description invalid request (invalid_request), rotate values not exactly the protected envs (vault_envs_mismatch), rotate of an entry without a protected env (vault_nothing_to_rotate), edit of a protected env (vault_env_protected) or of an unknown env (vault_env_unknown) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attachments cannot be checked, nothing was changed (orchestrator_unavailable) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

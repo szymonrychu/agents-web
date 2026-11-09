@@ -6,9 +6,10 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { ApiError } from '../api/client'
 import { FormError } from '../triggers'
-import { patchEntry } from './api'
-import type { EntryPatch, EntryView } from './api'
+import { errorAttachments, isOrchestratorUnavailable, patchEntry } from './api'
+import type { DeleteAttachment, EntryPatch, EntryView } from './api'
 import { parseLabels } from './validate'
 
 export interface EditDialogProps {
@@ -26,8 +27,9 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(readable.map((e) => [e.env, e.value ?? ''])))
   const [error, setError] = useState<unknown>()
   const [busy, setBusy] = useState(false)
+  const [attached, setAttached] = useState<DeleteAttachment[]>()
 
-  const submit = async () => {
+  const submit = async (force = false) => {
     const patch: EntryPatch = {}
     if (name.trim() !== entry.name) patch.name = name.trim()
     if (description !== entry.description) patch.description = description
@@ -38,11 +40,13 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
     if (Object.keys(patch).length === 0) return onClose()
     setBusy(true)
     setError(undefined)
+    setAttached(undefined)
     try {
-      await patchEntry(entry.id, patch)
+      await (force ? patchEntry(entry.id, patch, true) : patchEntry(entry.id, patch))
       onSaved()
     } catch (e) {
-      setError(e)
+      if (e instanceof ApiError && e.code === 'vault_entry_attached') setAttached(errorAttachments(e))
+      else setError(e)
       setBusy(false)
     }
   }
@@ -60,11 +64,33 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
         {entry.envs.some((e) => e.protected) && (
           <Typography variant="body2" color="text.secondary">Protected envs are changed with Rotate.</Typography>
         )}
-        <FormError error={error instanceof Error ? error : undefined} />
+        {isOrchestratorUnavailable(error) ? (
+          <Typography role="alert" color="error">
+            The orchestrator is unavailable, so the presets using this entry could not be checked. Nothing was changed. Try again in a moment.
+          </Typography>
+        ) : (
+          <FormError error={error instanceof Error ? error : undefined} />
+        )}
+        {attached && (
+          <>
+            <Typography role="alert" color="warning.main">
+              This label change affects presets that use this entry. Save anyway to apply it.
+            </Typography>
+            {attached.length > 0 && (
+              <ul aria-label="Attachments" style={{ margin: 0 }}>
+                {attached.map((a) => (
+                  <li key={`${a.preset_id}/${a.env}`}>{a.preset_name}: {a.env} from {a.entry_env}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit()}>Save</Button>
+        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit(attached !== undefined)}>
+          {attached ? 'Save anyway' : 'Save'}
+        </Button>
       </DialogActions>
     </Dialog>
   )

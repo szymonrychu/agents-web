@@ -28,6 +28,9 @@ const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(ba
 export const errorAttachments = (e: unknown): DeleteAttachment[] =>
   e instanceof ApiError && Array.isArray(e.details.attachments) ? (e.details.attachments as DeleteAttachment[]) : [];
 
+/** True for the 503 `orchestrator_unavailable` answer: attachments could not be checked and nothing changed. */
+export const isOrchestratorUnavailable = (e: unknown) => e instanceof ApiError && e.status === 503 && e.code === 'orchestrator_unavailable';
+
 const id = encodeURIComponent;
 
 /** True when the runtime config lists a `vault` backend. */
@@ -37,7 +40,9 @@ export const listEntries = (q?: { q?: string; label?: string }) =>
   req<EntryView[]>('GET', `/entries${query({ q: q?.q || undefined, label: q?.label || undefined })}`);
 export const getEntry = (entryId: string) => req<EntryDetail>('GET', `/entries/${id(entryId)}`);
 export const createEntry = (entry: EntryIn) => req<EntryView>('POST', '/entries', entry);
-export const patchEntry = (entryId: string, patch: EntryPatch) => req<EntryDetail>('PATCH', `/entries/${id(entryId)}`, patch);
+/** `force` confirms a label change that touches a `project:` label of an attached entry. */
+export const patchEntry = (entryId: string, patch: EntryPatch, force = false) =>
+  req<EntryDetail>('PATCH', `/entries/${id(entryId)}${force ? query({ force: 'true' }) : ''}`, patch);
 /** Rotates every protected env at once: `values` holds exactly the protected env names. */
 export const rotateEntry = (entryId: string, values: Record<string, string>) => req<EntryView>('PUT', `/entries/${id(entryId)}/value`, { values });
 export const deleteEntry = (entryId: string) => req<void>('DELETE', `/entries/${id(entryId)}`);

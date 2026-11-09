@@ -43,6 +43,10 @@ describe('vault api routes', () => {
     await expect(deleteEntry('i')).resolves.toBeUndefined();
     expect(call()).toMatchObject({ url: `${BASE}/entries/i`, method: 'DELETE' });
   });
+  it('patches with force only when confirmed', async () => {
+    await patchEntry('i', { labels: ['project:x'] }, true);
+    expect(call()).toMatchObject({ url: `${BASE}/entries/i?force=true`, method: 'PATCH' });
+  });
   it('lists pins and events filtered by entry', async () => {
     await listPins('i');
     expect(call().url).toBe(`${BASE}/entries/i/pins`);
