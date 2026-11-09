@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -6,9 +6,10 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { ApiError } from '../api/client'
 import { FormError } from '../triggers'
-import { patchEntry } from './api'
-import type { EntryPatch, EntryView } from './api'
+import { errorAttachments, isOrchestratorUnavailable, patchEntry } from './api'
+import type { DeleteAttachment, EntryPatch, EntryView } from './api'
 import { parseLabels } from './validate'
 
 export interface EditDialogProps {
@@ -26,8 +27,17 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(readable.map((e) => [e.env, e.value ?? ''])))
   const [error, setError] = useState<unknown>()
   const [busy, setBusy] = useState(false)
+  const [attached, setAttached] = useState<DeleteAttachment[]>()
+  const refused = useRef<EntryPatch | undefined>(undefined)
 
-  const submit = async () => {
+  /** Any field change drops the 409 state: the changed edit must go through a normal save first. */
+  const edit = <T,>(set: (v: T) => void) => (v: T) => {
+    refused.current = undefined
+    setAttached(undefined)
+    set(v)
+  }
+
+  const buildPatch = (): EntryPatch => {
     const patch: EntryPatch = {}
     if (name.trim() !== entry.name) patch.name = name.trim()
     if (description !== entry.description) patch.description = description
@@ -35,14 +45,25 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
     if (nextLabels.join('\n') !== entry.labels.join('\n')) patch.labels = nextLabels
     const changed = readable.filter((e) => values[e.env] !== (e.value ?? ''))
     if (changed.length > 0) patch.envs = Object.fromEntries(changed.map((e) => [e.env, values[e.env]]))
+    return patch
+  }
+
+  const submit = async () => {
+    const force = refused.current !== undefined
+    const patch = refused.current ?? buildPatch()
     if (Object.keys(patch).length === 0) return onClose()
     setBusy(true)
     setError(undefined)
+    setAttached(undefined)
     try {
-      await patchEntry(entry.id, patch)
+      await (force ? patchEntry(entry.id, patch, true) : patchEntry(entry.id, patch))
       onSaved()
     } catch (e) {
-      setError(e)
+      if (e instanceof ApiError && e.code === 'vault_entry_attached') {
+        refused.current = patch
+        setAttached(errorAttachments(e))
+      }
+      else setError(e)
       setBusy(false)
     }
   }
@@ -51,20 +72,42 @@ export function EditDialog({ entry, onClose, onSaved }: EditDialogProps) {
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Edit {entry.name}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-        <TextField size="small" label="Name" value={name} onChange={(e) => setName(e.target.value)} sx={{ mt: 1 }} />
-        <TextField size="small" label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <TextField size="small" label="Labels" helperText="Comma separated" value={labels} onChange={(e) => setLabels(e.target.value)} />
+        <TextField size="small" label="Name" value={name} onChange={(e) => edit(setName)(e.target.value)} sx={{ mt: 1 }} />
+        <TextField size="small" label="Description" value={description} onChange={(e) => edit(setDescription)(e.target.value)} />
+        <TextField size="small" label="Labels" helperText="Comma separated" value={labels} onChange={(e) => edit(setLabels)(e.target.value)} />
         {readable.map((e) => (
-          <TextField key={e.env} size="small" label={e.env} value={values[e.env]} onChange={(ev) => setValues((o) => ({ ...o, [e.env]: ev.target.value }))} />
+          <TextField key={e.env} size="small" label={e.env} value={values[e.env]} onChange={(ev) => { edit(setValues)({ ...values, [e.env]: ev.target.value }) }} />
         ))}
         {entry.envs.some((e) => e.protected) && (
           <Typography variant="body2" color="text.secondary">Protected envs are changed with Rotate.</Typography>
         )}
-        <FormError error={error instanceof Error ? error : undefined} />
+        {isOrchestratorUnavailable(error) ? (
+          <Typography role="alert" color="error">
+            The orchestrator is unavailable, so the presets using this entry could not be checked. Nothing was changed. Try again in a moment.
+          </Typography>
+        ) : (
+          <FormError error={error instanceof Error ? error : undefined} />
+        )}
+        {attached && (
+          <>
+            <Typography role="alert" color="warning.main">
+              This label change affects presets that use this entry. Save anyway to apply it.
+            </Typography>
+            {attached.length > 0 && (
+              <ul aria-label="Attachments" style={{ margin: 0 }}>
+                {attached.map((a) => (
+                  <li key={`${a.preset_id}/${a.env}`}>{a.preset_name}: {a.env} from {a.entry_env}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit()}>Save</Button>
+        <Button variant="contained" disabled={busy || name.trim() === ''} onClick={() => void submit()}>
+          {attached ? 'Save anyway' : 'Save'}
+        </Button>
       </DialogActions>
     </Dialog>
   )
