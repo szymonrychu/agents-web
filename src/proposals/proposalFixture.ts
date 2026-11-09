@@ -7,7 +7,6 @@ export const item = (o: Partial<ProposalItemView> = {}): ProposalItemView => ({
   decision: 'pending',
   grant: false,
   security: false,
-  secret: null,
   note: null,
   ...o,
 })
@@ -22,10 +21,10 @@ export const revision = (n: number, items: ProposalItemView[], o: Partial<Propos
   ...o,
 })
 
+const envItem = item({ path: 'env.API_KEY', before: null, after: { value: 'on', expand: false }, security: true })
 const grantItem = item({ path: 'kube_access', before: false, after: true, grant: true, security: true })
-const secretItem = item({ path: 'env.API_KEY', before: null, after: { name: 'API_KEY' }, security: true, secret: 'set' })
 
-/** Two revisions: r1 proposed model sonnet, r2 changed it to haiku; grant and secret items are unchanged. */
+/** Two revisions: r1 proposed model sonnet, r2 changed it to haiku; grant and env items are unchanged. */
 export const proposal = (o: Partial<ProposalView> = {}): ProposalView => ({
   id: 7,
   kind: 'preset',
@@ -41,8 +40,8 @@ export const proposal = (o: Partial<ProposalView> = {}): ProposalView => ({
   expires_at: '2026-11-09T10:00:00Z',
   closed_at: null,
   revisions: [
-    revision(1, [item(), grantItem, secretItem], { outcome: 'rework' }),
-    revision(2, [item({ after: 'haiku' }), grantItem, secretItem]),
+    revision(1, [item(), grantItem, envItem], { outcome: 'rework' }),
+    revision(2, [item({ after: 'haiku' }), grantItem, envItem]),
   ],
   ...o,
 })

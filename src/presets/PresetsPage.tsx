@@ -85,6 +85,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
               {/* One wrapping container for every badge: add further chips here, no layout change needed */}
               <Box data-testid="preset-chips" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 <Chip size="small" variant="outlined" label={p.project} />
+                {(p.vault_reattach?.length ?? 0) > 0 && <Chip size="small" color="warning" variant="outlined" label={`${p.vault_reattach?.length} to re-attach`} />}
                 {p.is_default && <Chip size="small" label="Default" />}
                 {p.spec.session_messaging === true && (
                   <Tooltip describeChild title={SUPERLEADER_HELP}>

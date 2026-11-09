@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Meta, SessionSpec } from '../api/client'
-import { humanizeSeconds, kubeNamespaceAccessErrors, stateFromPreset, toPresetSpec, validate } from './sessionSpecForm'
+import { envRow, humanizeSeconds, kubeNamespaceAccessErrors, mergeEnvRows, stateFromPreset, toPresetSpec, validate, vaultRow } from './sessionSpecForm'
 
 describe('start_prompt', () => {
   test('a stored start prompt loads and round-trips', () => {
@@ -212,5 +212,32 @@ describe('kube_namespace_access', () => {
     const st = stateFromPreset(null, 'p', {})
     const e = validate({ ...st.values, name: 'ok', kubeNamespaceAccess: [{ namespace: 'media', tiers: [] }] }, null)
     expect(e.kubeNamespaceAccess).toEqual(['Pick at least one tier'])
+  })
+})
+
+describe('env rows', () => {
+  test('test_ref_round_trips_exactly', () => {
+    const spec = { env: { A: { value: 'x', expand: true }, G: { vault: 'u-1', env: 'GITHUB_TOKEN' } } } as unknown as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    const out = toPresetSpec(values, setKeys)
+    expect(out).toEqual(spec)
+    expect(JSON.stringify(out)).not.toContain('protected')
+  })
+
+  test('test_merge_env_rows', () => {
+    const r2 = { vault: 'u-2', env: 'T' }
+    const current = [envRow('A', 'x'), vaultRow('G', { vault: 'u-1', env: 'T' })]
+    expect(mergeEnvRows(current, [vaultRow('A', r2), vaultRow('B', r2)])).toEqual([vaultRow('A', r2), current[1], vaultRow('B', r2)])
+  })
+
+  test('mergeEnvRows drops rows with no key, no value and no ref', () => {
+    expect(mergeEnvRows([envRow()], [envRow('K', 'v')])).toEqual([envRow('K', 'v')])
+  })
+
+  test('test_refs_cap', () => {
+    const st = stateFromPreset(null, 'p', {})
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => vaultRow(`K${i}`, { vault: 'u-1', env: 'T' }))
+    expect(validate({ ...st.values, name: 'ok', env: rows(51) }, null).envSection).toBe('At most 50 vault references')
+    expect(validate({ ...st.values, name: 'ok', env: rows(50) }, null).envSection).toBeUndefined()
   })
 })

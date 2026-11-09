@@ -7,12 +7,16 @@ import { item, proposal } from './proposalFixture'
 import { ProposalReviewDialog } from './ProposalReviewDialog'
 
 const api = vi.hoisted(() => ({ getProposal: vi.fn(), reviewProposal: vi.fn() }))
+const vault = vi.hoisted(() => ({ listEntries: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
+vi.mock('../vault/api', async (orig) => ({ ...(await orig<typeof import('../vault/api')>()), vaultEnabled: () => true, listEntries: vault.listEntries }))
 vi.mock('./ValueDiff', () => ({ default: ({ after }: { after: unknown }) => <div data-testid="diff">{JSON.stringify(after)}</div> }))
 
 beforeEach(() => {
   api.getProposal.mockReset()
   api.reviewProposal.mockReset()
+  vault.listEntries.mockReset()
+  vault.listEntries.mockResolvedValue([])
 })
 afterEach(cleanup)
 
@@ -242,5 +246,11 @@ describe('ProposalReviewDialog', () => {
     mount()
     expect(screen.queryByText('leader of its own session')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Open session' })).toBeNull()
+  })
+
+  it('test_entries_loaded_once', async () => {
+    mount()
+    expect(screen.getAllByTestId('item-card').length).toBe(3)
+    await waitFor(() => expect(vault.listEntries).toHaveBeenCalledTimes(1))
   })
 })

@@ -12,20 +12,19 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { lazy, Suspense, type JSX } from 'react'
 import type { ProposalItemView, ProposalView } from './api'
 import { isStructured, toDoc } from './diffText'
+import type { EntryView } from '../vault/api'
+import { isVaultRef, refText } from '../vault/refs'
 
 // ValueDiff pulls in CodeMirror: keep it out of the main chunk
 const ValueDiff = lazy(() => import('./ValueDiff'))
 
 export type Choice = 'approve' | 'rework' | 'deny'
 
-/**
- * A secret item's `before` is the redacted base declaration, which also carries `set` and `version`;
- * the proposed one never does, so those keys are dropped for display instead of reading as removed.
- */
-function displayBefore(item: ProposalItemView): unknown {
-  if (item.secret === null || typeof item.before !== 'object' || item.before === null || Array.isArray(item.before)) return item.before
-  return Object.fromEntries(Object.entries(item.before).filter(([k]) => k !== 'set' && k !== 'version'))
-}
+const NO_ENTRIES: ReadonlyMap<string, EntryView> = new Map()
+
+/** A vault reference reads as `vault <entry name> / <ENV>` (refText already supplies `vault <8 chars>` for unknown entries); any other value is unchanged. */
+const refDisplay = (v: unknown, entries: ReadonlyMap<string, EntryView>): unknown =>
+  isVaultRef(v) ? (entries.has(v.vault) ? `vault ${refText(v, entries)}` : refText(v, entries)) : v
 
 /** Narrow screens: the diff's text as two stacked labeled blocks (the stacked MergeView collapses to zero height there). */
 function TextStack({ before, after }: { before: string; after: string }): JSX.Element {
@@ -61,16 +60,19 @@ export interface ItemCardProps {
   /** The proposed value differs from revision `previous`. */
   changed: boolean
   previous?: number
+  /** Vault entries by id, to name the entry behind a reference. */
+  entries?: ReadonlyMap<string, EntryView>
   onChoice: (c: Choice) => void
   onNote: (n: string) => void
 }
 
-export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, previous, onChoice, onNote }: ItemCardProps): JSX.Element {
+export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, previous, entries = NO_ENTRIES, onChoice, onNote }: ItemCardProps): JSX.Element {
   const narrow = useMediaQuery(useTheme().breakpoints.down('md'))
   const isPrompt = kind === 'schedule' && item.path === 'prompt'
-  const before = displayBefore(item)
-  // secret items keep the diff: they only ever say set or changed
-  const stacked = narrow && item.secret === null && (isPrompt || isStructured(before) || isStructured(item.after))
+  const hasRef = isVaultRef(item.before) || isVaultRef(item.after)
+  const before = refDisplay(item.before, entries)
+  const after = refDisplay(item.after, entries)
+  const stacked = narrow && (isPrompt || isStructured(before) || isStructured(after))
   return (
     <Paper variant="outlined" data-testid="item-card" data-path={item.path} sx={{ p: 2, ...(item.grant && { borderColor: 'warning.main', borderWidth: 2 }), display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -79,10 +81,9 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
         </Typography>
         {item.grant && <Chip size="small" color="warning" label="grant" />}
         {item.security && <Chip size="small" color="warning" variant="outlined" label="security" />}
-        {item.secret !== null && <Chip size="small" label="secret" />}
+        {hasRef && <Chip size="small" label="vault" />}
         {changed && previous !== undefined && <Chip size="small" color="info" variant="outlined" label={`changed since r${previous}`} />}
       </Box>
-      {item.secret !== null && <Typography variant="body2">{item.secret === 'set' ? 'value set' : 'value changed'}</Typography>}
       {!stacked && (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
           <Typography variant="caption" color="text.secondary">
@@ -94,10 +95,10 @@ export function ItemCard({ item, kind, choice, note, readOnly, stale, changed, p
         </Box>
       )}
       {stacked ? (
-        <TextStack before={toDoc(before, isPrompt)} after={toDoc(item.after, isPrompt)} />
+        <TextStack before={toDoc(before, isPrompt)} after={toDoc(after, isPrompt)} />
       ) : (
         <Suspense fallback={<Skeleton variant="rectangular" height={80} />}>
-          <ValueDiff before={before} after={item.after} text={isPrompt} />
+          <ValueDiff before={before} after={after} text={isPrompt} />
         </Suspense>
       )}
       {readOnly ? (

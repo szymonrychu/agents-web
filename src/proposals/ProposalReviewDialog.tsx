@@ -16,6 +16,7 @@ import { formatAge, useNow } from '../chat/agentAge'
 import { FormError } from '../triggers'
 import { getProposal, reviewProposal, type ProposalView, type ReviewItemIn } from './api'
 import { ItemCard, type Choice } from './ItemCard'
+import { useVaultEntries } from '../vault/useVaultEntries'
 import { RevisionHistory } from './RevisionHistory'
 import { changedPaths, orderItems } from './revisions'
 
@@ -39,6 +40,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSched
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'))
   const now = useNow()
+  const { byId } = useVaultEntries()
   const [view, setView] = useState(proposal)
   // choices belong to one revision; a newer revision starts clean
   const [choices, setChoices] = useState<{ revision: number; map: Partial<Record<string, Entry>> }>({ revision: proposal.revision, map: {} })
@@ -143,6 +145,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSched
           <ItemCard
             key={i.path}
             item={i}
+            entries={byId}
             kind={view.kind}
             choice={map[i.path]?.decision}
             note={map[i.path]?.note ?? ''}

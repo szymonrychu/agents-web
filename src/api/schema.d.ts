@@ -326,7 +326,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/admin/presets/{ref}/secrets/{name}": {
+    "/agent/v1/admin/presets/{ref}/vault/{entry_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -334,10 +334,22 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set Preset Secret */
-        put: operations["set_preset_secret_agent_v1_admin_presets__ref__secrets__name__put"];
+        /**
+         * Attach Vault
+         * @description Attach a vault entry as refs, in one save, on a manageable preset (privileged ones too).
+         *     `envs` maps entry env to preset env; one entry env may back several preset envs through
+         *     repeated calls, which keep the refs already there. Without `envs` every env of the entry is
+         *     attached under its own name. A preset env that is taken is 409 `env_exists` unless
+         *     `replace`. The answer marks `attachment_privileged` (marked, never blocked).
+         */
+        put: operations["attach_vault_agent_v1_admin_presets__ref__vault__entry_id__put"];
         post?: never;
-        delete?: never;
+        /**
+         * Detach Vault
+         * @description Remove every ref to the entry from a manageable preset, or only the one under preset env
+         *     `?env=`; 404 `not_attached` when nothing matches.
+         */
+        delete: operations["detach_vault_agent_v1_admin_presets__ref__vault__entry_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -669,6 +681,26 @@ export interface paths {
          *     200 with `available` false and null windows: the gate allows then, and so does this.
          */
         get: operations["get_usage_agent_v1_admin_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET vault entries
+         * @description The vault entries in the caller's project scope and the env names to re-attach.
+         */
+        get: operations["admin_vault_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1517,23 +1549,6 @@ export interface paths {
         put?: never;
         /** Copy Preset */
         post: operations["copy_preset_api_v1_presets__preset_id__copy_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/presets/{preset}/secrets/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set Preset Secret */
-        put: operations["set_preset_secret_api_v1_presets__preset__secrets__name__put"];
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2462,7 +2477,7 @@ export interface components {
             project?: string | null;
             /** Slug */
             slug?: string | null;
-            spec?: components["schemas"]["SessionSpecIn"] | null;
+            spec?: components["schemas"]["SessionSpec-Input"] | null;
         };
         /**
          * CreateTerminal
@@ -2479,29 +2494,29 @@ export interface components {
             /** Keys */
             keys: string[];
         };
-        EnvVar: {
-            [key: string]: unknown;
-        };
         /**
-         * EnvVarIn
-         * @description The request form of an env variable: a protected one may carry its new value.
+         * EnvVar
+         * @description One session env variable, GitLab CI style: `{value, expand}`, or a vault reference.
          *
-         *     Only the api sees it; `SessionSpecIn.split` moves the value out so a `SessionSpec` never holds
-         *     one. Without a value a protected variable keeps its stored one.
+         *     A plain variable carries its value; `expand` gates `$` handling of it. A vault reference
+         *     `{vault, env}` names an agents-vault entry and its env; the entry's value is resolved by the
+         *     vault at session create. A reference carries nothing else.
          */
-        EnvVarIn: {
+        "EnvVar-Input": {
+            /** Env */
+            env?: string | null;
             /**
              * Expand
              * @default false
              */
             expand: boolean;
-            /**
-             * Protected
-             * @default false
-             */
-            protected: boolean;
             /** Value */
             value?: string | null;
+            /** Vault */
+            vault?: string | null;
+        };
+        "EnvVar-Output": {
+            [key: string]: unknown;
         };
         /** EventView */
         EventView: {
@@ -3216,7 +3231,7 @@ export interface components {
              *       "workdir": "workdir"
              *     }
              */
-            spec: components["schemas"]["SessionSpecIn"];
+            spec: components["schemas"]["SessionSpec-Input"];
             /** Superleader Manageable */
             superleader_manageable?: boolean | null;
         };
@@ -3270,6 +3285,8 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Vault Reattach */
+            vault_reattach: string[];
         };
         /** PreviewError */
         PreviewError: {
@@ -3348,8 +3365,8 @@ export interface components {
         };
         /**
          * ProposalIn
-         * @description A change proposal (plan 3.4): an RFC 7396 merge `patch` of the target's spec, plus new
-         *     values of protected variables in `secrets`; a value is never stored or echoed.
+         * @description A change proposal (plan 3.4): an RFC 7396 merge `patch` of the target's spec, which
+         *     may carry vault references (never a value).
          */
         ProposalIn: {
             /** Client Key */
@@ -3365,13 +3382,6 @@ export interface components {
             };
             /** Reason */
             reason: string;
-            /**
-             * Secrets
-             * @default {}
-             */
-            secrets: {
-                [key: string]: string;
-            };
             /** Target */
             target: string;
         };
@@ -3392,8 +3402,6 @@ export interface components {
             note: string | null;
             /** Path */
             path: string;
-            /** Secret */
-            secret: ("set" | "changed") | null;
             /** Security */
             security: boolean;
         };
@@ -3408,13 +3416,6 @@ export interface components {
             };
             /** Reason */
             reason?: string | null;
-            /**
-             * Secrets
-             * @default {}
-             */
-            secrets: {
-                [key: string]: string;
-            };
         };
         /** ProposalRevisionView */
         ProposalRevisionView: {
@@ -3539,34 +3540,6 @@ export interface components {
             session_id: string;
         };
         /**
-         * SecretIn
-         * @description The new value of one protected variable; it is never echoed.
-         */
-        SecretIn: {
-            /**
-             * Value
-             * Format: password
-             */
-            value: string;
-        };
-        /**
-         * SecretView
-         * @description Metadata of a protected variable's stored value; the value is never returned.
-         */
-        SecretView: {
-            /** Name */
-            name: string;
-            /** Set */
-            set: boolean;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-            /** Version */
-            version: number;
-        };
-        /**
          * SessionBackup
          * @description What a discard would save now; each flag is true only when that save would really run.
          *
@@ -3637,7 +3610,7 @@ export interface components {
             command_ids: number[];
         };
         /** SessionSpec */
-        SessionSpec: {
+        "SessionSpec-Input": {
             /** Any Mcp Config */
             any_mcp_config?: {
                 [key: string]: unknown;
@@ -3666,7 +3639,7 @@ export interface components {
              * @default {}
              */
             env: {
-                [key: string]: components["schemas"]["EnvVar"];
+                [key: string]: components["schemas"]["EnvVar-Input"];
             };
             /** Image */
             image?: string | null;
@@ -3723,11 +3696,8 @@ export interface components {
             workdir: string;
             wrapper?: components["schemas"]["WrapperSettings"] | null;
         };
-        /**
-         * SessionSpecIn
-         * @description A spec as the api receives it: protected variables may carry a value (`EnvVarIn`).
-         */
-        SessionSpecIn: {
+        /** SessionSpec */
+        "SessionSpec-Output": {
             /** Any Mcp Config */
             any_mcp_config?: {
                 [key: string]: unknown;
@@ -3756,7 +3726,7 @@ export interface components {
              * @default {}
              */
             env: {
-                [key: string]: components["schemas"]["EnvVarIn"];
+                [key: string]: components["schemas"]["EnvVar-Output"];
             };
             /** Image */
             image?: string | null;
@@ -3929,7 +3899,7 @@ export interface components {
             reminder_at?: string | null;
             /** Slug */
             slug: string;
-            spec: components["schemas"]["SessionSpec"];
+            spec: components["schemas"]["SessionSpec-Output"];
             /** Static */
             static: boolean;
             /** Status */
@@ -3937,6 +3907,13 @@ export interface components {
                 [key: string]: unknown;
             };
             summary: components["schemas"]["SessionSummary"];
+            /**
+             * Vault
+             * @default {}
+             */
+            vault: {
+                [key: string]: components["schemas"]["VaultPinView"];
+            };
         };
         /**
          * SweepPolicyIn
@@ -4084,6 +4061,79 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VaultAttachIn
+         * @description Attach a vault entry to a preset: `envs` maps entry env to preset env (every env of the
+         *     entry under its own name when omitted); `replace` lets it overwrite an existing preset env.
+         */
+        VaultAttachIn: {
+            /** Envs */
+            envs?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Replace
+             * @default false
+             */
+            replace: boolean;
+        };
+        /**
+         * VaultAttachView
+         * @description The preset view an admin vault attach answers. `attachment_privileged` marks a preset
+         *     whose session can read every Secret in the namespace (`privileged` is not empty); marked,
+         *     never blocked.
+         */
+        VaultAttachView: {
+            /** Attachment Privileged */
+            attachment_privileged: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Labels */
+            labels: string[];
+            /** Name */
+            name: string;
+            /** Privileged */
+            privileged: string[];
+            /** Project */
+            project: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Superleader Manageable */
+            superleader_manageable: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vault Reattach */
+            vault_reattach: string[];
+        };
+        /**
+         * VaultPinView
+         * @description What a session was pinned to for one vault env variable; never a value.
+         */
+        VaultPinView: {
+            /** Entry */
+            entry: string | null;
+            /** Entry Env */
+            entry_env: string | null;
+            /** Protected */
+            protected: boolean;
+            /** Version */
+            version: number | null;
         };
         /** WebhookHook */
         WebhookHook: {
@@ -4951,7 +5001,7 @@ export interface operations {
             };
         };
     };
-    set_preset_secret_agent_v1_admin_presets__ref__secrets__name__put: {
+    attach_vault_agent_v1_admin_presets__ref__vault__entry_id__put: {
         parameters: {
             query?: never;
             header?: {
@@ -4960,13 +5010,13 @@ export interface operations {
             };
             path: {
                 ref: string;
-                name: string;
+                entry_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SecretIn"];
+                "application/json": components["schemas"]["VaultAttachIn"];
             };
         };
         responses: {
@@ -4976,7 +5026,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SecretView"];
+                    "application/json": components["schemas"]["VaultAttachView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detach_vault_agent_v1_admin_presets__ref__vault__entry_id__delete: {
+        parameters: {
+            query?: {
+                env?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetView"];
                 };
             };
             /** @description Validation Error */
@@ -5740,6 +5827,38 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UsageView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_vault_list: {
+        parameters: {
+            query?: {
+                q?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8104,42 +8223,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PresetView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    set_preset_secret_api_v1_presets__preset__secrets__name__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                preset: string;
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SecretIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SecretView"];
                 };
             };
             /** @description Validation Error */

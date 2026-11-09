@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -17,13 +18,13 @@ import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
-import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import { parseDotenv } from '../sessions/dotenv'
 import { ProjectField } from '../projects/ProjectField'
 import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
-import { createPreset, getMeta, setPresetSecret, updatePreset } from '../api/client'
+import { createPreset, getMeta, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
 import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
@@ -31,10 +32,14 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, envValueError, humanizeSeconds, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
+import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
+import { useVaultEntries } from '../vault/useVaultEntries'
+import { VaultPicker } from './VaultPicker'
+import { VAULT_ROW_MESSAGES, vaultRowErrors } from './vaultErrors'
 
 export interface PresetFormProps {
   open: boolean
@@ -85,28 +90,72 @@ type PasteMerge = { errors: string[] } | { errors: null; rows: EnvRow[] | null }
 
 /**
  * Parses pasted .env text and merges its pairs into the rows: an existing key is replaced in place (first match),
- * a new key is appended, and empty rows are dropped. `rows` is null when the text holds no pairs (nothing to change).
+ * a new key is appended, and empty rows are dropped. A key whose current row is a vault reference is refused, never
+ * overwritten. `rows` is null when the text holds no pairs (nothing to change).
  */
 function mergePaste(text: string, current: EnvRow[]): PasteMerge {
   const { pairs, errors } = parseDotenv(text)
   if (errors.length > 0) return { errors: errors.map((e) => `line ${e.line}: ${e.message}`) }
   if (pairs.length === 0) return { errors: null, rows: null }
-  const rows = current.map((r) => ({ ...r }))
-  for (const pair of pairs) {
-    const existing = rows.find((r) => r.key === pair.key)
-    if (existing) {
-      existing.value = pair.value
-      if (existing.protected) existing.replacing = true
-    }
-    else rows.push(envRow(pair.key, pair.value))
-  }
-  return { errors: null, rows: rows.filter((r) => r.key !== '' || r.value !== '') }
+  const refused = pairs.filter((pair) => current.some((r) => r.key === pair.key && r.vault !== null))
+  if (refused.length > 0) return { errors: refused.map((pair) => `${pair.key} is a vault reference; remove that row first`) }
+  return { errors: null, rows: mergeEnvRows(current, pairs.map((pair) => envRow(pair.key, pair.value))) }
 }
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
   if (preset) return stateFromPreset(meta, preset.name, stored(preset))
   if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), copiedSpec(copyOf))
   return stateFromPreset(meta, '', {})
+}
+
+interface VaultRefCellProps {
+  index: number
+  row: EnvRow
+  entries: ReturnType<typeof useVaultEntries>
+  targetLabels: string[]
+  serverError: string | undefined
+  onEnv: (env: string) => void
+}
+
+/** The value part of a vault reference row: entry name, entry env choice, readable value, and the first applicable note. */
+function VaultRefCell({ index, row, entries, targetLabels, serverError, onEnv }: VaultRefCellProps) {
+  const ref = row.vault
+  if (!ref) return null
+  const entry = entries.byId.get(ref.vault)
+  const envView = entry?.envs.find((e) => e.env === ref.env)
+  const scope = entry ? projectScope(entry.labels) : []
+  const missing = entries.status === 'ready' && !entry
+  const envMissing = entry !== undefined && !envView
+  const blocked = entry !== undefined && !entryAllowed(entry.labels, targetLabels)
+  return (
+    <Box sx={{ flex: '2 1 18rem', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip size="small" label="vault" />
+        <Typography variant="body2" data-testid={`vault-ref-${index}`}>{refText(ref, entries.byId)}</Typography>
+        {entry && (
+          <TextField select size="small" label={`Entry env ${index + 1}`} value={ref.env} onChange={(e) => onEnv(e.target.value)} sx={{ minWidth: '12rem' }}>
+            {(envView ? entry.envs : [{ env: ref.env }, ...entry.envs]).map((e) => (
+              <MenuItem key={e.env} value={e.env}>{e.env}</MenuItem>
+            ))}
+          </TextField>
+        )}
+      </Box>
+      {envView && (
+        <Typography variant="body2" sx={{ fontFamily: envView.protected ? undefined : 'monospace' }}>
+          {envView.protected ? 'protected' : envView.value}
+        </Typography>
+      )}
+      {serverError ? (
+        <FormHelperText error>{serverError}</FormHelperText>
+      ) : missing ? (
+        <FormHelperText sx={{ color: 'warning.main' }}>Entry not found in the vault</FormHelperText>
+      ) : envMissing ? (
+        <FormHelperText sx={{ color: 'warning.main' }}>{VAULT_ROW_MESSAGES.vault_env_unknown}</FormHelperText>
+      ) : blocked ? (
+        <FormHelperText sx={{ color: 'warning.main' }}>{`Only for ${scope.join(', ')}`}</FormHelperText>
+      ) : null}
+    </Box>
+  )
 }
 
 function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'open'>) {
@@ -128,6 +177,10 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [pluginsInvalid, setPluginsInvalid] = useState(false)
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteErrors, setPasteErrors] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+  // server row errors by preset env key; a row's error clears when the row changes, all clear on the next save
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
+  const vaultEntries = useVaultEntries()
   const touched = useRef(new Set<keyof FormValues>())
   const { values, setKeys } = state
   const editing = preset !== undefined
@@ -193,7 +246,21 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       multiline={extra.multiline}
     />
   )
-  const setEnv = (index: number, patch: Partial<EnvRow>) => set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  const clearRowError = (index: number) => {
+    const old = values.env[index]
+    if (old && rowErrors[old.key] !== undefined) setRowErrors((errs) => Object.fromEntries(Object.entries(errs).filter(([k]) => k !== old.key)))
+  }
+  const setEnv = (index: number, patch: Partial<EnvRow>) => {
+    clearRowError(index)
+    set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+  const removeEnv = (index: number) => {
+    clearRowError(index)
+    set('env', values.env.filter((_, j) => j !== index))
+  }
+  const targetLabels = effectiveLabels(labels, project)
+  // edit mode only: names the preset lost its vault references for, minus the keys the rows now hold
+  const reattach = preset ? (preset.vault_reattach ?? []).filter((name) => !values.env.some((r) => r.key === name)) : []
 
   const closePaste = () => {
     setPasteText(null)
@@ -232,16 +299,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     }
     setBusy(true)
     setServerError(null)
-    let secretsSaved = false
+    setRowErrors({})
     try {
-      if (preset) {
-        // a saved preset takes a replaced protected value through the secret route, so the spec update never carries it
-        for (const r of env.filter((r) => r.protected && r.stored && r.replacing)) {
-          await setPresetSecret(preset.id, r.key, r.value)
-          secretsSaved = true
-        }
-        env = env.map((r) => (r.protected && r.stored && r.replacing ? { ...r, replacing: false, value: '' } : r))
-      }
       const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
       const body: PresetIn = {
         name: values.name,
@@ -253,7 +312,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
-      setServerError((e instanceof Error ? e.message : String(e)) + (secretsSaved ? ' (a replaced protected value was already saved)' : ''))
+      setRowErrors(vaultRowErrors(e, env.filter((r) => r.vault !== null).map((r) => r.key)))
+      setServerError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
@@ -292,6 +352,9 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('workdir', 'Workdir')}
           {text('pvcSize', 'PVC size')}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {reattach.length > 0 && (
+              <Alert severity="info" data-testid="reattach">{`To re-attach from the vault: ${reattach.join(', ')}`}</Alert>
+            )}
             {values.env.map((row, i) => (
               <Box key={i} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {row.legacy && (
@@ -300,39 +363,51 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                   </Alert>
                 )}
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env) ?? (row.stored && copyOf ? 'Protected value not copied' : undefined)} disabled={row.stored} fullWidth sx={{ flex: '1 1 12rem' }} />
-                  {row.stored && !row.replacing ? (
-                    <Box sx={{ flex: '1 1 12rem', display: 'flex', alignItems: 'center', gap: 1, minHeight: 40 }}>
-                      <Typography variant="body2">{row.isSet ? `set, updated ${row.updatedAt ?? 'unknown'}` : 'unset'}</Typography>
-                      <Button size="small" aria-label={`Replace value ${i + 1}`} onClick={() => setEnv(i, { replacing: true, value: '' })}>Replace value</Button>
-                    </Box>
+                  <TextField size="small" label={`Env key ${i + 1}`} value={row.key} onChange={(e) => setEnv(i, { key: e.target.value })} error={Boolean(envKeyError(row.key, values.env))} helperText={envKeyError(row.key, values.env)} fullWidth sx={{ flex: '1 1 12rem' }} />
+                  {row.vault ? (
+                    <VaultRefCell
+                      index={i}
+                      row={row}
+                      entries={vaultEntries}
+                      targetLabels={targetLabels}
+                      serverError={rowErrors[row.key]}
+                      onEnv={(env) => setEnv(i, { vault: row.vault ? { ...row.vault, env } : null })}
+                    />
                   ) : (
-                    <Box sx={{ flex: '1 1 12rem', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <TextField
-                        size="small"
-                        label={row.stored ? `New value ${i + 1}` : `Env value ${i + 1}`}
-                        type={row.protected ? 'password' : 'text'}
-                        autoComplete="off"
-                        value={row.value}
-                        onChange={(e) => setEnv(i, { value: e.target.value })}
-                        error={Boolean(envValueError(row))}
-                        helperText={envValueError(row)}
-                        fullWidth
-                      />
-                      {row.stored && <Button size="small" aria-label={`Cancel replace ${i + 1}`} onClick={() => setEnv(i, { replacing: false, value: '' })}>Cancel</Button>}
-                    </Box>
+                    <>
+                      <Box sx={{ flex: '1 1 12rem', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <TextField size="small" label={`Env value ${i + 1}`} type="text" autoComplete="off" value={row.value} onChange={(e) => setEnv(i, { value: e.target.value })} fullWidth />
+                      </Box>
+                      <FormControlLabel control={<Switch size="small" checked={row.expand} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
+                    </>
                   )}
-                  <FormControlLabel control={<Switch size="small" checked={row.protected} disabled={row.stored} onChange={(e) => setEnv(i, { protected: e.target.checked, expand: e.target.checked ? false : row.expand })} slotProps={{ input: { 'aria-label': `Protected ${i + 1}` } }} />} label="Protected" />
-                  <FormControlLabel control={<Switch size="small" checked={row.expand} disabled={row.protected} onChange={(e) => setEnv(i, { expand: e.target.checked })} slotProps={{ input: { 'aria-label': `Expand ${i + 1}` } }} />} label="Expand" />
-                  {!row.protected && <Button size="small" aria-label={`Mark protected ${i + 1}`} onClick={() => setEnv(i, { protected: true, expand: false })}>Mark protected</Button>}
-                  <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => set('env', values.env.filter((_, j) => j !== i))}>x</IconButton>
+                  <IconButton size="small" aria-label={`Remove env ${i + 1}`} onClick={() => removeEnv(i)}>x</IconButton>
                 </Box>
               </Box>
             ))}
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button size="small" onClick={() => set('env', [...values.env, envRow()])}>Add env</Button>
               <Button size="small" onClick={() => setPasteText('')} disabled={pasteText !== null}>Paste .env</Button>
+              {vaultEntries.status !== 'off' && <Button size="small" onClick={() => setPickerOpen(true)}>From vault</Button>}
             </Box>
+            {pickerOpen && vaultEntries.status !== 'off' && (
+              <VaultPicker
+                entries={vaultEntries.entries}
+                status={vaultEntries.status}
+                error={vaultEntries.error}
+                target={targetLabels}
+                existingKeys={values.env.map((r) => r.key)}
+                onAdd={(rows) => {
+                  const keys = new Set(rows.map((r) => r.key))
+                  setRowErrors((errs) => Object.fromEntries(Object.entries(errs).filter(([k]) => !keys.has(k))))
+                  set('env', mergeEnvRows(values.env, rows))
+                  setPickerOpen(false)
+                }}
+                onClose={() => setPickerOpen(false)}
+              />
+            )}
+            {errors.envSection && <FormHelperText error>{errors.envSection}</FormHelperText>}
+            {copyOf && values.env.some((r) => r.vault !== null) && <FormHelperText>Vault references are copied; each entry must allow the copy's project.</FormHelperText>}
             {pasteText !== null && (
               <Box role="group" aria-label="Paste .env" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <TextField

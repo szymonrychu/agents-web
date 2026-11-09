@@ -14,7 +14,7 @@ vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setP
 const api = vi.hoisted(() => ({ listPresets: vi.fn(), createSession: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
-const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, privileged: [], project: 'default', spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
+const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, privileged: [], project: 'default', spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z', vault_reattach: [] })
 const PRESETS = [preset('p-big', 'Big box'), preset('p-def', 'Default', true), preset('p-small', 'Small')]
 const created = { id: 'c-1', slug: 'default' } as SessionView
 

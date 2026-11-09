@@ -6,11 +6,16 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import type { Meta, PresetView } from '../api/client'
 import { editorView, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
+import { ApiError } from '../api/client'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
-const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), getMeta: vi.fn(), setPresetSecret: vi.fn() }))
+const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
+const vault = vi.hoisted(() => ({ vaultEnabled: vi.fn(), listEntries: vi.fn() }))
+vi.mock('../vault/api', async (orig) => ({ ...(await orig<typeof import('../vault/api')>()), ...vault }))
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [{ slug: 'alpha', name: 'Alpha' }, { slug: 'beta', name: 'Beta' }] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 
 const meta = (): Meta => ({
   agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
@@ -20,8 +25,8 @@ const meta = (): Meta => ({
   },
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus'], efforts: ['high'],
 })
-const preset = (spec: Record<string, unknown> = {}): PresetView =>
-  ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec }) as PresetView
+const preset = (spec: Record<string, unknown> = {}, project = 'default'): PresetView =>
+  ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, project, spec }) as PresetView
 
 const wrap = (el: React.ReactElement) => render(<ThemeProvider theme={theme}>{el}</ThemeProvider>)
 const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement
@@ -29,12 +34,11 @@ const button = (name: string) => screen.getByRole('button', { name }) as HTMLBut
 const toggle = (label: string) => screen.getByRole('switch', { name: label }) as HTMLInputElement
 const noop = { onClose: vi.fn(), onSaved: vi.fn() }
 
-// a stand-in marker, not a credential
-const MARK = 'zz-marker-value'
-const storedProtected = { protected: true, expand: false, set: true, version: 3, updated_at: '2026-02-03T04:05:06Z' }
 
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
+  Object.values(vault).forEach((f) => f.mockReset())
+  vault.vaultEnabled.mockReturnValue(false)
   api.getMeta.mockResolvedValue(meta())
 })
 let restoreRange: () => void = () => {}
@@ -52,8 +56,10 @@ const type = async (label: string, text: string) => {
   await userEvent.paste(text)
 }
 
-describe('env variables: protected and expand', () => {
-  test('a new row is plain, sends value with protected and expand false', async () => {
+const GREF = { vault: '01234567-89ab-cdef-0123-456789abcdef', env: 'GITHUB_TOKEN' }
+
+describe('env variables: plain and vault refs', () => {
+  test('a new row is plain, sends value and expand', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
@@ -61,115 +67,19 @@ describe('env variables: protected and expand', () => {
     await userEvent.click(button('Add env'))
     await type('Env key 1', 'FOO')
     await type('Env value 1', 'bar')
-    expect(toggle('Protected 1').checked).toBe(false)
     expect(toggle('Expand 1').checked).toBe(false)
     await userEvent.click(toggle('Expand 1'))
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ FOO: { value: 'bar', protected: false, expand: true } })
+    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ FOO: { value: 'bar', expand: true } })
   })
 
-  test('Expand is disabled and off while Protected is on', async () => {
+  test('no Protected switch and no Mark protected button', async () => {
     wrap(<PresetForm open {...noop} />)
     await ready()
     await userEvent.click(button('Add env'))
-    await type('Env key 1', 'FOO')
-    await type('Env value 1', 'bar')
-    await userEvent.click(toggle('Expand 1'))
-    await userEvent.click(toggle('Protected 1'))
-    expect(toggle('Expand 1').disabled).toBe(true)
-    expect(toggle('Expand 1').checked).toBe(false)
-  })
-
-  test('Mark protected converts a plain row and sends its value once', async () => {
-    api.createPreset.mockResolvedValue(preset())
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    await type('Name', 'n')
-    await userEvent.click(button('Add env'))
-    await type('Env key 1', 'TOKEN_A')
-    await type('Env value 1', MARK)
-    await userEvent.click(button('Mark protected 1'))
-    expect(toggle('Protected 1').checked).toBe(true)
-    await userEvent.click(button('Create'))
-    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ TOKEN_A: { protected: true, expand: false, value: MARK } })
-  })
-
-  test('a protected row needs a value before it can be saved', async () => {
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    await userEvent.click(button('Add env'))
-    await type('Env key 1', 'TOKEN_A')
-    await userEvent.click(toggle('Protected 1'))
-    expect(screen.getByText('A protected variable needs a value')).toBeTruthy()
-  })
-
-  test('a stored protected row shows set, updated_at and Replace value, never a value', async () => {
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
-    await ready()
-    expect(screen.getByText(/^set\b/)).toBeTruthy()
-    expect(screen.getByText(/2026-02-03/)).toBeTruthy()
-    expect(screen.queryByLabelText('Env value 1')).toBeNull()
-    expect(screen.queryByLabelText('New value 1')).toBeNull()
-    expect(button('Replace value 1')).toBeTruthy()
-    expect(toggle('Protected 1').checked).toBe(true)
-    expect(toggle('Expand 1').disabled).toBe(true)
-  })
-
-  test('an unset protected row shows unset', async () => {
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: { protected: true, expand: false, set: false, version: 0, updated_at: null } } })} {...noop} />)
-    await ready()
-    expect(screen.getByText(/^unset/)).toBeTruthy()
-  })
-
-  test('an untouched protected row sends no value', async () => {
-    api.updatePreset.mockResolvedValue(preset())
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected, PLAIN: { value: 'x', protected: false, expand: false } } })} {...noop} />)
-    await ready()
-    await userEvent.click(button('Save'))
-    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({
-      TOKEN_A: { protected: true, expand: false },
-      PLAIN: { value: 'x', protected: false, expand: false },
-    })
-    expect(api.setPresetSecret).not.toHaveBeenCalled()
-  })
-
-  test('Replace value on a saved preset posts to the secret route, not the spec', async () => {
-    api.updatePreset.mockResolvedValue(preset())
-    api.setPresetSecret.mockResolvedValue({})
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
-    await ready()
-    await userEvent.click(button('Replace value 1'))
-    await type('New value 1', MARK)
-    await userEvent.click(button('Save'))
-    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.setPresetSecret).toHaveBeenCalledWith('p-1', 'TOKEN_A', MARK)
-    expect(JSON.stringify(api.updatePreset.mock.calls[0][1])).not.toContain(MARK)
-    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ TOKEN_A: { protected: true, expand: false } })
-  })
-
-  test('Replace value needs a non-empty value, Cancel returns to untouched', async () => {
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
-    await ready()
-    await userEvent.click(button('Replace value 1'))
-    expect(screen.getByText('A protected variable needs a value')).toBeTruthy()
-    await userEvent.click(button('Cancel replace 1'))
-    expect(screen.queryByLabelText('New value 1')).toBeNull()
-    expect(button('Replace value 1')).toBeTruthy()
-  })
-
-  test('copying a preset sends a replaced value in the body (no preset to post to yet)', async () => {
-    api.createPreset.mockResolvedValue(preset())
-    wrap(<PresetForm open copyOf={preset({ env: { TOKEN_A: { protected: true, expand: false, set: false, version: 0, updated_at: null } } })} {...noop} />)
-    await ready()
-    await userEvent.click(button('Replace value 1'))
-    await type('New value 1', MARK)
-    await userEvent.click(button('Create'))
-    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ TOKEN_A: { protected: true, expand: false, value: MARK } })
-    expect(api.setPresetSecret).not.toHaveBeenCalled()
+    expect(screen.queryByRole('switch', { name: 'Protected 1' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Mark protected/ })).toBeNull()
   })
 
   test('a plain-string env from old data is shown with a clear message and saves as a plain variable', async () => {
@@ -180,7 +90,7 @@ describe('env variables: protected and expand', () => {
     expect(field('Env value 1').value).toBe('legacy-text')
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ OLD: { value: 'legacy-text', protected: false, expand: false } })
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ OLD: { value: 'legacy-text', expand: false } })
   })
 
   test('Paste .env makes plain rows with expand off', async () => {
@@ -193,30 +103,327 @@ describe('env variables: protected and expand', () => {
     await userEvent.click(button('Apply'))
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ X: { value: '1', protected: false, expand: false } })
+    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ X: { value: '1', expand: false } })
   })
 
-  test('the key of a stored protected row cannot be renamed', async () => {
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
+  test('a stored vault ref row keeps its key and round-trips unchanged', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: GREF, A: { value: 'x', expand: true } } })} {...noop} />)
     await ready()
-    expect(field('Env key 1').disabled).toBe(true)
-  })
-
-  test('a copy says protected values are not copied', async () => {
-    wrap(<PresetForm open copyOf={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
-    await ready()
-    expect(screen.getByText(/not copied/)).toBeTruthy()
-  })
-
-  test('a failed spec save after a secret was stored says so', async () => {
-    api.setPresetSecret.mockResolvedValue({})
-    api.updatePreset.mockRejectedValue(new Error('boom'))
-    wrap(<PresetForm open preset={preset({ env: { TOKEN_A: storedProtected } })} {...noop} />)
-    await ready()
-    await userEvent.click(button('Replace value 1'))
-    await type('New value 1', MARK)
     await userEvent.click(button('Save'))
-    await waitFor(() => expect(screen.getByText(/boom/)).toBeTruthy())
-    expect(screen.getByText(/already saved/)).toBeTruthy()
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ G: GREF, A: { value: 'x', expand: true } })
+  })
+
+  test('test_paste_onto_vault_row_refused', async () => {
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Paste .env'))
+    await type('Paste .env contents', 'G=plain')
+    await userEvent.click(button('Apply'))
+    expect(screen.getByText('G is a vault reference; remove that row first')).toBeTruthy()
+    expect(screen.getByTestId('vault-ref-0')).toBeTruthy()
+    expect(field('Env key 1').value).toBe('G')
+  })
+
+  test('paste of a new key next to a vault row still appends a plain row', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Paste .env'))
+    await type('Paste .env contents', 'N=1')
+    await userEvent.click(button('Apply'))
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ G: GREF, N: { value: '1', expand: false } })
+  })
+})
+
+const ENTRY = {
+  id: GREF.vault, name: 'GitHub', labels: ['github', 'project:alpha'], description: '',
+  envs: [{ env: 'GITHUB_TOKEN', protected: true, value: null }, { env: 'GITHUB_USER', protected: false, value: 'bot' }],
+}
+const HREF = { vault: GREF.vault, env: 'GITHUB_USER' }
+const vaultOn = (entries: unknown[] = [ENTRY]) => {
+  vault.vaultEnabled.mockReturnValue(true)
+  vault.listEntries.mockResolvedValue(entries)
+}
+
+describe('vault ref rows', () => {
+  test('test_stored_ref_shown_by_name', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0').textContent).toContain('GitHub / GITHUB_TOKEN'))
+    expect(screen.getByText('protected')).toBeTruthy()
+  })
+
+  test('test_protected_env_value_never_displayed', async () => {
+    const SECRET = 'sk-live-must-not-render'
+    vaultOn([{ ...ENTRY, envs: [{ env: 'GITHUB_TOKEN', protected: true, value: SECRET }, { env: 'GITHUB_USER', protected: false, value: 'bot' }] }])
+    const { container } = wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0').textContent).toContain('GitHub / GITHUB_TOKEN'))
+    expect(screen.getByText('protected')).toBeTruthy()
+    expect(document.body.textContent).not.toContain(SECRET)
+    expect(Array.from(document.querySelectorAll('input, textarea')).some((el) => (el as HTMLInputElement).value.includes(SECRET))).toBe(false)
+    // switching to the readable env shows its value; switching back hides the protected one again
+    await userEvent.click(screen.getByRole('combobox', { name: 'Entry env 1' }))
+    await userEvent.click(screen.getByRole('option', { name: 'GITHUB_USER' }))
+    expect(screen.getByText('bot')).toBeTruthy()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Entry env 1' }))
+    await userEvent.click(screen.getByRole('option', { name: 'GITHUB_TOKEN' }))
+    expect(document.body.textContent).not.toContain(SECRET)
+    expect(container.innerHTML).not.toContain(SECRET)
+  })
+
+  test('test_ref_env_switch', async () => {
+    vaultOn()
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0').textContent).toContain('GitHub'))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Entry env 1' }))
+    await userEvent.click(screen.getByRole('option', { name: 'GITHUB_USER' }))
+    expect(screen.getByText('bot')).toBeTruthy()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ G: HREF })
+  })
+
+  test('test_ref_rename_preset_env', async () => {
+    vaultOn()
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await userEvent.clear(field('Env key 1'))
+    await type('Env key 1', 'GH_TOKEN')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ GH_TOKEN: GREF })
+  })
+
+  test('test_project_change_warns_stored_ref', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } }, 'alpha')} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0').textContent).toContain('GitHub'))
+    expect(screen.queryByText(/Only for/)).toBeNull()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Project' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Beta' }))
+    expect(screen.getByText('Only for project:alpha')).toBeTruthy()
+  })
+
+  test('test_tag_label_never_warns', async () => {
+    vaultOn([{ ...ENTRY, labels: ['github'] }])
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } }, 'alpha')} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0').textContent).toContain('GitHub'))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Project' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Beta' }))
+    expect(screen.queryByText(/Only for/)).toBeNull()
+  })
+
+  test('test_label_mismatch_422_on_row', async () => {
+    vaultOn()
+    api.updatePreset.mockRejectedValue(new ApiError(422, 'vault_label_mismatch', 'm', { envs: ['G'] }))
+    const onClose = vi.fn()
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } }, 'alpha')} onClose={onClose} onSaved={onSaved} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(screen.getByText("The entry's project label does not allow this preset's project")).toBeTruthy())
+    expect(screen.getByText('m')).toBeTruthy()
+    expect(field('Env key 1').value).toBe('G')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(button('Save')).toBeTruthy()
+  })
+
+  test('test_vault_unavailable_marks_all_ref_rows', async () => {
+    vaultOn()
+    api.updatePreset.mockRejectedValue(new ApiError(503, 'vault_unavailable', 'vault down'))
+    wrap(<PresetForm open preset={preset({ env: { G: GREF, H: HREF, P: { value: 'p', expand: false } } }, 'alpha')} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    const m = 'The vault is unavailable; nothing was saved, try again'
+    await waitFor(() => expect(screen.getAllByText(m)).toHaveLength(2))
+    expect(field('Env key 1').value).toBe('G')
+    expect(field('Env key 2').value).toBe('H')
+    expect(field('Env value 3').value).toBe('p')
+    expect(screen.getByText('vault down')).toBeTruthy()
+  })
+
+  test('test_unknown_entry_ref_kept_on_save', async () => {
+    const unknown = { vault: 'u-9', env: 'X' }
+    vaultOn()
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: unknown } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByText('Entry not found in the vault')).toBeTruthy())
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec.env).toEqual({ G: unknown })
+  })
+
+  test('test_vault_off_shows_short_id', async () => {
+    wrap(<PresetForm open preset={preset({ env: { G: { vault: 'u-1', env: 'GITHUB_TOKEN' } } })} {...noop} />)
+    await ready()
+    expect(screen.getByTestId('vault-ref-0').textContent).toBe('vault u-1 / GITHUB_TOKEN')
+    expect(screen.queryByText('Entry not found in the vault')).toBeNull()
+    expect(screen.queryByText(/not found/i)).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'Entry env 1' })).toBeNull()
+    expect(vault.listEntries).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'From vault' })).toBeNull()
+  })
+
+  test('test_copy_keeps_refs_and_says_so', async () => {
+    vaultOn()
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open copyOf={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    expect(screen.getByText("Vault references are copied; each entry must allow the copy's project.")).toBeTruthy()
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ G: GREF })
+  })
+  const pick = async (envName: string, as: string) => {
+    await userEvent.click(button('From vault'))
+    await userEvent.click(await screen.findByRole('button', { name: 'Entry GitHub' }))
+    await userEvent.click(screen.getByLabelText(`Use ${envName}`))
+    const f = screen.getByLabelText(`Preset env for ${envName}`)
+    await userEvent.clear(f)
+    await userEvent.type(f, as)
+  }
+
+  test('test_row_error_cleared_when_ref_row_removed', async () => {
+    vaultOn()
+    api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'vault_label_mismatch', 'm', { envs: ['G'] }))
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { G: GREF, H: HREF } }, 'alpha')} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    const m = "The entry's project label does not allow this preset's project"
+    await waitFor(() => expect(screen.getByText(m)).toBeTruthy())
+    await userEvent.click(button('Remove env 1'))
+    // a ref row picked later under the removed key does not inherit the old message
+    await pick('GITHUB_TOKEN', 'G')
+    await userEvent.click(button('Add'))
+    await waitFor(() => expect(screen.getAllByTestId(/^vault-ref-/)).toHaveLength(2))
+    expect(screen.queryByText(m)).toBeNull()
+  })
+
+  test('test_row_error_cleared_when_ref_row_replaced_by_picker', async () => {
+    vaultOn()
+    api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'vault_label_mismatch', 'm', { envs: ['G'] }))
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } }, 'alpha')} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    const m = "The entry's project label does not allow this preset's project"
+    await waitFor(() => expect(screen.getByText(m)).toBeTruthy())
+    await pick('GITHUB_USER', 'G')
+    await userEvent.click(button('Add'))
+    await waitFor(() => expect(screen.queryByText(m)).toBeNull())
+  })
+
+  test('test_ref_to_missing_env_warns', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: { vault: GREF.vault, env: 'GONE' } } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByText('The vault entry has no such env')).toBeTruthy())
+  })
+
+  test('test_ref_to_existing_env_no_missing_env_warning', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0')).toBeTruthy())
+    expect(screen.queryByText('The vault entry has no such env')).toBeNull()
+  })
+
+  test('test_same_entry_env_two_names', async () => {
+    vaultOn([{ ...ENTRY, labels: ['github'] }])
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await type('Name', 'n')
+    await pick('GITHUB_TOKEN', 'A')
+    await userEvent.click(button('Add'))
+    await pick('GITHUB_TOKEN', 'B')
+    await userEvent.click(button('Add'))
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ A: GREF, B: GREF })
+  })
+
+  test('test_pick_replaces_existing_key', async () => {
+    vaultOn([{ ...ENTRY, labels: ['github'] }])
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { GITHUB_TOKEN: { value: 'p', expand: false }, X: { value: '1', expand: false } } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(vault.listEntries).toHaveBeenCalled())
+    await pick('GITHUB_TOKEN', 'GITHUB_TOKEN')
+    expect(screen.getByText('Replaces the existing variable')).toBeTruthy()
+    await userEvent.click(button('Add'))
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    const env = api.updatePreset.mock.calls[0][1].spec.env
+    expect(Object.keys(env)).toEqual(['GITHUB_TOKEN', 'X'])
+    expect(env.GITHUB_TOKEN).toEqual(GREF)
+  })
+
+  test('test_from_vault_hidden_when_off', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.queryByRole('button', { name: 'From vault' })).toBeNull()
+  })
+  describe('re-attach names', () => {
+    const withReattach = (names: string[]): PresetView => ({ ...preset({ env: { A: { value: '1', expand: false } } }), vault_reattach: names })
+
+    test('test_reattach_names_shown', async () => {
+      wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: GH, HF')
+    })
+
+    test('test_reattach_shrinks_when_row_added', async () => {
+      wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      await userEvent.click(button('Add env'))
+      await type('Env key 2', 'HF')
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: GH')
+      expect(screen.getByTestId('reattach').textContent).not.toContain('HF')
+    })
+
+    test('test_reattach_name_removed_by_matching_key', async () => {
+      wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      await userEvent.click(button('Add env'))
+      await type('Env key 2', 'GH')
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: HF')
+      await userEvent.clear(field('Env key 2'))
+      expect(screen.getByTestId('reattach').textContent).toContain('GH, HF')
+    })
+
+    test('test_reattach_name_removed_by_vault_ref_row', async () => {
+      vaultOn()
+      const p = { ...preset({ env: { GH: GREF } }), vault_reattach: ['GH', 'HF'] } as PresetView
+      wrap(<PresetForm open preset={p} {...noop} />)
+      await ready()
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: HF')
+      expect(screen.getByTestId('reattach').textContent).not.toContain('GH')
+    })
+
+    test('test_reattach_absent_on_copy', async () => {
+      wrap(<PresetForm open copyOf={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      expect(screen.queryByTestId('reattach')).toBeNull()
+    })
+
+    test('test_reattach_absent_when_empty', async () => {
+      wrap(<PresetForm open preset={withReattach([])} {...noop} />)
+      await ready()
+      expect(screen.queryByTestId('reattach')).toBeNull()
+    })
   })
 })

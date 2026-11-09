@@ -80,7 +80,7 @@ describe('ProposalsPage', () => {
   })
 
   test('secret values are never rendered', async () => {
-    api.listProposals.mockResolvedValue([proposal({ revisions: [proposal().revisions[0], { ...proposal().revisions[1], items: [item({ path: 'env.K', before: null, after: { name: 'K' }, secret: 'set', security: true })] }] })])
+    api.listProposals.mockResolvedValue([proposal({ revisions: [proposal().revisions[0], { ...proposal().revisions[1], items: [item({ path: 'env.K', before: null, after: { name: 'K' }, security: true })] }] })])
     const { container } = mount()
     await screen.findByText('worker')
     expect(container.textContent).not.toMatch(/hunter2/)
