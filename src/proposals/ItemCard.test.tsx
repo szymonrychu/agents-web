@@ -31,24 +31,6 @@ describe('ItemCard', () => {
     expect((await screen.findByTestId('diff')).textContent).toBe('false=>true')
   })
 
-  it('a secret item says value set and never renders a value or an input for one', async () => {
-    const { container } = render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'set', security: true, before: null, after: { name: 'K' } })} />)
-    expect(screen.getByText('secret')).toBeTruthy()
-    expect(screen.getByText('value set')).toBeTruthy()
-    expect(container.querySelector('input[type=password], input[type=text], textarea')).toBeNull()
-    render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'changed', after: { name: 'K' } })} />)
-    expect(screen.getByText('value changed')).toBeTruthy()
-    cleanup()
-    render(<ItemCard {...base} choice="rework" item={item({ path: 'env.K', secret: 'set', after: { name: 'K' } })} />)
-    expect(screen.getAllByRole('textbox').length).toBe(1)
-    expect(screen.getByRole('textbox').getAttribute('type')).not.toBe('password')
-  })
-
-  it('a secret item diffs the declarations without the base-only set and version keys', async () => {
-    render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'changed', before: { protected: true, expand: false, set: true, version: 3 }, after: { protected: true, expand: false } })} />)
-    expect((await screen.findByTestId('diff')).textContent).toBe('{"protected":true,"expand":false}=>{"protected":true,"expand":false}')
-  })
-
   it('the changed chip names the previous revision', () => {
     render(<ItemCard {...base} changed previous={1} item={item()} />)
     expect(screen.getByText('changed since r1')).toBeTruthy()
@@ -119,13 +101,6 @@ describe('ItemCard', () => {
       expect(screen.getByTestId('stack-before').textContent).toBe(toYaml(before))
       expect(screen.getByTestId('stack-after').textContent).toBe(toYaml(after))
       expect(screen.queryByTestId('diff')).toBeNull()
-    })
-
-    it('a secret item keeps the diff and never stacks values', async () => {
-      setViewport(400)
-      render(<ItemCard {...base} item={item({ path: 'env.K', secret: 'set', before: null, after: { name: 'K' } })} />)
-      expect(await screen.findByTestId('diff')).toBeTruthy()
-      expect(screen.queryByTestId('stack-after')).toBeNull()
     })
 
     it('scalar items keep the diff', async () => {

@@ -9,8 +9,8 @@ export const orderItems = (items: ProposalItemView[]): ProposalItemView[] => [..
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /**
- * Paths whose proposed value differs from the previous revision's item at the same path. A secret item changed when
- * the previous one staged none or a different declaration; values are never compared (the web never has them).
+ * Paths whose proposed value differs from the previous revision's item at the same path. Items carry vault
+ * references or plain values only, so the comparison is on `after` alone.
  */
 export function changedPaths(current: ProposalRevisionView, previous: ProposalRevisionView | undefined): Set<string> {
   const out = new Set<string>()
@@ -18,7 +18,7 @@ export function changedPaths(current: ProposalRevisionView, previous: ProposalRe
   const before = new Map(previous.items.map((i) => [i.path, i]))
   for (const i of current.items) {
     const p = before.get(i.path)
-    if (!p || !same(p.after, i.after) || (i.secret !== null && p.secret === null)) out.add(i.path)
+    if (!p || !same(p.after, i.after)) out.add(i.path)
   }
   return out
 }

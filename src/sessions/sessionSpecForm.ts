@@ -1,43 +1,50 @@
 /** Form state, inline validation and sparse spec mapping for the preset editor. Server stays the authority. */
 import type { SessionSpec, Meta } from '../api/client'
-import type { components } from '../api/schema'
-
-type EnvVarIn = components['schemas']['EnvVarIn']
+import { isVaultRef, type VaultRef } from '../vault/refs'
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import type { KubeNamespaceRow } from '../presets/KubeNamespaceAccessField'
 import { pluginSourceError } from '../presets/pluginSource'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
-/**
- * One env variable, GitLab CI style. A protected variable is write-only: `stored` marks one that came from the server
- * (it holds no value here, only `isSet`/`updatedAt`), `replacing` means the user is typing a new value, and a protected
- * row that is neither stored nor replacing is a plain row just marked protected, whose `value` is sent once.
- */
+/** One env variable, GitLab CI style: a plain value (with `expand`) or a reference to a vault entry env. */
 export interface EnvRow {
   key: string
   value: string
-  protected: boolean
   expand: boolean
-  /** Protected row read from the server: its value is never shown. */
-  stored: boolean
-  isSet: boolean
-  updatedAt: string | null
-  /** A stored protected row whose value is being replaced; `value` holds the new one. */
-  replacing: boolean
+  /** Set for a vault reference row: `value` and `expand` then carry nothing. */
+  vault: VaultRef | null
   /** The stored entry was an old plain string, which the server no longer accepts. */
   legacy: boolean
 }
 
-export const envRow = (key = '', value = ''): EnvRow => ({ key, value, protected: false, expand: false, stored: false, isSet: false, updatedAt: null, replacing: false, legacy: false })
+export const envRow = (key = '', value = ''): EnvRow => ({ key, value, expand: false, vault: null, legacy: false })
 
-/** Whether the row sends a value on save (a plain row always; a protected one only when new or replacing). */
-export const sendsValue = (r: EnvRow): boolean => !r.protected || !r.stored || r.replacing
+export const vaultRow = (key: string, ref: VaultRef): EnvRow => ({ ...envRow(key), vault: ref })
+
+/** The wire form of an env row; local because the orchestrator types the output form as a free object. */
+export type EnvEntry = { value: string; expand: boolean } | VaultRef
+
+export const VAULT_REFS_MAX = 50
+
+/**
+ * Merges added rows into the current ones: an added key already present replaces that row in place (first match),
+ * the others append; rows with an empty key, an empty value and no ref are dropped.
+ */
+export function mergeEnvRows(current: EnvRow[], added: EnvRow[]): EnvRow[] {
+  const rows = [...current]
+  for (const row of added) {
+    const at = rows.findIndex((r) => r.key === row.key)
+    if (at >= 0) rows[at] = row
+    else rows.push(row)
+  }
+  return rows.filter((r) => r.key !== '' || r.value !== '' || r.vault !== null)
+}
 
 function envRowFromStored(key: string, entry: unknown): EnvRow {
   if (typeof entry === 'string') return { ...envRow(key, entry), legacy: true }
-  const e = (entry ?? {}) as { value?: unknown; protected?: unknown; expand?: unknown; set?: unknown; updated_at?: unknown }
-  if (e.protected === true) return { ...envRow(key), protected: true, stored: true, isSet: e.set === true, updatedAt: typeof e.updated_at === 'string' ? e.updated_at : null }
+  if (isVaultRef(entry)) return vaultRow(key, { vault: entry.vault, env: entry.env })
+  const e = (entry ?? {}) as { value?: unknown; expand?: unknown }
   return { ...envRow(key, typeof e.value === 'string' ? e.value : ''), expand: e.expand === true }
 }
 
@@ -118,7 +125,7 @@ export interface FormValues {
   cacheExclude: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess'>, string>> & { env?: (string | undefined)[]; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess'>, string>> & { env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
 
 type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
@@ -333,11 +340,6 @@ const intIn = (text: string, min: number, max: number, what: string): string | u
   return n < min || n > max ? `${what} must be ${min} to ${max}` : undefined
 }
 
-/** Error for the value of a row that must send one (a protected variable cannot be saved empty). */
-export function envValueError(r: EnvRow): string | undefined {
-  return r.protected && sendsValue(r) && r.value === '' ? 'A protected variable needs a value' : undefined
-}
-
 export function envKeyError(key: string, all: EnvRow[]): string | undefined {
   if (key === '') return 'Key is required'
   if (!ENV_NAME.test(key)) return 'Key may hold letters, digits and underscores only'
@@ -458,8 +460,9 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
     const problems = validateHooks(JSON.parse(v.hooks) as Hooks, meta.hook_events)
     if (problems.length > 0) e.hooks = problems.map((p) => `${p.path}: ${p.message}`).join('; ')
   }
-  const envErrors = v.env.map((r) => envKeyError(r.key, v.env) ?? envValueError(r))
+  const envErrors = v.env.map((r) => envKeyError(r.key, v.env))
   if (envErrors.some(Boolean)) e.env = envErrors
+  if (v.env.filter((r) => r.vault !== null).length > VAULT_REFS_MAX) e.envSection = `At most ${VAULT_REFS_MAX} vault references`
   const namespaceErrors = kubeNamespaceAccessErrors(v.kubeNamespaceAccess)
   if (namespaceErrors) e.kubeNamespaceAccess = namespaceErrors
   const scriptErrors = initScriptErrors(v.initScripts)
@@ -556,10 +559,9 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<SessionSpec>
 }
 
-/** The request form of a row: protected never carries expand, and carries a value only when it sends one. */
-function envEntry(r: EnvRow): EnvVarIn {
-  if (!r.protected) return { value: r.value, protected: false, expand: r.expand }
-  return sendsValue(r) ? { protected: true, expand: false, value: r.value } : { protected: true, expand: false }
+/** The request form of a row. */
+function envEntry(r: EnvRow): EnvEntry {
+  return r.vault ? { vault: r.vault.vault, env: r.vault.env } : { value: r.value, expand: r.expand }
 }
 
 /** The sparse wrapper settings object: only set, non-empty fields. */
