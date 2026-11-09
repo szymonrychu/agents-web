@@ -249,6 +249,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     set('env', values.env.map((r, i) => (i === index ? { ...r, ...patch } : r)))
   }
   const targetLabels = effectiveLabels(labels, project)
+  // edit mode only: names the preset lost its vault references for, minus the keys the rows now hold
+  const reattach = preset ? (preset.vault_reattach ?? []).filter((name) => !values.env.some((r) => r.key === name)) : []
 
   const closePaste = () => {
     setPasteText(null)
@@ -340,6 +342,9 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('workdir', 'Workdir')}
           {text('pvcSize', 'PVC size')}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {reattach.length > 0 && (
+              <Alert severity="info" data-testid="reattach">{`To re-attach from the vault: ${reattach.join(', ')}`}</Alert>
+            )}
             {values.env.map((row, i) => (
               <Box key={i} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {row.legacy && (

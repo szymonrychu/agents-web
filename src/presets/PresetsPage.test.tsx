@@ -200,4 +200,12 @@ describe('PresetsPage', () => {
     expect(within(row('Alpha')).getByText('ops')).toBeTruthy()
     expect(within(row('Beta')).queryByText('mine')).toBeNull()
   })
+
+  test('test_reattach_chip', async () => {
+    api.listPresets.mockResolvedValue([{ ...preset('p-a', 'Alpha'), vault_reattach: ['GH', 'HF'] }, { ...preset('p-b', 'Beta'), vault_reattach: [] }])
+    wrap()
+    await screen.findByText('Alpha')
+    expect(within(row('Alpha')).getByText('2 to re-attach')).toBeTruthy()
+    expect(within(row('Beta')).queryByText(/to re-attach/)).toBeNull()
+  })
 })

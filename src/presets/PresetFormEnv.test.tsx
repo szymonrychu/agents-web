@@ -305,4 +305,34 @@ describe('vault ref rows', () => {
     await ready()
     expect(screen.queryByRole('button', { name: 'From vault' })).toBeNull()
   })
+  describe('re-attach names', () => {
+    const withReattach = (names: string[]): PresetView => ({ ...preset({ env: { A: { value: '1', expand: false } } }), vault_reattach: names })
+
+    test('test_reattach_names_shown', async () => {
+      wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: GH, HF')
+    })
+
+    test('test_reattach_shrinks_when_row_added', async () => {
+      wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      await userEvent.click(button('Add env'))
+      await type('Env key 2', 'HF')
+      expect(screen.getByTestId('reattach').textContent).toContain('To re-attach from the vault: GH')
+      expect(screen.getByTestId('reattach').textContent).not.toContain('HF')
+    })
+
+    test('test_reattach_absent_on_copy', async () => {
+      wrap(<PresetForm open copyOf={withReattach(['GH', 'HF'])} {...noop} />)
+      await ready()
+      expect(screen.queryByTestId('reattach')).toBeNull()
+    })
+
+    test('absent when nothing to re-attach', async () => {
+      wrap(<PresetForm open preset={withReattach([])} {...noop} />)
+      await ready()
+      expect(screen.queryByTestId('reattach')).toBeNull()
+    })
+  })
 })
