@@ -27,6 +27,7 @@ import { SessionLabels } from '../sessions/SessionLabels'
 import { TOKENS } from '../theme'
 import type { ProposalView } from '../proposals/api'
 import { useActiveProposals } from '../proposals/useActiveProposals'
+import { ProjectSelect } from '../projects/ProjectSelect'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
 
@@ -72,6 +73,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
       <IconButton aria-label="Open menu" onClick={() => setMenuOpen(true)}>
         <MenuIcon />
       </IconButton>
+      <ProjectSelect />
       <Tabs value={value} variant="scrollable" scrollButtons="auto" aria-label="Sessions" sx={{ flexGrow: 1, minWidth: 0 }}>
         {sessions.map(({ session, agents, discarded }) => {
           const mark = sessionMarkState(session, Object.values(agents), discarded === true)

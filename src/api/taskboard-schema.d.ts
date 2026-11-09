@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/projects/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_taskboard_api_v1_projects_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/stream": {
         parameters: {
             query?: never;
@@ -275,6 +292,8 @@ export interface components {
              * @default []
              */
             labels: string[];
+            /** Project */
+            project?: string | null;
             /** Status */
             status?: ("idea" | "open" | "in_progress" | "done" | "dropped") | null;
             /** Title */
@@ -293,6 +312,8 @@ export interface components {
             body?: string | null;
             /** Labels */
             labels?: string[] | null;
+            /** Project */
+            project?: string | null;
             /** Status */
             status?: ("idea" | "open" | "in_progress" | "done" | "dropped") | null;
             /** Title */
@@ -374,9 +395,44 @@ export interface operations {
             };
         };
     };
+    summary_taskboard_api_v1_projects_summary_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     stream_taskboard_api_v1_stream_get: {
         parameters: {
-            query?: never;
+            query?: {
+                project?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -407,6 +463,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "active" | "done" | "dropped" | "all";
+                project?: string | null;
                 session?: string | null;
                 mine?: boolean;
                 waiting?: boolean;
@@ -484,8 +541,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request) */
+            /** @description invalid request (invalid_request, unknown_project, project_archived) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the orchestrator cannot validate the project (upstream_unavailable) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -497,7 +563,12 @@ export interface operations {
     };
     get_task_taskboard_api_v1_tasks__key__get: {
         parameters: {
-            query?: never;
+            query?: {
+                events_limit?: number | null;
+                events_before?: number | null;
+                comments_limit?: number | null;
+                comments_before?: number | null;
+            };
             header?: never;
             path: {
                 key: string;
@@ -528,6 +599,15 @@ export interface operations {
             };
             /** @description no such task, decision or todo item (not_found) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -590,8 +670,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request) */
+            /** @description invalid request (invalid_request, unknown_project, project_archived) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the orchestrator cannot validate the project (upstream_unavailable) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

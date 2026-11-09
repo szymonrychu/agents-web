@@ -611,6 +611,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/sessions/{slug}/leadership/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw Handover
+         * @description Withdraw a pending handover request (`request_id`), or every one of the session when it
+         *     is omitted: the session's own leader, or a superleader on its own or a manageable session.
+         *     A withdrawn request is rejected with reason `withdrawn` and never applied. The reconciler's
+         *     `rollout` request is never withdrawn (409 `rollout_request` by id, left queued without).
+         */
+        post: operations["withdraw_handover_agent_v1_admin_sessions__slug__leadership_withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/sessions/{slug}/restart": {
         parameters: {
             query?: never;
@@ -1042,6 +1065,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's project, or every active project for a superleader
+         * @description Scope `project` (projects plan 3.3): the caller's own project, archived or not; a
+         *     superleader session gets every active project. No counts, as on the service port.
+         */
+        get: operations["projects_agent_v1_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/scale": {
         parameters: {
             query?: never;
@@ -1090,7 +1134,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Sessions the caller's session may message (superleaders, or all for a superleader) */
+        /** Sessions the caller may message (superleaders, own project; all for a superleader) */
         get: operations["sessions_list_agent_v1_sessions_get"];
         put?: never;
         post?: never;
@@ -1496,6 +1540,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Projects
+         * @description Active projects, or only the archived ones with `archived=true`. Counts are left out on
+         *     the service port.
+         */
+        get: operations["list_projects_api_v1_projects_get"];
+        put?: never;
+        /** Create Project */
+        post: operations["create_project_api_v1_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project */
+        get: operations["get_project_api_v1_projects__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Project */
+        patch: operations["patch_project_api_v1_projects__slug__patch"];
+        trace?: never;
+    };
     "/api/v1/proposals": {
         parameters: {
             query?: never;
@@ -1562,7 +1646,10 @@ export interface paths {
         };
         /**
          * List Sessions
-         * @description All sessions; `label` (repeatable) keeps live sessions that carry any of the labels.
+         * @description All sessions. `label` (repeatable) keeps live sessions that carry any of the labels;
+         *     `project` keeps that project's sessions (422 `unknown_project`; an archived one still
+         *     lists), and with `superleaders=include` every superleader session is added; `slug` is an
+         *     exact match. The filters combine.
          */
         get: operations["list_sessions_api_v1_sessions_get"];
         put?: never;
@@ -1873,6 +1960,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Project
+         * @description Move a live session to another project. Scope is read live per request, so the move
+         *     takes effect at once. A move is a new placement: the target must exist and be active (422
+         *     `unknown_project`, `project_archived`); its row is locked before the session row.
+         */
+        patch: operations["patch_project_api_v1_sessions__session_id__project_patch"];
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/restart": {
         parameters: {
             query?: never;
@@ -2012,6 +2121,8 @@ export interface components {
         AgentBootstrapStep: {
             /** Finished At */
             finished_at: string | null;
+            /** Log Tail */
+            log_tail?: string | null;
             /** Message */
             message: string | null;
             /** Started At */
@@ -2156,6 +2267,21 @@ export interface components {
              * Format: date-time
              */
             finished_at: string;
+        };
+        /**
+         * BootstrapFailure
+         * @description Why one agent's wrapper session failed to start: the step, a one-line message and the
+         *     redacted log tail (cut like check logs). `step` is "create" when the create itself failed.
+         */
+        BootstrapFailure: {
+            /** Log Tail */
+            log_tail?: string | null;
+            /** Message */
+            message: string;
+            /** Pod */
+            pod: string;
+            /** Step */
+            step: string;
         };
         /** CheckAccepted */
         CheckAccepted: {
@@ -2325,11 +2451,15 @@ export interface components {
         CopyPreset: {
             /** Name */
             name?: string | null;
+            /** Project */
+            project?: string | null;
         };
         /** CreateSession */
         CreateSession: {
             /** Preset Id */
             preset_id?: string | null;
+            /** Project */
+            project?: string | null;
             /** Slug */
             slug?: string | null;
             spec?: components["schemas"]["SessionSpecIn"] | null;
@@ -2724,6 +2854,10 @@ export interface components {
             ordinal: number;
             /** Pod Name */
             pod_name: string;
+            /** Project */
+            project: string;
+            /** Projects Scope */
+            projects_scope: string;
             /**
              * Session Id
              * Format: uuid
@@ -3068,6 +3202,8 @@ export interface components {
             labels?: string[] | null;
             /** Name */
             name: string;
+            /** Project */
+            project?: string | null;
             /**
              * @default {
              *       "env": {},
@@ -3086,13 +3222,16 @@ export interface components {
         };
         /**
          * PresetPatch
-         * @description Admin partial edit: `spec` is an RFC 7396 merge patch of the stored spec.
+         * @description Admin partial edit: `spec` is an RFC 7396 merge patch of the stored spec. A `project`
+         *     other than the stored one is refused (human-only).
          */
         PresetPatch: {
             /** Labels */
             labels?: string[] | null;
             /** Name */
             name?: string | null;
+            /** Project */
+            project?: string | null;
             /** Spec */
             spec?: {
                 [key: string]: unknown;
@@ -3116,6 +3255,10 @@ export interface components {
             labels: string[];
             /** Name */
             name: string;
+            /** Privileged */
+            privileged: string[];
+            /** Project */
+            project: string;
             /** Spec */
             spec: {
                 [key: string]: unknown;
@@ -3156,6 +3299,52 @@ export interface components {
             rendered: string | null;
             /** Variables */
             variables: string[];
+        };
+        /** ProjectIn */
+        ProjectIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** ProjectPatch */
+        ProjectPatch: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** ProjectView */
+        ProjectView: {
+            /** Archived */
+            archived: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Name */
+            name: string;
+            /** Presets */
+            presets?: number | null;
+            /** Sessions */
+            sessions?: number | null;
+            /** Slug */
+            slug: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * ProposalIn
@@ -3422,6 +3611,13 @@ export interface components {
             preset_name: string | null;
             /** Slug */
             slug: string;
+            /** Start Reason */
+            start_reason: string | null;
+            /**
+             * Start State
+             * @enum {string}
+             */
+            start_state: "booting" | "ready" | "bootstrap_failed";
             /** Superleader */
             superleader: boolean;
         };
@@ -3429,6 +3625,11 @@ export interface components {
         SessionPeers: {
             /** Sessions */
             sessions: components["schemas"]["SessionPeer"][];
+        };
+        /** SessionProjectIn */
+        SessionProjectIn: {
+            /** Project */
+            project: string;
         };
         /** SessionRestartAccepted */
         SessionRestartAccepted: {
@@ -3630,6 +3831,8 @@ export interface components {
             auto_compact_pct: number;
             /** Bootstrap Failed Agents */
             bootstrap_failed_agents: number;
+            /** Bootstrap Failures */
+            bootstrap_failures: components["schemas"]["BootstrapFailure"][];
             /** Context Pct Max */
             context_pct_max: number | null;
             /** Failed */
@@ -3644,6 +3847,11 @@ export interface components {
             ready: number;
             /** Replicas */
             replicas: number;
+            /**
+             * Start State
+             * @enum {string}
+             */
+            start_state: "booting" | "ready" | "bootstrap_failed";
             /**
              * State
              * @enum {string}
@@ -3715,6 +3923,8 @@ export interface components {
             preset_id: string | null;
             /** Preset Name */
             preset_name: string | null;
+            /** Project */
+            project: string;
             /** Reminder At */
             reminder_at?: string | null;
             /** Slug */
@@ -3904,6 +4114,16 @@ export interface components {
             url: string;
             /** When */
             when?: ("busy" | "always") | null;
+        };
+        /** WithdrawIn */
+        WithdrawIn: {
+            /** Request Id */
+            request_id?: number | null;
+        };
+        /** Withdrawn */
+        Withdrawn: {
+            /** Withdrawn */
+            withdrawn: number[];
         };
         /**
          * WorkspaceCache
@@ -5428,6 +5648,44 @@ export interface operations {
             };
         };
     };
+    withdraw_handover_agent_v1_admin_sessions__slug__leadership_withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Withdrawn"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     restart_session_agent_v1_admin_sessions__slug__restart_post: {
         parameters: {
             query?: never;
@@ -6415,6 +6673,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    projects_agent_v1_projects_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"][];
                 };
             };
             /** @description Validation Error */
@@ -7635,7 +7925,9 @@ export interface operations {
     };
     list_presets_api_v1_presets_get: {
         parameters: {
-            query?: never;
+            query?: {
+                project?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7649,6 +7941,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PresetView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7852,6 +8153,136 @@ export interface operations {
             };
         };
     };
+    list_projects_api_v1_projects_get: {
+        parameters: {
+            query?: {
+                archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project_api_v1_projects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_api_v1_projects__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_project_api_v1_projects__slug__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_proposals_api_v1_proposals_get: {
         parameters: {
             query?: {
@@ -7955,6 +8386,9 @@ export interface operations {
         parameters: {
             query?: {
                 label?: string[] | null;
+                project?: string | null;
+                superleaders?: "include" | null;
+                slug?: string | null;
             };
             header?: never;
             path?: never;
@@ -8659,6 +9093,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionModeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_project_api_v1_sessions__session_id__project_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionProjectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
             /** @description Validation Error */

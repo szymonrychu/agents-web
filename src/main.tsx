@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import { ConfigError, loadConfig } from './config/backends'
+import { ProjectProvider } from './projects/ProjectContext'
 import { theme } from './theme'
 import './index.css'
 
@@ -17,7 +18,9 @@ loadConfig().then(
         <ThemeProvider theme={theme}>
           <CssBaseline enableColorScheme />
           <BrowserRouter>
-            <App />
+            <ProjectProvider>
+              <App />
+            </ProjectProvider>
           </BrowserRouter>
         </ThemeProvider>
       </StrictMode>,
