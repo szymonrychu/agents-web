@@ -52,12 +52,51 @@ describe('PresetsPage', () => {
     ctx.project = null
   })
 
-  test('shows a Superleader chip for manageable presets', async () => {
-    api.listPresets.mockResolvedValue([preset('p-a', 'Alpha', false, true), preset('p-b', 'Beta')])
+  describe('badges', () => {
+    const flagged = (id: string, name: string, messaging: boolean, manageable: boolean): PresetView =>
+      ({ ...preset(id, name, false, manageable), spec: { session_messaging: messaging } }) as PresetView
+    const chip = (name: string, label: string) => within(row(name)).queryByText(label, { selector: '.MuiChip-label' })
+
+    test('each badge follows its own flag', async () => {
+      api.listPresets.mockResolvedValue([
+        flagged('p-1', 'Messaging', true, false),
+        flagged('p-2', 'Managed', false, true),
+        flagged('p-3', 'Both', true, true),
+        flagged('p-4', 'Neither', false, false),
+      ])
+      wrap()
+      await screen.findByText('Messaging')
+      expect([chip('Messaging', 'Superleader'), chip('Messaging', 'Superleader-managed')].map(Boolean)).toEqual([true, false])
+      expect([chip('Managed', 'Superleader'), chip('Managed', 'Superleader-managed')].map(Boolean)).toEqual([false, true])
+      expect([chip('Both', 'Superleader'), chip('Both', 'Superleader-managed')].map(Boolean)).toEqual([true, true])
+      expect([chip('Neither', 'Superleader'), chip('Neither', 'Superleader-managed')].map(Boolean)).toEqual([false, false])
+    })
+
+    test('badges explain themselves with the form helper text', async () => {
+      api.listPresets.mockResolvedValue([flagged('p-3', 'Both', true, true)])
+      wrap()
+      await screen.findByText('Both')
+      expect(screen.getByText('Superleader', { selector: '.MuiChip-label' }).closest('[aria-label]')?.getAttribute('aria-label')).toBe('superleader: can message the leaders of all sessions')
+      expect(screen.getByText('Superleader-managed', { selector: '.MuiChip-label' }).closest('[aria-label]')?.getAttribute('aria-label')).toBe(
+        'The superleader sees this preset and the sessions, webhooks, schedules and chats that use it, and can start, stop and edit them',
+      )
+    })
+  })
+
+  test('actions sit in the row flow and chips live in the wrapping chip container', async () => {
+    api.listPresets.mockResolvedValue([{ ...preset('p-a', 'Alpha', true, true), project: 'infra', spec: { session_messaging: true } } as PresetView])
     wrap()
     await screen.findByText('Alpha')
-    expect(within(row('Alpha')).getByText('Superleader', { selector: '.MuiChip-label' })).toBeTruthy()
-    expect(within(row('Beta')).queryByText('Superleader', { selector: '.MuiChip-label' })).toBeNull()
+    const r = row('Alpha')
+    expect(r.querySelector('.MuiListItemSecondaryAction-root')).toBeNull()
+    expect(r.classList.contains('MuiListItem-secondaryAction')).toBe(false)
+    const chips = within(r).getByTestId('preset-chips')
+    expect(getComputedStyle(chips).flexWrap).toBe('wrap')
+    for (const label of ['infra', 'Default', 'Superleader', 'Superleader-managed']) {
+      expect(within(chips).getByText(label, { selector: '.MuiChip-label' })).toBeTruthy()
+    }
+    expect(r.querySelectorAll('.MuiChip-root').length).toBe(within(chips).getAllByText(/./, { selector: '.MuiChip-label' }).length)
+    expect(chips.contains(within(r).getByRole('button', { name: 'Edit Alpha' }))).toBe(false)
   })
 
   test('lists_presets_default_marked_without_delete', async () => {
