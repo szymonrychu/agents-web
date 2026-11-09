@@ -7,6 +7,8 @@ import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import { ProjectField } from '../projects/ProjectField'
+import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
 import { FormError } from '../triggers'
 import { createTask, type Task } from './api'
@@ -19,6 +21,8 @@ export interface CreateTaskDialogProps {
 
 /** A user-created idea or task; the client key makes a retried submit idempotent. */
 export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogProps) {
+  const { project: selected } = useProject()
+  const [project, setProject] = useState(selected ?? 'default')
   const [kind, setKind] = useState<'idea' | 'task'>('task')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -29,7 +33,7 @@ export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogP
   const create = async () => {
     setError(null)
     try {
-      onCreated(await createTask({ title: title.trim(), body, kind, labels, client_key: clientKey }))
+      onCreated(await createTask({ title: title.trim(), body, kind, labels, project, client_key: clientKey }))
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)))
     }
@@ -46,6 +50,7 @@ export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogP
         </ToggleButtonGroup>
         <TextField size="small" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
         <TextField size="small" label="Description" multiline minRows={3} value={body} onChange={(e) => setBody(e.target.value)} />
+        <ProjectField value={project} onChange={setProject} />
         <LabelEditor value={labels} onChange={setLabels} />
       </DialogContent>
       <DialogActions>

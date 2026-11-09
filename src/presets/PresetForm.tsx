@@ -20,6 +20,8 @@ import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import { parseDotenv } from '../sessions/dotenv'
+import { ProjectField } from '../projects/ProjectField'
+import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
 import { createPreset, getMeta, setPresetSecret, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
@@ -116,6 +118,10 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   // the labels the form opened with: an edit sends labels only when they changed (the server keeps them when omitted)
   const [initialLabels] = useState(() => (preset ?? copyOf)?.labels ?? [])
   const [labels, setLabels] = useState(initialLabels)
+  // an edit opens on the preset's project, a copy on the source's, a new preset on the selected one
+  const { project: selectedProject } = useProject()
+  const [initialProject] = useState(() => (preset ?? copyOf)?.project ?? selectedProject ?? 'default')
+  const [project, setProject] = useState(initialProject)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -242,6 +248,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
         superleader_manageable: superleaderManageable,
         spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'],
         ...(labelsChanged ? { labels } : {}),
+        // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
+        ...(!preset || project !== initialProject ? { project } : {}),
       }
       onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
     } catch (e) {
@@ -272,6 +280,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {serverError && <Alert severity="error" variant="outlined">{serverError}</Alert>}
           {text('name', 'Name', { disabled: preset?.is_default === true })}
+          <ProjectField value={project} onChange={setProject} />
           <LabelEditor value={labels} onChange={setLabels} />
           {text('replicas', 'Replicas')}
           {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the session a hive' })}

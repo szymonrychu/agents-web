@@ -126,6 +126,7 @@ export function TaskDetail({ taskKey }: { taskKey: string }) {
         <Typography color="text.secondary">{task.key}</Typography>
         <Typography component="h1" sx={{ fontSize: TOKENS.fontSizes.lg }}>{task.title}</Typography>
         <Chip size="small" label={task.status.replace('_', ' ')} />
+        <Chip size="small" variant="outlined" label={task.project} />
         {task.open_decisions > 0 && <Chip size="small" color="warning" label={`Blocked (${task.open_decisions})`} />}
       </Box>
       <FormError error={error} />

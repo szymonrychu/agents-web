@@ -66,6 +66,7 @@ export interface Task {
   title: string
   body: string
   kind: 'idea' | 'task'
+  project: string
   status: TaskStatus
   labels: string[]
   assignee_session: string | null
@@ -92,6 +93,7 @@ const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(ba
 export interface ListQuery {
   status?: ListStatus
   session?: string
+  project?: string | null
   labels?: string[]
   cursor?: string
   limit?: number
@@ -100,6 +102,7 @@ export function listTasks(opts: ListQuery = {}): Promise<TaskPage> {
   const q = new URLSearchParams()
   if (opts.status) q.set('status', opts.status)
   if (opts.session) q.set('session', opts.session)
+  if (opts.project) q.set('project', opts.project)
   for (const l of opts.labels ?? []) q.append('label', l)
   if (opts.cursor) q.set('cursor', opts.cursor)
   if (opts.limit) q.set('limit', String(opts.limit))

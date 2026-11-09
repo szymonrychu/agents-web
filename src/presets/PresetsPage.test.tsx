@@ -8,6 +8,8 @@ import type { PresetView } from '../api/client'
 import { theme } from '../theme'
 import { PresetsPage } from './PresetsPage'
 
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 const api = vi.hoisted(() => ({ listPresets: vi.fn(), deletePreset: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
@@ -40,6 +42,16 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('PresetsPage', () => {
+  test('lists the selected projects presets and shows each presets project', async () => {
+    ctx.project = 'infra'
+    api.listPresets.mockResolvedValue([{ ...preset('p-a', 'Alpha'), project: 'infra' }])
+    wrap()
+    await screen.findByText('Alpha')
+    expect(api.listPresets).toHaveBeenLastCalledWith('infra')
+    expect(within(row('Alpha')).getByText('infra', { selector: '.MuiChip-label' })).toBeTruthy()
+    ctx.project = null
+  })
+
   test('shows a Superleader chip for manageable presets', async () => {
     api.listPresets.mockResolvedValue([preset('p-a', 'Alpha', false, true), preset('p-b', 'Beta')])
     wrap()

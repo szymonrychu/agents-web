@@ -14,6 +14,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router'
 import { LabelChips } from '../labels/LabelChips'
+import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
@@ -41,8 +42,9 @@ export function TasksPage() {
   const status = asStatus(params.get('status'))
   const session = params.get('session') ?? ''
   const labels = params.getAll('label')
+  const { project } = useProject()
 
-  const { data, error, loading, refresh } = usePoll(() => listTasks({ status, session: session || undefined, labels }), POLL_MS, [status, session, labels.join('\n')])
+  const { data, error, loading, refresh } = usePoll(() => listTasks({ status, session: session || undefined, project, labels }), POLL_MS, [status, session, project, labels.join('\n')])
   useTaskStream(() => void refresh())
 
   // Further pages are appended to the first one; a poll or a filter change starts over.
@@ -52,7 +54,7 @@ export function TasksPage() {
   const next = more ? more.next : (data?.next_cursor ?? null)
   const loadMore = async () => {
     if (next === null) return
-    const page = await listTasks({ status, session: session || undefined, labels, cursor: next })
+    const page = await listTasks({ status, session: session || undefined, project, labels, cursor: next })
     setExtra({ page: data, items: [...(more?.items ?? []), ...page.items], next: page.next_cursor })
   }
 
@@ -102,6 +104,7 @@ export function TasksPage() {
             <TableCell>Key</TableCell>
             <TableCell>Title</TableCell>
             <TableCell>Status</TableCell>
+            <TableCell>Project</TableCell>
             <TableCell>Labels</TableCell>
             <TableCell>Assignee</TableCell>
           </TableRow>
@@ -117,6 +120,7 @@ export function TasksPage() {
                 </Box>
               </TableCell>
               <TableCell><Chip size="small" label={t.status.replace('_', ' ')} /></TableCell>
+              <TableCell><Chip size="small" variant="outlined" label={t.project} /></TableCell>
               <TableCell><LabelChips labels={t.labels} onClick={addLabel} /></TableCell>
               <TableCell>
                 {t.assignee_session && <Link component={RouterLink} to={`/tasks?session=${encodeURIComponent(t.assignee_session)}`}>{t.assignee_session}</Link>}

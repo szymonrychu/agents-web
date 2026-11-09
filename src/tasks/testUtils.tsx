@@ -31,7 +31,7 @@ export const decision = (over: Partial<Decision> = {}): Decision => ({
 })
 
 export const task = (over: Partial<Task> = {}): Task => ({
-  key: 'T-1', title: 'First task', body: 'Do it', kind: 'task', status: 'open', labels: [], assignee_session: null, blocked: false,
+  key: 'T-1', title: 'First task', body: 'Do it', kind: 'task', project: 'default', status: 'open', labels: [], assignee_session: null, blocked: false,
   open_decisions: 0, waiting_sessions: [], todo: [], decisions: [], comments: [], events: [], url: 'https://x/T-1', version: 3,
   created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-01T10:00:00Z', ...over,
 })

@@ -3,18 +3,21 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { listSessions } from '../api/client'
 import type { SessionView } from '../api/client'
+import { useProject } from '../projects/ProjectContext'
 import { LabelChips } from '../labels/LabelChips'
 import { LabelEditor } from '../labels/LabelEditor'
 import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
 import { DiscardSessionDialog } from './DiscardSessionDialog'
+import { MoveProjectDialog } from './MoveProjectDialog'
 import { NewSessionDialog } from './NewSessionDialog'
 
 export interface SessionsPageProps {
@@ -39,6 +42,8 @@ export function timeLeft(closesAt: string | null, now = Date.now()): string {
 export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
   const [sessions, setSessions] = useState<SessionView[]>([])
   const [creating, setCreating] = useState(false)
+  const { project } = useProject()
+  const [moving, setMoving] = useState<SessionView | null>(null)
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -51,7 +56,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
 
   useEffect(() => {
     let cancelled = false
-    listSessions(filter)
+    listSessions(filter, project)
       .then((list) => {
         if (cancelled) return
         setSessions([...list].sort((a, b) => a.slug.localeCompare(b.slug)))
@@ -64,7 +69,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
     return () => {
       cancelled = true
     }
-  }, [version, filter])
+  }, [version, filter, project])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
@@ -84,6 +89,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
             secondaryAction={
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button size="small" aria-label={`Open ${c.slug}`} onClick={() => onOpen(c.id)}>Open</Button>
+                <Button size="small" aria-label={`Move ${c.slug} to project`} onClick={() => setMoving(c)}>Move to project</Button>
                 <Button size="small" color="error" aria-label={`Discard ${c.slug}`} onClick={() => setDiscarding(c)}>Discard</Button>
               </Box>
             }
@@ -91,6 +97,7 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'baseline', pr: 20 }}>
               <ListItemText primary={c.slug} sx={{ minWidth: 120 }} />
               <Typography component="span">{c.preset_name ?? 'none'}</Typography>
+              <Chip size="small" variant="outlined" label={c.project} />
               <Typography component="span">{markLabel(sessionMarkState(c, []))}</Typography>
               {sessionIssue(c, [])?.text ? <Typography component="span" color="error">{sessionIssue(c, [])?.text}</Typography> : null}
               <Typography component="span">{`${c.summary.ready}/${c.summary.replicas}`}</Typography>
@@ -109,6 +116,17 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
           reload()
         }}
       />
+      {moving && (
+        <MoveProjectDialog
+          open
+          session={moving}
+          onClose={() => setMoving(null)}
+          onMoved={() => {
+            setMoving(null)
+            reload()
+          }}
+        />
+      )}
       {discarding && (
         <DiscardSessionDialog
           open
