@@ -134,7 +134,7 @@ export function DialogPanel({ open, agentId, agentLabel, onClose }: DialogPanelP
     <>
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
         <DialogTitle>{`${view?.kind === 'permission' && perm ? 'Permission request' : 'Agent dialog'} - ${agentLabel}`}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {loading && !view && <CircularProgress size={24} aria-label="loading dialog" />}
           {error && <Alert severity="error">{error}</Alert>}
           {notice && <Alert severity="info">{notice}</Alert>}

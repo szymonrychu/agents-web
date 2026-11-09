@@ -10,10 +10,12 @@ import { AgentsStrip } from './AgentsStrip'
 import { formatAge } from './agentAge'
 
 const makeLeader = vi.hoisted(() => vi.fn())
-vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), makeLeader }))
+const getAgentDialog = vi.hoisted(() => vi.fn())
+vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), makeLeader, getAgentDialog }))
 
 afterEach(() => {
   makeLeader.mockReset()
+  getAgentDialog.mockReset()
   cleanup()
   vi.useRealTimers()
 })
@@ -204,5 +206,29 @@ describe('AgentsStrip', () => {
     mount([agent('a0', 0, { leader: true })], [], () => {}, { sessionId: 'c1', leaderEpoch: 2, leaderReason: null })
     expect(screen.getByText('leader').getAttribute('title')).toBe('leader epoch 2')
     expect(screen.queryByText(/^after /)).toBeNull()
+  })
+
+  test('attention_opens_dialog_panel', () => {
+    getAgentDialog.mockReturnValue(new Promise(() => {}))
+    mount([agent('a0', 0), agent('a1', 1, { attention: { reason: 'permission', since: '2026-11-09T10:00:00Z' } })])
+    expect(screen.queryByRole('button', { name: 'answer agent 0' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'answer agent 1' }))
+    expect(getAgentDialog).toHaveBeenCalledWith('a1')
+  })
+
+  test('no_button_without_attention', () => {
+    mount([agent('a0', 0)])
+    expect(screen.queryByRole('button', { name: /^answer agent/ })).toBeNull()
+  })
+
+  test('agent_toggle_unchanged', () => {
+    getAgentDialog.mockReturnValue(new Promise(() => {}))
+    const onToggle = vi.fn()
+    mount([agent('a1', 1, { attention: { reason: 'permission', since: null } })], [], onToggle)
+    fireEvent.click(screen.getByRole('button', { name: 'agent 1' }))
+    expect(onToggle).toHaveBeenCalledWith('a1')
+    onToggle.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'answer agent 1' }))
+    expect(onToggle).not.toHaveBeenCalled()
   })
 })

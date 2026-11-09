@@ -27,6 +27,8 @@ function runningGate(status: Dict): string | null {
 export interface Issue {
   kind: 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
   text: string
+  /** Set on an attention issue of one agent: the agent whose dialog can be opened. */
+  agentId?: string
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
@@ -62,7 +64,7 @@ export function agentIssue(a: AgentView): Issue | null {
   const f = a.bootstrap_failure
   if (f) return { kind: 'bootstrap_failure', text: f.message ? `${f.step} failed: ${f.message}` : `${f.step} failed` }
   if (a.permission_mode_state === 'unavailable') return { kind: 'permission_unavailable', text: a.permission_mode_reason ? `Auto mode unavailable: ${a.permission_mode_reason}` : 'Auto mode unavailable' }
-  if (a.attention) return { kind: 'attention', text: `waiting: ${a.attention.reason}` }
+  if (a.attention) return { kind: 'attention', text: `waiting: ${a.attention.reason}`, agentId: a.id }
   return null
 }
 

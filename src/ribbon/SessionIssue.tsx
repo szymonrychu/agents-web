@@ -1,16 +1,26 @@
 /** One line naming what needs a person on a session: a pending self-close (info), a bootstrap failure (error), an unavailable permission mode (warning) or an agent waiting for input. */
+import { useState } from 'react'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import type { AgentView, SessionView } from '../api/client'
+import { DialogPanel } from '../chat/DialogPanel'
 import { TOKENS } from '../theme'
 import { sessionIssue } from './sessionStatus'
 
 export function SessionIssue({ session, agents }: { session: SessionView; agents: readonly AgentView[] }) {
+  const [panel, setPanel] = useState(false)
   const issue = sessionIssue(session, agents)
   if (issue === null || session.desired === 'deleting') return null
   const failed = issue.kind === 'bootstrap_failure'
   return (
     <Box role={failed ? 'alert' : 'status'} sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: failed ? 'error.main' : issue.kind === 'closing' || issue.kind === 'quiet' ? 'info.main' : issue.kind === 'permission_unavailable' ? 'warning.main' : TOKENS.attention, pt: 0.5, overflowWrap: 'anywhere' }}>
       {failed ? `Bootstrap failed: ${issue.text}` : issue.text}
+      {issue.agentId !== undefined && (
+        <>
+          <Button size="small" aria-label="open dialog" onClick={() => setPanel(true)}>Open</Button>
+          {panel && <DialogPanel open agentId={issue.agentId} agentLabel={agents.find((a) => a.id === issue.agentId)?.pod_name ?? issue.agentId} onClose={() => setPanel(false)} />}
+        </>
+      )}
     </Box>
   )
 }
