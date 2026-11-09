@@ -340,7 +340,7 @@ export interface paths {
          *     `envs` maps entry env to preset env; one entry env may back several preset envs through
          *     repeated calls, which keep the refs already there. Without `envs` every env of the entry is
          *     attached under its own name. A preset env that is taken is 409 `env_exists` unless
-         *     `replace`.
+         *     `replace`. The answer marks `attachment_privileged` (marked, never blocked).
          */
         put: operations["attach_vault_agent_v1_admin_presets__ref__vault__entry_id__put"];
         post?: never;
@@ -4079,6 +4079,49 @@ export interface components {
             replace: boolean;
         };
         /**
+         * VaultAttachView
+         * @description The preset view an admin vault attach answers. `attachment_privileged` marks a preset
+         *     whose session can read every Secret in the namespace (`privileged` is not empty); marked,
+         *     never blocked.
+         */
+        VaultAttachView: {
+            /** Attachment Privileged */
+            attachment_privileged: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Labels */
+            labels: string[];
+            /** Name */
+            name: string;
+            /** Privileged */
+            privileged: string[];
+            /** Project */
+            project: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Superleader Manageable */
+            superleader_manageable: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vault Reattach */
+            vault_reattach: string[];
+        };
+        /**
          * VaultPinView
          * @description What a session was pinned to for one vault env variable; never a value.
          */
@@ -4983,7 +5026,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["VaultAttachView"];
                 };
             };
             /** @description Validation Error */
