@@ -31,8 +31,9 @@ function displayBefore(item: ProposalItemView): unknown {
 
 const NO_ENTRIES: ReadonlyMap<string, EntryView> = new Map()
 
-/** A vault reference reads as `vault <entry name> / <ENV>`; any other value is unchanged. */
-const refDisplay = (v: unknown, entries: ReadonlyMap<string, EntryView>): unknown => (isVaultRef(v) ? `vault ${refText(v, entries)}` : v)
+/** A vault reference reads as `vault <entry name> / <ENV>` (refText already supplies `vault <8 chars>` for unknown entries); any other value is unchanged. */
+const refDisplay = (v: unknown, entries: ReadonlyMap<string, EntryView>): unknown =>
+  isVaultRef(v) ? (entries.has(v.vault) ? `vault ${refText(v, entries)}` : refText(v, entries)) : v
 
 /** Narrow screens: the diff's text as two stacked labeled blocks (the stacked MergeView collapses to zero height there). */
 function TextStack({ before, after }: { before: string; after: string }): JSX.Element {
