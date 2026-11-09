@@ -1254,6 +1254,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agent_id}/dialog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dialog
+         * @description What the agent's claude is waiting on (a permission request, a dialog, a usage wait).
+         */
+        get: operations["get_dialog_api_v1_agents__agent_id__dialog_get"];
+        put?: never;
+        /**
+         * Answer Dialog
+         * @description Allow, deny or dismiss the open dialog; the wrapper's 4xx (409 `no_dialog`,
+         *     `dialog_changed`, `permission_resolved`, `not_dismissable`) pass through. The log line
+         *     carries no message text and no tool input. The main port has no user identity (the
+         *     source allowlist is the auth), so the caller is the peer address. The origin guard runs
+         *     inside the audited block so refused answers (403, 404, 409) are logged too.
+         */
+        post: operations["answer_dialog_api_v1_agents__agent_id__dialog_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agent_id}/interrupt": {
         parameters: {
             query?: never;
@@ -2495,6 +2523,90 @@ export interface components {
             keys: string[];
         };
         /**
+         * DialogAnswer
+         * @description A person's answer to the open dialog; forwarded to the wrapper unchanged.
+         */
+        DialogAnswer: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "allow" | "deny" | "dismiss";
+            /** Expect Since */
+            expect_since?: string | null;
+            /** Message */
+            message?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+        };
+        /** DialogAnswerResult */
+        DialogAnswerResult: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Behavior */
+            behavior?: string | null;
+            /** Escape Sent */
+            escape_sent?: boolean | null;
+            /** Request Id */
+            request_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "answered" | "dismissed" | "still_open";
+        };
+        /**
+         * DialogPermissionView
+         * @description A held PermissionRequest of the agent's claude (wrapper 0.11.0).
+         */
+        DialogPermissionView: {
+            /** Agent Id */
+            agent_id?: string | null;
+            /** Expires At */
+            expires_at: string;
+            /** Request Id */
+            request_id: string;
+            /** Since */
+            since: string;
+            /** Suggestions */
+            suggestions?: unknown[];
+            /** Tool Input */
+            tool_input: string;
+            /** Tool Name */
+            tool_name: string;
+            /** Truncated */
+            truncated: boolean;
+        };
+        /**
+         * DialogView
+         * @description What the agent's claude waits on: the wrapper's dialog state plus the agent identity.
+         */
+        DialogView: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "permission" | "dialog" | "usage_wait" | "none";
+            permission?: components["schemas"]["DialogPermissionView"] | null;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Since */
+            since?: string | null;
+            /** Tail */
+            tail?: string | null;
+        };
+        /**
          * EnvVar
          * @description One session env variable, GitLab CI style: `{value, expand}`, or a vault reference.
          *
@@ -2660,6 +2772,8 @@ export interface components {
         HandoverIn: {
             /** Epoch */
             epoch: number;
+            /** Handled */
+            handled?: number[];
             /** Reason */
             reason: string;
             /** To */
@@ -2731,6 +2845,11 @@ export interface components {
              * @default when your turn has ended and your background agents have reported
              */
             applies: string;
+            /**
+             * Handled
+             * @default []
+             */
+            handled: number[];
             /** Request Id */
             request_id: number;
             /**
@@ -2861,6 +2980,8 @@ export interface components {
             epoch: number | null;
             /** Leader */
             leader: string | null;
+            /** Leader State */
+            leader_state?: string | null;
             /** Max Replicas */
             max_replicas: number;
             /** Members */
@@ -3562,6 +3683,8 @@ export interface components {
         };
         /** SessionMessageIn */
         SessionMessageIn: {
+            /** Handled */
+            handled?: number[];
             /**
              * Lane
              * @default regular
@@ -3573,6 +3696,11 @@ export interface components {
         };
         /** SessionMessageQueued */
         SessionMessageQueued: {
+            /**
+             * Handled
+             * @default []
+             */
+            handled: number[];
             /** Message Id */
             message_id: number;
         };
@@ -7541,6 +7669,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommandAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dialog_api_v1_agents__agent_id__dialog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DialogView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_dialog_api_v1_agents__agent_id__dialog_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DialogAnswer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DialogAnswerResult"];
                 };
             };
             /** @description Validation Error */
