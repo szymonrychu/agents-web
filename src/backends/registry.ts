@@ -15,6 +15,7 @@
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
  *   60 Devices (agents-app-connector admin API)
+ *   62 Projects (orchestrator, project buckets)
  */
 import { createElement, type ReactNode } from 'react'
 import type { RuntimeConfig } from '../config/backends'
@@ -29,6 +30,7 @@ import { historyMenu } from '../history/menu'
 import { tasksMenu } from '../tasks/menu'
 import { proposalsMenu } from '../proposals/menu'
 import { vaultMenu } from '../vault/menu'
+import { projectsMenu } from '../projects/menu'
 import { PresetsPage } from '../presets/PresetsPage'
 
 export interface MenuEntry {
@@ -46,6 +48,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
     proposalsMenu,
     backupsMenu,
+    projectsMenu,
   ],
   taskboard: [tasksMenu],
   webhooks: [webhooksMenu],

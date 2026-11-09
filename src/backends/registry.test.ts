@@ -30,11 +30,11 @@ describe('menuEntries', () => {
   })
 
   test('default_orchestrator_has_sessions_at_10_and_presets_at_40', () => {
-    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['sessions', 10], ['presets', 40], ['proposals', 42], ['backups', 45]])
+    expect(menuEntries(config('orchestrator')).map((e) => [e.id, e.order])).toEqual([['sessions', 10], ['presets', 40], ['proposals', 42], ['backups', 45], ['projects', 62]])
   })
 
   test('webhooks_sits_between_sessions_and_presets_only_when_configured', () => {
-    expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).toEqual(['sessions', 'webhooks', 'presets', 'proposals', 'backups'])
+    expect(menuEntries(config('orchestrator', 'webhooks')).map((e) => e.id)).toEqual(['sessions', 'webhooks', 'presets', 'proposals', 'backups', 'projects'])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('webhooks')
   })
 
@@ -46,6 +46,7 @@ describe('menuEntries', () => {
       ['presets', 40],
       ['proposals', 42],
       ['backups', 45],
+      ['projects', 62],
     ])
   })
 
@@ -71,6 +72,7 @@ describe('menuEntries', () => {
       ['presets', 40],
       ['proposals', 42],
       ['backups', 45],
+      ['projects', 62],
     ])
     expect(menuEntries(config('orchestrator', 'schedules')).map((e) => e.id)).not.toContain('chats')
     const chats = menuEntries(config('matrix')).find((e) => e.id === 'chats')
@@ -89,6 +91,7 @@ describe('menuEntries', () => {
       ['proposals', 42],
       ['backups', 45],
       ['usage', 50],
+      ['projects', 62],
     ])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('usage')
     const usage = menuEntries(config('usage')).find((e) => e.id === 'usage')
@@ -107,6 +110,7 @@ describe('menuEntries', () => {
       ['backups', 45],
       ['usage', 50],
       ['history', 55],
+      ['projects', 62],
     ])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('history')
     const history = menuEntries(config('history')).find((e) => e.id === 'history')
@@ -124,6 +128,7 @@ describe('menuEntries', () => {
       ['proposals', 42],
       ['vault', 43],
       ['backups', 45],
+      ['projects', 62],
     ])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('vault')
     const vault = menuEntries(config('vault')).find((e) => e.id === 'vault')
@@ -136,18 +141,18 @@ describe('menuEntries', () => {
 
   test('filters_by_configured_backends', () => {
     BACKEND_MENUS.extra = [entry('x', 'Extra', 5, 'extra')]
-    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['sessions', 'presets', 'proposals', 'backups'])
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'sessions', 'presets', 'proposals', 'backups'])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).toEqual(['sessions', 'presets', 'proposals', 'backups', 'projects'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['x', 'sessions', 'presets', 'proposals', 'backups', 'projects'])
   })
 
   test('orders_by_order_then_label', () => {
     BACKEND_MENUS.extra = [entry('b', 'Beta', 40, 'extra'), entry('a', 'Alpha', 40, 'extra'), entry('z', 'Zed', 1, 'extra')]
-    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'sessions', 'a', 'b', 'presets', 'proposals', 'backups'])
+    expect(menuEntries(config('orchestrator', 'extra')).map((e) => e.id)).toEqual(['z', 'sessions', 'a', 'b', 'presets', 'proposals', 'backups', 'projects'])
   })
 
   test('warns_once_for_unregistered_id', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['sessions', 'presets', 'proposals', 'backups'])
+    expect(menuEntries(config('orchestrator', 'other')).map((e) => e.id)).toEqual(['sessions', 'presets', 'proposals', 'backups', 'projects'])
     expect(warn).toHaveBeenCalledTimes(1)
     expect(String(warn.mock.calls[0][0])).toContain('other')
   })

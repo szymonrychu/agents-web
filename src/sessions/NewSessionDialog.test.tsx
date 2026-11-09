@@ -9,10 +9,12 @@ import { theme } from '../theme'
 import { MAX_SLUG } from './sessionSpecForm'
 import { NewSessionDialog } from './NewSessionDialog'
 
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 const api = vi.hoisted(() => ({ listPresets: vi.fn(), createSession: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
-const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
+const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, privileged: [], project: 'default', spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
 const PRESETS = [preset('p-big', 'Big box'), preset('p-def', 'Default', true), preset('p-small', 'Small')]
 const created = { id: 'c-1', slug: 'default' } as SessionView
 
@@ -39,7 +41,7 @@ describe('NewSessionDialog', () => {
     expect(screen.getByText(/generated from the preset name/i)).toBeTruthy()
     const dialog = screen.getByRole('dialog', { name: 'New session' })
     expect(within(dialog).getByRole('heading', { name: 'New session' })).toBeTruthy()
-    expect(within(dialog).getAllByRole('textbox').length + within(dialog).getAllByRole('combobox').length).toBe(2)
+    expect(within(dialog).getAllByRole('textbox').length + within(dialog).getAllByRole('combobox').length).toBe(3)
     expect(slug().value).toBe('')
     expect(within(dialog).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cancel', 'Create'])
   })
@@ -51,7 +53,7 @@ describe('NewSessionDialog', () => {
     await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
     await userEvent.click(create())
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created))
-    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-def' })
+    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-def', project: 'default' })
 
     await userEvent.click(presetSelect())
     await userEvent.click(screen.getByRole('option', { name: 'Small' }))
@@ -60,7 +62,30 @@ describe('NewSessionDialog', () => {
     await userEvent.paste('my-slug')
     await userEvent.click(create())
     await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(2))
-    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-small', slug: 'my-slug' })
+    expect(api.createSession).toHaveBeenLastCalledWith({ preset_id: 'p-small', project: 'default', slug: 'my-slug' })
+  })
+
+  test('project_follows_the_chosen_preset_and_is_sent', async () => {
+    ctx.projects = [{ slug: 'default', name: 'Default' }, { slug: 'infra', name: 'Infra' }]
+    api.listPresets.mockResolvedValue([preset('p-def', 'Default', true), { ...preset('p-infra', 'Infra box'), project: 'infra' }])
+    api.createSession.mockResolvedValue(created)
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    const projectSelect = () => screen.getByRole('combobox', { name: 'Project' })
+    await waitFor(() => expect(projectSelect().textContent).toBe('Default'))
+    await userEvent.click(presetSelect())
+    await userEvent.click(screen.getByRole('option', { name: 'Infra box' }))
+    await waitFor(() => expect(projectSelect().textContent).toBe('Infra'))
+    await userEvent.click(create())
+    await waitFor(() => expect(api.createSession).toHaveBeenCalledWith({ preset_id: 'p-infra', project: 'infra' }))
+    ctx.projects = []
+  })
+
+  test('shows_project_archived_refusal', async () => {
+    api.createSession.mockRejectedValue(new ApiError(422, 'project_archived', 'project "old" is archived'))
+    wrap(<NewSessionDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    await waitFor(() => expect(presetSelect().textContent).toBe('Default'))
+    await userEvent.click(create())
+    expect((await screen.findByRole('alert')).textContent).toContain('project "old" is archived')
   })
 
   test('shows_server_error_and_blocks_long_slug', async () => {

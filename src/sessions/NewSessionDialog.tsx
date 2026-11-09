@@ -11,6 +11,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { createSession, listPresets } from '../api/client'
 import type { SessionView, CreateSession, PresetView } from '../api/client'
+import { ProjectField } from '../projects/ProjectField'
 import { MAX_SLUG } from './sessionSpecForm'
 
 export interface NewSessionDialogProps {
@@ -24,6 +25,7 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
 function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>) {
   const [presets, setPresets] = useState<PresetView[]>([])
   const [presetId, setPresetId] = useState('')
+  const [project, setProject] = useState('')
   const [slug, setSlug] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -34,7 +36,9 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
       .then((list) => {
         if (cancelled) return
         setPresets(list)
-        setPresetId((list.find((p) => p.is_default) ?? list[0])?.id ?? '')
+        const first = list.find((p) => p.is_default) ?? list[0]
+        setPresetId(first?.id ?? '')
+        setProject(first?.project ?? '')
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(message(e))
@@ -46,11 +50,17 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
 
   const slugTooLong = slug.length > MAX_SLUG
 
+  // the session defaults to the project of the chosen preset; the user may pick another
+  function choosePreset(id: string) {
+    setPresetId(id)
+    setProject(presets.find((p) => p.id === id)?.project ?? project)
+  }
+
   async function submit() {
     setBusy(true)
     setError(null)
     try {
-      const body: CreateSession = slug === '' ? { preset_id: presetId } : { preset_id: presetId, slug }
+      const body: CreateSession = slug === '' ? { preset_id: presetId, project } : { preset_id: presetId, project, slug }
       onCreated(await createSession(body))
     } catch (e) {
       setError(message(e))
@@ -65,11 +75,12 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {error && <Alert severity="error" variant="outlined">{error}</Alert>}
-          <TextField select size="small" label="Preset" value={presetId} onChange={(e) => setPresetId(e.target.value)} fullWidth>
+          <TextField select size="small" label="Preset" value={presetId} onChange={(e) => choosePreset(e.target.value)} fullWidth>
             {presets.map((p) => (
               <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
             ))}
           </TextField>
+          <ProjectField value={project} onChange={setProject} />
           <TextField
             size="small"
             label="Slug"
@@ -83,7 +94,7 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="outlined" disabled={presetId === '' || slugTooLong || busy} onClick={() => void submit()}>Create</Button>
+        <Button variant="outlined" disabled={presetId === '' || project === '' || slugTooLong || busy} onClick={() => void submit()}>Create</Button>
       </DialogActions>
     </>
   )

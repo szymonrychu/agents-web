@@ -10,6 +10,7 @@ import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { deletePreset, listPresets } from '../api/client'
 import type { PresetView } from '../api/client'
+import { useProject } from '../projects/ProjectContext'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { LabelChips } from '../labels/LabelChips'
 import { TOKENS } from '../theme'
@@ -25,6 +26,7 @@ type Editor = { mode: 'new' } | { mode: 'edit'; preset: PresetView } | { mode: '
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 export function PresetsPage({ onBack }: PresetsPageProps) {
+  const { project } = useProject()
   const [presets, setPresets] = useState<PresetView[]>([])
   const [editor, setEditor] = useState<Editor | null>(null)
   const [deleting, setDeleting] = useState<PresetView | null>(null)
@@ -36,7 +38,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
 
   useEffect(() => {
     let cancelled = false
-    listPresets()
+    listPresets(project)
       .then((list) => {
         if (cancelled) return
         // The default preset first, the rest in the server's order.
@@ -49,7 +51,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
     return () => {
       cancelled = true
     }
-  }, [version])
+  }, [version, project])
 
   async function confirmDelete(preset: PresetView) {
     setDeleting(null)
@@ -84,6 +86,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
             }
           >
             <ListItemText primary={p.name} secondary={p.labels?.length ? <LabelChips labels={p.labels} /> : undefined} slotProps={{ secondary: { component: 'div' } }} />
+            <Chip size="small" variant="outlined" label={p.project} sx={{ ml: 1 }} />
             {p.is_default && <Chip size="small" label="Default" sx={{ ml: 1 }} />}
             {p.superleader_manageable && <Chip size="small" label="Superleader" sx={{ ml: 1 }} />}
           </ListItem>

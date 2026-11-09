@@ -45,7 +45,7 @@ function setViewport(width: number) {
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
-  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
+  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, bootstrap_failures: [], start_state: 'ready', permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
 })
 const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
   ({ backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
@@ -61,7 +61,7 @@ const meta = (): Meta => ({
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
 }) as Meta
 
-const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
+const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', id, is_default, labels: [], name, privileged: [], project: 'default', spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z' })
 const PRESETS = [preset('p-default', 'Default', true), preset('p-big', 'Big box')]
 
 function emit(type: string, data: unknown) {
@@ -262,7 +262,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -272,7 +272,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -280,7 +280,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second', 'Projects'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -302,7 +302,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
     fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Sessions' }))
     expect(await within(main).findByRole('heading', { name: 'Sessions' })).toBeTruthy()
     // Open selects that session and returns to its workspace.
@@ -353,7 +353,7 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Preset' }).textContent).toBe('Default'))
     fireEvent.change(slug, { target: { value: 'zeta' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
-    await waitFor(() => expect(api.createSession).toHaveBeenCalledWith({ preset_id: 'p-default', slug: 'zeta' }))
+    await waitFor(() => expect(api.createSession).toHaveBeenCalledWith({ preset_id: 'p-default', project: 'default', slug: 'zeta' }))
     emit('session_status', { session: created })
     await waitFor(() => expect(selectedTab()?.textContent).toContain('zeta'))
     expect(selectedTab()?.textContent).toContain('Default')

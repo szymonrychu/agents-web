@@ -7,15 +7,20 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView } from '../api/client'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { theme } from '../theme'
+import { ProjectProvider } from '../projects/ProjectContext'
 import { TopBar } from './TopBar'
 
 const api = vi.hoisted(() => ({ setSessionLabels: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
+const projects = vi.hoisted(() => ({ listProjects: vi.fn() }))
+vi.mock('../projects/api', () => projects)
 const proposals = vi.hoisted(() => ({ listProposals: vi.fn() }))
 vi.mock('../proposals/api', () => proposals)
 
 beforeEach(() => {
   localStorage.clear()
+  projects.listProjects.mockReset()
+  projects.listProjects.mockResolvedValue([])
   proposals.listProposals.mockReset()
   proposals.listProposals.mockResolvedValue([])
 })
@@ -29,11 +34,26 @@ const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
   const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), ...over }
-  render(<MemoryRouter><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></MemoryRouter>)
+  render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></ProjectProvider></MemoryRouter>)
   return props
 }
 
 describe('TopBar', () => {
+  test('project select offers all projects and active projects only', async () => {
+    const p = (slug: string, archived: boolean) => ({ slug, name: slug, description: '', archived, created_at: '', updated_at: '', presets: null, sessions: null })
+    projects.listProjects.mockResolvedValue([p('default', false), p('old', true), p('web', false)])
+    setup()
+    const select = screen.getByRole('combobox', { name: 'Project' })
+    expect(select.textContent).toBe('All projects')
+    await waitFor(() => expect(projects.listProjects).toHaveBeenCalled())
+    await userEvent.click(select)
+    const options = await screen.findAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['All projects', 'default', 'web'])
+    await userEvent.click(options[2])
+    expect(localStorage.getItem('orch:project')).toBe('"web"')
+    expect(screen.getByRole('combobox', { name: 'Project' }).textContent).toBe('web')
+  })
+
   test('tabs_one_per_session_in_slug_order', () => {
     const { onSelect } = setup()
     const tabs = screen.getAllByRole('tab')

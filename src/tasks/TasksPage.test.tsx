@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mountTasks, task } from './testUtils'
 
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 const api = vi.hoisted(() => ({ listTasks: vi.fn(), createTask: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, taskStreamUrl: () => '/tb/stream' }))
 const stream = vi.hoisted(() => ({ opts: null as null | { onEvent: (d: unknown, i: { type: string; id: string }) => void } }))
@@ -30,6 +32,16 @@ describe('tasks list', () => {
     await screen.findByText('First task')
     expect(lastCall()).toMatchObject({ status: 'active' })
     expect(loc()).toBe('/tasks')
+  })
+
+  test('list is filtered by the selected project and shows it', async () => {
+    ctx.project = 'infra'
+    api.listTasks.mockResolvedValue({ items: [task({ project: 'infra' })], next_cursor: null })
+    mountTasks('/tasks')
+    await screen.findByText('First task')
+    expect(lastCall()).toMatchObject({ project: 'infra' })
+    expect(screen.getAllByText('infra', { selector: '.MuiChip-label' }).length).toBeGreaterThan(0)
+    ctx.project = null
   })
 
   test('blocked chip shows open decision count', async () => {
@@ -88,6 +100,7 @@ describe('tasks list', () => {
   })
 
   test('create dialog posts a task with labels and opens it', async () => {
+    ctx.project = 'infra'
     api.createTask.mockResolvedValue(task({ key: 'T-7' }))
     mountTasks('/tasks')
     await screen.findByText('First task')
@@ -96,7 +109,20 @@ describe('tasks list', () => {
     await userEvent.type(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Labels' }), 'Docs{Enter}')
     await userEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(api.createTask).toHaveBeenCalled())
-    expect(api.createTask.mock.calls[0][0]).toMatchObject({ title: 'Write docs', kind: 'task', labels: ['docs'] })
+    expect(api.createTask.mock.calls[0][0]).toMatchObject({ title: 'Write docs', kind: 'task', labels: ['docs'], project: 'infra' })
+    ctx.project = null
     await waitFor(() => expect(loc()).toBe('/tasks/T-7'))
+  })
+
+  test('create dialog defaults to the project selected when it opens', async () => {
+    ctx.projects = [{ slug: 'infra', name: 'Infra' }, { slug: 'ops', name: 'Ops' }]
+    ctx.project = 'infra'
+    mountTasks('/tasks')
+    await screen.findByText('First task')
+    ctx.project = 'ops'
+    await userEvent.click(screen.getByRole('button', { name: 'New' }))
+    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Project' }).textContent).toBe('Ops')
+    ctx.project = null
+    ctx.projects = []
   })
 })

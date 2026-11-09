@@ -12,6 +12,8 @@ import { theme } from '../theme'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
@@ -24,7 +26,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
 const preset = (o: Partial<PresetView> = {}): PresetView =>
-  ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, spec: {}, ...o }) as PresetView
+  ({ created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', id: 'p-1', name: 'fast', is_default: false, project: 'default', spec: {}, ...o }) as PresetView
 
 const wrap = (el: React.ReactElement) => render(<ThemeProvider theme={theme}>{el}</ThemeProvider>)
 const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement
@@ -68,6 +70,54 @@ const optionTexts = () => screen.getAllByRole('option').map((o) => o.textContent
 function expectNoSecretWarning() {
   expect(screen.queryAllByText(/secret/i).filter((el) => !/cluster-admin/.test(el.textContent ?? ''))).toEqual([])
 }
+
+describe('PresetForm project', () => {
+  beforeEach(() => {
+    ctx.project = null
+    ctx.projects = [{ slug: 'default', name: 'Default' }, { slug: 'infra', name: 'Infra' }]
+  })
+  afterEach(() => { ctx.project = null; ctx.projects = [] })
+
+  test('a new preset defaults to the selected project and sends it', async () => {
+    ctx.project = 'infra'
+    api.getMeta.mockResolvedValue(meta())
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await userEvent.type(field('Name'), 'p')
+    expect(screen.getByRole('combobox', { name: 'Project' }).textContent).toBe('Infra')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0]).toMatchObject({ project: 'infra' })
+  })
+
+  test('an edit sends the project only when it was changed', async () => {
+    api.getMeta.mockResolvedValue(meta())
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ project: 'default' })} {...noop} />)
+    await userEvent.click(screen.getByRole('combobox', { name: 'Project' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Infra' }))
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1]).toMatchObject({ project: 'infra' })
+  })
+
+  test('an edit that leaves the project alone omits it', async () => {
+    api.getMeta.mockResolvedValue(meta())
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ project: 'infra' })} {...noop} />)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1]).not.toHaveProperty('project')
+  })
+
+  test('a project_archived refusal is shown', async () => {
+    api.getMeta.mockResolvedValue(meta())
+    api.updatePreset.mockRejectedValue(new ApiError(422, 'project_archived', 'project "old" is archived'))
+    wrap(<PresetForm open preset={preset({ project: 'old' })} {...noop} />)
+    await userEvent.click(button('Save'))
+    expect((await screen.findByRole('alert')).textContent).toContain('project "old" is archived')
+  })
+})
 
 describe('PresetForm', () => {
   test('keeps edits made before meta loads', async () => {
@@ -114,7 +164,7 @@ describe('PresetForm', () => {
     await paste('Name', 'Fast 1')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'Fast 1', superleader_manageable: false, spec: {} })
+    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'Fast 1', superleader_manageable: false, project: 'default', spec: {} })
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
 
     await replace('Replicas', '3')
@@ -128,7 +178,7 @@ describe('PresetForm', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(2))
     expect(api.createPreset).toHaveBeenLastCalledWith({
       name: 'Fast 1',
-      superleader_manageable: false,
+      superleader_manageable: false, project: 'default',
       spec: {
         replicas: 3, model: 'sonnet', peers: false, env: { FOO: plain('bar') },
         resources: { requests: { cpu: '500m', memory: '1Gi' }, limits: { cpu: '4', memory: '4Gi' } },
@@ -202,7 +252,7 @@ describe('PresetForm', () => {
     expect(field('Replicas').value).toBe('2')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'fast copy', superleader_manageable: false, spec })
+    expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'fast copy', superleader_manageable: false, project: 'default', spec })
     expect(api.updatePreset).not.toHaveBeenCalled()
     cleanup()
     const long = `${'A'.repeat(34)} tail`
@@ -323,7 +373,7 @@ describe('PresetForm', () => {
       await userEvent.click(button('Apply'))
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', superleader_manageable: false, spec: { env: { X: plain('1') } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'sparse', superleader_manageable: false, project: 'default', spec: { env: { X: plain('1') } } })
     })
 
     test('drops empty rows on a merge', async () => {
@@ -410,7 +460,7 @@ describe('PresetForm', () => {
       expect(button('Create').disabled).toBe(false)
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', superleader_manageable: false, spec: { env: { FOO: plain('1'), API_TOKEN: plain('secret') } } })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'pending', superleader_manageable: false, project: 'default', spec: { env: { FOO: plain('1'), API_TOKEN: plain('secret') } } })
     })
 
     test('Save applies a pending paste', async () => {
@@ -432,7 +482,7 @@ describe('PresetForm', () => {
       await openPaste('  \n ')
       await userEvent.click(button('Create'))
       await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
-      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'blank', superleader_manageable: false, spec: {} })
+      expect(api.createPreset).toHaveBeenLastCalledWith({ name: 'blank', superleader_manageable: false, project: 'default', spec: {} })
     })
 
     test('a pending paste with a parse error blocks submit', async () => {
@@ -964,7 +1014,7 @@ describe('PresetForm', () => {
     expect(field('Kubernetes cluster access').checked).toBe(true)
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', superleader_manageable: false, spec: { session_messaging: true, kube_cluster_access: true } })
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'o', superleader_manageable: false, project: 'default', spec: { session_messaging: true, kube_cluster_access: true } })
     cleanup()
 
     api.updatePreset.mockResolvedValue(preset())
@@ -1177,7 +1227,7 @@ describe('PresetForm', () => {
     expect(screen.queryByRole('group', { name: 'Restore key' })).toBeNull()
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', superleader_manageable: false, spec: { cache: {} } })
+    expect(api.createPreset.mock.calls[0][0]).toEqual({ name: 'c', superleader_manageable: false, project: 'default', spec: { cache: {} } })
   })
 
   test('two key editors on the archive_name surface, both keys saved and no old key', async () => {

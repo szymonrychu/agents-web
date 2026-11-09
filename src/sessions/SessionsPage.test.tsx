@@ -7,7 +7,9 @@ import type { SessionView } from '../api/client'
 import { theme } from '../theme'
 import { SessionsPage } from './SessionsPage'
 
-const api = vi.hoisted(() => ({ listSessions: vi.fn(), deleteSession: vi.fn(), getMeta: vi.fn(), createSession: vi.fn(), listPresets: vi.fn() }))
+const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
+vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
+const api = vi.hoisted(() => ({ listSessions: vi.fn(), deleteSession: vi.fn(), getMeta: vi.fn(), createSession: vi.fn(), listPresets: vi.fn(), moveSessionProject: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 vi.mock('./NewSessionDialog', () => ({
@@ -22,7 +24,7 @@ vi.mock('./NewSessionDialog', () => ({
 
 const session = (id: string, slug: string, closes_at: string | null, preset_name: string | null = 'Default'): SessionView =>
   ({
-    backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, closes_at, created_at: '2026-01-01T10:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, preset_name, slug, spec: {}, status: {},
+    backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, closes_at, created_at: '2026-01-01T10:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, preset_name, project: 'default', slug, spec: {}, status: {},
     summary: { auto_compact_pct: 80, context_pct_max: 10, failed: 0, queued: 0, ready: 2, replicas: 3, state: 'working' },
   }) as unknown as SessionView
 
@@ -46,6 +48,30 @@ afterEach(() => {
 })
 
 describe('SessionsPage', () => {
+  test('filters by the selected project and shows each sessions project', async () => {
+    ctx.project = 'infra'
+    api.listSessions.mockResolvedValue([{ ...LIST[0], project: 'infra' }])
+    wrap()
+    await screen.findByText('alpha')
+    expect(api.listSessions).toHaveBeenLastCalledWith([], 'infra')
+    expect(within(row('alpha')).getByText('infra', { selector: '.MuiChip-label' })).toBeTruthy()
+    ctx.project = null
+  })
+
+  test('Move to project opens the dialog and reloads after a move', async () => {
+    api.moveSessionProject.mockResolvedValue(LIST[0])
+    ctx.projects = [{ slug: 'default', name: 'Default' }, { slug: 'infra', name: 'Infra' }]
+    wrap()
+    await screen.findByText('alpha')
+    await userEvent.click(within(row('alpha')).getByRole('button', { name: 'Move alpha to project' }))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Project' }))
+    await userEvent.click(screen.getByRole('option', { name: 'Infra' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Move' }))
+    await waitFor(() => expect(api.moveSessionProject).toHaveBeenCalledWith('c1', 'infra'))
+    await waitFor(() => expect(api.listSessions).toHaveBeenCalledTimes(2))
+    ctx.projects = []
+  })
+
   test('lists sessions', async () => {
     wrap()
     expect(screen.getByRole('heading', { name: 'Sessions' })).toBeTruthy()
@@ -96,8 +122,8 @@ describe('SessionsPage', () => {
     wrap()
     const r = await screen.findAllByRole('listitem')
     expect(within(r[0]).getByText('mine')).toBeTruthy()
-    expect(api.listSessions).toHaveBeenLastCalledWith([])
+    expect(api.listSessions).toHaveBeenLastCalledWith([], null)
     await userEvent.type(screen.getByRole('combobox', { name: 'Filter by label' }), 'Mine{Enter}')
-    await waitFor(() => expect(api.listSessions).toHaveBeenLastCalledWith(['mine']))
+    await waitFor(() => expect(api.listSessions).toHaveBeenLastCalledWith(['mine'], null))
   })
 })

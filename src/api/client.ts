@@ -91,12 +91,16 @@ export async function requestAt<T>(basePath: string, method: string, path: strin
 const id = encodeURIComponent;
 
 /** `labels` is the repeatable `?label=` filter: sessions carrying any of them. */
-export const listSessions = (labels: string[] = []) => {
+export const listSessions = (labels: string[] = [], project?: string | null) => {
   const q = new URLSearchParams();
   for (const l of labels) q.append('label', l);
+  if (project) q.set('project', project);
   const s = q.toString();
   return request<SessionView[]>('GET', `/sessions${s ? `?${s}` : ''}`);
 };
+/** Moves a live session to another project (human-only); 409 and 422 (unknown or archived project) carry the reason. */
+export const moveSessionProject = (sessionId: string, project: string) =>
+  request<SessionView>('PATCH', `/sessions/${id(sessionId)}/project`, { project });
 /** Replaces the session's labels. */
 export const setSessionLabels = (sessionId: string, labels: string[]) =>
   request<SessionView>('PATCH', `/sessions/${id(sessionId)}/labels`, { labels });
@@ -112,7 +116,9 @@ export const putPermissionMode = (sessionId: string, permissionMode: PermissionM
   request<PermissionModeView>('PUT', `/sessions/${id(sessionId)}/permission-mode`, { permission_mode: permissionMode });
 export const putInitScripts = (sessionId: string, scripts: string[]) =>
   request<InitScriptsView>('PUT', `/sessions/${id(sessionId)}/init-scripts`, { scripts });
-export const listPresets = () => request<PresetView[]>('GET', '/presets');
+/** `project` keeps that project's presets. */
+export const listPresets = (project?: string | null) =>
+  request<PresetView[]>('GET', `/presets${project ? `?project=${id(project)}` : ''}`);
 export const getPreset = (presetId: string) => request<PresetView>('GET', `/presets/${id(presetId)}`);
 export const createPreset = (body: PresetIn) => request<PresetView>('POST', '/presets', body);
 export const updatePreset = (presetId: string, body: PresetIn) => request<PresetView>('PUT', `/presets/${id(presetId)}`, body);
