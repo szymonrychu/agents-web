@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ItemCard } from './ItemCard'
 import { toYaml } from './diffText'
 import { item } from './proposalFixture'
+import type { EntryView } from '../vault/api'
 
 vi.mock('./ValueDiff', () => ({ default: ({ before, after, text }: { before: unknown; after: unknown; text?: boolean }) => <div data-testid="diff" data-text={String(Boolean(text))}>{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
 afterEach(cleanup)
@@ -141,6 +142,29 @@ describe('ItemCard', () => {
       render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before: { a: 1 }, after: { a: 2 } })} />)
       expect(await screen.findByTestId('diff')).toBeTruthy()
       expect(screen.queryByTestId('stack-before')).toBeNull()
+    })
+  })
+
+  describe('vault references', () => {
+    const ref = { vault: 'u-1', env: 'GITHUB_TOKEN' }
+    const entries = new Map([['u-1', { id: 'u-1', name: 'GitHub' } as EntryView]])
+
+    it('test_ref_item_shows_entry_name', async () => {
+      render(<ItemCard {...base} entries={entries} item={item({ path: 'env.G', before: null, after: ref })} />)
+      expect((await screen.findByTestId('diff')).textContent).toBe('null=>"vault GitHub / GITHUB_TOKEN"')
+      expect(screen.getByText('vault')).toBeTruthy()
+    })
+
+    it('test_ref_item_unknown_entry_short_id', async () => {
+      render(<ItemCard {...base} item={item({ path: 'env.G', before: { vault: '0123456789abcdef', env: 'T' }, after: { vault: 'ffffffffeeee', env: 'T' } })} />)
+      expect((await screen.findByTestId('diff')).textContent).toBe('"vault vault 01234567 / T"=>"vault vault ffffffff / T"')
+      expect(screen.getByText('vault')).toBeTruthy()
+    })
+
+    it('test_plain_item_unchanged', async () => {
+      render(<ItemCard {...base} entries={entries} item={item({ path: 'env.P', before: { value: 'a', expand: false }, after: { value: 'b', expand: false } })} />)
+      expect((await screen.findByTestId('diff')).textContent).toBe('{"value":"a","expand":false}=>{"value":"b","expand":false}')
+      expect(screen.queryByText('vault')).toBeNull()
     })
   })
 })
