@@ -38,6 +38,7 @@ import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
 import { useVaultEntries } from '../vault/useVaultEntries'
+import { VaultPicker } from './VaultPicker'
 import { vaultRowErrors } from './vaultErrors'
 
 export interface PresetFormProps {
@@ -173,6 +174,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [pluginsInvalid, setPluginsInvalid] = useState(false)
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteErrors, setPasteErrors] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
   // server row errors by preset env key; a row's error clears when the row changes, all clear on the next save
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const vaultEntries = useVaultEntries()
@@ -371,7 +373,19 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button size="small" onClick={() => set('env', [...values.env, envRow()])}>Add env</Button>
               <Button size="small" onClick={() => setPasteText('')} disabled={pasteText !== null}>Paste .env</Button>
+              {vaultEntries.status !== 'off' && <Button size="small" onClick={() => setPickerOpen(true)}>From vault</Button>}
             </Box>
+            {pickerOpen && vaultEntries.status !== 'off' && (
+              <VaultPicker
+                entries={vaultEntries.entries}
+                status={vaultEntries.status}
+                error={vaultEntries.error}
+                target={targetLabels}
+                existingKeys={values.env.map((r) => r.key)}
+                onAdd={(rows) => { set('env', mergeEnvRows(values.env, rows)); setPickerOpen(false) }}
+                onClose={() => setPickerOpen(false)}
+              />
+            )}
             {errors.envSection && <FormHelperText error>{errors.envSection}</FormHelperText>}
             {copyOf && values.env.some((r) => r.vault !== null) && <FormHelperText>Vault references are copied; each entry must allow the copy's project.</FormHelperText>}
             {pasteText !== null && (

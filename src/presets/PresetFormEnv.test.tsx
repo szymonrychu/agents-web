@@ -260,4 +260,49 @@ describe('vault ref rows', () => {
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ G: GREF })
   })
+  const pick = async (envName: string, as: string) => {
+    await userEvent.click(button('From vault'))
+    await userEvent.click(await screen.findByRole('button', { name: 'Entry GitHub' }))
+    await userEvent.click(screen.getByLabelText(`Use ${envName}`))
+    const f = screen.getByLabelText(`Preset env for ${envName}`)
+    await userEvent.clear(f)
+    await userEvent.type(f, as)
+  }
+
+  test('test_same_entry_env_two_names', async () => {
+    vaultOn([{ ...ENTRY, labels: ['github'] }])
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await type('Name', 'n')
+    await pick('GITHUB_TOKEN', 'A')
+    await userEvent.click(button('Add'))
+    await pick('GITHUB_TOKEN', 'B')
+    await userEvent.click(button('Add'))
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.env).toEqual({ A: GREF, B: GREF })
+  })
+
+  test('test_pick_replaces_existing_key', async () => {
+    vaultOn([{ ...ENTRY, labels: ['github'] }])
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ env: { X: { value: '1', expand: false }, GITHUB_TOKEN: { value: 'p', expand: false } } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(vault.listEntries).toHaveBeenCalled())
+    await pick('GITHUB_TOKEN', 'GITHUB_TOKEN')
+    expect(screen.getByText('Replaces the existing variable')).toBeTruthy()
+    await userEvent.click(button('Add'))
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    const env = api.updatePreset.mock.calls[0][1].spec.env
+    expect(Object.keys(env)).toEqual(['X', 'GITHUB_TOKEN'])
+    expect(env.GITHUB_TOKEN).toEqual(GREF)
+  })
+
+  test('test_from_vault_hidden_when_off', async () => {
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    expect(screen.queryByRole('button', { name: 'From vault' })).toBeNull()
+  })
 })
