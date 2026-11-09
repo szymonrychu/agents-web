@@ -38,6 +38,17 @@ mybackend: [{ id: 'things', label: 'Things', order: 20, backend: 'mybackend', re
 
 An entry is listed only when its backend id is in the runtime config; a configured id with no registered entries logs a warning. Entries sort by `order`, then label. Reserved order slots: 10 Sessions, 20 Webhooks, 30 Schedules, 40 Presets (orchestrator). To add a service: add its id and `basePath` to `config.json` (chart `backends`), register its menu entries, and add its OpenAPI document (see `## API types`).
 
+## Preset env and the vault
+
+A preset env row is plain (`{value, expand}`) or a vault reference (`{vault, env}`); the key `protected` is never sent. "Add env" adds a plain row. "From vault" (hidden when the `vault` backend is not configured) opens a picker over the vault entries: pick an entry, tick the entry envs to use and name the preset env for each (one entry env may back several preset envs). A reference row shows the entry name, an entry env selector and the value when the env is readable; a protected env shows only `protected`, its value is never fetched or typed here. With the vault off, stored references show as `vault <first 8 chars of the id>`.
+
+- Label rule: only entry labels starting with `project:` restrict. The target labels are the preset labels plus `project:<preset project>`; an entry is allowed when it has no `project:` label or one of them is in the target. Other labels are descriptive tags. A stored reference whose entry no longer allows the project shows `Only for project:<x>`.
+- At most 50 reference rows per preset; the env section says `At most 50 vault references` and Save is blocked above it.
+- Pasting a `.env` key that matches a reference row is refused; remove that row first. A copy keeps the references and says so.
+- Save errors from the orchestrator (`vault_entry_unknown`, `vault_env_unknown`, `vault_label_mismatch`, `vault_ref_not_allowed`, `vault_unavailable`) are shown on the affected rows (all reference rows for `vault_unavailable`) next to the server message at the top of the form.
+- A preset that lost its references shows `To re-attach from the vault: <names>`; a name drops out of that list once a row holds that key. The Presets list shows `N to re-attach` on such a preset.
+- Needs orchestrator 7.x.
+
 ## URL layout
 
 All services share one host: the UI owns `/`, agents-orchestrator owns `/api`, and each later service owns exactly one prefix `/<prefix>/` with its UI-facing API at `/<prefix>/api/v1` (`webhooks` and `schedules` are reserved). The contract rule and ingress details are in `chart/agents-web/README.md` (`## URL layout`). A backend's `basePath` is its `/<prefix>/api/v1`.
