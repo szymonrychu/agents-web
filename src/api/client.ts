@@ -27,6 +27,9 @@ export type ScaleRequest = S['ScaleRequest'];
 export type ScaleResult = S['ScaleResult'];
 export type InitScriptsView = S['InitScriptsView'];
 export type PermissionModeView = S['PermissionModeView'];
+export type DialogView = S['DialogView'];
+export type DialogAnswer = S['DialogAnswer'];
+export type DialogAnswerResult = S['DialogAnswerResult'];
 export type PermissionMode = S['PermissionModeIn']['permission_mode'];
 
 export type AgentCommand = 'compact' | 'interrupt' | 'restart';
@@ -140,6 +143,10 @@ export const retryMessage = (messageId: string) =>
 
 export const agentCommand = (agentId: string, command: AgentCommand) =>
   request<CommandAccepted>('POST', `/agents/${id(agentId)}/${command}`);
+/** What the agent's claude waits on: a held permission request, a stuck dialog or a usage-limit wait. */
+export const getAgentDialog = (agentId: string) => request<DialogView>('GET', `/agents/${id(agentId)}/dialog`);
+export const answerAgentDialog = (agentId: string, body: DialogAnswer) =>
+  request<DialogAnswerResult>('POST', `/agents/${id(agentId)}/dialog`, body);
 export const makeLeader = (sessionId: string, agentId: string) =>
   request<S['LeadershipRequested']>('POST', `/sessions/${id(sessionId)}/leader`, { agent_id: agentId });
 /** Sets spec.replicas in place; the session view follows from the status stream. */
