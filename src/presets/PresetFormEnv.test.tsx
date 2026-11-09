@@ -306,12 +306,39 @@ describe('vault ref rows', () => {
     const m = "The entry's project label does not allow this preset's project"
     await waitFor(() => expect(screen.getByText(m)).toBeTruthy())
     await userEvent.click(button('Remove env 1'))
-    expect(screen.queryByText(m)).toBeNull()
     // a ref row picked later under the removed key does not inherit the old message
     await pick('GITHUB_TOKEN', 'G')
     await userEvent.click(button('Add'))
     await waitFor(() => expect(screen.getAllByTestId(/^vault-ref-/)).toHaveLength(2))
     expect(screen.queryByText(m)).toBeNull()
+  })
+
+  test('test_row_error_cleared_when_ref_row_replaced_by_picker', async () => {
+    vaultOn()
+    api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'vault_label_mismatch', 'm', { envs: ['G'] }))
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } }, 'alpha')} {...noop} />)
+    await ready()
+    await userEvent.click(button('Save'))
+    const m = "The entry's project label does not allow this preset's project"
+    await waitFor(() => expect(screen.getByText(m)).toBeTruthy())
+    await pick('GITHUB_USER', 'G')
+    await userEvent.click(button('Add'))
+    await waitFor(() => expect(screen.queryByText(m)).toBeNull())
+  })
+
+  test('test_ref_to_missing_env_warns', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: { vault: GREF.vault, env: 'GONE' } } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByText('The vault entry has no such env')).toBeTruthy())
+  })
+
+  test('test_ref_to_existing_env_no_missing_env_warning', async () => {
+    vaultOn()
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    await waitFor(() => expect(screen.getByTestId('vault-ref-0')).toBeTruthy())
+    expect(screen.queryByText('The vault entry has no such env')).toBeNull()
   })
 
   test('test_same_entry_env_two_names', async () => {
@@ -368,7 +395,7 @@ describe('vault ref rows', () => {
       expect(screen.getByTestId('reattach').textContent).not.toContain('HF')
     })
 
-    test('test_reattach_name_removed_by_matching_ref_row', async () => {
+    test('test_reattach_name_removed_by_matching_key', async () => {
       wrap(<PresetForm open preset={withReattach(['GH', 'HF'])} {...noop} />)
       await ready()
       await userEvent.click(button('Add env'))

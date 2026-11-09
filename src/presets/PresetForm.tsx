@@ -39,7 +39,7 @@ import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
 import { useVaultEntries } from '../vault/useVaultEntries'
 import { VaultPicker } from './VaultPicker'
-import { vaultRowErrors } from './vaultErrors'
+import { VAULT_ROW_MESSAGES, vaultRowErrors } from './vaultErrors'
 
 export interface PresetFormProps {
   open: boolean
@@ -125,6 +125,7 @@ function VaultRefCell({ index, row, entries, targetLabels, serverError, onEnv }:
   const envView = entry?.envs.find((e) => e.env === ref.env)
   const scope = entry ? projectScope(entry.labels) : []
   const missing = entries.status === 'ready' && !entry
+  const envMissing = entry !== undefined && !envView
   const blocked = entry !== undefined && !entryAllowed(entry.labels, targetLabels)
   return (
     <Box sx={{ flex: '2 1 18rem', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -148,6 +149,8 @@ function VaultRefCell({ index, row, entries, targetLabels, serverError, onEnv }:
         <FormHelperText error>{serverError}</FormHelperText>
       ) : missing ? (
         <FormHelperText sx={{ color: 'warning.main' }}>Entry not found in the vault</FormHelperText>
+      ) : envMissing ? (
+        <FormHelperText sx={{ color: 'warning.main' }}>{VAULT_ROW_MESSAGES.vault_env_unknown}</FormHelperText>
       ) : blocked ? (
         <FormHelperText sx={{ color: 'warning.main' }}>{`Only for ${scope.join(', ')}`}</FormHelperText>
       ) : null}
@@ -394,7 +397,12 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
                 error={vaultEntries.error}
                 target={targetLabels}
                 existingKeys={values.env.map((r) => r.key)}
-                onAdd={(rows) => { set('env', mergeEnvRows(values.env, rows)); setPickerOpen(false) }}
+                onAdd={(rows) => {
+                  const keys = new Set(rows.map((r) => r.key))
+                  setRowErrors((errs) => Object.fromEntries(Object.entries(errs).filter(([k]) => !keys.has(k))))
+                  set('env', mergeEnvRows(values.env, rows))
+                  setPickerOpen(false)
+                }}
                 onClose={() => setPickerOpen(false)}
               />
             )}
