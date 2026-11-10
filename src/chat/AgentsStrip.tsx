@@ -10,6 +10,7 @@ import { agentIssue } from '../ribbon/sessionStatus'
 import { StateMark, agentMark } from '../ribbon/stateMark'
 import { TOKENS } from '../theme'
 import { formatAge, useNow } from './agentAge'
+import { DialogPanel } from './DialogPanel'
 
 export interface AgentsStripProps {
   /** In ordinal order. */
@@ -39,6 +40,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
   const now = useNow()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const [answering, setAnswering] = useState<string | null>(null)
   const onMakeLeader = async (sessionId: string, agentId: string) => {
     setError(null)
     setPending(agentId)
@@ -118,6 +120,12 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
             )}
             <ContextGauge value={a.context_pct ?? a.context?.used_percentage ?? null} autoCompactPct={autoCompactPct} state={agentMark(a)} />
           </ButtonBase>
+          {a.attention && (
+            <Button size="small" aria-label={`answer agent ${a.ordinal}`} onClick={() => setAnswering(a.id)}>
+              Answer
+            </Button>
+          )}
+          {answering === a.id && <DialogPanel open agentId={a.id} agentLabel={a.pod_name} onClose={() => setAnswering(null)} />}
           {hive && !a.leader && (
             <Button size="small" disabled={pending === a.id} onClick={() => void onMakeLeader(hive.sessionId, a.id)}>
               Make leader

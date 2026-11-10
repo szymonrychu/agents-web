@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  answerAgentDialog,
+  getAgentDialog,
   requestAt,
   cancelSessionClose,
   copyPreset,
@@ -189,5 +191,33 @@ describe('ApiError details', () => {
     const e = (await requestAt('/x', 'GET', '/y').catch((err: unknown) => err)) as ApiError;
     vi.unstubAllGlobals();
     expect(e).toMatchObject({ status: 409, code: 'c', message: 'm', details: { attachments: [1], missing: ['A'] } });
+  });
+});
+
+describe('agent dialog', () => {
+  it('getAgentDialog calls GET on the encoded agent id', async () => {
+    const f = vi.fn(async () => new Response('{"kind":"none"}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await getAgentDialog('a/b');
+    const [url, init] = (f.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toBe('/api/v1/agents/a%2Fb/dialog');
+    expect(init.method).toBe('GET');
+  });
+
+  it('answerAgentDialog POSTs the JSON body', async () => {
+    const f = vi.fn(async () => new Response('{"status":"answered"}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await answerAgentDialog('a1', { action: 'deny', request_id: 'perm_0123456789ab', message: 'no' });
+    const [url, init] = (f.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toBe('/api/v1/agents/a1/dialog');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({ action: 'deny', request_id: 'perm_0123456789ab', message: 'no' });
+  });
+
+  it('a 409 permission_resolved rejects with ApiError', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { code: 'permission_resolved' } }), { status: 409 })));
+    const e = (await answerAgentDialog('a1', { action: 'allow', request_id: 'perm_0123456789ab' }).catch((err: unknown) => err)) as ApiError;
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e).toMatchObject({ status: 409, code: 'permission_resolved' });
   });
 });

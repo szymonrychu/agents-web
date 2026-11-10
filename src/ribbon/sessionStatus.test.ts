@@ -73,7 +73,7 @@ describe('attention and bootstrap fields', () => {
   })
   test('agentIssue names the failed step and message or the attention reason', () => {
     expect(agentIssue(aview({ bootstrap_failure: fail }))).toEqual({ kind: 'bootstrap_failure', text: 'install_plugins failed: boom' })
-    expect(agentIssue(aview({ attention: { reason: 'question', since: null } }))).toEqual({ kind: 'attention', text: 'waiting: question' })
+    expect(agentIssue(aview({ attention: { reason: 'question', since: null } }))).toEqual({ kind: 'attention', text: 'waiting: question', agentId: 'a1' })
     expect(agentIssue(aview())).toBeNull()
   })
   test('session mark: summary counts and agents', () => {
@@ -86,7 +86,7 @@ describe('attention and bootstrap fields', () => {
     expect(sessionIssue(session(), [aview({ bootstrap_failure: fail })])).toEqual({ kind: 'bootstrap_failure', text: 'install_plugins failed: boom' })
     expect(sessionIssue(session({}, { bootstrap_failed_agents: 2 }), [])).toEqual({ kind: 'bootstrap_failure', text: '2 agents failed to bootstrap' })
     expect(sessionIssue(session({}, { attention_agents: 1 }), [])).toEqual({ kind: 'attention', text: '1 agent waiting for input' })
-    expect(sessionIssue(session(), [aview({ attention: { reason: 'dialog', since: null } })])).toEqual({ kind: 'attention', text: 'waiting: dialog' })
+    expect(sessionIssue(session(), [aview({ attention: { reason: 'dialog', since: null } })])).toEqual({ kind: 'attention', text: 'waiting: dialog', agentId: 'a1' })
     expect(sessionIssue(session(), [aview()])).toBeNull()
   })
   test('unavailable permission mode: reason from the agent, count fallback, absent otherwise', () => {
