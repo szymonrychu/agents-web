@@ -4,12 +4,14 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError } from '../api/client'
+import { Link as RouterLink } from 'react-router'
 import { FormError } from '../triggers'
 import { answerDecision, type AnswerIn, type Decision } from './api'
 
@@ -46,9 +48,23 @@ export function DecisionCard({ taskKey, decision, onChanged }: DecisionCardProps
       <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
         {header}
         <Typography color="text.secondary">
-          {decision.status === 'withdrawn' ? 'Withdrawn' : `Answer: ${answerText(decision)}`}
+          {decision.status === 'withdrawn'
+            ? decision.withdraw_reason ? `Withdrawn: ${decision.withdraw_reason}` : 'Withdrawn'
+            : `Answer: ${answerText(decision)}`}
           {decision.note ? ` (${decision.note})` : ''}
         </Typography>
+        {decision.status === 'withdrawn' && decision.superseded_by != null && (
+          decision.superseded_by_task_key ? (
+            <Link component={RouterLink} to={`/tasks/${decision.superseded_by_task_key}`}>
+              {`Superseded by decision #${decision.superseded_by}`}
+            </Link>
+          ) : (
+            <Typography color="text.secondary">{`Superseded by decision #${decision.superseded_by}`}</Typography>
+          )
+        )}
+        {decision.status === 'withdrawn' && decision.answered_elsewhere && (
+          <Typography color="text.secondary">{`Answered elsewhere: ${decision.answered_elsewhere}`}</Typography>
+        )}
       </Paper>
     )
   }

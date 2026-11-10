@@ -39,6 +39,12 @@ export interface Decision {
   note: string | null
   created_at: string
   answered_at: string | null
+  /** Set on withdrawn decisions (null for rows withdrawn before taskboard 0.5.0). */
+  withdraw_reason?: string | null
+  /** Id of the decision that replaced this one; at most one of this and `answered_elsewhere`. */
+  superseded_by?: number | null
+  superseded_by_task_key?: string | null
+  answered_elsewhere?: string | null
 }
 export interface Comment {
   id: number

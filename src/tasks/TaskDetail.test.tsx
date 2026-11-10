@@ -39,6 +39,23 @@ describe('task detail', () => {
     expect(screen.getByText(/created/)).toBeTruthy()
   })
 
+  test('withdrawn decisions show the reason and the outcome', async () => {
+    const base = { status: 'withdrawn' as const, question: 'Q?', withdraw_reason: 'Moved to the other task' }
+    api.getTask.mockResolvedValue(task({
+      decisions: [
+        decision({ ...base, id: 6, superseded_by: 9, superseded_by_task_key: 'T-4' }),
+        decision({ ...base, id: 7, withdraw_reason: 'Answered in chat', answered_elsewhere: 'User said SQLite' }),
+        decision({ ...base, id: 8, withdraw_reason: null }),
+      ],
+    }))
+    mountTasks('/tasks/T-1')
+    await screen.findByText('Withdrawn: Moved to the other task')
+    expect(screen.getByRole('link', { name: 'Superseded by decision #9' }).getAttribute('href')).toBe('/tasks/T-4')
+    expect(screen.getByText('Withdrawn: Answered in chat')).toBeTruthy()
+    expect(screen.getByText('Answered elsewhere: User said SQLite')).toBeTruthy()
+    expect(screen.getByText('Withdrawn')).toBeTruthy()
+  })
+
   test('answer form submits option or own text with note', async () => {
     api.answerDecision.mockResolvedValue(decision({ status: 'answered' }))
     mountTasks('/tasks/T-1')
