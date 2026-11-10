@@ -254,6 +254,15 @@ export interface components {
              */
             recommended: boolean;
         };
+        /** DecisionWithdraw */
+        DecisionWithdraw: {
+            /** Answered Elsewhere */
+            answered_elsewhere?: string | null;
+            /** Reason */
+            reason: string;
+            /** Superseded By */
+            superseded_by?: number | null;
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -875,7 +884,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionWithdraw"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
