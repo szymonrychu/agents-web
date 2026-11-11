@@ -10,6 +10,8 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
+import { ProjectCell } from '../triggers'
+import type { PresetInfo } from '../triggers'
 import type { RoomView } from './api'
 
 export const KINDS: Record<string, string> = { dm: 'DM', group: 'Group', matrix: 'Matrix', infrastructure: 'Infrastructure' }
@@ -33,14 +35,14 @@ export interface RoomsTableProps {
   rooms: RoomView[]
   kind: string
   access: string
-  presetNames: Record<string, string>
+  presets: Record<string, PresetInfo>
   onKind: (kind: string) => void
   onAccess: (access: string) => void
   onSelect: (room: RoomView) => void
   onOpenSession: (sessionId: string) => void
 }
 
-export function RoomsTable({ rooms, kind, access, presetNames, onKind, onAccess, onSelect, onOpenSession }: RoomsTableProps) {
+export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onSelect, onOpenSession }: RoomsTableProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
@@ -56,7 +58,7 @@ export function RoomsTable({ rooms, kind, access, presetNames, onKind, onAccess,
       <Table size="small">
         <TableHead>
           <TableRow>
-            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h}>{h}</TableCell>)}
+            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h}>{h}</TableCell>)}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -70,7 +72,8 @@ export function RoomsTable({ rooms, kind, access, presetNames, onKind, onAccess,
               </TableCell>
               <TableCell>{r.member_count}</TableCell>
               <TableCell><AccessChip access={r.access} /></TableCell>
-              <TableCell>{r.preset_id ? (presetNames[r.preset_id] ?? r.preset_id) : '-'}</TableCell>
+              <TableCell>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
               <TableCell>{r.effective_trigger}</TableCell>
               <TableCell>
                 {r.session?.id ? (

@@ -1,14 +1,13 @@
 /** Chats: the connector's bot status and every discovered room, refreshed live. */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
-import { listPresets } from '../api/client'
 import { TOKENS } from '../theme'
-import { FormError, usePoll } from '../triggers'
+import { FormError, usePoll, usePresetIndex } from '../triggers'
 import { getMeta, listRooms } from './api'
 import { ALL, RoomsTable } from './RoomsTable'
 import { RoomDrawer } from './RoomDrawer'
@@ -29,14 +28,10 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
   const [access, setAccess] = useState(ALL)
   const [tab, setTab] = useState<TabName>('rooms')
   const [selected, setSelected] = useState<string | null>(null)
-  const [presetNames, setPresetNames] = useState<Record<string, string>>({})
+  const presets = usePresetIndex()
 
   const { data: meta, error: metaError } = usePoll(getMeta, 5000, [])
   const { data: rooms, error, refresh } = usePoll(() => listRooms({ kind: kind || undefined, access: access || undefined }), 5000, [kind, access])
-
-  useEffect(() => {
-    listPresets().then((list) => setPresetNames(Object.fromEntries(list.map((p) => [p.id, p.name]))), () => setPresetNames({}))
-  }, [])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
@@ -65,7 +60,7 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
             rooms={rooms ?? []}
             kind={kind}
             access={access}
-            presetNames={presetNames}
+            presets={presets}
             onKind={setKind}
             onAccess={setAccess}
             onSelect={(r) => setSelected(r.room_id)}

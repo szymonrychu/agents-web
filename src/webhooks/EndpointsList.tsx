@@ -8,9 +8,8 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { listPresets } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
-import { FormError } from '../triggers'
+import { FormError, ProjectCell, usePresetIndex } from '../triggers'
 import { deleteEndpoint, getMeta, listEndpoints, rotateEndpoint } from './api'
 import type { EndpointCreated, EndpointView, WebhookMeta } from './api'
 import { CopyButton } from './copy'
@@ -29,7 +28,7 @@ const ruleCount = (ep: EndpointView) => ep.filters.allow.length + ep.filters.den
 
 export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsListProps) {
   const [endpoints, setEndpoints] = useState<EndpointView[] | null>(null)
-  const [presetNames, setPresetNames] = useState<Record<string, string>>({})
+  const presets = usePresetIndex()
   const [error, setError] = useState<unknown>(null)
   const [rotating, setRotating] = useState<EndpointView | null>(null)
   const [deleting, setDeleting] = useState<EndpointView | null>(null)
@@ -40,7 +39,6 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
   const [metaError, setMetaError] = useState<unknown>(null)
 
   useEffect(() => {
-    listPresets().then((ps) => setPresetNames(Object.fromEntries(ps.map((p) => [p.id, p.name]))), () => {})
     let live = true
     getMeta().then((m) => { if (live) setMeta(m) }, (e: unknown) => { if (live) setMetaError(e) })
     return () => { live = false }
@@ -103,7 +101,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell>Auth</TableCell><TableCell>Preset</TableCell><TableCell>Username</TableCell>
+              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell>Auth</TableCell><TableCell>Preset</TableCell><TableCell>Project</TableCell><TableCell>Username</TableCell>
               <TableCell>Created</TableCell><TableCell>Rotated</TableCell><TableCell />
             </TableRow>
           </TableHead>
@@ -115,7 +113,8 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
                 </TableCell>
                 <TableCell>{ep.type}</TableCell>
                 <TableCell>{ep.auth_mode}</TableCell>
-                <TableCell>{presetNames[ep.preset_id] ?? ep.preset_id}</TableCell>
+                <TableCell>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
                 <TableCell>{ep.username}</TableCell>
                 <TableCell>{when(ep.created_at)}</TableCell>
                 <TableCell>{when(ep.credentials_rotated_at)}</TableCell>

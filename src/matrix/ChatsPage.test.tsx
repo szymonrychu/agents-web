@@ -49,7 +49,7 @@ beforeEach(() => {
   api.listRules.mockResolvedValue({ allow: [], deny: [] })
   api.getSettings.mockResolvedValue({ default_preset_id: null, preamble: null, default_preamble: 'Default' })
   api.listRoomMessages.mockResolvedValue([])
-  client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Preset One', is_default: false }])
+  client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Preset One', is_default: false, project: 'agents' }])
 })
 afterEach(() => {
   cleanup()
@@ -83,6 +83,24 @@ describe('ChatsPage', () => {
     await user.click(screen.getByRole('option', { name: 'denied' }))
     await flush()
     expect(api.listRooms).toHaveBeenLastCalledWith({ kind: 'group', access: 'denied' })
+  })
+
+  test('shows the project of the effective preset, "-" without one', async () => {
+    rooms = [
+      room('!a', { name: 'Alice DM', preset_id: 'p1', effective_preset_id: 'p1' }),
+      room('!b', { name: 'Crew', preset_id: null, effective_preset_id: 'p2' }),
+      room('!c', { name: 'Bridge' }),
+    ]
+    client.listPresets.mockResolvedValue([
+      { id: 'p1', name: 'Preset One', is_default: false, project: 'agents' },
+      { id: 'p2', name: 'Preset Two', is_default: false, project: 'platform' },
+    ])
+    mount()
+    await flush()
+    expect(screen.getByRole('columnheader', { name: 'Project' })).toBeTruthy()
+    expect(within(screen.getByText('Alice DM').closest('tr')!).getByText('agents')).toBeTruthy()
+    expect(within(screen.getByText('Crew').closest('tr')!).getByText('platform')).toBeTruthy()
+    expect(within(screen.getByText('Bridge').closest('tr')!).queryByText('agents')).toBeNull()
   })
 
   test('saves room settings', async () => {

@@ -1,5 +1,5 @@
 /** Settings > Schedules: every schedule with enable/disable, run now, edit, delete and expandable runs. */
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -12,10 +12,9 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
-import { listPresets } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
-import { FormError, RunStatusChip, usePoll } from '../triggers'
+import { FormError, ProjectCell, RunStatusChip, usePoll, usePresetIndex } from '../triggers'
 import type { FormErrorValue, RunStatus } from '../triggers'
 import { deleteSchedule, listSchedules, runScheduleNow, updateSchedule } from './api'
 import type { ScheduleView } from './api'
@@ -37,16 +36,12 @@ const fireTime = (iso: string, timeZone: string) => new Date(iso).toLocaleString
 
 export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
   const { data, error, refresh } = usePoll(listSchedules, POLL_MS, [])
-  const [presetNames, setPresetNames] = useState<Record<string, string>>({})
+  const presets = usePresetIndex()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [runKeys, setRunKeys] = useState<Record<string, number>>({})
   const [form, setForm] = useState<FormTarget>(null)
   const [deleting, setDeleting] = useState<ScheduleView | null>(null)
   const [actionError, setActionError] = useState<FormErrorValue>(null)
-
-  useEffect(() => {
-    listPresets().then((ps) => setPresetNames(Object.fromEntries(ps.map((p) => [p.id, p.name]))), () => {})
-  }, [])
 
   const act = async (work: () => Promise<unknown>) => {
     setActionError(null)
@@ -99,7 +94,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['', 'Enabled', 'Name', 'Cron', 'Timezone', 'Preset', 'Next fire', 'Last run', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}
+              {['', 'Enabled', 'Name', 'Cron', 'Timezone', 'Preset', 'Project', 'Next fire', 'Last run', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -117,7 +112,8 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
                   <TableCell>{s.name}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace' }}>{s.cron}</TableCell>
                   <TableCell>{s.timezone}</TableCell>
-                  <TableCell>{presetNames[s.preset_id] ?? s.preset_id}</TableCell>
+                  <TableCell>{presets[s.preset_id]?.name ?? s.preset_id}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={s.preset_id} index={presets} /></TableCell>
                   <TableCell>{s.enabled && s.next_fires[0] ? fireTime(s.next_fires[0], s.timezone) : '-'}</TableCell>
                   <TableCell>
                     {s.last_run ? <RunStatusChip status={s.last_run.status as RunStatus} reason={s.last_run.reason ?? undefined} /> : '-'}
@@ -130,7 +126,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
                 </TableRow>
                 {expanded.has(s.id) && (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={10}>
                       <ScheduleRuns scheduleId={s.id} timezone={s.timezone} refreshKey={runKeys[s.id] ?? 0} onOpenSession={onOpenSession} />
                     </TableCell>
                   </TableRow>
