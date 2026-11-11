@@ -379,10 +379,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActorRef */
+        ActorRef: {
+            /** Kind */
+            kind: string;
+            /** Session */
+            session: string | null;
+            /** Slug */
+            slug: string | null;
+        };
         /** CommentCreate */
         CommentCreate: {
             /** Body */
             body: string;
+        };
+        /** CommentList */
+        CommentList: {
+            /** Items */
+            items: components["schemas"]["SpecComment"][];
         };
         /** DecisionAnswer */
         DecisionAnswer: {
@@ -428,6 +442,37 @@ export interface components {
             /** Superseded By */
             superseded_by?: number | null;
         };
+        /** DocumentBody */
+        DocumentBody: {
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Created By Kind */
+            created_by_kind: string | null;
+            /** Created By Session */
+            created_by_session: string | null;
+            /** Created By Slug */
+            created_by_slug: string | null;
+            /** Note */
+            note: string | null;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string | null;
+            /** Size */
+            size: number | null;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /** Version */
+            version: number;
+        };
         /** DocumentIn */
         DocumentIn: {
             /** Body */
@@ -443,6 +488,11 @@ export interface components {
             sources: {
                 [key: string]: unknown;
             }[];
+        };
+        /** DocumentList */
+        DocumentList: {
+            /** Items */
+            items: components["schemas"]["DocumentVersion"][];
         };
         /** DocumentPut */
         DocumentPut: {
@@ -462,6 +512,72 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /**
+         * DocumentVersion
+         * @description One stored version of a document, without its body. A removal has no hash or size.
+         */
+        DocumentVersion: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Created By Kind */
+            created_by_kind: string | null;
+            /** Created By Session */
+            created_by_session: string | null;
+            /** Created By Slug */
+            created_by_slug: string | null;
+            /** Note */
+            note: string | null;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string | null;
+            /** Size */
+            size: number | null;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /** Version */
+            version: number;
+        };
+        /**
+         * DocumentVersionListed
+         * @description A version in a history listing; `removed` is true for a removal.
+         */
+        DocumentVersionListed: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Created By Kind */
+            created_by_kind: string | null;
+            /** Created By Session */
+            created_by_session: string | null;
+            /** Created By Slug */
+            created_by_slug: string | null;
+            /** Note */
+            note: string | null;
+            /** Path */
+            path: string;
+            /** Removed */
+            removed: boolean;
+            /** Sha256 */
+            sha256: string | null;
+            /** Size */
+            size: number | null;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /** Version */
+            version: number;
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -472,6 +588,41 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** SpecComment */
+        SpecComment: {
+            /** Accepted Version */
+            accepted_version: number | null;
+            /** Anchor */
+            anchor: string | null;
+            /** Attachments */
+            attachments: {
+                [key: string]: unknown;
+            }[];
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Decided At */
+            decided_at: string | null;
+            decided_by: components["schemas"]["ActorRef"] | null;
+            /** Id */
+            id: number;
+            /** Path */
+            path: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            resolved_by: components["schemas"]["ActorRef"] | null;
+            /** Suggestion */
+            suggestion: string | null;
+            /** Suggestion Status */
+            suggestion_status: ("open" | "accepted" | "dismissed") | null;
+            /** Version */
+            version: number | null;
         };
         /** SpecCommentCreate */
         SpecCommentCreate: {
@@ -516,6 +667,76 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** SpecDetail */
+        SpecDetail: {
+            /** Assignee Session */
+            assignee_session: string | null;
+            /** Assignee Slug */
+            assignee_slug: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Documents */
+            documents: components["schemas"]["SpecDocument"][];
+            /** Key */
+            key: string;
+            /** Labels */
+            labels: string[];
+            /** Name */
+            name: string;
+            /** Open Comments */
+            open_comments: number;
+            /** Project */
+            project: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "review" | "approved" | "archived";
+            /** Tasks */
+            tasks: string[];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * SpecDocument
+         * @description A live document inside a single spec.
+         */
+        SpecDocument: {
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string | null;
+            /** Size */
+            size: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** SpecPage */
+        SpecPage: {
+            /** Items */
+            items: components["schemas"]["SpecSummary"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /** SpecPatch */
         SpecPatch: {
             /**
@@ -536,10 +757,52 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** SpecSummary */
+        SpecSummary: {
+            /** Assignee Session */
+            assignee_session: string | null;
+            /** Assignee Slug */
+            assignee_slug: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            created_by: components["schemas"]["ActorRef"] | null;
+            /** Key */
+            key: string;
+            /** Labels */
+            labels: string[];
+            /** Name */
+            name: string;
+            /** Project */
+            project: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "review" | "approved" | "archived";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: number;
+        };
         /** SuggestionAccept */
         SuggestionAccept: {
             /** Version */
             version: number;
+        };
+        /** SuggestionAccepted */
+        SuggestionAccepted: {
+            comment: components["schemas"]["SpecComment"];
+            version: components["schemas"]["DocumentVersion"];
         };
         /** TaskCreate */
         TaskCreate: {
@@ -623,6 +886,13 @@ export interface components {
         TodoReplace: {
             /** Items */
             items: components["schemas"]["TodoItemIn"][];
+        };
+        /** VersionPage */
+        VersionPage: {
+            /** Items */
+            items: components["schemas"]["DocumentVersionListed"][];
+            /** Next Cursor */
+            next_cursor: number | null;
         };
     };
     responses: never;
@@ -730,9 +1000,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecPage"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -774,9 +1042,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecDetail"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -843,9 +1109,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecDetail"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -927,9 +1191,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecDetail"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1008,9 +1270,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CommentList"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1063,9 +1323,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecComment"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1128,9 +1386,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SuggestionAccepted"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1198,9 +1454,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecComment"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1259,9 +1513,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SpecComment"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1319,9 +1571,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DocumentList"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1364,7 +1614,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentBody"];
                     "text/markdown": string;
                 };
             };
@@ -1426,9 +1676,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DocumentVersion"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */
@@ -1499,9 +1747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["VersionPage"];
                 };
             };
             /** @description forbidden (forbidden, user_only, project_forbidden) */

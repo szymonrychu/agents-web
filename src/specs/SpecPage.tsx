@@ -138,7 +138,7 @@ export function SpecPage({ specKey }: { specKey: string }) {
                 <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
                 <TableCell>{`v${d.version}`}</TableCell>
                 <TableCell>{`${d.size} B`}</TableCell>
-                <TableCell>{new Date(d.created_at).toLocaleString()}</TableCell>
+                <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>

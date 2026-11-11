@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { task } from '../tasks/testUtils'
-import { docVersion, mountSpecs, spec } from './testUtils'
+import { mountSpecs, spec, specDoc } from './testUtils'
 
 const api = vi.hoisted(() => ({ getSpec: vi.fn(), patchSpec: vi.fn(), createComment: vi.fn(), getTask: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, specStreamUrl: () => '/tb/stream' }))
@@ -18,7 +18,7 @@ vi.mock('../api/stream', () => ({
 }))
 
 const full = (over = {}) =>
-  spec({ status: 'review', labels: ['plans'], documents: [docVersion(), docVersion({ path: 'research/topic.md', version: 1, size: 9 })], tasks: ['T-4'], open_comments: 2, ...over })
+  spec({ status: 'review', labels: ['plans'], documents: [specDoc(), specDoc({ path: 'research/topic.md', version: 1, size: 9 })], tasks: ['T-4'], open_comments: 2, ...over })
 
 beforeEach(() => {
   for (const f of Object.values(api)) f.mockReset()

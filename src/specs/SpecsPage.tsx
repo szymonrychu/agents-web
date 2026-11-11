@@ -18,7 +18,7 @@ import { LabelEditor } from '../labels/LabelEditor'
 import { useProject } from '../projects/ProjectContext'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
-import { listSpecs, type Spec, type SpecPage, type SpecStatus } from './api'
+import { listSpecs, type SpecSummary, type SpecPage, type SpecStatus } from './api'
 import { specPath } from './paths'
 import { useSpecStream } from './useSpecStream'
 
@@ -48,7 +48,7 @@ export function SpecsPage() {
   useSpecStream(() => void refresh())
 
   // Further pages are appended to the first one; a poll or a filter change starts over.
-  const [extra, setExtra] = useState<{ page: SpecPage | undefined; items: Spec[]; next: string | null } | null>(null)
+  const [extra, setExtra] = useState<{ page: SpecPage | undefined; items: SpecSummary[]; next: string | null } | null>(null)
   const more = extra !== null && extra.page === data ? extra : null
   const items = [...(data?.items ?? []), ...(more?.items ?? [])]
   const next = more ? more.next : (data?.next_cursor ?? null)

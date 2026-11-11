@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
 import { ApiError } from '../api/client'
 import { Markdown } from '../markdown/Markdown'
-import { listSpecs, type Spec } from '../specs/api'
+import { listSpecs, type SpecSummary } from '../specs/api'
 import { specPath } from '../specs/paths'
 import { LabelEditor } from '../labels/LabelEditor'
 import { TOKENS } from '../theme'
@@ -56,7 +56,7 @@ function Description({ task, save }: { task: Task; save: (patch: Omit<TaskPatch,
 
 /** The linked spec, with a picker (specs of the task's project, loaded when opened) to set or clear it. */
 function SpecLink({ task, save }: { task: Task; save: (patch: Omit<TaskPatch, 'version'>) => Promise<void> }) {
-  const [specs, setSpecs] = useState<Spec[] | null>(null)
+  const [specs, setSpecs] = useState<SpecSummary[] | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const open = async () => {
     setError(null)
