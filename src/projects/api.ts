@@ -27,3 +27,8 @@ export interface ProjectSummary {
 /** Empty when the taskboard backend is not configured. */
 export const projectsSummary = (): Promise<ProjectSummary[]> =>
   isConfigured('taskboard') ? requestAt<ProjectSummary[]>(backendBase('taskboard'), 'GET', '/projects/summary') : Promise.resolve([])
+
+export type ProjectPost = S['ProjectPostView']
+/** Room posts (leader only): newest page without a cursor, `before_id` for older, `after_id` for newer. */
+export const listProjectMessages = (slug: string, opts: { beforeId?: number; afterId?: number; limit?: number }) =>
+  request<S['ProjectPostsPage']>('GET', `/projects/${id(slug)}/messages${query({ before_id: opts.beforeId, after_id: opts.afterId, limit: opts.limit })}`)

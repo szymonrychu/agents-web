@@ -355,6 +355,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Project
+         * @description Create a project, same body, answer and errors as the main-port route. The audit row
+         *     carries the field names only.
+         */
+        post: operations["create_project_agent_v1_admin_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/proposals": {
         parameters: {
             query?: never;
@@ -1097,6 +1118,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/project/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the project room, newest first (leader only) */
+        get: operations["project_read_agent_v1_project_messages_get"];
+        put?: never;
+        /**
+         * Post to the project room, pushed to the other leaders of the project (leader only)
+         * @description Checks in order (leader, project, hop, rate, budget, recipients) in one transaction; a
+         *     refusal writes nothing. A recipient with a full queue or being deleted is skipped.
+         */
+        post: operations["project_post_agent_v1_project_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/projects": {
         parameters: {
             query?: never;
@@ -1195,6 +1238,46 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/specs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Taskboard specs collection (list, create) as the caller's session */
+        get: operations["collection_agent_v1_specs_get"];
+        /** Taskboard specs collection (list, create) as the caller's session */
+        put: operations["collection_agent_v1_specs_put"];
+        /** Taskboard specs collection (list, create) as the caller's session */
+        post: operations["collection_agent_v1_specs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Taskboard specs collection (list, create) as the caller's session */
+        patch: operations["collection_agent_v1_specs_patch"];
+        trace?: never;
+    };
+    "/agent/v1/specs/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Taskboard spec, documents, versions and comments as the caller's session */
+        get: operations["item_agent_v1_specs__path__get"];
+        /** Taskboard spec, documents, versions and comments as the caller's session */
+        put: operations["item_agent_v1_specs__path__put"];
+        /** Taskboard spec, documents, versions and comments as the caller's session */
+        post: operations["item_agent_v1_specs__path__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Taskboard spec, documents, versions and comments as the caller's session */
+        patch: operations["item_agent_v1_specs__path__patch"];
         trace?: never;
     };
     "/agent/v1/tasks": {
@@ -1621,6 +1704,23 @@ export interface paths {
         head?: never;
         /** Patch Project */
         patch: operations["patch_project_api_v1_projects__slug__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{slug}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a project room, newest first (main port) */
+        get: operations["project_messages_api_v1_projects__slug__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/proposals": {
@@ -2992,6 +3092,7 @@ export interface components {
             pod_name: string;
             /** Project */
             project: string;
+            project_room?: components["schemas"]["ProjectRoom"] | null;
             /** Projects Scope */
             projects_scope: string;
             /**
@@ -3359,7 +3460,7 @@ export interface components {
         /**
          * PresetPatch
          * @description Admin partial edit: `spec` is an RFC 7396 merge patch of the stored spec. A `project`
-         *     other than the stored one is refused (human-only).
+         *     other than the stored one moves the preset.
          */
         PresetPatch: {
             /** Labels */
@@ -3458,6 +3559,71 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /** ProjectPostIn */
+        ProjectPostIn: {
+            /** Handled */
+            handled?: number[];
+            /** Project */
+            project?: string | null;
+            /** Reply To */
+            reply_to?: number | null;
+            /** Text */
+            text: string;
+            /** To */
+            to?: string[];
+        };
+        /** ProjectPostQueued */
+        ProjectPostQueued: {
+            /** Delivered */
+            delivered: string[];
+            /** Handled */
+            handled: number[];
+            /** Post Id */
+            post_id: number;
+            /** Skipped */
+            skipped: components["schemas"]["SkippedRecipient"][];
+        };
+        /** ProjectPostView */
+        ProjectPostView: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** From */
+            from: string;
+            /** Id */
+            id: number;
+            /** Reply To */
+            reply_to: number | null;
+            /** Sender Kind */
+            sender_kind: string;
+            /**
+             * Sender Session Id
+             * Format: uuid
+             */
+            sender_session_id: string;
+            /** Text */
+            text: string;
+            /** To */
+            to: string[];
+        };
+        /** ProjectPostsPage */
+        ProjectPostsPage: {
+            /** Next Before Id */
+            next_before_id: number | null;
+            /** Posts */
+            posts: components["schemas"]["ProjectPostView"][];
+        };
+        /** ProjectRoom */
+        ProjectRoom: {
+            /** Last Post Id */
+            last_post_id: number | null;
+            /** Project */
+            project: string;
+            /** Unhandled */
+            unhandled: number;
         };
         /** ProjectView */
         ProjectView: {
@@ -4042,6 +4208,16 @@ export interface components {
             vault: {
                 [key: string]: components["schemas"]["VaultPinView"];
             };
+        };
+        /** SkippedRecipient */
+        SkippedRecipient: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "queue_full" | "session_deleting";
+            /** Slug */
+            slug: string;
         };
         /**
          * SweepPolicyIn
@@ -5192,6 +5368,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PresetView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project_agent_v1_admin_projects_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
                 };
             };
             /** @description Validation Error */
@@ -6933,6 +7145,79 @@ export interface operations {
             };
         };
     };
+    project_read_agent_v1_project_messages_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                before_id?: number | null;
+                after_id?: number | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPostsPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_post_agent_v1_project_messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectPostIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPostQueued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     projects_agent_v1_projects_get: {
         parameters: {
             query?: never;
@@ -7104,6 +7389,550 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    collection_agent_v1_specs_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collection_agent_v1_specs_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collection_agent_v1_specs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collection_agent_v1_specs_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_specs__path__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_specs__path__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_specs__path__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_specs__path__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -8596,6 +9425,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_messages_api_v1_projects__slug__messages_get: {
+        parameters: {
+            query?: {
+                before_id?: number | null;
+                after_id?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPostsPage"];
                 };
             };
             /** @description Validation Error */
