@@ -65,6 +65,18 @@ describe('spec page', () => {
     expect(api.createComment.mock.invocationCallOrder[0]).toBeLessThan(api.patchSpec.mock.invocationCallOrder[0])
   })
 
+  test('retrying Request changes after a failed PATCH does not post the comment twice', async () => {
+    api.patchSpec.mockRejectedValueOnce(new Error('boom'))
+    mountSpecs('/specs/S-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Request changes' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'What should change' }), 'split it')
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await screen.findByText(/boom/)
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(api.patchSpec).toHaveBeenCalledTimes(2))
+    expect(api.createComment).toHaveBeenCalledTimes(1)
+  })
+
   test('a PATCH 412 reloads with a notice', async () => {
     api.patchSpec.mockRejectedValue(new ApiError(412, 'stale_version', 'changed', { current_version: 3 }))
     mountSpecs('/specs/S-1')

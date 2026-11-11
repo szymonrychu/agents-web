@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -60,6 +60,8 @@ export function SpecPage({ specKey }: { specKey: string }) {
   const [actionError, setActionError] = useState<Error | null>(null)
   const [stale, setStale] = useState(false)
   const [changes, setChanges] = useState<string | null>(null)
+  // Set once the change-request comment is stored, so a retry after a failed PATCH does not post it again.
+  const commented = useRef(false)
   useSpecStream((ev) => {
     if (ev.type === 'reset') void refresh()
     else if (ev.key === specKey) {
@@ -77,8 +79,12 @@ export function SpecPage({ specKey }: { specKey: string }) {
     setActionError(null)
     setStale(false)
     try {
-      if (comment !== undefined) await createComment(spec.key, { body: comment })
+      if (comment !== undefined && !commented.current) {
+        await createComment(spec.key, { body: comment })
+        commented.current = true
+      }
       await patchSpec(spec.key, { version: spec.version, status })
+      commented.current = false
       setChanges(null)
       void refresh()
     } catch (e) {
@@ -110,9 +116,9 @@ export function SpecPage({ specKey }: { specKey: string }) {
       </Box>
       {changes !== null && (
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField size="small" multiline label="What should change" value={changes} onChange={(e) => setChanges(e.target.value)} sx={{ flexGrow: 1 }} />
+          <TextField size="small" multiline label="What should change" value={changes} onChange={(e) => { commented.current = false; setChanges(e.target.value) }} sx={{ flexGrow: 1 }} />
           <Button variant="contained" disabled={changes.trim() === ''} onClick={() => void setStatus('draft', changes.trim())}>Send</Button>
-          <Button onClick={() => setChanges(null)}>Cancel</Button>
+          <Button onClick={() => { commented.current = false; setChanges(null) }}>Cancel</Button>
         </Box>
       )}
       <Section title="Documents">

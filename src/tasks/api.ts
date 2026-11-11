@@ -77,8 +77,8 @@ export interface Task {
   labels: string[]
   assignee_session: string | null
   blocked: boolean
-  /** Key `S-n` of the linked spec (taskboard 0.6.0); absent from older servers. */
-  spec?: string | null
+  /** Key `S-n` of the linked spec, or null. */
+  spec: string | null
   open_decisions: number
   waiting_sessions: WaitingSession[]
   todo: TodoItem[]

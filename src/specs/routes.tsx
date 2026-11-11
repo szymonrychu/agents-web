@@ -12,7 +12,7 @@ function SpecRoute() {
   const { key = '' } = useParams()
   return (
     <Box data-testid="spec-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
-      <SpecPage specKey={key} />
+      <SpecPage key={key} specKey={key} />
     </Box>
   )
 }
@@ -21,7 +21,7 @@ function DocRoute() {
   const { key = '', '*': path = '' } = useParams()
   return (
     <Box data-testid="doc-route" data-key={key} data-path={path} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
-      <DocumentPage specKey={key} path={path} />
+      <DocumentPage key={`${key}/${path}`} specKey={key} path={path} />
     </Box>
   )
 }

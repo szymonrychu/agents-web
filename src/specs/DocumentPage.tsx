@@ -56,7 +56,11 @@ export function DocumentPage({ specKey, path }: { specKey: string; path: string 
     <Button component={RouterLink} to={specPath(specKey)}>{`Back to ${specKey}`}</Button>
   )
   if (deleted) return <Box><Typography>This spec was deleted</Typography>{back}</Box>
-  if (error instanceof ApiError && error.status === 404) return <Box><Typography>{`${path} not found in ${specKey}`}</Typography>{back}</Box>
+  if (error instanceof ApiError && error.status === 404) {
+    const missing = v ?? diff
+    const text = missing === undefined ? `${path} not found in ${specKey}` : `Version ${missing} of ${path} not found in ${specKey}`
+    return <Box><Typography>{text}</Typography>{back}</Box>
+  }
   if (!data) return error ? <FormError error={error} /> : <Typography color="text.secondary">Loading</Typography>
   const { current, shown, against, versions, comments } = data
 

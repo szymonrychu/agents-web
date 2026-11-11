@@ -85,6 +85,15 @@ describe('document page', () => {
     expect(await screen.findByText('gone.md not found in S-1')).toBeTruthy()
   })
 
+  test('a missing version says which version, not that the path is missing', async () => {
+    api.getDoc.mockImplementation(async (_k: string, _p: string, v?: number) => {
+      if (v === 9) throw new ApiError(404, 'not_found', 'no')
+      return { path: 'plan.md', version: 2, body: 'x', note: null, created_at: '2026-01-01T00:00:00Z' }
+    })
+    mountSpecs('/specs/S-1/doc/plan.md?v=9')
+    expect(await screen.findByText('Version 9 of plan.md not found in S-1')).toBeTruthy()
+  })
+
   test('a change event for this spec refetches', async () => {
     mountSpecs('/specs/S-1/doc/plan.md')
     await screen.findByTestId('document-body')

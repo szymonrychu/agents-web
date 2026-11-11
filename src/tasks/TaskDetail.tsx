@@ -84,6 +84,7 @@ function SpecLink({ task, save }: { task: Task; save: (patch: Omit<TaskPatch, 'v
             slotProps={{ select: { native: true } }}
           >
             <option value="">No spec</option>
+            {linked !== null && !specs.some((s) => s.key === linked) && <option value={linked}>{linked}</option>}
             {specs.map((s) => <option key={s.key} value={s.key}>{`${s.key} ${s.title}`}</option>)}
           </TextField>
           <Button size="small" onClick={() => setSpecs(null)}>Cancel</Button>

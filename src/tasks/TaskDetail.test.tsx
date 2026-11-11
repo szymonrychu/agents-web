@@ -176,6 +176,13 @@ describe('task detail', () => {
     await waitFor(() => expect(api.patchTask).toHaveBeenCalledWith('T-1', { version: 3, spec: 'S-2' }))
   })
 
+  test('the picker keeps the linked spec as an option when it is beyond the first page', async () => {
+    api.getTask.mockResolvedValue(task({ spec: 'S-300' }))
+    mountTasks('/tasks/T-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Change spec' }))
+    expect((await screen.findByRole('combobox', { name: 'Spec' }) as HTMLSelectElement).value).toBe('S-300')
+  })
+
   test('the picker can clear the spec', async () => {
     api.getTask.mockResolvedValue(task({ spec: 'S-1' }))
     api.patchTask.mockResolvedValue(task())
