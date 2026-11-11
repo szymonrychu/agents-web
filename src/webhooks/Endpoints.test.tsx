@@ -52,8 +52,8 @@ beforeEach(() => {
   client.listPresets.mockReset()
   api.getMeta.mockResolvedValue(META)
   client.listPresets.mockResolvedValue([
-    { id: 'p1', name: 'Default preset', is_default: true },
-    { id: 'p2', name: 'Other preset', is_default: false },
+    { id: 'p1', name: 'Default preset', is_default: true, project: 'platform' },
+    { id: 'p2', name: 'Other preset', is_default: false, project: 'infra' },
   ])
   api.listEndpoints.mockResolvedValue([view(), view({ id: 2, suffix: 'g2', url: 'https://h.example/webhook/g2', type: 'grafana-alert', preset_id: 'p2', username: 'user2', credentials_rotated_at: '2026-10-26T10:00:00Z' })])
 })
@@ -191,6 +191,17 @@ describe('create', () => {
     await u.click(screen.getByRole('button', { name: 'Preview' }))
     expect(await screen.findByText(/Example JSON is not valid JSON/)).toBeTruthy()
     expect(api.previewTemplate).not.toHaveBeenCalled()
+  })
+})
+
+describe('project column', () => {
+  test('shows the project of each endpoint preset', async () => {
+    render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
+    expect(screen.getByRole('columnheader', { name: 'Project' })).toBeTruthy()
+    const first = (await screen.findByText('https://h.example/webhook/abc')).closest('tr')!
+    await waitFor(() => expect(within(first).getByText('platform')).toBeTruthy())
+    const second = screen.getByText('https://h.example/webhook/g2').closest('tr')!
+    expect(within(second).getByText('infra')).toBeTruthy()
   })
 })
 

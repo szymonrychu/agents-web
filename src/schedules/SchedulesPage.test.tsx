@@ -41,7 +41,7 @@ const mount = (onOpenSession?: (id: string) => void) =>
 beforeEach(() => {
   Object.values(api).forEach((m) => m.mockReset())
   client.listPresets.mockReset()
-  client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Reviewer' }])
+  client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Reviewer', project: 'agents' }])
   api.listSchedules.mockResolvedValue([sched('s1', 'Morning'), sched('s2', 'Nightly', { enabled: false, next_fires: [], last_run: null })])
   api.listScheduleRuns.mockResolvedValue([run()])
 })
@@ -58,6 +58,16 @@ describe('SchedulesPage', () => {
     expect(within(row).getByText(/handled/)).toBeTruthy()
     const other = screen.getByText('Nightly').closest('tr')!
     expect(within(other).queryByText(/handled/)).toBeNull()
+  })
+
+  test('shows the project of each schedule preset', async () => {
+    client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Reviewer', project: 'agents' }, { id: 'p2', name: 'Other', project: 'default' }])
+    api.listSchedules.mockResolvedValue([sched('s1', 'Morning'), sched('s2', 'Nightly', { preset_id: 'p2' }), sched('s3', 'Gone', { preset_id: 'missing' })])
+    mount()
+    expect(screen.getByRole('columnheader', { name: 'Project' })).toBeTruthy()
+    expect(within((await screen.findByText('Morning')).closest('tr')!).getByText('agents')).toBeTruthy()
+    expect(within((await screen.findByText('Nightly')).closest('tr')!).getByText('default')).toBeTruthy()
+    expect(within((await screen.findByText('Gone')).closest('tr')!).queryByText('agents')).toBeNull()
   })
 
   test('lists an empty state explaining schedules', async () => {
