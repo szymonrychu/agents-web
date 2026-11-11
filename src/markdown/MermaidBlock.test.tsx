@@ -56,6 +56,18 @@ describe('MermaidBlock', () => {
     expect(await screen.findByText('diagram error')).toBeTruthy()
   })
 
+  test('render_failure_removes_the_stray_body_node', async () => {
+    m.render.mockImplementation(async (id: string) => {
+      const stray = document.createElement('div')
+      stray.id = `d${id}`
+      document.body.appendChild(stray)
+      throw new Error('boom')
+    })
+    setup('graph TD; A-->B')
+    await screen.findByText('diagram error')
+    expect(document.body.querySelector('[id^="dmermaid-"]')).toBeNull()
+  })
+
   test('result_after_unmount_is_ignored', async () => {
     let resolve: (v: { svg: string }) => void = () => {}
     m.render.mockReturnValue(new Promise((r) => (resolve = r)))

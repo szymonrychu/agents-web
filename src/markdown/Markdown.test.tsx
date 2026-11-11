@@ -199,7 +199,7 @@ describe('Markdown', () => {
         <Markdown headingIds>{md}</Markdown>
       </ThemeProvider>,
     )
-    expect(all(on.container, 'h1, h2').map((h) => h.id)).toEqual(['intro', 'intro-2', 'other-part'])
+    expect(all(on.container, 'h1, h2').map((h) => h.id)).toEqual(['h-intro', 'h-intro-2', 'h-other-part'])
     cleanup()
     const off = setup(md)
     expect(all(off.container, 'h1, h2').map((h) => h.id)).toEqual(['', '', ''])

@@ -1,5 +1,5 @@
 /**
- * Shared markdown renderer (chat messages, spec documents): safe GFM as safe GFM markdown (react-markdown, remark-gfm, remark-breaks), every element mapped to MUI.
+ * Shared markdown renderer (chat messages, spec documents): safe GFM markdown (react-markdown, remark-gfm, remark-breaks), every element mapped to MUI.
  *
  * Safety: raw HTML stays text (react-markdown's default: no skipHtml, no rehype plugin), every URL goes through the default
  * `defaultUrlTransform` (an unsafe one becomes '' and the element gets no href), and images never render an img element.
@@ -171,14 +171,14 @@ const ROOT = { minWidth: 0, typography: 'body1', overflowWrap: 'anywhere', '& > 
 
 type HastParent = { children: HastNode[] }
 
-/** rehype plugin: give every heading a stable id (`intro`, `intro-2`) in document order, for in-page links. */
+/** rehype plugin: give every heading a stable id (`h-intro`, `h-intro-2`) in document order, for in-page links; the `h-` prefix keeps them off app ids (DOM clobbering). */
 function rehypeHeadingIds() {
   return (tree: HastParent) => {
     const seen = new Map<string, number>()
     const walk = (n: HastParent) => {
       for (const c of n.children) {
         if (c.type !== 'element') continue
-        if ((HEADINGS as readonly string[]).includes(c.tagName)) c.properties.id = headingId(hastText(c), seen)
+        if ((HEADINGS as readonly string[]).includes(c.tagName)) c.properties.id = `h-${headingId(hastText(c), seen)}`
         walk(c)
       }
     }

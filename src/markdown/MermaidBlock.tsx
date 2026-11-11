@@ -43,7 +43,10 @@ export function MermaidBlock({ source }: { source: string }) {
         return api.render(id, source)
       })
       .then(({ svg }) => live && setResult({ key, svg }))
-      .catch(() => live && setResult({ key }))
+      .catch(() => {
+        document.getElementById(`d${id}`)?.remove()
+        if (live) setResult({ key })
+      })
     return () => {
       live = false
     }
