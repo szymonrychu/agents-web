@@ -99,14 +99,24 @@ function EditStep({ props, task, onFail, onReload }: { props: Props; task: Task;
   const [model, setModel] = useState<string>(task.model ?? '')
   const [body, setBody] = useState(task.body)
   const [deps, setDepKeys] = useState<string[]>(task.depends_on)
+  // The server values the draft started from; a refetch with other values shows them without touching the draft.
+  const [base, setBase] = useState({ title: task.title, body: task.body, model: task.model ?? '' })
+  const serverModel = task.model ?? ''
+  const serverMoved = task.title !== base.title || task.body !== base.body || serverModel !== base.model
+  const useServer = () => {
+    setTitle(task.title)
+    setBody(task.body)
+    setModel(serverModel)
+    setBase({ title: task.title, body: task.body, model: serverModel })
+  }
   const [busy, setBusy] = useState(false)
   const [depsError, setDepsError] = useState<Error | null>(null)
 
   const save = async () => {
     const patch: TaskPatch = { version: task.version }
-    if (title.trim() !== task.title) patch.title = title.trim()
-    if (body !== task.body) patch.body = body
-    if (model !== (task.model ?? '')) patch.model = model === '' ? null : (model as PlanModel)
+    if (title.trim() !== base.title) patch.title = title.trim()
+    if (body !== base.body) patch.body = body
+    if (model !== base.model) patch.model = model === '' ? null : (model as PlanModel)
     setBusy(true)
     try {
       await patchStep(task.key, patch)
@@ -137,6 +147,11 @@ function EditStep({ props, task, onFail, onReload }: { props: Props; task: Task;
   return (
     <>
       <DialogContent>
+        {serverMoved && (
+          <Alert severity="info" sx={{ mb: 1 }} action={<Button color="inherit" size="small" onClick={useServer}>Use server values</Button>}>
+            Server now has title "{task.title}", model {serverModel === '' ? 'none' : serverModel}{task.body !== base.body ? ' and a different body' : ''}; your edits are kept.
+          </Alert>
+        )}
         <Fields title={title} setTitle={setTitle} model={model} setModel={setModel} body={body} setBody={setBody} />
         <Box sx={{ display: 'flex', flexDirection: 'column', pt: 2 }}>
           <Typography color="text.secondary">Depends on</Typography>
@@ -179,7 +194,6 @@ export function StepEditor(props: Props) {
     if (isConflict(e)) {
       setChanged(true)
       setError(null)
-      setTask(null)
       setGen((g) => g + 1)
       onChanged()
     } else setError(asError(e))
@@ -194,7 +208,7 @@ export function StepEditor(props: Props) {
       </Box>
       {target.mode === 'new' && <NewStep props={props} onFail={onFail} />}
       {target.mode === 'edit' && !task && !error && <DialogContent><Typography color="text.secondary">Loading</Typography></DialogContent>}
-      {target.mode === 'edit' && task && <EditStep key={`${task.key}:${task.version}:${task.depends_on.join(',')}`} props={props} task={task} onFail={onFail} onReload={() => setGen((g) => g + 1)} />}
+      {target.mode === 'edit' && task && <EditStep key={task.key} props={props} task={task} onFail={onFail} onReload={() => setGen((g) => g + 1)} />}
     </Dialog>
   )
 }

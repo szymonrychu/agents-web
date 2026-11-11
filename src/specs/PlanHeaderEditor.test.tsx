@@ -55,4 +55,33 @@ describe('plan header editor', () => {
     expect((screen.getByRole('button', { name: 'Save plan header' }) as HTMLButtonElement).disabled).toBe(true)
     expect(api.putPlan).not.toHaveBeenCalled()
   })
+
+  test('a newer plan version keeps the draft, shows a notice, and saves against the draft base', async () => {
+    const { rerender } = render(<PlanHeaderEditor specKey="S-1" plan={header} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    const goal = screen.getByRole('textbox', { name: 'Goal' })
+    await userEvent.clear(goal)
+    await userEvent.type(goal, 'My draft')
+    rerender(<PlanHeaderEditor specKey="S-1" plan={{ ...header, goal: 'Agent goal', version: 5 }} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    expect((screen.getByRole('textbox', { name: 'Goal' }) as HTMLInputElement).value).toBe('My draft')
+    expect(screen.getByText(/newer version available/i)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Save plan header' }))
+    await waitFor(() => expect(api.putPlan).toHaveBeenCalled())
+    expect(api.putPlan.mock.calls[0][1].version).toBe(4)
+  })
+
+  test('the reload action replaces the draft with the newer version', async () => {
+    const { rerender } = render(<PlanHeaderEditor specKey="S-1" plan={header} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    await userEvent.type(screen.getByRole('textbox', { name: 'Goal' }), '!')
+    rerender(<PlanHeaderEditor specKey="S-1" plan={{ ...header, goal: 'Agent goal', version: 5 }} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: /reload/i }))
+    expect((screen.getByRole('textbox', { name: 'Goal' }) as HTMLInputElement).value).toBe('Agent goal')
+    expect(screen.queryByText(/newer version available/i)).toBeNull()
+  })
+
+  test('an untouched form follows a newer version silently', () => {
+    const { rerender } = render(<PlanHeaderEditor specKey="S-1" plan={header} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    rerender(<PlanHeaderEditor specKey="S-1" plan={{ ...header, goal: 'Agent goal', version: 5 }} onSaved={vi.fn()} onConflict={vi.fn()} />)
+    expect((screen.getByRole('textbox', { name: 'Goal' }) as HTMLInputElement).value).toBe('Agent goal')
+    expect(screen.queryByText(/newer version available/i)).toBeNull()
+  })
 })

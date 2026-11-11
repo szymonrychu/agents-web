@@ -81,6 +81,7 @@ export function PlanTab({ specKey }: { specKey: string }) {
   const [editing, setEditing] = useState<StepEditorTarget | null>(null)
   const [headerOpen, setHeaderOpen] = useState(false)
   const [notice, setNotice] = useState(false)
+  const [pending, setPending] = useState(false)
   const [actionError, setActionError] = useState<Error | null>(null)
   useSpecStream((ev) => {
     if (ev.type === 'reset' || ev.key === specKey) void refresh()
@@ -92,13 +93,18 @@ export function PlanTab({ specKey }: { specKey: string }) {
   const guarded = async (fn: () => Promise<unknown>) => {
     setActionError(null)
     setNotice(false)
+    setPending(true)
     try {
       await fn()
     } catch (e) {
       if (e instanceof ApiError && (e.status === 412 || e.status === 409)) setNotice(true)
       else setActionError(e instanceof Error ? e : new Error(String(e)))
     }
-    await refresh()
+    try {
+      await refresh()
+    } finally {
+      setPending(false)
+    }
   }
   const move = (i: number, by: -1 | 1) => {
     const order = steps.map((s) => s.key)
@@ -152,10 +158,10 @@ export function PlanTab({ specKey }: { specKey: string }) {
                   <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
                       <Button size="small" aria-label={`Edit step ${s.step}`} onClick={() => setEditing({ mode: 'edit', step: s })}>Edit</Button>
-                      <Button size="small" aria-label={`Move step ${s.step} up`} disabled={i === 0} onClick={() => void move(i, -1)}>Up</Button>
-                      <Button size="small" aria-label={`Move step ${s.step} down`} disabled={i === steps.length - 1} onClick={() => void move(i, 1)}>Down</Button>
+                      <Button size="small" aria-label={`Move step ${s.step} up`} disabled={pending || i === 0} onClick={() => void move(i, -1)}>Up</Button>
+                      <Button size="small" aria-label={`Move step ${s.step} down`} disabled={pending || i === steps.length - 1} onClick={() => void move(i, 1)}>Down</Button>
                       <Button size="small" aria-label={`Add step after ${s.step}`} onClick={() => setEditing({ mode: 'new', after: s.step })}>Add after</Button>
-                      {droppable(s) && <Button size="small" color="warning" aria-label={`Drop step ${s.step}`} onClick={() => void guarded(() => patchStep(s.key, { version: s.version, status: 'dropped' }))}>Drop</Button>}
+                      {droppable(s) && <Button size="small" color="warning" disabled={pending} aria-label={`Drop step ${s.step}`} onClick={() => void guarded(() => patchStep(s.key, { version: s.version, status: 'dropped' }))}>Drop</Button>}
                     </Box>
                   </TableCell>
                 </TableRow>

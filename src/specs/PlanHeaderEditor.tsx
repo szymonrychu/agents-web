@@ -29,17 +29,27 @@ const linesError = (text: string): string | undefined => {
   return undefined
 }
 
-/** Edits the plan header; a stale `version` (412) reloads the fields from the parent's fresh plan. */
+/** Edits the plan header; a stale `version` (412) keeps the draft and offers the parent's fresh plan. */
 export function PlanHeaderEditor({ specKey, plan, onSaved, onConflict }: { specKey: string; plan: Plan; onSaved: () => void; onConflict: () => void }) {
   const [fields, setFields] = useState<Fields>(() => fieldsOf(plan))
-  const [seen, setSeen] = useState(plan.version)
+  // The plan the draft is based on: its version is what a save sends, so a stale draft gets a 412.
+  const [base, setBase] = useState<{ version: number; fields: Fields }>(() => ({ version: plan.version, fields: fieldsOf(plan) }))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [changed, setChanged] = useState(false)
-  // A newer plan version from the parent replaces the fields (adjusting state during render, not in an effect).
-  if (seen !== plan.version) {
-    setSeen(plan.version)
-    setFields(fieldsOf(plan))
+  const sameFields = (a: Fields, b: Fields) => (Object.keys(a) as (keyof Fields)[]).every((k) => a[k] === b[k])
+  const incoming = fieldsOf(plan)
+  const newer = base.version !== plan.version
+  // A newer version replaces an untouched form (or one already equal to it); a draft is kept (adjusting state during render).
+  if (newer && (sameFields(fields, base.fields) || sameFields(fields, incoming))) {
+    setBase({ version: plan.version, fields: incoming })
+    setFields(incoming)
+  }
+  const draftBehind = newer && !sameFields(fields, base.fields) && !sameFields(fields, incoming)
+  const reload = () => {
+    setBase({ version: plan.version, fields: incoming })
+    setFields(incoming)
+    setChanged(false)
   }
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) => setFields((f) => ({ ...f, [k]: e.target.value }))
   const errs = {
@@ -57,7 +67,7 @@ export function PlanHeaderEditor({ specKey, plan, onSaved, onConflict }: { specK
     setChanged(false)
     try {
       await putPlan(specKey, {
-        version: plan.version,
+        version: base.version,
         goal: fields.goal,
         architecture: fields.architecture,
         tech_stack: fields.tech_stack,
@@ -85,6 +95,11 @@ export function PlanHeaderEditor({ specKey, plan, onSaved, onConflict }: { specK
       {text('tech_stack', 'Tech stack', true)}
       {text('constraints', 'Constraints', true, 'One per line')}
       {text('review_focus', 'Review focus', true, 'One per line')}
+      {draftBehind && (
+        <Alert severity="info" action={<Button color="inherit" size="small" onClick={reload}>Reload newer version</Button>}>
+          A newer version available; your edits are kept. Saving now will be refused until you reload.
+        </Alert>
+      )}
       {changed && <Alert severity="warning">{CHANGED_MEANWHILE}</Alert>}
       <FormError error={error} />
       <Box>
