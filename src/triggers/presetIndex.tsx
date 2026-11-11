@@ -1,6 +1,7 @@
 import Chip from '@mui/material/Chip'
 import { useEffect, useState } from 'react'
 import { listPresets } from '../api/client'
+import { useFocusTick } from '../common/useFocusTick'
 
 export interface PresetInfo {
   name: string
@@ -10,6 +11,7 @@ export interface PresetInfo {
 /** Preset id -> name and project, from the orchestrator's `GET /presets`; empty while loading or when the call fails. */
 export function usePresetIndex(): Record<string, PresetInfo> {
   const [index, setIndex] = useState<Record<string, PresetInfo>>({})
+  const focusTick = useFocusTick()
   useEffect(() => {
     let live = true
     listPresets().then(
@@ -17,7 +19,7 @@ export function usePresetIndex(): Record<string, PresetInfo> {
       () => {},
     )
     return () => { live = false }
-  }, [])
+  }, [focusTick])
   return index
 }
 

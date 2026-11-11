@@ -12,6 +12,8 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { presetInProject } from '../projects/scope'
+import { useProject } from '../projects/ProjectContext'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, ProjectCell, RunStatusChip, usePoll, usePresetIndex } from '../triggers'
@@ -37,6 +39,7 @@ const fireTime = (iso: string, timeZone: string) => new Date(iso).toLocaleString
 export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
   const { data, error, refresh } = usePoll(listSchedules, POLL_MS, [])
   const presets = usePresetIndex()
+  const { project } = useProject()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [runKeys, setRunKeys] = useState<Record<string, number>>({})
   const [form, setForm] = useState<FormTarget>(null)
@@ -76,7 +79,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
     void act(async () => {})
   }
 
-  const schedules = data ?? []
+  const schedules = (data ?? []).filter((s) => presetInProject(s.preset_id, presets, project))
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

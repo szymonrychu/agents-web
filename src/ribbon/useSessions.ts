@@ -1,7 +1,8 @@
 /** Hand-rolled session store for the top bar: initial REST load, live /api/v1/stream deltas, selected session id. */
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import { listAgents, listSessions, statusStreamUrl } from '../api/client'
 import type { AgentView, SessionView } from '../api/client'
+import { sessionVisibleIn } from '../projects/scope'
 import { STATUS_EVENTS, openStream, statusEventFromFrame } from '../api/stream'
 import type { StatusEvent } from '../api/stream'
 
@@ -101,7 +102,8 @@ export const sortedAgents = (entry: SessionEntry): AgentView[] =>
     .filter((a) => !a.gone)
     .sort((a, b) => a.ordinal - b.ordinal)
 
-export function useSessions() {
+/** `project` narrows the visible sessions (null: all); the reducer keeps every session the stream delivers. */
+export function useSessions(project: string | null = null) {
   const [state, dispatch] = useReducer(sessionsReducer, initialState)
 
   useEffect(() => {
@@ -127,9 +129,14 @@ export function useSessions() {
     }
   }, [])
 
+  const visible = useMemo(() => {
+    const sessions = Object.fromEntries(Object.entries(state.sessions).filter(([, e]) => sessionVisibleIn(e.session, project)))
+    return { ...state, sessions }
+  }, [state, project])
+
   const select = useCallback((id: string | null) => dispatch({ type: 'select', id }), [])
   const dismiss = useCallback((id: string) => dispatch({ type: 'dismiss', id }), [])
   /** Applies a session returned by a REST call without waiting for the stream. */
   const update = useCallback((session: SessionView) => dispatch({ type: 'session_status', session }), [])
-  return { state, sessions: sortedSessions(state), select, dismiss, update }
+  return { state: visible, sessions: sortedSessions(visible), select, dismiss, update }
 }

@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
+import { useFocusTick } from '../common/useFocusTick'
 import { loadJson, saveJson } from '../layout/storage'
 import { listProjects } from './api'
 import type { Project } from './api'
@@ -26,6 +27,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [tick, setTick] = useState(0)
   const refreshProjects = useCallback(() => setTick((n) => n + 1), [])
+  const focusTick = useFocusTick()
+  const fromUrl = params.get('project') || null
+  const selection = fromUrl ?? stored
   useEffect(() => {
     let live = true
     listProjects().then(
@@ -33,8 +37,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       () => { if (live) setProjects([]) },
     )
     return () => { live = false }
-  }, [tick])
-  const fromUrl = params.get('project') || null
+  }, [tick, focusTick, selection])
+
   const setProject = useCallback((next: string | null) => {
     setStored(next)
     saveJson('project', next)
@@ -45,6 +49,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       return copy
     }, { replace: true })
   }, [setParams])
-  const value = useMemo(() => ({ project: fromUrl ?? stored, setProject, projects, refreshProjects }), [fromUrl, stored, setProject, projects, refreshProjects])
+  const value = useMemo(() => ({ project: selection, setProject, projects, refreshProjects }), [selection, setProject, projects, refreshProjects])
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
 }
