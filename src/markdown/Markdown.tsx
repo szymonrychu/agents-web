@@ -1,11 +1,11 @@
 /**
- * Chat message text rendered as safe GFM markdown (react-markdown, remark-gfm, remark-breaks), every element mapped to MUI.
+ * Shared markdown renderer (chat messages, spec documents): safe GFM markdown (react-markdown, remark-gfm, remark-breaks), every element mapped to MUI.
  *
  * Safety: raw HTML stays text (react-markdown's default: no skipHtml, no rehype plugin), every URL goes through the default
  * `defaultUrlTransform` (an unsafe one becomes '' and the element gets no href), and images never render an img element.
  */
 import { createContext, useContext } from 'react'
-import Markdown from 'react-markdown'
+import ReactMarkdown from 'react-markdown'
 import type { Components, ExtraProps } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -23,6 +23,8 @@ import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
 import type { CSSProperties, ReactNode } from 'react'
 import { MONO_FONT, TOKENS } from '../theme'
+import { headingId } from './headingId'
+import { MermaidBlock } from './MermaidBlock'
 
 type HastNode = NonNullable<ExtraProps['node']>['children'][number]
 
@@ -146,6 +148,7 @@ const COMPONENTS: Components = {
     const code = node?.children.find((c) => c.type === 'element' && c.tagName === 'code')
     const classes = code?.type === 'element' ? code.properties.className : undefined
     const language = Array.isArray(classes) ? classes.map(String).find((c) => c.startsWith('language-'))?.slice('language-'.length) : undefined
+    if (language === 'mermaid') return <MermaidBlock source={code ? hastText(code) : ''} />
     return (
       <Box>
         {language ? (
@@ -166,13 +169,32 @@ const COMPONENTS: Components = {
 
 const ROOT = { minWidth: 0, typography: 'body1', overflowWrap: 'anywhere', '& > * + *': { mt: 1 }, '& li > * + *': { mt: 0.5 } } as const
 
-/** Render one chat message's text as markdown; `sx` lands on the root, whose colour and weight the text elements inherit. */
-export function ChatMarkdown({ text, sx }: { text: string; sx?: SxProps<Theme> }) {
+type HastParent = { children: HastNode[] }
+
+/** rehype plugin: give every heading a stable id (`h-intro`, `h-intro-2`) in document order, for in-page links; the `h-` prefix keeps them off app ids (DOM clobbering). */
+function rehypeHeadingIds() {
+  return (tree: HastParent) => {
+    const seen = new Map<string, number>()
+    const walk = (n: HastParent) => {
+      for (const c of n.children) {
+        if (c.type !== 'element') continue
+        if ((HEADINGS as readonly string[]).includes(c.tagName)) c.properties.id = `h-${headingId(hastText(c), seen)}`
+        walk(c)
+      }
+    }
+    walk(tree)
+  }
+}
+
+const BASE_PLUGINS = [remarkGfm, remarkBreaks]
+
+/** Render markdown text; `sx` lands on the root, whose colour and weight the text elements inherit. `headingIds` adds ids to headings. */
+export function Markdown({ children, headingIds = false, sx }: { children: string; headingIds?: boolean; sx?: SxProps<Theme> }) {
   return (
     <Box sx={[ROOT, ...(Array.isArray(sx) ? sx : [sx])]}>
-      <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={COMPONENTS}>
-        {text}
-      </Markdown>
+      <ReactMarkdown remarkPlugins={BASE_PLUGINS} rehypePlugins={headingIds ? [rehypeHeadingIds] : []} components={COMPONENTS}>
+        {children}
+      </ReactMarkdown>
     </Box>
   )
 }

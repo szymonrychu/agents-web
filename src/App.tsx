@@ -20,6 +20,7 @@ import { TOKENS } from './theme'
 import { ProposalReviewDialog } from './proposals/ProposalReviewDialog'
 import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
+import { SpecsRoute } from './specs/routes'
 
 export const APP_NAME = 'Agent Orchestrator';
 
@@ -34,7 +35,7 @@ function SessionsShell() {
     select(wanted)
   }, [wanted, state.sessions, select])
   const [creating, setCreating] = useState(false)
-  // The main area shows the selected session or a settings page; only /tasks is routed.
+  // The main area shows the selected session or a settings page; only /tasks and /specs are routed.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
@@ -112,6 +113,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/tasks/*" element={<TasksRoute />} />
+      <Route path="/specs/*" element={<SpecsRoute />} />
       <Route path="*" element={<SessionsShell />} />
     </Routes>
   )

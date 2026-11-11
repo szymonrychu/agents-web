@@ -9,6 +9,8 @@ const api = vi.hoisted(() => ({
   getTask: vi.fn(), patchTask: vi.fn(), answerDecision: vi.fn(), patchTodoItem: vi.fn(), replaceTodo: vi.fn(), addComment: vi.fn(),
 }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, taskStreamUrl: () => '/tb/stream' }))
+const specsApi = vi.hoisted(() => ({ listSpecs: vi.fn() }))
+vi.mock('../specs/api', async (orig) => ({ ...(await orig<typeof import('../specs/api')>()), ...specsApi }))
 const stream = vi.hoisted(() => ({ opts: null as null | { onEvent: (d: unknown, i: { type: string; id: string }) => void } }))
 vi.mock('../api/stream', () => ({
   openStream: (_url: string, opts: { onEvent: (d: unknown, i: { type: string; id: string }) => void }) => {
@@ -18,7 +20,8 @@ vi.mock('../api/stream', () => ({
 }))
 
 beforeEach(() => {
-  for (const f of Object.values(api)) f.mockReset()
+  for (const f of [...Object.values(api), ...Object.values(specsApi)]) f.mockReset()
+  specsApi.listSpecs.mockResolvedValue({ items: [{ key: 'S-1', title: 'Plans' }, { key: 'S-2', title: 'Other' }], next_cursor: null })
   api.getTask.mockResolvedValue(task({
     decisions: [decision()], open_decisions: 1, blocked: true, labels: ['infra'],
     todo: [{ id: 11, text: 'write tests', status: 'todo', position: 0 }],
@@ -156,5 +159,61 @@ describe('task detail', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Add a comment' }), 'nice')
     await userEvent.click(screen.getByRole('button', { name: 'Comment' }))
     await waitFor(() => expect(api.addComment).toHaveBeenCalledWith('T-1', 'nice'))
+  })
+
+  test('a task with a spec shows the link', async () => {
+    api.getTask.mockResolvedValue(task({ spec: 'S-1' }))
+    mountTasks('/tasks/T-1')
+    expect((await screen.findByRole('link', { name: 'S-1' })).getAttribute('href')).toBe('/specs/S-1')
+  })
+
+  test('the picker lists the specs of the task project and PATCHes spec with the version', async () => {
+    api.patchTask.mockResolvedValue(task())
+    mountTasks('/tasks/T-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Set spec' }))
+    expect(specsApi.listSpecs).toHaveBeenCalledWith({ project: 'default', limit: 200 })
+    await userEvent.selectOptions(await screen.findByLabelText('Spec'), 'S-2')
+    await waitFor(() => expect(api.patchTask).toHaveBeenCalledWith('T-1', { version: 3, spec: 'S-2' }))
+  })
+
+  test('the picker keeps the linked spec as an option when it is beyond the first page', async () => {
+    api.getTask.mockResolvedValue(task({ spec: 'S-300' }))
+    mountTasks('/tasks/T-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Change spec' }))
+    expect((await screen.findByRole('combobox', { name: 'Spec' }) as HTMLSelectElement).value).toBe('S-300')
+  })
+
+  test('the picker can clear the spec', async () => {
+    api.getTask.mockResolvedValue(task({ spec: 'S-1' }))
+    api.patchTask.mockResolvedValue(task())
+    mountTasks('/tasks/T-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Change spec' }))
+    await userEvent.selectOptions(await screen.findByLabelText('Spec'), '')
+    await waitFor(() => expect(api.patchTask).toHaveBeenCalledWith('T-1', { version: 3, spec: null }))
+  })
+
+  test('a project_mismatch 422 shows the server message', async () => {
+    api.patchTask.mockRejectedValue(new ApiError(422, 'project_mismatch', 'spec S-2 belongs to project infra'))
+    mountTasks('/tasks/T-1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Set spec' }))
+    await userEvent.selectOptions(await screen.findByLabelText('Spec'), 'S-2')
+    expect(await screen.findByText(/spec S-2 belongs to project infra/)).toBeTruthy()
+  })
+
+  test('markdown in the body and a comment renders a heading and a list', async () => {
+    api.getTask.mockResolvedValue(task({
+      body: '## Goal\n\n- one\n- two',
+      comments: [{ id: 1, author_kind: 'user', author_session: null, author_slug: null, body: '**bold** remark', created_at: '2026-11-01T10:00:00Z' }],
+    }))
+    mountTasks('/tasks/T-1')
+    expect((await screen.findByText('Goal')).tagName).toMatch(/^H\d$/)
+    expect(screen.getAllByRole('listitem').map((e) => e.textContent)).toEqual(expect.arrayContaining(['one', 'two']))
+    expect(screen.getByText('bold').tagName).toBe('STRONG')
+  })
+
+  test('decision context renders markdown', async () => {
+    api.getTask.mockResolvedValue(task({ decisions: [decision({ context: 'See `code` and **this**' })] }))
+    mountTasks('/tasks/T-1')
+    expect((await screen.findByText('this')).tagName).toBe('STRONG')
   })
 })

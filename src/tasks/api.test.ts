@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { resetConfig, loadConfig } from '../config/backends'
-import { answerDecision, getTask, listTasks, patchTask, patchTodoItem, replaceTodo, taskStreamUrl } from './api'
+import { answerDecision, createTask, getTask, listTasks, patchTask, patchTodoItem, replaceTodo, taskStreamUrl } from './api'
 import { readFileSync } from 'node:fs'
 
 const fetchMock = vi.fn()
@@ -24,6 +24,18 @@ describe('taskboard client', () => {
   test('listTasks sends repeated label params over the configured base path', async () => {
     await listTasks({ status: 'done', session: 's1', labels: ['a', 'b'], cursor: 'c' })
     expect(last().url).toBe('/tb/api/v1/tasks?status=done&session=s1&label=a&label=b&cursor=c')
+  })
+
+  test('listTasks filters by spec', async () => {
+    await listTasks({ spec: 'S-1', status: 'all' })
+    expect(last().url).toBe('/tb/api/v1/tasks?status=all&spec=S-1')
+  })
+
+  test('create and patch carry the spec', async () => {
+    await createTask({ title: 'x', spec: 'S-1' })
+    expect(last()).toEqual({ url: '/tb/api/v1/tasks', method: 'POST', body: { title: 'x', spec: 'S-1' } })
+    await patchTask('T-1', { version: 3, spec: null })
+    expect(last().body).toEqual({ version: 3, spec: null })
   })
 
   test('answer sends exactly choice or text, plus the note', async () => {

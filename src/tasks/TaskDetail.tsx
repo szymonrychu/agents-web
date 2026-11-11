@@ -11,6 +11,9 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
 import { ApiError } from '../api/client'
+import { Markdown } from '../markdown/Markdown'
+import { listSpecs, type SpecSummary } from '../specs/api'
+import { specPath } from '../specs/paths'
 import { LabelEditor } from '../labels/LabelEditor'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
@@ -35,7 +38,7 @@ function Description({ task, save }: { task: Task; save: (patch: Omit<TaskPatch,
   if (draft === null) {
     return (
       <>
-        <Typography sx={{ whiteSpace: 'pre-wrap' }}>{task.body === '' ? 'No description' : task.body}</Typography>
+        {task.body === '' ? <Typography>No description</Typography> : <Markdown>{task.body}</Markdown>}
         <Box><Button size="small" onClick={() => setDraft(task.body)}>Edit description</Button></Box>
       </>
     )
@@ -48,6 +51,47 @@ function Description({ task, save }: { task: Task; save: (patch: Omit<TaskPatch,
         <Button onClick={() => setDraft(null)}>Cancel</Button>
       </Box>
     </>
+  )
+}
+
+/** The linked spec, with a picker (specs of the task's project, loaded when opened) to set or clear it. */
+function SpecLink({ task, save }: { task: Task; save: (patch: Omit<TaskPatch, 'version'>) => Promise<void> }) {
+  const [specs, setSpecs] = useState<SpecSummary[] | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+  const open = async () => {
+    setError(null)
+    try {
+      setSpecs((await listSpecs({ project: task.project, limit: 200 })).items)
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)))
+    }
+  }
+  const linked = task.spec ?? null
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+      <Typography color="text.secondary">Spec</Typography>
+      {linked === null ? <Typography>None</Typography> : <Link component={RouterLink} to={specPath(linked)}>{linked}</Link>}
+      {specs === null ? (
+        <Button size="small" onClick={() => void open()}>{linked === null ? 'Set spec' : 'Change spec'}</Button>
+      ) : (
+        <>
+          <TextField
+            select
+            size="small"
+            label="Spec"
+            value={linked ?? ''}
+            onChange={(e) => void save({ spec: e.target.value === '' ? null : e.target.value }).then(() => setSpecs(null), () => setSpecs(null))}
+            slotProps={{ select: { native: true } }}
+          >
+            <option value="">No spec</option>
+            {linked !== null && !specs.some((s) => s.key === linked) && <option value={linked}>{linked}</option>}
+            {specs.map((s) => <option key={s.key} value={s.key}>{`${s.key} ${s.title}`}</option>)}
+          </TextField>
+          <Button size="small" onClick={() => setSpecs(null)}>Cancel</Button>
+        </>
+      )}
+      <FormError error={error} />
+    </Box>
   )
 }
 
@@ -69,8 +113,9 @@ function Comments({ task, onChanged }: { task: Task; onChanged: () => void }) {
       {task.comments.length === 0 && <Typography color="text.secondary">No comments</Typography>}
       <List dense disablePadding>
         {task.comments.map((c) => (
-          <ListItem key={c.id} disableGutters>
-            <ListItemText primary={c.body} secondary={`${c.author_slug ?? c.author_kind} - ${new Date(c.created_at).toLocaleString()}`} slotProps={{ primary: { sx: { whiteSpace: 'pre-wrap' } } }} />
+          <ListItem key={c.id} disableGutters sx={{ display: 'block' }}>
+            <Markdown>{c.body}</Markdown>
+            <Typography variant="caption" color="text.secondary">{`${c.author_slug ?? c.author_kind} - ${new Date(c.created_at).toLocaleString()}`}</Typography>
           </ListItem>
         ))}
       </List>
@@ -132,6 +177,7 @@ export function TaskDetail({ taskKey }: { taskKey: string }) {
       <FormError error={error} />
       <FormError error={actionError} />
       {stale && <Alert severity="warning">The task changed since you opened it; it was reloaded, try again.</Alert>}
+      <SpecLink task={task} save={save} />
       <LabelEditor value={task.labels} onChange={(labels) => void saveQuiet({ labels })} />
       <Section title="Description"><Description task={task} save={save} /></Section>
       <Section title="Decisions">

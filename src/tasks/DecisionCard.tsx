@@ -11,6 +11,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError } from '../api/client'
+import { Markdown } from '../markdown/Markdown'
 import { Link as RouterLink } from 'react-router'
 import { FormError } from '../triggers'
 import { answerDecision, type AnswerIn, type Decision } from './api'
@@ -39,7 +40,7 @@ export function DecisionCard({ taskKey, decision, onChanged }: DecisionCardProps
     <>
       <Typography sx={{ fontWeight: 500 }}>{decision.question}</Typography>
       <Typography variant="caption" color="text.secondary">{`Asked by ${decision.asking_slug ?? decision.asking_session}`}</Typography>
-      {decision.context !== '' && <Typography sx={{ whiteSpace: 'pre-wrap' }}>{decision.context}</Typography>}
+      {decision.context !== '' && <Markdown>{decision.context}</Markdown>}
     </>
   )
 

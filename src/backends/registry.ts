@@ -8,6 +8,7 @@
  *   30 Schedules (agents-schedule-microservice)
  *   35 Chats     (agents-matrix-connector)
  *   38 Tasks     (agents-taskboard, a routed page: the entry navigates to /tasks)
+ *   39 Specs     (agents-taskboard, a routed page: the entry navigates to /specs)
  *   40 Presets   (orchestrator, registered below)
  *   42 Proposals (orchestrator, preset change proposals)
  *   43 Vault     (agents-vault, secret env entries)
@@ -28,6 +29,7 @@ import { backupsMenu } from '../backups/menu'
 import { usageMenu } from '../usage/menu'
 import { historyMenu } from '../history/menu'
 import { tasksMenu } from '../tasks/menu'
+import { specsMenu } from '../specs/menu'
 import { proposalsMenu } from '../proposals/menu'
 import { vaultMenu } from '../vault/menu'
 import { projectsMenu } from '../projects/menu'
@@ -50,7 +52,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     backupsMenu,
     projectsMenu,
   ],
-  taskboard: [tasksMenu],
+  taskboard: [tasksMenu, specsMenu],
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
   matrix: [chatsMenu],

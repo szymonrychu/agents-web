@@ -156,4 +156,9 @@ describe('menuEntries', () => {
     expect(warn).toHaveBeenCalledTimes(1)
     expect(String(warn.mock.calls[0][0])).toContain('other')
   })
+
+  test('specs entry sits after tasks and only with the taskboard backend', () => {
+    expect(menuEntries(config('taskboard')).map((e) => [e.id, e.order])).toEqual([['tasks', 38], ['specs', 39]])
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('specs')
+  })
 })

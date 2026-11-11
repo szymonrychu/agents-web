@@ -71,6 +71,18 @@ describe('tasks list', () => {
     expect(loc()).toBe('/tasks?session=sess-9')
   })
 
+  test('spec filter writes ?spec= and queries by spec', async () => {
+    mountTasks('/tasks?spec=S-1')
+    await screen.findByText('First task')
+    expect(lastCall()).toMatchObject({ spec: 'S-1' })
+    expect((screen.getByRole('textbox', { name: 'Spec' }) as HTMLInputElement).value).toBe('S-1')
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Spec' }))
+    expect(loc()).toBe('/tasks')
+    await waitFor(() => expect(lastCall().spec).toBeUndefined())
+    await userEvent.type(screen.getByRole('textbox', { name: 'Spec' }), 'S-2')
+    expect(loc()).toBe('/tasks?spec=S-2')
+  })
+
   test('label filter writes repeated label params to the URL', async () => {
     mountTasks('/tasks')
     await screen.findByText('First task')
