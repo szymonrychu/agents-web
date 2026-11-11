@@ -19,6 +19,9 @@ export type SpecSummary = S['SpecSummary']
 export type SpecPage = S['SpecPage']
 export type VersionPage = S['VersionPage']
 export type SpecComment = S['SpecComment']
+export type Plan = S['Plan']
+export type Step = S['Step']
+export type Gate = S['Gate']
 
 const id = encodeURIComponent
 const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(backendBase('taskboard'), method, path, body)
@@ -69,5 +72,12 @@ export const resolveComment = (key: string, commentId: number) => req<SpecCommen
 export const acceptSuggestion = (key: string, commentId: number, version: number) =>
   req<S['SuggestionAccepted']>('POST', `/specs/${id(key)}/comments/${commentId}/accept`, { version })
 export const dismissSuggestion = (key: string, commentId: number) => req<SpecComment>('POST', `/specs/${id(key)}/comments/${commentId}/dismiss`)
+
+export const getPlan = (key: string) => req<Plan>('GET', `/specs/${id(key)}/plan`)
+/** `version` is the header version last read; a 412 `stale_version` carries `current_version`. */
+export type PlanPut = Partial<S['PlanPut']> & { version: number }
+export const putPlan = (key: string, body: PlanPut) => req<Plan>('PUT', `/specs/${id(key)}/plan`, body)
+export const listSteps = (key: string) => req<S['StepList']>('GET', `/specs/${id(key)}/steps`)
+export const getGate = (key: string) => req<Gate>('GET', `/specs/${id(key)}/gate`)
 
 export const specStreamUrl = () => `${backendBase('taskboard')}/stream`
