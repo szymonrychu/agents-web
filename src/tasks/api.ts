@@ -77,6 +77,8 @@ export interface Task {
   labels: string[]
   assignee_session: string | null
   blocked: boolean
+  /** Key `S-n` of the linked spec (taskboard 0.6.0); absent from older servers. */
+  spec?: string | null
   open_decisions: number
   waiting_sessions: WaitingSession[]
   todo: TodoItem[]
@@ -99,6 +101,8 @@ const req = <T>(method: string, path: string, body?: unknown) => requestAt<T>(ba
 export interface ListQuery {
   status?: ListStatus
   session?: string
+  /** Only tasks linked to this spec key. */
+  spec?: string
   project?: string | null
   labels?: string[]
   cursor?: string
@@ -108,6 +112,7 @@ export function listTasks(opts: ListQuery = {}): Promise<TaskPage> {
   const q = new URLSearchParams()
   if (opts.status) q.set('status', opts.status)
   if (opts.session) q.set('session', opts.session)
+  if (opts.spec) q.set('spec', opts.spec)
   if (opts.project) q.set('project', opts.project)
   for (const l of opts.labels ?? []) q.append('label', l)
   if (opts.cursor) q.set('cursor', opts.cursor)

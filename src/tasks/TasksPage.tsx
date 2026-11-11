@@ -41,10 +41,11 @@ export function TasksPage() {
   const [creating, setCreating] = useState(false)
   const status = asStatus(params.get('status'))
   const session = params.get('session') ?? ''
+  const spec = params.get('spec') ?? ''
   const labels = params.getAll('label')
   const { project } = useProject()
 
-  const { data, error, loading, refresh } = usePoll(() => listTasks({ status, session: session || undefined, project, labels }), POLL_MS, [status, session, project, labels.join('\n')])
+  const { data, error, loading, refresh } = usePoll(() => listTasks({ status, session: session || undefined, spec: spec || undefined, project, labels }), POLL_MS, [status, session, spec, project, labels.join('\n')])
   useTaskStream(() => void refresh())
 
   // Further pages are appended to the first one; a poll or a filter change starts over.
@@ -54,7 +55,7 @@ export function TasksPage() {
   const next = more ? more.next : (data?.next_cursor ?? null)
   const loadMore = async () => {
     if (next === null) return
-    const page = await listTasks({ status, session: session || undefined, project, labels, cursor: next })
+    const page = await listTasks({ status, session: session || undefined, spec: spec || undefined, project, labels, cursor: next })
     setExtra({ page: data, items: [...(more?.items ?? []), ...page.items], next: page.next_cursor })
   }
 
@@ -93,6 +94,7 @@ export function TasksPage() {
           ))}
         </ToggleButtonGroup>
         <TextField size="small" label="Session" value={session} onChange={(e) => update((p) => (e.target.value === '' ? p.delete('session') : p.set('session', e.target.value)))} />
+        <TextField size="small" label="Spec" placeholder="S-1" value={spec} onChange={(e) => update((p) => (e.target.value === '' ? p.delete('spec') : p.set('spec', e.target.value)))} />
         <Box sx={{ minWidth: 240, flexGrow: 1 }}>
           <LabelEditor value={labels} onChange={setLabels} />
         </Box>
