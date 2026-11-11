@@ -7,6 +7,8 @@ import { task } from '../tasks/testUtils'
 import { mountSpecs, spec, specDoc } from './testUtils'
 
 const api = vi.hoisted(() => ({ getSpec: vi.fn(), patchSpec: vi.fn(), createComment: vi.fn(), getTask: vi.fn() }))
+vi.mock('./PlanTab', () => ({ PlanTab: ({ specKey }: { specKey: string }) => <div data-testid="plan-tab">{specKey}</div> }))
+vi.mock('./GatePanel', () => ({ GatePanel: ({ onApprove }: { onApprove: () => void }) => <button onClick={onApprove}>gate approve</button> }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, specStreamUrl: () => '/tb/stream' }))
 vi.mock('../tasks/api', async (orig) => ({ ...(await orig<typeof import('../tasks/api')>()), getTask: api.getTask }))
 const stream = vi.hoisted(() => ({ opts: null as null | { onEvent: (d: unknown, i: { type: string; id: string }) => void } }))
@@ -30,6 +32,19 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('spec page', () => {
+  test('tabs Documents, Plan and Gate; Documents is first and Plan and Gate mount only when picked', async () => {
+    mountSpecs('/specs/S-1')
+    await screen.findByText('Task plans')
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Documents', 'Plan', 'Gate'])
+    expect(screen.queryByTestId('plan-tab')).toBeNull()
+    await userEvent.click(screen.getByRole('tab', { name: 'Plan' }))
+    expect(screen.getByTestId('plan-tab').textContent).toBe('S-1')
+    expect(screen.queryByRole('link', { name: 'research/topic.md' })).toBeNull()
+    await userEvent.click(screen.getByRole('tab', { name: 'Gate' }))
+    await userEvent.click(screen.getByRole('button', { name: 'gate approve' }))
+    expect(api.patchSpec).toHaveBeenCalledWith('S-1', { version: 2, status: 'approved' })
+  })
+
   test('bundle shows title, status, documents with versions, linked tasks with open decisions and the open comment count', async () => {
     mountSpecs('/specs/S-1')
     await screen.findByText('Task plans')

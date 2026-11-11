@@ -9,6 +9,8 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
@@ -19,7 +21,9 @@ import { getTask, type Task } from '../tasks/api'
 import { taskPath } from '../tasks/paths'
 import { FormError, usePoll } from '../triggers'
 import { createComment, getSpec, patchSpec, type Spec, type SpecStatus } from './api'
+import { GatePanel } from './GatePanel'
 import { docPath } from './paths'
+import { PlanTab } from './PlanTab'
 import { useSpecStream } from './useSpecStream'
 
 const POLL_MS = 10000
@@ -60,6 +64,7 @@ export function SpecPage({ specKey }: { specKey: string }) {
   const [actionError, setActionError] = useState<Error | null>(null)
   const [stale, setStale] = useState(false)
   const [changes, setChanges] = useState<string | null>(null)
+  const [tab, setTab] = useState<'documents' | 'plan' | 'gate'>('documents')
   // Set once the change-request comment is stored, so a retry after a failed PATCH does not post it again.
   const commented = useRef(false)
   useSpecStream((ev) => {
@@ -121,40 +126,51 @@ export function SpecPage({ specKey }: { specKey: string }) {
           <Button onClick={() => { commented.current = false; setChanges(null) }}>Cancel</Button>
         </Box>
       )}
-      <Section title="Documents">
-        {(spec.documents ?? []).length === 0 && <Typography color="text.secondary">No documents</Typography>}
-        <Table size="small" aria-label="Documents">
-          <TableHead>
-            <TableRow>
-              <TableCell>Path</TableCell>
-              <TableCell>Version</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Updated</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(spec.documents ?? []).map((d) => (
-              <TableRow key={d.path} hover>
-                <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
-                <TableCell>{`v${d.version}`}</TableCell>
-                <TableCell>{`${d.size} B`}</TableCell>
-                <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
+      <Tabs value={tab} onChange={(_, v: 'documents' | 'plan' | 'gate') => setTab(v)} aria-label="Spec sections">
+        <Tab value="documents" label="Documents" />
+        <Tab value="plan" label="Plan" />
+        <Tab value="gate" label="Gate" />
+      </Tabs>
+      {tab === 'plan' && <PlanTab specKey={spec.key} />}
+      {tab === 'gate' && <GatePanel specKey={spec.key} onApprove={() => void setStatus('approved')} />}
+      {tab === 'documents' && (
+        <>
+        <Section title="Documents">
+          {(spec.documents ?? []).length === 0 && <Typography color="text.secondary">No documents</Typography>}
+          <Table size="small" aria-label="Documents">
+            <TableHead>
+              <TableRow>
+                <TableCell>Path</TableCell>
+                <TableCell>Version</TableCell>
+                <TableCell>Size</TableCell>
+                <TableCell>Updated</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Section>
-      <Section title="Tasks">
-        {tasks.length === 0 && <Typography color="text.secondary">No linked tasks</Typography>}
-        {tasks.map((t) => (
-          <Box key={t.key} sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Link component={RouterLink} to={taskPath(t.key)}>{t.key}</Link>
-            <span>{t.title}</span>
-            <Chip size="small" label={t.status.replace('_', ' ')} />
-            {t.open_decisions > 0 && <Chip size="small" color="warning" label={`Blocked (${t.open_decisions})`} />}
-          </Box>
-        ))}
-      </Section>
+            </TableHead>
+            <TableBody>
+              {(spec.documents ?? []).map((d) => (
+                <TableRow key={d.path} hover>
+                  <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
+                  <TableCell>{`v${d.version}`}</TableCell>
+                  <TableCell>{`${d.size} B`}</TableCell>
+                  <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Section>
+        <Section title="Tasks">
+          {tasks.length === 0 && <Typography color="text.secondary">No linked tasks</Typography>}
+          {tasks.map((t) => (
+            <Box key={t.key} sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Link component={RouterLink} to={taskPath(t.key)}>{t.key}</Link>
+              <span>{t.title}</span>
+              <Chip size="small" label={t.status.replace('_', ' ')} />
+              {t.open_decisions > 0 && <Chip size="small" color="warning" label={`Blocked (${t.open_decisions})`} />}
+            </Box>
+          ))}
+        </Section>
+        </>
+      )}
     </Box>
   )
 }

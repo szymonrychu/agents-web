@@ -203,6 +203,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/specs/{key}/docs/{path}/section": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Section
+         * @description One section of a document: the heading whose web anchor slug is `heading` (the
+         *     second of two equal headings is `<slug>-2`) and its text up to the next heading of the
+         *     same or a higher level, under 40000 characters (longer text is cut at a line boundary
+         *     and `truncated` is true).
+         */
+        get: operations["get_section_taskboard_api_v1_specs__key__docs__path__section_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/specs/{key}/docs/{path}/versions": {
         parameters: {
             query?: never;
@@ -213,6 +236,103 @@ export interface paths {
         /** List Versions */
         get: operations["list_versions_taskboard_api_v1_specs__key__docs__path__versions_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gate */
+        get: operations["get_gate_taskboard_api_v1_specs__key__gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plan */
+        get: operations["get_plan_taskboard_api_v1_specs__key__plan_get"];
+        /** Put Plan */
+        put: operations["put_plan_taskboard_api_v1_specs__key__plan_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Steps */
+        get: operations["list_steps_taskboard_api_v1_specs__key__steps_get"];
+        /**
+         * Set Steps
+         * @description Replace the step set, keyed by `n` (dense from 1).
+         */
+        put: operations["set_steps_taskboard_api_v1_specs__key__steps_put"];
+        /**
+         * Insert Step
+         * @description Insert one step after step `after` (0: first, absent: last).
+         */
+        post: operations["insert_step_taskboard_api_v1_specs__key__steps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/steps/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Next Step
+         * @description The first ready step in order; with `claim` the caller takes it (`in_progress`).
+         */
+        post: operations["next_step_taskboard_api_v1_specs__key__steps_next_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/steps/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reorder */
+        put: operations["reorder_taskboard_api_v1_specs__key__steps_order_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -341,6 +461,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/tasks/{key}/deps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Deps
+         * @description Set one plan step's dependencies (task keys of steps of the same spec).
+         */
+        put: operations["set_deps_taskboard_api_v1_tasks__key__deps_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/tasks/{key}/todo": {
         parameters: {
             query?: never;
@@ -441,6 +581,11 @@ export interface components {
             reason: string;
             /** Superseded By */
             superseded_by?: number | null;
+        };
+        /** DepsPut */
+        DepsPut: {
+            /** Depends On */
+            depends_on: string[];
         };
         /** DocumentBody */
         DocumentBody: {
@@ -588,6 +733,130 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** Gate */
+        Gate: {
+            /** Approved */
+            approved: boolean;
+            /** Approved Versions */
+            approved_versions: {
+                [key: string]: number;
+            } | null;
+            /** Decisions */
+            decisions: components["schemas"]["GateDecision"][];
+            /**
+             * Gate
+             * @enum {string}
+             */
+            gate: "none" | "waiting" | "open";
+            /** Gate Task */
+            gate_task: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "review" | "approved" | "archived";
+        };
+        /** GateDecision */
+        GateDecision: {
+            /** Answer */
+            answer: unknown;
+            /** Id */
+            id: number;
+            /** Question */
+            question: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "answered";
+        };
+        /** NextStep */
+        NextStep: {
+            /**
+             * Claim
+             * @default false
+             */
+            claim: boolean;
+        };
+        /**
+         * Plan
+         * @description The plan header; version 0 and empty fields before the first write.
+         */
+        Plan: {
+            /** Architecture */
+            architecture: string;
+            /** Constraints */
+            constraints: string[];
+            /** Goal */
+            goal: string;
+            /** Review Focus */
+            review_focus: string[];
+            /** Tech Stack */
+            tech_stack: string;
+            /** Updated At */
+            updated_at: string | null;
+            updated_by: components["schemas"]["ActorRef"] | null;
+            /** Version */
+            version: number;
+        };
+        /** PlanPut */
+        PlanPut: {
+            /**
+             * Architecture
+             * @default
+             */
+            architecture: string;
+            /**
+             * Constraints
+             * @default []
+             */
+            constraints: string[];
+            /**
+             * Goal
+             * @default
+             */
+            goal: string;
+            /**
+             * Review Focus
+             * @default []
+             */
+            review_focus: string[];
+            /**
+             * Tech Stack
+             * @default
+             */
+            tech_stack: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * Ref
+         * @description What implements a plan step.
+         */
+        Ref: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pr" | "commit" | "branch" | "tag" | "url";
+            /** Value */
+            value: string;
+        };
+        /** Section */
+        Section: {
+            /** Body */
+            body: string;
+            /** Heading */
+            heading: string;
+            /** Path */
+            path: string;
+            /** Truncated */
+            truncated: boolean;
+            /** Version */
+            version: number;
         };
         /** SpecComment */
         SpecComment: {
@@ -794,6 +1063,115 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * Step
+         * @description A step as listed: no body; `deps` are task keys, `ready` when open and every dependency
+         *     is done or dropped.
+         */
+        Step: {
+            /** Assignee Session */
+            assignee_session: string | null;
+            /** Deps */
+            deps: string[];
+            /** Key */
+            key: string;
+            /** Model */
+            model: ("haiku" | "sonnet" | "opus" | "fable") | null;
+            /** Ready */
+            ready: boolean;
+            /** Refs */
+            refs: components["schemas"]["Ref"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idea" | "open" | "in_progress" | "done" | "dropped";
+            /** Step */
+            step: number;
+            /** Title */
+            title: string;
+            /** Todo Done */
+            todo_done: number;
+            /** Todo Total */
+            todo_total: number;
+            /** Version */
+            version: number;
+        };
+        /** StepIn */
+        StepIn: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Depends On
+             * @default []
+             */
+            depends_on: number[];
+            /** Labels */
+            labels?: string[] | null;
+            /** Model */
+            model?: ("haiku" | "sonnet" | "opus" | "fable") | null;
+            /** N */
+            n: number;
+            /** Title */
+            title: string;
+            /** Todo */
+            todo?: string[] | null;
+        };
+        /** StepInsert */
+        StepInsert: {
+            /** After */
+            after?: number | null;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Depends On
+             * @default []
+             */
+            depends_on: number[];
+            /** Model */
+            model?: ("haiku" | "sonnet" | "opus" | "fable") | null;
+            /** Steps Version */
+            steps_version: number;
+            /** Title */
+            title: string;
+        };
+        /** StepKeys */
+        StepKeys: {
+            /** Keys */
+            keys: string[];
+        };
+        /** StepList */
+        StepList: {
+            /** Items */
+            items: components["schemas"]["Step"][];
+            /** Steps Version */
+            steps_version: number;
+        };
+        /** StepsOrder */
+        StepsOrder: {
+            /** Order */
+            order: string[];
+            /** Steps Version */
+            steps_version: number;
+        };
+        /** StepsPut */
+        StepsPut: {
+            /** Steps */
+            steps: components["schemas"]["StepIn"][];
+            /** Steps Version */
+            steps_version: number;
+        };
+        /** StepsVersion */
+        StepsVersion: {
+            /** Steps Version */
+            steps_version: number;
+        };
         /** SuggestionAccept */
         SuggestionAccept: {
             /** Version */
@@ -853,8 +1231,12 @@ export interface components {
             body?: string | null;
             /** Labels */
             labels?: string[] | null;
+            /** Model */
+            model?: ("haiku" | "sonnet" | "opus" | "fable") | null;
             /** Project */
             project?: string | null;
+            /** Refs */
+            refs?: components["schemas"]["Ref"][] | null;
             /** Spec */
             spec?: string | null;
             /** Status */
@@ -1012,7 +1394,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1054,7 +1436,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1212,7 +1594,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1221,7 +1603,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description changed since it was read (stale_version, with current_version on a document) */
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
             412: {
                 headers: {
                     [name: string]: unknown;
@@ -1291,7 +1673,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1353,7 +1735,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1407,7 +1789,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1416,7 +1798,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description changed since it was read (stale_version, with current_version on a document) */
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
             412: {
                 headers: {
                     [name: string]: unknown;
@@ -1425,7 +1807,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1475,7 +1857,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1484,7 +1866,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1534,7 +1916,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1543,7 +1925,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1643,7 +2025,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1697,7 +2079,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description changed since it was read (stale_version, with current_version on a document) */
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
             412: {
                 headers: {
                     [name: string]: unknown;
@@ -1715,7 +2097,60 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_section_taskboard_api_v1_specs__key__docs__path__section_get: {
+        parameters: {
+            query: {
+                heading: string;
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Section"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1768,7 +2203,462 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, no_suggestion) */
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_gate_taskboard_api_v1_specs__key__gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Gate"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_plan_taskboard_api_v1_specs__key__plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_plan_taskboard_api_v1_specs__key__plan_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_steps_taskboard_api_v1_specs__key__steps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepList"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_steps_taskboard_api_v1_specs__key__steps_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepKeys"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    insert_step_taskboard_api_v1_specs__key__steps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepInsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Step"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    next_step_taskboard_api_v1_specs__key__steps_next_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NextStep"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Step"];
+                };
+            };
+            /** @description No step is ready */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reorder_taskboard_api_v1_specs__key__steps_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepsOrder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepsVersion"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document or the plan, current_steps_version on the steps) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2034,6 +2924,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
             422: {
                 headers: {
@@ -2284,6 +3183,61 @@ export interface operations {
                 };
             };
             /** @description invalid request (invalid_request) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_deps_taskboard_api_v1_tasks__key__deps_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such task, decision or todo item (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, dependency_cycle) */
             422: {
                 headers: {
                     [name: string]: unknown;

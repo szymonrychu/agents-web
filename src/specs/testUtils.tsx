@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { theme } from '../theme'
 import { SpecsRoute } from './routes'
-import type { DocBody, DocVersion, Spec, SpecComment, SpecDocument } from './api'
+import type { DocBody, DocVersion, Gate, Plan, Spec, SpecComment, SpecDocument, Step } from './api'
 
 export function Probe() {
   const l = useLocation()
@@ -46,4 +46,16 @@ export const comment = (over: Partial<SpecComment> = {}): SpecComment => ({
   id: 7, path: 'plan.md', version: 2, anchor: null, body: 'Looks odd', suggestion: null, suggestion_status: null, accepted_version: null, decided_at: null,
   decided_by: null, attachments: [], resolved_at: null, resolved_by: null, created_by: { kind: 'user', session: null, slug: null },
   created_at: '2026-11-03T10:00:00Z', ...over,
+})
+
+export const step = (over: Partial<Step> = {}): Step => ({
+  key: 'T-11', step: 1, title: 'A step', status: 'open', assignee_session: null, model: null, refs: [], version: 1, ready: false, todo_total: 0, todo_done: 0, deps: [], ...over,
+})
+
+export const plan = (over: Partial<Plan> = {}): Plan => ({
+  goal: '', architecture: '', tech_stack: '', constraints: [], review_focus: [], version: 0, updated_at: null, updated_by: null, ...over,
+})
+
+export const gate = (over: Partial<Gate> = {}): Gate => ({
+  key: 'S-1', status: 'draft', approved_versions: null, gate_task: 'T-4', decisions: [], gate: 'none', approved: false, ...over,
 })

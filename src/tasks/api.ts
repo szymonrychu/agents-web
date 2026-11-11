@@ -67,6 +67,11 @@ export interface WaitingSession {
   session_id: string
   slug: string | null
 }
+export type PlanModel = 'haiku' | 'sonnet' | 'opus' | 'fable'
+export interface PlanRef {
+  kind: 'pr' | 'commit' | 'branch' | 'tag' | 'url'
+  value: string
+}
 export interface Task {
   key: string
   title: string
@@ -79,6 +84,12 @@ export interface Task {
   blocked: boolean
   /** Key `S-n` of the linked spec, or null. */
   spec: string | null
+  /** Position among the spec's plan steps (1-based), or null when the task is not a plan step. */
+  step: number | null
+  refs: PlanRef[]
+  model: PlanModel | null
+  /** Keys of the steps this one waits for. */
+  depends_on: string[]
   open_decisions: number
   waiting_sessions: WaitingSession[]
   todo: TodoItem[]
