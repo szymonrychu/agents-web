@@ -28,7 +28,7 @@ export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
   /** An orchestrator notice (inactivity reminder, close warning or leadership handover): a system line, not a user bubble. */
   | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' | 'handover' })
-  | (Base & { kind: 'session'; text: string; from: string; messageId: number })
+  | (Base & { kind: 'session'; text: string; from: string; messageId: number; room?: { project: string; postId: number } })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
   | (Base & { kind: 'thinking'; text: string; collapsed: boolean })
@@ -91,6 +91,9 @@ const USER_ORIGINS = new Set(['user', 'hook', 'restart', 'command']);
 // Contract with agents-orchestrator dispatcher/session_frame.py:frame; the trailer line after the closing tag is dropped.
 const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S]*?)\n<\/session-message>(?:\n|$)/;
 
+// Contract with agents-orchestrator dispatcher/session_frame.py:project_post; matched only on the text after the real closing tag, so an escaped body cannot forge it.
+const ROOM_TRAILER = /^Project room ([a-z0-9][a-z0-9-]*), post p(\d+)/;
+
 // Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX) and handover_transcript.py (HANDOVER_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
 const NOTICE_PREFIXES = [
   ['Orchestrator notice (inactivity reminder):', 'inactivity_reminder'],
@@ -138,7 +141,11 @@ function toItem(row: EventRow, ordinals: Readonly<Record<string, number>>, orpha
       const origin = str(d.origin, 'user');
       const text = str(d.text ?? d.message);
       const m = SESSION_FRAME.exec(text);
-      if (m) return { ...base, kind: 'session', text: unescapeBody(m[3]), from: m[1], messageId: Number(m[2]) };
+      if (m) {
+        const r = ROOM_TRAILER.exec(text.slice(m[0].length));
+        const room = r ? { project: r[1], postId: Number(r[2]) } : undefined;
+        return { ...base, kind: 'session', text: unescapeBody(m[3]), from: m[1], messageId: Number(m[2]), ...(room ? { room } : {}) };
+      }
       if (origin === 'peer') return { ...base, kind: 'peer', text, from: d.from == null ? undefined : str(d.from) };
       const notice = noticeOf(text);
       if (notice) return { ...base, kind: 'notice', text, notice };

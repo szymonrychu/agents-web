@@ -10,7 +10,7 @@ import { MemoryRouter } from 'react-router'
 import { ProjectProvider, useProject } from './ProjectContext'
 import { ProjectsPage } from './ProjectsPage'
 
-const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn() }))
+const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn(), listProjectMessages: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
 const project = (slug: string, over: Partial<Project> = {}): Project => ({
@@ -39,6 +39,16 @@ describe('ProjectsPage', () => {
     expect(within(row).getByText('1')).toBeTruthy()
     expect(within(row).getByText('2')).toBeTruthy()
     expect(within(row).getByText('4')).toBeTruthy()
+  })
+
+  test('room button opens project room', async () => {
+    api.listProjectMessages.mockResolvedValue({ posts: [], next_before_id: null })
+    const user = userEvent.setup()
+    mount()
+    const row = (await screen.findByText('Name alpha')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Room' }))
+    await waitFor(() => expect(api.listProjectMessages).toHaveBeenCalledWith('alpha', { limit: 50 }))
+    expect(await screen.findByText('No posts in this room yet.')).toBeTruthy()
   })
 
   test('create dialog validates the slug pattern', async () => {

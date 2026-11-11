@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import Chip from '@mui/material/Chip'
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
@@ -109,6 +110,9 @@ export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: Sub
     case 'session':
       return (
         <Row item={item} label={`session ${item.from}`} markdown>
+          {item.room ? (
+            <Chip size="small" variant="outlined" label={`project room p${item.room.postId}`} title={`project ${item.room.project}`} sx={{ mr: 1, flexShrink: 0 }} />
+          ) : null}
           <Markdown>{item.text}</Markdown>
         </Row>
       )

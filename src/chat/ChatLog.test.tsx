@@ -156,6 +156,18 @@ describe("ChatLog", () => {
     expect(screen.queryByText("you")).toBeNull();
   });
 
+  test("shows project room chip", async () => {
+    api.listEvents.mockResolvedValue({
+      events: [
+        ev(5, "user_message", { origin: "client", text: '<session-message from="beta-2" id="7">\nhi\n</session-message>\nProject room alpha, post p31: posted by the leader.' }),
+      ],
+      has_more_before: false,
+      next_after_id: 5,
+    });
+    mount();
+    expect(await screen.findByText("project room p31")).toBeTruthy();
+  });
+
   test("user_and_assistant_rows_render_markdown", async () => {
     api.listEvents.mockResolvedValue({
       events: [

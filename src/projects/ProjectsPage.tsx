@@ -20,6 +20,7 @@ import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { useProject } from './ProjectContext'
+import { ProjectRoom } from './ProjectRoom'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
 
@@ -88,6 +89,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
   const board = usePoll(() => projectsSummary().catch((): ProjectSummary[] => []), POLL_MS, [])
   const [editing, setEditing] = useState<Editing | null>(null)
   const [archiving, setArchiving] = useState<Project | null>(null)
+  const [room, setRoom] = useState<string | null>(null)
   const [actionError, setActionError] = useState<Error | null>(null)
 
   const summaryOf = (slug: string) => board.data?.find((s) => s.project === slug)
@@ -146,6 +148,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
                 <TableCell align="right">{count(s?.open_tasks)}</TableCell>
                 <TableCell align="right">{count(s?.waiting_decisions)}</TableCell>
                 <TableCell align="right">
+                  <Button size="small" onClick={() => setRoom(p.slug)}>Room</Button>
                   <Button size="small" onClick={() => setEditing({ mode: 'edit', project: p })}>Edit</Button>
                   {p.archived ? (
                     <Button size="small" onClick={() => void setArchived(p, false)}>Restore</Button>
@@ -169,6 +172,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
           }}
         />
       )}
+      {room && <ProjectRoom slug={room} onClose={() => setRoom(null)} />}
       <ConfirmDialog
         open={archiving !== null}
         title={`Archive ${archiving?.slug ?? ''}?`}
