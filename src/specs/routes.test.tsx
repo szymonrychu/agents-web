@@ -6,6 +6,8 @@ import { SpecsRoute, specPath } from './routes'
 
 // The pages need the taskboard backend config and have their own tests; here only the routing is under test.
 vi.mock('./SpecsPage', () => ({ SpecsPage: () => null }))
+vi.mock('./SpecPage', () => ({ SpecPage: () => null }))
+vi.mock('./DocumentPage', () => ({ DocumentPage: () => null }))
 
 function at(path: string) {
   return render(
@@ -32,6 +34,13 @@ describe('specs routes', () => {
   test('/specs/S-5 renders the spec route with the key', () => {
     at('/specs/S-5')
     expect(screen.getByTestId('spec-route').getAttribute('data-key')).toBe('S-5')
+  })
+
+  test('/specs/S-5/doc/research/a.md renders the document route with the full path', () => {
+    at('/specs/S-5/doc/research/a.md')
+    const el = screen.getByTestId('doc-route')
+    expect(el.getAttribute('data-key')).toBe('S-5')
+    expect(el.getAttribute('data-path')).toBe('research/a.md')
   })
 
   test('unknown /specs/x/y shows not found', () => {
