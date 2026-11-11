@@ -2,6 +2,7 @@
 import { requestAt } from '../api/client'
 import { backendBase } from '../config/backends'
 import type { components } from '../api/taskboard-schema'
+import type { Task, TaskPatch } from '../tasks/api'
 
 type S = components['schemas']
 // The generated types mark defaulted fields required; a request may leave them out.
@@ -79,5 +80,17 @@ export type PlanPut = Partial<S['PlanPut']> & { version: number }
 export const putPlan = (key: string, body: PlanPut) => req<Plan>('PUT', `/specs/${id(key)}/plan`, body)
 export const listSteps = (key: string) => req<S['StepList']>('GET', `/specs/${id(key)}/steps`)
 export const getGate = (key: string) => req<Gate>('GET', `/specs/${id(key)}/gate`)
+
+/** The body of `POST /specs/{key}/steps`; `after` 0 puts the step first, absent last. `steps_version` is the one last read. */
+export type StepInsert = Partial<S['StepInsert']> & { steps_version: number; title: string }
+export const insertStep = (key: string, body: StepInsert) => req<Step>('POST', `/specs/${id(key)}/steps`, body)
+/** `order` is every step's task key in the new order. */
+export const reorderSteps = (key: string, stepsVersion: number, order: string[]) =>
+  req<S['StepsVersion']>('PUT', `/specs/${id(key)}/steps/order`, { steps_version: stepsVersion, order })
+/** Steps are tasks: the editor reads and patches them as such. A 412 carries no extra field, the task `version` is the guard. */
+export const getStepTask = (taskKey: string) => req<Task>('GET', `/tasks/${id(taskKey)}`)
+export const patchStep = (taskKey: string, body: TaskPatch) => req<Task>('PATCH', `/tasks/${id(taskKey)}`, body)
+/** Replaces the step's dependencies (task keys of steps of the same spec); 422 `dependency_cycle` when they form a cycle. */
+export const setDeps = (taskKey: string, dependsOn: string[]) => req<Task>('PUT', `/tasks/${id(taskKey)}/deps`, { depends_on: dependsOn })
 
 export const specStreamUrl = () => `${backendBase('taskboard')}/stream`
