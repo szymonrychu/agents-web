@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { MONO_FONT, TOKENS, theme } from '../theme'
-import { ChatMarkdown } from './Markdown'
+import { Markdown } from './Markdown'
+
+vi.mock('mermaid', () => ({ default: { initialize: vi.fn(), parse: vi.fn().mockResolvedValue(true), render: vi.fn().mockResolvedValue({ svg: '<svg></svg>' }) } }))
 
 afterEach(cleanup)
 
 function setup(text: string) {
   return render(
     <ThemeProvider theme={theme}>
-      <ChatMarkdown text={text} />
+      <Markdown>{text}</Markdown>
     </ThemeProvider>,
   )
 }
@@ -23,7 +25,7 @@ const one = (root: ParentNode, selector: string): Element => {
 }
 const font = (el: Element): string => getComputedStyle(el).fontFamily
 
-describe('ChatMarkdown', () => {
+describe('Markdown', () => {
   test('renders_gfm_elements_as_mui', () => {
     const text = [
       '# h1', '## h2', '### h3', '#### h4', '##### h5', '###### h6',
@@ -188,5 +190,24 @@ describe('ChatMarkdown', () => {
     const plainPre = one(plain, 'pre')
     expect(one(plainPre, 'code').textContent).toBe('plain text\n')
     expect(plain.textContent).toBe('plain text\n')
+  })
+
+  test('headings_get_ids_only_with_headingIds', () => {
+    const md = '# Intro\n\n## Intro\n\n## Other Part'
+    const on = render(
+      <ThemeProvider theme={theme}>
+        <Markdown headingIds>{md}</Markdown>
+      </ThemeProvider>,
+    )
+    expect(all(on.container, 'h1, h2').map((h) => h.id)).toEqual(['intro', 'intro-2', 'other-part'])
+    cleanup()
+    const off = setup(md)
+    expect(all(off.container, 'h1, h2').map((h) => h.id)).toEqual(['', '', ''])
+  })
+
+  test('mermaid_fence_renders_a_diagram_block_not_a_code_block', async () => {
+    const { container } = setup('```mermaid\ngraph TD; A-->B\n```')
+    expect(container.querySelector('pre code')).toBeNull()
+    expect(container.textContent).toContain('graph TD; A-->B')
   })
 })

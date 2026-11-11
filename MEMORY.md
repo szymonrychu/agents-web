@@ -26,6 +26,10 @@
 
 Lessons that outlive a session. Newest first.
 
+## 2026-11-11 (task-plans W1, T-116)
+
+- Markdown moved to `src/markdown/` and exported as `Markdown` (props `children`, optional `headingIds`, optional `sx` kept because chat user messages style the root; no `ChatMarkdown` alias). Heading ids come from a small inline rehype plugin (document order, so `intro`, `intro-2` are stable under StrictMode double render) using `headingId`. A ```mermaid fence renders `MermaidBlock`, which imports `mermaid` (pinned exactly 12.2.0, 29 days old when added) dynamically so it builds into separate chunks; `initialize` runs once per theme (`dark` for MUI dark mode, else `default`) with `securityLevel: 'strict'`. The rendered svg is the only `dangerouslySetInnerHTML` sink. Results are keyed by (mode, source) instead of reset with setState in the effect (lint rule react-hooks/set-state-in-effect). MermaidBlock tests reset modules per test because the loader and init state are module level.
+
 ## 2026-11-07 (voluntary-handover)
 
 - The preset form no longer has "Leader lease seconds": the orchestrator removed `spec.leader_lease_seconds` (422 if sent), so the web drops the field, its validation and the spec round trip. Leadership handover notices (`Orchestrator notice (leadership handover):`, from the orchestrator's `HANDOVER_PREFIX`) are matched by text prefix like the inactivity ones and render as a `notice` item (`notice: 'handover'`). Schema synced with `npm run sync:api -- orchestrator --from ../agents-orchestrator` from the voluntary-handover worktree at f4fca8f (PR #77, unmerged); re-sync from merged orchestrator main before this PR merges.

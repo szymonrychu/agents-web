@@ -6,7 +6,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { ChatItem } from './chatModel'
-import { ChatMarkdown } from './Markdown'
+import { Markdown } from '../markdown/Markdown'
 import { SubagentPane } from './SubagentPane'
 import type { SubagentIndex } from './SubagentPane'
 
@@ -95,7 +95,7 @@ export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: Sub
     case 'user_message':
       return (
         <Row item={item} label={item.origin === 'user' ? 'you' : item.origin} markdown>
-          <ChatMarkdown text={item.text} sx={{ color: 'text.primary', fontWeight: TOKENS.fontWeights.medium }} />
+          <Markdown sx={{ color: 'text.primary', fontWeight: TOKENS.fontWeights.medium }}>{item.text}</Markdown>
         </Row>
       )
     case 'notice':
@@ -109,19 +109,19 @@ export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: Sub
     case 'session':
       return (
         <Row item={item} label={`session ${item.from}`} markdown>
-          <ChatMarkdown text={item.text} />
+          <Markdown>{item.text}</Markdown>
         </Row>
       )
     case 'peer':
       return (
         <Row item={item} label={`peer from ${item.from ?? 'unknown'}`} markdown>
-          <ChatMarkdown text={item.text} />
+          <Markdown>{item.text}</Markdown>
         </Row>
       )
     case 'assistant':
       return (
         <Row item={item} markdown>
-          <ChatMarkdown text={item.text} />
+          <Markdown>{item.text}</Markdown>
         </Row>
       )
     case 'thinking':
