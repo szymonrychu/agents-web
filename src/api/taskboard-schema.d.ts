@@ -55,6 +55,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/specs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Specs */
+        get: operations["list_specs_taskboard_api_v1_specs_get"];
+        put?: never;
+        /** Create Spec */
+        post: operations["create_spec_taskboard_api_v1_specs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Spec */
+        get: operations["get_spec_taskboard_api_v1_specs__key__get"];
+        put?: never;
+        post?: never;
+        /** Delete Spec */
+        delete: operations["delete_spec_taskboard_api_v1_specs__key__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Spec */
+        patch: operations["patch_spec_taskboard_api_v1_specs__key__patch"];
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Comments */
+        get: operations["list_comments_taskboard_api_v1_specs__key__comments_get"];
+        put?: never;
+        /** Add Comment */
+        post: operations["add_comment_taskboard_api_v1_specs__key__comments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/comments/{comment_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Suggestion
+         * @description Write the suggestion as the next version of the comment's document.
+         */
+        post: operations["accept_suggestion_taskboard_api_v1_specs__key__comments__comment_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/comments/{comment_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss Suggestion */
+        post: operations["dismiss_suggestion_taskboard_api_v1_specs__key__comments__comment_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/comments/{comment_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Comment */
+        post: operations["resolve_comment_taskboard_api_v1_specs__key__comments__comment_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/docs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Documents */
+        get: operations["list_documents_taskboard_api_v1_specs__key__docs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/docs/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Document
+         * @description The document JSON, or with `Accept: text/markdown` the raw body with
+         *     `ETag: "<sha256>"` and `X-Spec-Version`.
+         */
+        get: operations["get_document_taskboard_api_v1_specs__key__docs__path__get"];
+        /** Put Document */
+        put: operations["put_document_taskboard_api_v1_specs__key__docs__path__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/{key}/docs/{path}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Versions */
+        get: operations["list_versions_taskboard_api_v1_specs__key__docs__path__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/stream": {
         parameters: {
             query?: never;
@@ -263,6 +428,40 @@ export interface components {
             /** Superseded By */
             superseded_by?: number | null;
         };
+        /** DocumentIn */
+        DocumentIn: {
+            /** Body */
+            body: string;
+            /** Note */
+            note?: string | null;
+            /** Path */
+            path: string;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** DocumentPut */
+        DocumentPut: {
+            /** Base Version */
+            base_version: number;
+            /** Body */
+            body: string | null;
+            /** Client Key */
+            client_key?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: {
+                [key: string]: unknown;
+            }[];
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -273,6 +472,74 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** SpecCommentCreate */
+        SpecCommentCreate: {
+            /** Anchor */
+            anchor?: string | null;
+            /**
+             * Attachments
+             * @default []
+             */
+            attachments: {
+                [key: string]: unknown;
+            }[];
+            /** Body */
+            body: string;
+            /** Client Key */
+            client_key?: string | null;
+            /** Path */
+            path?: string | null;
+            /** Suggestion */
+            suggestion?: string | null;
+            /** Version */
+            version?: number | null;
+        };
+        /** SpecCreate */
+        SpecCreate: {
+            /** Client Key */
+            client_key?: string | null;
+            /**
+             * Docs
+             * @default []
+             */
+            docs: components["schemas"]["DocumentIn"][];
+            /**
+             * Labels
+             * @default []
+             */
+            labels: string[];
+            /** Name */
+            name: string;
+            /** Project */
+            project?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** SpecPatch */
+        SpecPatch: {
+            /**
+             * Assignee Self
+             * @default false
+             */
+            assignee_self: boolean;
+            /** Assignee Session */
+            assignee_session?: string | null;
+            /** Labels */
+            labels?: string[] | null;
+            /** Project */
+            project?: string | null;
+            /** Status */
+            status?: ("draft" | "review" | "approved" | "archived") | null;
+            /** Title */
+            title?: string | null;
+            /** Version */
+            version: number;
+        };
+        /** SuggestionAccept */
+        SuggestionAccept: {
+            /** Version */
+            version: number;
         };
         /** TaskCreate */
         TaskCreate: {
@@ -303,6 +570,8 @@ export interface components {
             labels: string[];
             /** Project */
             project?: string | null;
+            /** Spec */
+            spec?: string | null;
             /** Status */
             status?: ("idea" | "open" | "in_progress" | "done" | "dropped") | null;
             /** Title */
@@ -323,6 +592,8 @@ export interface components {
             labels?: string[] | null;
             /** Project */
             project?: string | null;
+            /** Spec */
+            spec?: string | null;
             /** Status */
             status?: ("idea" | "open" | "in_progress" | "done" | "dropped") | null;
             /** Title */
@@ -437,12 +708,840 @@ export interface operations {
             };
         };
     };
+    list_specs_taskboard_api_v1_specs_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                status?: ("draft" | "review" | "approved" | "archived") | null;
+                label?: string[] | null;
+                name?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_spec_taskboard_api_v1_specs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpecCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the orchestrator cannot validate the project (upstream_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_spec_taskboard_api_v1_specs__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_spec_taskboard_api_v1_specs__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_spec_taskboard_api_v1_specs__key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpecPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the orchestrator cannot validate the project (upstream_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_comments_taskboard_api_v1_specs__key__comments_get: {
+        parameters: {
+            query?: {
+                path?: string | null;
+                open?: boolean | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_comment_taskboard_api_v1_specs__key__comments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpecCommentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    accept_suggestion_taskboard_api_v1_specs__key__comments__comment_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionAccept"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dismiss_suggestion_taskboard_api_v1_specs__key__comments__comment_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resolve_comment_taskboard_api_v1_specs__key__comments__comment_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_documents_taskboard_api_v1_specs__key__docs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_document_taskboard_api_v1_specs__key__docs__path__get: {
+        parameters: {
+            query?: {
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "text/markdown": string;
+                };
+            };
+            /** @description Not modified (If-None-Match matched the ETag) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_document_taskboard_api_v1_specs__key__docs__path__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description changed since it was read (stale_version, with current_version on a document) */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description over a size cap (payload_too_large) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_versions_taskboard_api_v1_specs__key__docs__path__versions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: number | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     stream_taskboard_api_v1_stream_get: {
         parameters: {
             query?: {
                 project?: string | null;
+                after_id?: number | null;
             };
-            header?: never;
+            header?: {
+                "Last-Event-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -477,6 +1576,7 @@ export interface operations {
                 mine?: boolean;
                 waiting?: boolean;
                 label?: string[] | null;
+                spec?: string | null;
                 limit?: number;
                 cursor?: string | null;
             };
@@ -550,7 +1650,16 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, unknown_project, project_archived) */
+            /** @description no such task, decision or todo item (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -679,7 +1788,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid request (invalid_request, unknown_project, project_archived) */
+            /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
             422: {
                 headers: {
                     [name: string]: unknown;
