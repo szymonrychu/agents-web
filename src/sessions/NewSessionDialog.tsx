@@ -11,6 +11,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { createSession, listPresets } from '../api/client'
 import type { SessionView, CreateSession, PresetView } from '../api/client'
+import { useProject } from '../projects/ProjectContext'
 import { ProjectField } from '../projects/ProjectField'
 import { MAX_SLUG } from './sessionSpecForm'
 
@@ -23,6 +24,7 @@ export interface NewSessionDialogProps {
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>) {
+  const selected = useProject().project
   const [presets, setPresets] = useState<PresetView[]>([])
   const [presetId, setPresetId] = useState('')
   const [project, setProject] = useState('')
@@ -32,7 +34,7 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
 
   useEffect(() => {
     let cancelled = false
-    listPresets()
+    listPresets(selected)
       .then((list) => {
         if (cancelled) return
         setPresets(list)
@@ -46,7 +48,7 @@ function DialogBody({ onClose, onCreated }: Omit<NewSessionDialogProps, 'open'>)
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selected])
 
   const slugTooLong = slug.length > MAX_SLUG
 

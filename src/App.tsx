@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { Route, Routes, useSearchParams } from 'react-router'
 import { ChatView } from './chat/ChatView'
+import { useProject } from './projects/ProjectContext'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
 import { PermissionModeDialog } from './sessions/PermissionModeDialog'
@@ -25,7 +26,7 @@ import { SpecsRoute } from './specs/routes'
 export const APP_NAME = 'Agent Orchestrator';
 
 function SessionsShell() {
-  const { state, sessions, select, dismiss, update } = useSessions()
+  const { state, sessions, select, dismiss, update } = useSessions(useProject().project)
   // `/?session=<id>` (the Tasks page links waiting sessions this way) selects that session once it is known, once.
   const wanted = useSearchParams()[0].get('session')
   const applied = useRef<string | null>(null)

@@ -32,7 +32,7 @@ describe('ProjectProvider', () => {
   test('defaults to all projects and lists active projects only', async () => {
     mount()
     await waitFor(() => expect(screen.getByText('project=all;n=2')).toBeTruthy())
-    expect(seen.ctx.projects.map((p) => p.slug)).toEqual(['default', 'web'])
+    await waitFor(() => expect(seen.ctx.projects.map((p) => p.slug)).toEqual(['default', 'web']))
   })
 
   test('persists selection in storage', async () => {
@@ -72,5 +72,16 @@ describe('ProjectProvider', () => {
     mount()
     await waitFor(() => expect(api.listProjects).toHaveBeenCalled())
     expect(screen.getByText('project=all;n=0')).toBeTruthy()
+  })
+})
+
+describe('ProjectProvider refresh', () => {
+  test('reloads the project list when the window regains focus and when the selection changes', async () => {
+    mount()
+    await waitFor(() => expect(api.listProjects).toHaveBeenCalledTimes(1))
+    act(() => { window.dispatchEvent(new Event('focus')) })
+    await waitFor(() => expect(api.listProjects).toHaveBeenCalledTimes(2))
+    act(() => seen.ctx.setProject('web'))
+    await waitFor(() => expect(api.listProjects).toHaveBeenCalledTimes(3))
   })
 })

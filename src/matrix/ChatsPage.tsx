@@ -6,6 +6,8 @@ import Button from '@mui/material/Button'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
+import { presetInProject } from '../projects/scope'
+import { useProject } from '../projects/ProjectContext'
 import { TOKENS } from '../theme'
 import { FormError, usePoll, usePresetIndex } from '../triggers'
 import { getMeta, listRooms } from './api'
@@ -29,6 +31,7 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
   const [tab, setTab] = useState<TabName>('rooms')
   const [selected, setSelected] = useState<string | null>(null)
   const presets = usePresetIndex()
+  const { project } = useProject()
 
   const { data: meta, error: metaError } = usePoll(getMeta, 5000, [])
   const { data: rooms, error, refresh } = usePoll(() => listRooms({ kind: kind || undefined, access: access || undefined }), 5000, [kind, access])
@@ -57,7 +60,7 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
         <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <FormError error={error} />
           <RoomsTable
-            rooms={rooms ?? []}
+            rooms={(rooms ?? []).filter((r) => presetInProject(r.effective_preset_id ?? r.preset_id, presets, project))}
             kind={kind}
             access={access}
             presets={presets}

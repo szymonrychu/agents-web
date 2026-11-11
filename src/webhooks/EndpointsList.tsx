@@ -8,6 +8,8 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { presetInProject } from '../projects/scope'
+import { useProject } from '../projects/ProjectContext'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { FormError, ProjectCell, usePresetIndex } from '../triggers'
 import { deleteEndpoint, getMeta, listEndpoints, rotateEndpoint } from './api'
@@ -29,6 +31,7 @@ const ruleCount = (ep: EndpointView) => ep.filters.allow.length + ep.filters.den
 export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsListProps) {
   const [endpoints, setEndpoints] = useState<EndpointView[] | null>(null)
   const presets = usePresetIndex()
+  const { project } = useProject()
   const [error, setError] = useState<unknown>(null)
   const [rotating, setRotating] = useState<EndpointView | null>(null)
   const [deleting, setDeleting] = useState<EndpointView | null>(null)
@@ -106,7 +109,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
             </TableRow>
           </TableHead>
           <TableBody>
-            {(endpoints ?? []).map((ep) => (
+            {(endpoints ?? []).filter((ep) => presetInProject(ep.preset_id, presets, project)).map((ep) => (
               <TableRow key={ep.id}>
                 <TableCell sx={{ wordBreak: 'break-all' }}>
                   <span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} />

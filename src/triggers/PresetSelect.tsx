@@ -4,6 +4,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { useEffect, useState } from 'react'
 import { listPresets } from '../api/client'
+import { useProject } from '../projects/ProjectContext'
 import type { PresetView } from '../api/client'
 
 export interface PresetSelectProps {
@@ -18,16 +19,17 @@ export interface PresetSelectProps {
 export function PresetSelect({ value, onChange, disabled, emptyLabel }: PresetSelectProps) {
   const [presets, setPresets] = useState<PresetView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { project } = useProject()
 
   useEffect(() => {
     let cancelled = false
-    listPresets()
+    listPresets(project)
       .then((list) => !cancelled && setPresets(list))
       .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [project])
 
   if (error !== null) return <Alert severity="error">Could not load presets: {error}</Alert>
   const loading = presets === null
