@@ -6,6 +6,7 @@ import { ChatsPage } from '../matrix/ChatsPage'
 import { UsagePage } from '../usage/UsagePage'
 import { HistoryPage } from '../history/HistoryPage'
 import { VaultPage } from '../vault/VaultPage'
+import { mindmapMenu } from '../mindmap/menu'
 import type { RuntimeConfig } from '../config/backends'
 import { BACKEND_MENUS, menuEntries, type MenuEntry } from './registry'
 
@@ -162,3 +163,25 @@ describe('menuEntries', () => {
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('specs')
   })
 })
+
+describe('mindmap menu', () => {
+  test('is listed only when the mindmap backend is configured, in the free slot 41', () => {
+    expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('mindmaps')
+    const withMap = menuEntries(config('orchestrator', 'mindmap'))
+    expect(withMap.find((e) => e.id === 'mindmaps')).toMatchObject({ label: 'Mindmaps', order: 41, backend: 'mindmap' })
+    const ids = withMap.map((e) => e.id)
+    expect(ids.indexOf('presets')).toBeLessThan(ids.indexOf('mindmaps'))
+    expect(ids.indexOf('mindmaps')).toBeLessThan(ids.indexOf('proposals'))
+  })
+
+  test('the slot is unique across every registered entry', () => {
+    const orders = Object.values(BACKEND_MENUS).flat().map((e) => e.order)
+    expect(orders.filter((o) => o === mindmapMenu.order)).toHaveLength(1)
+  })
+
+  test('opens the routed page', () => {
+    const page = mindmapMenu.render(() => {}, () => {})
+    expect(isValidElement<{ to: string }>(page) && page.props.to).toBe('/mindmaps')
+  })
+})
+

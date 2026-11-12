@@ -16,6 +16,7 @@ const BACKENDS = {
   history: { repo: "agents-history", sibling: "../agents-history" },
   taskboard: { repo: "agents-taskboard", sibling: "../agents-taskboard" },
   vault: { repo: "agents-vault", sibling: "../agents-vault" },
+  mindmap: { repo: "agents-mindmap", sibling: "../agents-mindmap" },
 };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
