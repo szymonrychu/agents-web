@@ -32,13 +32,24 @@ describe('SearchBox', () => {
     await waitFor(() => expect(api.searchNodes).toHaveBeenCalledWith({ q: 'graphs', project: 'default', scope: 'own', mode: 'hybrid' }))
   })
 
+  test('selected project scope sends the project', async () => {
+    const u = userEvent.setup()
+    mount()
+    await u.click(screen.getByRole('button', { name: 'All projects' }))
+    await u.click(screen.getByRole('button', { name: 'Selected project' }))
+    await search(u)
+    await waitFor(() => expect(api.searchNodes).toHaveBeenCalledWith({ q: 'graphs', project: 'default', scope: 'own', mode: 'hybrid' }))
+    expect(api.searchNodes.mock.calls.at(-1)?.[0]).toHaveProperty('project', 'default')
+  })
+
   test('scope all and mode lexical are sent', async () => {
     const u = userEvent.setup()
     mount()
     await u.click(screen.getByRole('button', { name: 'All projects' }))
     await u.click(screen.getByRole('button', { name: 'lexical' }))
     await search(u)
-    await waitFor(() => expect(api.searchNodes).toHaveBeenCalledWith({ q: 'graphs', project: 'default', scope: 'all', mode: 'lexical' }))
+    await waitFor(() => expect(api.searchNodes).toHaveBeenCalledWith({ q: 'graphs', scope: 'all', mode: 'lexical' }))
+    expect(api.searchNodes.mock.calls.at(-1)?.[0]).not.toHaveProperty('project')
   })
 
   test('a snippet with markup renders as literal text', async () => {

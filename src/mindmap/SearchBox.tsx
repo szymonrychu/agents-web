@@ -37,7 +37,7 @@ export function SearchBox({ project, onOpen }: SearchBoxProps) {
     setBusy(true)
     setError(undefined)
     try {
-      setResult(await searchNodes({ q: text, project, scope, mode }))
+      setResult(await searchNodes({ q: text, ...(scope === 'own' ? { project } : {}), scope, mode }))
     } catch (err) {
       setError(err)
     } finally {
@@ -49,7 +49,7 @@ export function SearchBox({ project, onOpen }: SearchBoxProps) {
     <Stack component="form" role="search" spacing={1} onSubmit={(e) => void submit(e)}>
       <TextField size="small" type="search" label="Search nodes" value={q} onChange={(e) => setQ(e.target.value)} slotProps={{ htmlInput: { role: 'searchbox' } }} />
       <ToggleButtonGroup size="small" exclusive fullWidth aria-label="Search scope" value={scope} onChange={(_, v: SearchScope | null) => v && setScope(v)}>
-        <ToggleButton value="own">This project</ToggleButton>
+        <ToggleButton value="own">Selected project</ToggleButton>
         <ToggleButton value="all">All projects</ToggleButton>
       </ToggleButtonGroup>
       <ToggleButtonGroup size="small" exclusive fullWidth aria-label="Search mode" value={mode} onChange={(_, v: SearchMode | null) => v && setMode(v)}>
