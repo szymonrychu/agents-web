@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -12,6 +13,7 @@ import { FormError, RunStatusChip, usePoll } from '../triggers'
 import type { RunStatus } from '../triggers'
 import { listRoomMessages } from './api'
 import type { MessageView } from './api'
+import { mediaChipText } from './media'
 
 const PAGE = 50
 
@@ -57,7 +59,7 @@ export function RoomMessages({ roomId }: { roomId: string }) {
                 <TableCell>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
                 <TableCell>{new Date(m.at).toLocaleString()}</TableCell>
                 <TableCell>{m.sender_name ?? m.sender}</TableCell>
-                <TableCell>{m.body ?? <i>not stored</i>}</TableCell>
+                <TableCell><MessageBody m={m} /></TableCell>
                 <TableCell><RunStatusChip status={m.status as RunStatus} reason={m.reason ?? undefined} /></TableCell>
               </TableRow>
             ))}
@@ -66,5 +68,16 @@ export function RoomMessages({ roomId }: { roomId: string }) {
       )}
       {canLoadMore && <Button onClick={() => void loadOlder()} sx={{ alignSelf: 'flex-start' }}>Load older</Button>}
     </Box>
+  )
+}
+
+function MessageBody({ m }: { m: MessageView }) {
+  const chip = mediaChipText(m)
+  if (!chip) return <>{m.body ?? <i>not stored</i>}</>
+  return (
+    <>
+      {m.body}
+      <Chip size="small" variant="outlined" label={chip} color={m.media_status === 'not_attached' ? 'warning' : 'default'} sx={{ display: 'flex', width: 'fit-content', mt: m.body ? 0.5 : 0 }} />
+    </>
   )
 }

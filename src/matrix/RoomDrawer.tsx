@@ -46,6 +46,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const [trigger, setTrigger] = useState('')
   const [mayInitiate, setMayInitiate] = useState(false)
   const [anonymize, setAnonymize] = useState(false)
+  const [maySendFiles, setMaySendFiles] = useState(false)
   const [aliasesText, setAliasesText] = useState('')
   const [error, setError] = useState<Error>()
   const [pending, setPending] = useState<Pending | null>(null)
@@ -60,6 +61,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
       setTrigger(r.trigger ?? '')
       setMayInitiate(r.agents_may_initiate)
       setAnonymize(r.anonymize_names)
+      setMaySendFiles(r.agents_may_send_files)
       setAliasesText(formatAliases(r.agent_aliases))
     }, (e: unknown) => !cancelled && setError(e instanceof Error ? e : new Error(String(e))))
     return () => { cancelled = true }
@@ -85,7 +87,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const save = async () => {
     setError(undefined)
     try {
-      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate, anonymize_names: anonymize, agent_aliases: parseAliases(aliasesText) })
+      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate, anonymize_names: anonymize, agent_aliases: parseAliases(aliasesText), agents_may_send_files: maySendFiles })
       setRoom(updated)
       setAliasesText(formatAliases(updated.agent_aliases))
       onChanged()
@@ -152,6 +154,8 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               helperText="Comma-separated names people use to call the agent here, e.g. bot. Matched as whole words; the bot's own tag and replies to it always work."
             />
             <FormControlLabel control={<Switch checked={mayInitiate} onChange={(e) => setMayInitiate(e.target.checked)} />} label="Agents may start chats" />
+            <FormControlLabel control={<Switch checked={maySendFiles} onChange={(e) => setMaySendFiles(e.target.checked)} />} label="Agents may send files" />
+            <Typography variant="caption" color="text.secondary">Lets agents send files from their working directory to this chat. Off by default.</Typography>
             <FormControlLabel control={<Switch checked={anonymize} onChange={(e) => setAnonymize(e.target.checked)} />} label="Anonymize names" />
             <Typography variant="caption" color="text.secondary">Senders are shown to the agent as user-&lt;hash&gt; / admin-&lt;hash&gt;.</Typography>
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
