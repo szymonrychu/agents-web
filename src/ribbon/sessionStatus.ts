@@ -106,6 +106,11 @@ export function preparingProgress(session: SessionView, agents: readonly AgentVi
   return { kind: 'preparing', label: withStep(message ?? `${ready} of ${replicas} agents ready`), value }
 }
 
+/** An agent of a live session waits on the user (a permission prompt or a dialog). */
+export function awaitingPrompt(session: SessionView, agents: readonly AgentView[], discarded = false): boolean {
+  return !discarded && session.desired !== 'deleting' && ((session.summary.attention_agents ?? 0) > 0 || live(agents).some((a) => agentMark(a) === 'attention'))
+}
+
 /**
  * Mark state of a session. Precedence: discarded > deleting > error > attention (an agent waiting for input)
  * > working > booting > idle. summary.state 'waiting' means every agent is idle, not waiting for input.
@@ -115,7 +120,7 @@ export function sessionMarkState(session: SessionView, agents: readonly AgentVie
   const summary = session.summary.state
   if (session.desired === 'deleting' || summary === 'deleting') return 'deleting'
   if (summary === 'error' || (session.summary.bootstrap_failed_agents ?? 0) > 0 || live(agents).some((a) => a.bootstrap_failure)) return 'error'
-  if ((session.summary.attention_agents ?? 0) > 0 || live(agents).some((a) => agentMark(a) === 'attention')) return 'attention'
+  if (awaitingPrompt(session, agents)) return 'attention'
   const base: MarkState = summary === 'working' ? 'working' : summary === 'booting' ? 'booting' : 'idle'
   return base !== 'booting' && preparingProgress(session, agents) !== null ? 'booting' : base
 }

@@ -4,6 +4,7 @@ import type { components } from './schema';
 
 type S = components['schemas'];
 export type SessionView = S['SessionView'];
+export type SessionRestartAccepted = S['SessionRestartAccepted'];
 export type SessionSummary = S['SessionSummary'];
 export type SessionSpec = S['SessionSpec-Input'];
 export type CreateSession = S['CreateSession'];
@@ -114,6 +115,8 @@ export const createSession = (body: CreateSession) => request<SessionView>('POST
 export const deleteSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}`);
 /** Cancels a pending self-close request; 200 even when none is pending, 409 once the session is being discarded. */
 export const cancelSessionClose = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}/close`);
+/** Deletes and recreates every agent pod of the session; 409 `session_deleting` once it is being discarded. */
+export const restartSession = (sessionId: string) => request<SessionRestartAccepted>('POST', `/sessions/${id(sessionId)}/restart`);
 export const getInitScripts = (sessionId: string) => request<InitScriptsView>('GET', `/sessions/${id(sessionId)}/init-scripts`);
 export const putPermissionMode = (sessionId: string, permissionMode: PermissionMode) =>
   request<PermissionModeView>('PUT', `/sessions/${id(sessionId)}/permission-mode`, { permission_mode: permissionMode });

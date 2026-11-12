@@ -26,6 +26,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/archives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Archives */
+        get: operations["list_archives_agent_v1_admin_archives_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/archives/cleanup/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Archives Cleanup Preview */
+        get: operations["archives_cleanup_preview_agent_v1_admin_archives_cleanup_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/archives/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Archives Settings */
+        get: operations["archives_settings_agent_v1_admin_archives_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/chats/room-requests": {
         parameters: {
             query?: never;
@@ -209,7 +260,7 @@ export interface paths {
         };
         /**
          * Get Command
-         * @description Only a command this superleader issued; any other id is 404.
+         * @description Any command, whoever issued it; 404 only when unknown.
          */
         get: operations["get_command_agent_v1_admin_commands__command_id__get"];
         put?: never;
@@ -263,6 +314,26 @@ export interface paths {
         };
         /** GET history /sessions/{session_id}/records */
         get: operations["admin_history_get_sessions_session_id_records"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Meta
+         * @description The deploy settings the main port answers (defaults, images, models, caps).
+         */
+        get: operations["get_meta_agent_v1_admin_meta_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -427,7 +498,8 @@ export interface paths {
         };
         /**
          * List Own Proposals
-         * @description The caller's own proposals, newest first, current revision only.
+         * @description A superleader: every proposal. A regular leader: its own, newest first, current revision
+         *     only.
          */
         get: operations["list_own_proposals_agent_v1_admin_proposals_get"];
         put?: never;
@@ -449,7 +521,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Own Proposal */
+        /**
+         * Get Own Proposal
+         * @description A superleader reads any proposal (404 only when unknown); a regular leader its own.
+         */
         get: operations["get_own_proposal_agent_v1_admin_proposals__proposal_id__get"];
         put?: never;
         post?: never;
@@ -622,7 +697,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Sessions
+         * @description Every session, raw-spec and unmanageable ones included, as the redacted `SessionView`;
+         *     the main port's filters and errors. The slug filter is `session_slug`: the editor gate
+         *     invariant keeps a parameter named `slug` path-only.
+         */
+        get: operations["list_sessions_agent_v1_admin_sessions_get"];
         put?: never;
         /**
          * Create Session
@@ -645,7 +726,7 @@ export interface paths {
         };
         /**
          * Get Session
-         * @description A superleader reads its own or a manageable session; any other leader its own.
+         * @description A superleader reads any session; any other leader its own.
          */
         get: operations["get_session_agent_v1_admin_sessions__slug__get"];
         put?: never;
@@ -666,6 +747,26 @@ export interface paths {
         patch: operations["patch_session_agent_v1_admin_sessions__slug__patch"];
         trace?: never;
     };
+    "/agent/v1/admin/sessions/{slug}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Activity
+         * @description The agent-port activity digest of any session.
+         */
+        get: operations["session_activity_agent_v1_admin_sessions__slug__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/sessions/{slug}/agents/{pod}/restart": {
         parameters: {
             query?: never;
@@ -680,6 +781,46 @@ export interface paths {
          * @description Restart one agent by pod name; an agent of the caller's own session is a self-restart.
          */
         post: operations["restart_agent_agent_v1_admin_sessions__slug__agents__pod__restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Commands
+         * @description The newest commands issued to the agents of any session.
+         */
+        get: operations["session_commands_agent_v1_admin_sessions__slug__commands_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Events
+         * @description One page of any session's stored events, as the main port's events route (no SSE).
+         */
+        get: operations["session_events_agent_v1_admin_sessions__slug__events_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -703,6 +844,46 @@ export interface paths {
          *     `rollout` request is never withdrawn (409 `rollout_request` by id, left queued without).
          */
         post: operations["withdraw_handover_agent_v1_admin_sessions__slug__leadership_withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/locks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Locks
+         * @description The file locks held by the live agents of any session.
+         */
+        get: operations["session_locks_agent_v1_admin_sessions__slug__locks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Messages
+         * @description The message queue of any session, with the main port's `status` filter.
+         */
+        get: operations["session_messages_agent_v1_admin_sessions__slug__messages_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -795,6 +976,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/usage/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET usage /history */
+        get: operations["admin_usage_get_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/usage/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET usage /sessions */
+        get: operations["admin_usage_get_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/vault": {
         parameters: {
             query?: never;
@@ -804,7 +1019,7 @@ export interface paths {
         };
         /**
          * GET vault entries
-         * @description The vault entries of the caller's projects (home and extra) and the env names to
+         * @description Every vault entry (values only for the caller's projects) and the env names to
          *     re-attach.
          */
         get: operations["admin_vault_list"];
@@ -1288,12 +1503,29 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The caller's projects, or every active project for a superleader
+         * The caller's projects, or every project for a superleader
          * @description Scope `project` (projects plan 3.3): the caller's own projects, home first then its extra
-         *     projects (T-120), archived or not; a superleader session gets every active project. No
-         *     counts, as on the service port.
+         *     projects (T-120), archived or not; a superleader session gets every project, archived ones
+         *     included. No counts, as on the service port.
          */
         get: operations["projects_agent_v1_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/projects/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-project task and spec counts within the caller's project scope (taskboard relay) */
+        get: operations["projects_summary_agent_v1_projects_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3623,6 +3855,11 @@ export interface components {
              */
             attachments: components["schemas"]["MessageAttachment"][];
             /**
+             * From User
+             * @description True when a human wrote this message. Omitted: true on the main (web) port, false on the service port.
+             */
+            from_user?: boolean | null;
+            /**
              * Lane
              * @default regular
              * @enum {string}
@@ -4394,6 +4631,8 @@ export interface components {
             labels: string[];
             /** Last Update At */
             last_update_at?: string | null;
+            /** Last User Message At */
+            last_user_message_at?: string | null;
             /** Leader Agent Id */
             leader_agent_id: string | null;
             /** Leader Epoch */
@@ -4810,6 +5049,155 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    list_archives_agent_v1_admin_archives_get: {
+        parameters: {
+            query?: {
+                prefix?: string;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivePage"];
+                };
+            };
+            /** @description bad_request: invalid prefix or cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description unavailable: the cache archives are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archives_cleanup_preview_agent_v1_admin_archives_cleanup_preview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description unavailable: the cache archives are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archives_settings_agent_v1_admin_archives_settings_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description unavailable: the cache archives are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5269,6 +5657,45 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_meta_agent_v1_admin_meta_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6196,6 +6623,50 @@ export interface operations {
             };
         };
     };
+    list_sessions_agent_v1_admin_sessions_get: {
+        parameters: {
+            query?: {
+                label?: string[] | null;
+                project?: string | null;
+                superleaders?: "include" | null;
+                session_slug?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"][];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_session_agent_v1_admin_sessions_post: {
         parameters: {
             query?: never;
@@ -6341,6 +6812,57 @@ export interface operations {
             };
         };
     };
+    session_activity_agent_v1_admin_sessions__slug__activity_get: {
+        parameters: {
+            query?: {
+                agent?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     restart_agent_agent_v1_admin_sessions__slug__agents__pod__restart_post: {
         parameters: {
             query?: never;
@@ -6364,6 +6886,117 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CommandAccepted"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_commands_agent_v1_admin_sessions__slug__commands_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommandView"][];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_events_agent_v1_admin_sessions__slug__events_get: {
+        parameters: {
+            query?: {
+                before_id?: number | null;
+                after_id?: number | null;
+                limit?: number;
+                agent_id?: string | null;
+                types?: string[] | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsPage"];
+                };
+            };
+            /** @description bad_request: before_id and after_id are mutually exclusive */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6402,6 +7035,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Withdrawn"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_locks_agent_v1_admin_sessions__slug__locks_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocksOut"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_messages_agent_v1_admin_sessions__slug__messages_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageView"][];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6553,6 +7285,94 @@ export interface operations {
             };
         };
     };
+    admin_usage_get_history: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description upstream_unconfigured or upstream_unavailable: the usage service */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_usage_get_sessions: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description upstream_unconfigured or upstream_unavailable: the usage service */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     admin_vault_list: {
         parameters: {
             query?: {
@@ -6574,6 +7394,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6582,6 +7409,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description upstream_shape: the vault answered an unexpected shape */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description upstream_unconfigured, upstream_unavailable or vault_unavailable: the vault */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7979,6 +8820,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    projects_summary_agent_v1_projects_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

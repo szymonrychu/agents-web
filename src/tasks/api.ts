@@ -116,6 +116,8 @@ export interface ListQuery {
   spec?: string
   project?: string | null
   labels?: string[]
+  /** Only tasks with an open decision (a session waits for the user). */
+  waiting?: boolean
   cursor?: string
   limit?: number
 }
@@ -126,6 +128,7 @@ export function listTasks(opts: ListQuery = {}): Promise<TaskPage> {
   if (opts.spec) q.set('spec', opts.spec)
   if (opts.project) q.set('project', opts.project)
   for (const l of opts.labels ?? []) q.append('label', l)
+  if (opts.waiting) q.set('waiting', 'true')
   if (opts.cursor) q.set('cursor', opts.cursor)
   if (opts.limit) q.set('limit', String(opts.limit))
   const s = q.toString()

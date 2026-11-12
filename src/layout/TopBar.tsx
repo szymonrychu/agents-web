@@ -28,11 +28,13 @@ import { TOKENS } from '../theme'
 import type { ProposalView } from '../proposals/api'
 import { useActiveProposals } from '../proposals/useActiveProposals'
 import { ProjectSelect } from '../projects/ProjectSelect'
+import { AttentionBubble } from '../attention/AttentionBubble'
+import type { SessionAttention } from '../attention/attention'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
 
 export interface TopBarProps {
-  /** Sessions in display order (the caller passes `sortedSessions`). */
+  /** Sessions in display order, already derived by the caller (pins over the alphabetical list); never re-sorted here. */
   sessions: SessionEntry[]
   selectedId: string | null
   onSelect: (id: string) => void
@@ -40,6 +42,8 @@ export interface TopBarProps {
   onInitScripts: (session: SessionView) => void
   onPermissions: (session: SessionView) => void
   onDiscard: (session: SessionView) => void
+  /** Asks to restart every agent pod of the session. */
+  onRestart: (session: SessionView) => void
   /** Removes a discarded session's tab. */
   onDismiss: (id: string) => void
   /** A session returned by a REST call (the label edit), to show before the stream catches up. */
@@ -52,6 +56,10 @@ export interface TopBarProps {
   onOpenProposals?: (proposal?: ProposalView) => boolean | void
   /** Changing it refetches the proposals at once (after a review was submitted). */
   proposalsRefreshKey?: unknown
+  /** Sessions that need the user (open decisions or a waiting prompt), by id. */
+  attention: Map<string, SessionAttention>
+  /** Opens the preview of the open decisions a session asked. */
+  onOpenDecisions: (session: SessionView) => void
 }
 
 interface ActionsMenu {
@@ -59,7 +67,7 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onRestart, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey, attention, onOpenDecisions }: TopBarProps) {
   const { proposals, count: proposalCount } = useActiveProposals(onOpenProposals, proposalsRefreshKey)
   const waiting = proposals.filter((p) => p.status === 'open' || p.status === 'stale')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -67,6 +75,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
   // MUI Tabs needs a value that matches a tab, or false when none is selected.
   const value = sessions.some((e) => e.session.id === selectedId) ? selectedId : false
   const labelled = sessions.find((e) => e.session.id === selectedId && !e.discarded)
+  const openDecisions = actions ? (attention.get(actions.session.id)?.decisions ?? 0) : 0
   return (
     <Box component="header" sx={{ borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
@@ -77,6 +86,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
       <Tabs value={value} variant="scrollable" scrollButtons="auto" aria-label="Sessions" sx={{ flexGrow: 1, minWidth: 0 }}>
         {sessions.map(({ session, agents, discarded }) => {
           const mark = sessionMarkState(session, Object.values(agents), discarded === true)
+          const needs = attention.get(session.id)
           return (
           <Tab
             key={session.id}
@@ -91,6 +101,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
                   <Box component="span" sx={{ fontWeight: TOKENS.fontWeights.medium, textDecoration: discarded ? 'line-through' : 'none', color: discarded ? 'text.disabled' : undefined }}>{session.slug}</Box>
                   {session.preset_name ? <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 160, textTransform: 'none' }}>{session.preset_name}</Typography> : null}
                 </Box>
+                {needs ? <AttentionBubble slug={session.slug} attention={needs} onOpen={() => (needs.decisions > 0 ? onOpenDecisions(session) : onSelect(session.id))} /> : null}
                 {session.status.discard_hook_failed ? (
                   <Tooltip title="discard hook failed">
                     <ErrorOutlineIcon fontSize="small" color="error" role="img" aria-label="discard hook failed" />
@@ -137,6 +148,8 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onPermissions(target) }}>Permissions</MenuItem>
         <MenuItem component={RouterLink} to={`/tasks?session=${encodeURIComponent(actions?.session.id ?? '')}`} onClick={() => setActions(null)}>Tasks</MenuItem>
+        {openDecisions > 0 && <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onOpenDecisions(target) }}>{`Decisions (${openDecisions})`}</MenuItem>}
+        <MenuItem disabled={actions?.session.desired === 'deleting'} onClick={() => { const target = actions?.session; setActions(null); if (target) onRestart(target) }}>Restart</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onDiscard(target) }}>Discard</MenuItem>
       </Menu>
       <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} />
