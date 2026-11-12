@@ -36,7 +36,7 @@ interface Props {
   onChanged: () => void
 }
 
-function Fields({ title, setTitle, model, setModel, body, setBody }: { title: string; setTitle: (v: string) => void; model: string; setModel: (v: string) => void; body: string; setBody: (v: string) => void }) {
+function Fields({ title, setTitle, model, setModel, body, setBody, bodyVersion = 0 }: { title: string; setTitle: (v: string) => void; model: string; setModel: (v: string) => void; body: string; setBody: (v: string) => void; bodyVersion?: number }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
       <TextField size="small" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -48,7 +48,7 @@ function Fields({ title, setTitle, model, setModel, body, setBody }: { title: st
         <Typography color="text.secondary">Body</Typography>
         <Suspense fallback={<Typography color="text.secondary">Loading editor</Typography>}>
           <Box sx={{ height: 280, border: 1, borderColor: 'divider' }}>
-            <CodeEditor path="step.md" doc={body} docVersion={0} readOnly={false} onChange={setBody} onSave={() => {}} />
+            <CodeEditor path="step.md" doc={body} docVersion={bodyVersion} readOnly={false} onChange={setBody} onSave={() => {}} />
           </Box>
         </Suspense>
       </Box>
@@ -108,7 +108,10 @@ function EditStep({ props, task, onFail, onReload }: { props: Props; task: Task;
     setBody(task.body)
     setModel(serverModel)
     setBase({ title: task.title, body: task.body, model: serverModel })
+    setBodyVersion((v) => v + 1)
   }
+  // Bumped when the server body replaces the draft: the editor applies `doc` only on a new docVersion.
+  const [bodyVersion, setBodyVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const [depsError, setDepsError] = useState<Error | null>(null)
 
@@ -152,7 +155,7 @@ function EditStep({ props, task, onFail, onReload }: { props: Props; task: Task;
             Server now has title "{task.title}", model {serverModel === '' ? 'none' : serverModel}{task.body !== base.body ? ' and a different body' : ''}; your edits are kept.
           </Alert>
         )}
-        <Fields title={title} setTitle={setTitle} model={model} setModel={setModel} body={body} setBody={setBody} />
+        <Fields title={title} setTitle={setTitle} model={model} setModel={setModel} body={body} setBody={setBody} bodyVersion={bodyVersion} />
         <Box sx={{ display: 'flex', flexDirection: 'column', pt: 2 }}>
           <Typography color="text.secondary">Depends on</Typography>
           {steps.filter((s) => s.key !== task.key).map((s) => (
