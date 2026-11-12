@@ -18,13 +18,16 @@ import { TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import { conflictVersion, getNode, NODE_STATUSES, patchGrowth, patchNode } from './api'
 import type { GrowthView, NodeStatus, NodeView } from './api'
+import { DirectionDialog } from './DirectionDialog'
 import { ArchiveDialog, DeleteDialog, GrowthDialog, LinkDialog, NodeDialog } from './EditDialogs'
 import type { DeleteTarget } from './EditDialogs'
+import { NodeHistory } from './NodeHistory'
 
 type Dialog =
   | { kind: 'child' }
   | { kind: 'growth'; growth?: GrowthView }
   | { kind: 'link' }
+  | { kind: 'direction' }
   | { kind: 'archive' }
   | { kind: 'delete'; target: DeleteTarget }
 
@@ -54,6 +57,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
   const [conflict, setConflict] = useState<number>()
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState<Dialog>()
+  const [showHistory, setShowHistory] = useState(false)
 
   const [reloads, setReloads] = useState(0)
   const load = useCallback(() => setReloads((n) => n + 1), [])
@@ -134,6 +138,8 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
           {NODE_STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
         <Button size="small" onClick={() => setDialog({ kind: 'child' })}>Add child</Button>
+        <Button size="small" onClick={() => setDialog({ kind: 'direction' })}>Send direction</Button>
+        <Button size="small" onClick={() => setShowHistory((v) => !v)}>History</Button>
         <Button size="small" onClick={() => setDialog({ kind: 'archive' })}>Archive</Button>
         <Button size="small" color="error" onClick={() => setDialog({ kind: 'delete', target: { kind: 'node', key: node.key, label: node.topic } })}>Delete</Button>
       </Stack>
@@ -168,6 +174,13 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
           </>
         )}
       </Box>
+
+      {showHistory && (
+        <Box component="section" aria-label="History">
+          <Typography variant="subtitle2">History</Typography>
+          <NodeHistory nodeKey={node.key} rowVersion={node.version} refreshKey={refreshKey + reloads} onRestored={changed} />
+        </Box>
+      )}
 
       <Box component="section" aria-label="Growth areas">
         <Typography variant="subtitle2">Growth areas</Typography>
@@ -221,6 +234,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
 
       {dialog?.kind === 'child' && <NodeDialog mapKey={node.map} parent={node.key} onClose={() => setDialog(undefined)} onSaved={(n) => { changed(); onOpenNode(n.key) }} />}
       {dialog?.kind === 'growth' && <GrowthDialog nodeKey={node.key} growth={dialog.growth} onClose={() => setDialog(undefined)} onSaved={changed} />}
+      {dialog?.kind === 'direction' && <DirectionDialog mapKey={node.map} nodeKey={node.key} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'link' && <LinkDialog target={{ kind: 'node', key: node.key }} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'archive' && <ArchiveDialog target={{ kind: 'node', item: node }} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'delete' && (

@@ -19,6 +19,12 @@ vi.mock('./GraphView', () => ({
   ),
 }))
 vi.mock('./NodePanel', () => ({ NodePanel: (p: { nodeKey: string }) => <div data-testid="node-panel">{p.nodeKey}</div> }))
+vi.mock('./DirectionsTab', () => ({
+  DirectionsTab: (p: { mapKey: string; selected?: string | null }) => <div data-testid="directions-tab">{`${p.mapKey} ${p.selected ?? ''}`}</div>,
+}))
+vi.mock('./SearchBox', () => ({
+  SearchBox: (p: { onOpen: (h: { key: string; map: string }) => void }) => <button onClick={() => p.onOpen({ key: 'N-3', map: 'M-1' })}>search hit</button>,
+}))
 
 function Loc() {
   const l = useLocation()
@@ -73,16 +79,44 @@ describe('MindmapsPage', () => {
     expect(api.getGraph).toHaveBeenCalledWith('M-1')
   })
 
-  test('selecting a graph node puts it in the URL and keeps the direction', async () => {
+  test('selecting a graph node puts it in the URL', async () => {
     const u = userEvent.setup()
-    mount('/mindmaps/M-1?direction=D-1')
+    mount('/mindmaps/M-1')
     await u.click(await screen.findByRole('button', { name: 'graph N-3' }))
-    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-3&direction=D-1'))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-3'))
   })
 
   test('a node that is not in the graph opens no panel', async () => {
     mount('/mindmaps/M-1?node=N-99')
     await screen.findByRole('button', { name: 'graph N-1' })
     expect(screen.queryByTestId('node-panel')).toBeNull()
+  })
+
+  test('?direction= opens the directions tab with that direction selected', async () => {
+    mount('/mindmaps/M-1?direction=D-2')
+    expect((await screen.findByTestId('directions-tab')).textContent).toBe('M-1 D-2')
+  })
+
+  test('the Directions tab opens without a URL change and Graph goes back, dropping the direction', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1?node=N-2&direction=D-2')
+    await u.click(await screen.findByRole('tab', { name: 'Graph' }))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-2'))
+    expect(screen.queryByTestId('directions-tab')).toBeNull()
+    await u.click(screen.getByRole('tab', { name: 'Directions' }))
+    expect(screen.getByTestId('directions-tab')).toBeTruthy()
+  })
+
+  test('the graph is the default tab', async () => {
+    mount('/mindmaps/M-1')
+    await screen.findByRole('button', { name: 'graph N-1' })
+    expect(screen.queryByTestId('directions-tab')).toBeNull()
+  })
+
+  test('a search hit opens its map and node', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps')
+    await u.click(await screen.findByRole('button', { name: 'search hit' }))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-3'))
   })
 })

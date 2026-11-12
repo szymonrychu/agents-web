@@ -11,6 +11,13 @@ import { edgeView, growth, nodeView } from './testUtils'
 const api = vi.hoisted(() => ({ getNode: vi.fn(), patchNode: vi.fn(), patchGrowth: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
+vi.mock('./NodeHistory', () => ({
+  NodeHistory: (p: { nodeKey: string; rowVersion: number; onRestored: () => void }) => <button onClick={p.onRestored}>{`history ${p.nodeKey} row ${p.rowVersion}`}</button>,
+}))
+vi.mock('./DirectionDialog', () => ({
+  DirectionDialog: (p: { mapKey: string; nodeKey?: string; onSaved: (d: unknown) => void }) => <button onClick={() => p.onSaved({})}>{`direction dialog ${p.mapKey} ${p.nodeKey}`}</button>,
+}))
+
 const mount = (onChanged = vi.fn()) =>
   render(<ThemeProvider theme={theme}><NodePanel nodeKey="N-2" onChanged={onChanged} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>)
 const user = () => userEvent.setup()
@@ -95,5 +102,25 @@ describe('NodePanel', () => {
     expect(await screen.findByText(/builds on ->/)).toBeTruthy()
     await u.click(screen.getByRole('button', { name: 'Move G-2 up' }))
     await waitFor(() => expect(api.patchGrowth).toHaveBeenCalledWith('G-2', { version: 1, position: 0 }))
+  })
+
+  test('History shows the node history with the row version and refetches after a restore', async () => {
+    const onChanged = vi.fn()
+    const u = user()
+    mount(onChanged)
+    expect(screen.queryByText(/^history/)).toBeNull()
+    await u.click(await screen.findByRole('button', { name: 'History' }))
+    api.getNode.mockClear()
+    await u.click(screen.getByRole('button', { name: 'history N-2 row 3' }))
+    await waitFor(() => expect(api.getNode).toHaveBeenCalledTimes(1))
+    expect(onChanged).toHaveBeenCalled()
+  })
+
+  test('Send direction opens the dialog for this node and closes after it saved', async () => {
+    const u = user()
+    mount()
+    await u.click(await screen.findByRole('button', { name: 'Send direction' }))
+    await u.click(screen.getByRole('button', { name: 'direction dialog M-1 N-2' }))
+    expect(screen.queryByText(/direction dialog/)).toBeNull()
   })
 })

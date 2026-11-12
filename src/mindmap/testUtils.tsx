@@ -1,4 +1,4 @@
-import type { DirectionView, EdgeView, GrowthView, LinkView, MapView, NodeStub, NodeView, Subgraph } from './api'
+import type { DirectionView, EdgeView, GrowthView, HitView, LinkView, MapView, NodeStub, NodeView, Subgraph, VersionMeta, VersionView } from './api'
 
 const TS = '2026-11-01T10:00:00Z'
 
@@ -39,3 +39,7 @@ export const nodeView = (over: Partial<NodeView> = {}): NodeView => ({
   key: 'N-2', map: 'M-1', project: 'default', topic: 'Child A', notes: '# Findings\n\nSome **bold** notes', status: 'growing', parent: 'N-1', version: 3, current_version: 3, content_rev: 3,
   embedding_pending: false, created_by: 'user', created_at: TS, updated_by: 'user', updated_at: TS, growth_areas: [growth()], edges: [], links: [link()], directions: [], ...over,
 })
+
+export const versionMeta = (v: number, over: Partial<VersionMeta> = {}): VersionMeta => ({ version: v, author: 'user', summary: `change ${v}`, created_at: TS, ...over })
+export const versionView = (v: number, over: Partial<VersionView> = {}): VersionView => ({ ...versionMeta(v), topic: 'Child A', notes: `notes of v${v}`, ...over })
+export const hit = (over: Partial<HitView> = {}): HitView => ({ key: 'N-2', map: 'M-1', project: 'default', topic: 'Child A', snippet: 'a snippet', signals: ['fts'], score: 0.5, ...over })
