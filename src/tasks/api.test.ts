@@ -31,6 +31,11 @@ describe('taskboard client', () => {
     expect(last().url).toBe('/tb/api/v1/tasks?status=all&spec=S-1')
   })
 
+  test('listTasks sends waiting=true', async () => {
+    await listTasks({ status: 'active', waiting: true, limit: 200 })
+    expect(last().url).toBe('/tb/api/v1/tasks?status=active&waiting=true&limit=200')
+  })
+
   test('create and patch carry the spec', async () => {
     await createTask({ title: 'x', spec: 'S-1' })
     expect(last()).toEqual({ url: '/tb/api/v1/tasks', method: 'POST', body: { title: 'x', spec: 'S-1' } })

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { AgentView, SessionView } from '../api/client'
-import { agentIssue, preparingProgress, sessionIssue, sessionMarkState } from './sessionStatus'
+import { agentIssue, awaitingPrompt, preparingProgress, sessionIssue, sessionMarkState } from './sessionStatus'
 import { agentMark } from './stateMark'
 
 const session = (over: Record<string, unknown> = {}, summary: Record<string, unknown> = {}): SessionView =>
@@ -27,6 +27,25 @@ describe('sessionMarkState', () => {
   })
   test('a session still preparing is booting even when pods report idle', () => {
     expect(sessionMarkState(session({ status: { phase: 'pending' } }), [agent('idle')])).toBe('booting')
+  })
+})
+
+describe('awaitingPrompt', () => {
+  test('true when the summary counts an agent waiting for input', () => {
+    expect(awaitingPrompt(session({}, { attention_agents: 1 }), [])).toBe(true)
+  })
+  test('true for a live agent with attention set', () => {
+    const a = { ...agent('busy'), attention: { reason: 'permission' } } as unknown as AgentView
+    expect(awaitingPrompt(session(), [a])).toBe(true)
+  })
+  test('false when discarded', () => {
+    expect(awaitingPrompt(session({}, { attention_agents: 1 }), [], true)).toBe(false)
+  })
+  test('false when deleting', () => {
+    expect(awaitingPrompt(session({ desired: 'deleting' }, { attention_agents: 1 }), [])).toBe(false)
+  })
+  test('false otherwise', () => {
+    expect(awaitingPrompt(session({}, { state: 'working' }), [agent('busy')])).toBe(false)
   })
 })
 

@@ -24,8 +24,8 @@ import { ProposalReviewDialog } from './proposals/ProposalReviewDialog'
 import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
-
-const EMPTY: ReadonlySet<string> = new Set()
+import { useAttention } from './attention/useAttention'
+import { DecisionsPreviewDialog } from './attention/DecisionsPreviewDialog'
 
 export const APP_NAME = 'Agent Orchestrator';
 
@@ -33,7 +33,8 @@ function SessionsShell() {
   const { state, sessions: alphabetical, select, dismiss, update } = useSessions(useProject().project)
   // The tab order is derived on every render (pins over the alphabetical list) and never stored.
   const lastTalkedId = useMemo(() => lastTalkedSuperleader(alphabetical), [alphabetical])
-  const sessions = useMemo(() => orderSessions(alphabetical, { lastTalkedId, attentionIds: EMPTY }), [alphabetical, lastTalkedId])
+  const attention = useAttention(alphabetical)
+  const sessions = useMemo(() => orderSessions(alphabetical, { lastTalkedId, attentionIds: attention.ids }), [alphabetical, lastTalkedId, attention.ids])
   // The first tab is latched as the selection once sessions load, and again when the chosen one disappears
   // (the reducer clears a selection whose session is gone, and keeps one made before its session arrives);
   // a later reorder never moves it. Declared before the `?session=` effect so an explicit choice made in the
@@ -59,6 +60,8 @@ function SessionsShell() {
   const [permissions, setPermissions] = useState<SessionView | null>(null)
   const [proposal, setProposal] = useState<ProposalView | null>(null)
   const [proposalsRefresh, setProposalsRefresh] = useState(0)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const previewed = previewId === null ? undefined : state.sessions[previewId]
   // an open review is never replaced: a declined auto-open stays unseen and opens on a later poll
   const openProposal = (p?: ProposalView) => {
     if (!p) return setView('proposals')
@@ -89,6 +92,8 @@ function SessionsShell() {
         onSessionUpdated={update}
         onOpenProposals={openProposal}
         proposalsRefreshKey={proposalsRefresh}
+        attention={attention.bySession}
+        onOpenDecisions={(s) => setPreviewId(s.id)}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
       <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
@@ -119,6 +124,9 @@ function SessionsShell() {
       </Box>
       <NewSessionDialog open={creating} onClose={() => setCreating(false)} onCreated={(c) => { setCreating(false); show(c.id) }} />
       {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} onOpenSchedule={entries.some((e) => e.id === 'schedules') ? () => { setProposal(null); setView('schedules') } : undefined} onOpenSession={(id) => { setProposal(null); show(id) }} onChanged={() => setProposalsRefresh((n) => n + 1)} />}
+      {previewed && !previewed.discarded && (
+        <DecisionsPreviewDialog session={previewed.session} tasks={attention.bySession.get(previewed.session.id)?.tasks ?? []} onChanged={() => void attention.refresh()} onClose={() => setPreviewId(null)} />
+      )}
       {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
       {restarting && <RestartSessionDialog open session={restarting} onClose={() => setRestarting(null)} />}

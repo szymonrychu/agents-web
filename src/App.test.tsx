@@ -11,19 +11,23 @@ import { loadConfig, resetConfig } from './config/backends'
 import { theme } from './theme'
 import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
+import { decision, task } from './tasks/testUtils'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn(), restartSession: vi.fn() }))
 const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
-const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, close: vi.fn() }))
+const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, taskOpts: null as null | StreamOptions, close: vi.fn() }))
+const tasksApi = vi.hoisted(() => ({ listTasks: vi.fn(), answerDecision: vi.fn() }))
 
 vi.mock('./api/client', async (orig) => ({ ...(await orig<typeof import('./api/client')>()), ...api, statusStreamUrl: () => '/api/v1/stream' }))
 vi.mock('./proposals/api', () => proposals)
+vi.mock('./tasks/api', async (orig) => ({ ...(await orig<typeof import('./tasks/api')>()), ...tasksApi }))
 vi.mock('./api/terminals', async (orig) => ({ ...(await orig<typeof import('./api/terminals')>()), listTerminals: async () => ({ terminals: [], unavailable_agents: [] }) }))
 vi.mock('./api/stream', async (orig) => ({
   ...(await orig<typeof import('./api/stream')>()),
   openStream: (_url: string, opts: StreamOptions) => {
     // The chat view opens its own stream; keep the session status stream.
     if (opts.eventNames?.includes('session_status')) stream.opts = opts
+    if (opts.eventNames?.includes('task_changed')) stream.taskOpts = opts
     return { close: stream.close }
   },
 }))
@@ -86,6 +90,7 @@ beforeEach(() => {
   localStorage.clear()
   setViewport(1400)
   stream.opts = null
+  stream.taskOpts = null
   api.listSessions.mockResolvedValue([session('c2', 'beta', { state: 'waiting', ready: 1, replicas: 1, context_pct_max: 10 }), session('c1', 'alpha')])
   api.listAgents.mockImplementation(async (id: string) => (id === 'c1' ? [agent('a0', 0), agent('a1', 1)] : []))
   api.getMeta.mockResolvedValue(meta())
@@ -189,6 +194,49 @@ describe('App', () => {
     expect(names()).toEqual(['beta', 'alpha', 'gamma'])
     emit('session_removed', { session_id: 'c2' })
     await waitFor(() => expect(names()).toEqual(['alpha', 'beta', 'gamma']))
+  })
+
+  describe('attention pin', () => {
+    const zulu = () => ({ ...session('c9', 'zulu'), spec: { session_messaging: true }, last_user_message_at: '2026-05-01T10:00:00Z' }) as SessionView
+    const waiting = () => {
+      const t = task({ key: 'T-7', title: 'Pick a db', decisions: [decision({ id: 7, asking_session: 'c2', asking_slug: 'beta', question: 'Which db?' })] })
+      return { items: [t], next_cursor: null }
+    }
+    const names = () => tabs().map((t) => /^(zulu|alpha|beta|gamma)/.exec(t.textContent ?? '')?.[1])
+    beforeEach(async () => {
+      Element.prototype.scrollIntoView = vi.fn()
+      await loadConfig(async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'taskboard', label: 'T', basePath: '/tb/api/v1' }] })))
+      api.listSessions.mockResolvedValue([session('c2', 'beta'), session('c1', 'alpha'), session('c3', 'gamma'), zulu()])
+      tasksApi.listTasks.mockResolvedValue(waiting())
+    })
+
+    test('attention_session_pinned_after_last_talked_and_restored', async () => {
+      mount()
+      await waitFor(() => expect(names()).toEqual(['zulu', 'beta', 'alpha', 'gamma']))
+      expect(within(tabs()[1]).getByRole('button', { name: '1 open decisions for beta' })).toBeTruthy()
+      tasksApi.listTasks.mockResolvedValue({ items: [], next_cursor: null })
+      act(() => stream.taskOpts!.onEvent({ key: 'T-7' }, { type: 'task_changed', id: '2' }))
+      await waitFor(() => expect(names()).toEqual(['zulu', 'alpha', 'beta', 'gamma']))
+    })
+
+    test('preview_closes_after_last_answer', async () => {
+      tasksApi.answerDecision.mockResolvedValue({})
+      mount()
+      await waitFor(() => expect(names()).toEqual(['zulu', 'beta', 'alpha', 'gamma']))
+      await waitFor(() => expect(selectedTab()).toBeTruthy())
+      const selected = selectedTab()?.textContent
+      fireEvent.click(within(tabs()[1]).getByRole('button', { name: '1 open decisions for beta' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Decisions waiting in beta' })
+      // the open modal hides the tabs from the accessibility tree
+      expect(screen.getAllByRole('tab', { hidden: true }).find((t) => t.getAttribute('aria-selected') === 'true')?.textContent).toBe(selected)
+      tasksApi.listTasks.mockResolvedValue({ items: [], next_cursor: null })
+      fireEvent.click(within(dialog).getByRole('radio', { name: /SQLite/ }))
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Submit' }))
+      await waitFor(() => expect(tasksApi.answerDecision).toHaveBeenCalledWith('T-7', 7, { choice: 1 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(names()).toEqual(['zulu', 'alpha', 'beta', 'gamma'])
+      expect(selectedTab()?.textContent).toBe(selected)
+    })
   })
 
   test('top_bar_replaces_ribbon', async () => {

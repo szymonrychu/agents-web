@@ -33,7 +33,7 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onRestart: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onRestart: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), attention: new Map(), onOpenDecisions: vi.fn(), ...over }
   render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></ProjectProvider></MemoryRouter>)
   return props
 }
@@ -99,6 +99,47 @@ describe('TopBar', () => {
     expect(screen.queryByText('Edit')).toBeNull()
     fireEvent.click(items[4])
     expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('bubble shows the open decision count and opens the preview without selecting the tab', () => {
+    const { onSelect, onOpenDecisions } = setup({ attention: new Map([['c1', { decisions: 2, tasks: [], prompt: false }]]) })
+    const tab = screen.getAllByRole('tab')[0]
+    const bubble = within(tab).getByRole('button', { name: '2 open decisions for alpha' })
+    expect(bubble.textContent).toBe('2')
+    fireEvent.click(bubble)
+    expect(onOpenDecisions).toHaveBeenCalledWith(SESSIONS[0].session)
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  test('prompt-only bubble selects the session', () => {
+    const { onSelect, onOpenDecisions } = setup({ attention: new Map([['c1', { decisions: 0, tasks: [], prompt: true }]]) })
+    const bubble = within(screen.getAllByRole('tab')[0]).getByRole('button', { name: 'alpha is waiting for input' })
+    expect(bubble.textContent).toBe('!')
+    fireEvent.click(bubble)
+    expect(onSelect).toHaveBeenCalledWith('c1')
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onOpenDecisions).not.toHaveBeenCalled()
+  })
+
+  test('decisions menu item opens the preview', () => {
+    const { onOpenDecisions } = setup({ attention: new Map([['c1', { decisions: 2, tasks: [], prompt: true }]]) })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Decisions (2)', 'Restart', 'Discard'])
+    fireEvent.click(items[3])
+    expect(onOpenDecisions).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('no bubble and no decisions item without attention', () => {
+    setup({ attention: new Map([['c1', { decisions: 0, tasks: [], prompt: true }]]) })
+    expect(within(screen.getAllByRole('tab')[1]).queryByRole('button', { name: /open decisions|waiting for input/ })).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[1])
+    expect(screen.queryByRole('menuitem', { name: /Decisions/ })).toBeNull()
+  })
+
+  test('bubble has an accessible name with count and slug', () => {
+    setup({ attention: new Map([['c2', { decisions: 1, tasks: [], prompt: false }]]) })
+    expect(within(screen.getAllByRole('tab')[1]).getByRole('button', { name: '1 open decisions for bravo' })).toBeTruthy()
   })
 
   test('session header links to tasks filtered by session', () => {
