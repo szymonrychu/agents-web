@@ -70,3 +70,26 @@ export const listLinks = (refKey: string) => req<LinkView[]>('GET', `/links${que
 export const createMapLink = (mapKey: string, body: LinkIn) => req<LinkView>('POST', `/maps/${id(mapKey)}/links`, body);
 export const createNodeLink = (nodeKey: string, body: LinkIn) => req<LinkView>('POST', `/nodes/${id(nodeKey)}/links`, body);
 export const deleteLink = (linkId: number) => req<void>('DELETE', `/links/${linkId}`);
+
+export type VersionMeta = S['VersionMetaView'];
+export type VersionView = S['VersionView'];
+export type HitView = S['HitView'];
+export type SearchResponse = S['SearchResponse'];
+export type DirectionIn = S['DirectionIn'];
+export type DirectionAction = S['DirectionPatch']['action'];
+export type SearchScope = 'own' | 'all';
+export type SearchMode = 'hybrid' | 'lexical' | 'semantic';
+export const DIRECTION_STATUSES = ['open', 'acknowledged', 'resolved', 'withdrawn'] as const;
+export type DirectionStatus = (typeof DIRECTION_STATUSES)[number];
+
+export const listVersions = (nodeKey: string) => req<VersionMeta[]>('GET', `/nodes/${id(nodeKey)}/versions`);
+export const getVersion = (nodeKey: string, version: number) => req<VersionView>('GET', `/nodes/${id(nodeKey)}/versions/${version}`);
+
+export const listDirections = (q: { project?: string | null; map?: string; status?: DirectionStatus } = {}) =>
+  req<DirectionView[]>('GET', `/directions${query({ project: q.project || undefined, map: q.map, status: q.status })}`);
+export const createDirection = (mapKey: string, body: DirectionIn) => req<DirectionView>('POST', `/maps/${id(mapKey)}/directions`, body);
+export const patchDirection = (key: string, body: { version: number; action: DirectionAction; resolution?: string }) =>
+  req<DirectionView>('PATCH', `/directions/${id(key)}`, body);
+
+export const searchNodes = (q: { q: string; project?: string | null; scope: SearchScope; mode: SearchMode; limit?: number }) =>
+  req<SearchResponse>('GET', `/search${query({ q: q.q, project: q.project || undefined, scope: q.scope, mode: q.mode, limit: q.limit })}`);

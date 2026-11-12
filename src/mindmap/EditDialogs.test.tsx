@@ -128,8 +128,8 @@ describe('DeleteDialog', () => {
 
   test('names the subtree of a node delete', async () => {
     const u = user()
-    mount(<DeleteDialog target={{ kind: 'node', key: 'N-2', label: 'Child A', descendants: 3 }} onClose={() => {}} onDeleted={() => {}} />)
-    expect(screen.getByText(/its 3 descendant nodes/)).toBeTruthy()
+    mount(<DeleteDialog target={{ kind: 'node', key: 'N-2', label: 'Child A' }} onClose={() => {}} onDeleted={() => {}} />)
+    expect(screen.getByText(/all its descendant nodes/)).toBeTruthy()
     await u.click(screen.getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(api.deleteNode).toHaveBeenCalledWith('N-2'))
   })

@@ -18,13 +18,16 @@ import { TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import { conflictVersion, getNode, NODE_STATUSES, patchGrowth, patchNode } from './api'
 import type { GrowthView, NodeStatus, NodeView } from './api'
+import { DirectionDialog } from './DirectionDialog'
 import { ArchiveDialog, DeleteDialog, GrowthDialog, LinkDialog, NodeDialog } from './EditDialogs'
 import type { DeleteTarget } from './EditDialogs'
+import { NodeHistory } from './NodeHistory'
 
 type Dialog =
   | { kind: 'child' }
   | { kind: 'growth'; growth?: GrowthView }
   | { kind: 'link' }
+  | { kind: 'direction' }
   | { kind: 'archive' }
   | { kind: 'delete'; target: DeleteTarget }
 
@@ -37,15 +40,20 @@ export interface NodePanelProps {
   /** Called after the node itself is deleted. */
   onDeleted: () => void
   onOpenNode: (key: string) => void
+  /** The map the page shows; a node of another map gets a notice with a way there. */
+  mapKey?: string
+  onOpenMap?: (mapKey: string, nodeKey: string) => void
 }
 
 interface Draft {
+  /** Row version the draft was started from: the optimistic-lock base a save sends. */
+  version: number
   topic: string
   notes: string
   summary: string
 }
 
-export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode }: NodePanelProps) {
+export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode, mapKey, onOpenMap }: NodePanelProps) {
   const [node, setNode] = useState<NodeView>()
   const [error, setError] = useState<unknown>()
   const [draft, setDraft] = useState<Draft>()
@@ -54,6 +62,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
   const [conflict, setConflict] = useState<number>()
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState<Dialog>()
+  const [showHistory, setShowHistory] = useState(false)
 
   const [reloads, setReloads] = useState(0)
   const load = useCallback(() => setReloads((n) => n + 1), [])
@@ -125,6 +134,11 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
   const linkList = node.links ?? []
   return (
     <Stack spacing={2} data-testid="node-panel" sx={{ minWidth: 0 }}>
+      {mapKey !== undefined && node.map !== mapKey && (
+        <Alert severity="info" action={onOpenMap && <Button color="inherit" size="small" onClick={() => onOpenMap(node.map, node.key)}>Open map</Button>}>
+          This node belongs to map {node.map}, not the one shown.
+        </Alert>
+      )}
       <Box>
         <Typography variant="h6" component="h2" sx={{ wordBreak: 'break-word' }}>{node.topic}</Typography>
         <Typography variant="caption" color="text.secondary">{node.key} - version {node.version} - {node.project}</Typography>
@@ -134,6 +148,8 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
           {NODE_STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
         <Button size="small" onClick={() => setDialog({ kind: 'child' })}>Add child</Button>
+        <Button size="small" onClick={() => setDialog({ kind: 'direction' })}>Send direction</Button>
+        <Button size="small" onClick={() => setShowHistory((v) => !v)}>History</Button>
         <Button size="small" onClick={() => setDialog({ kind: 'archive' })}>Archive</Button>
         <Button size="small" color="error" onClick={() => setDialog({ kind: 'delete', target: { kind: 'node', key: node.key, label: node.topic } })}>Delete</Button>
       </Stack>
@@ -156,18 +172,25 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
             )}
             <FormError error={saveError instanceof Error ? saveError : undefined} />
             <Stack direction="row" spacing={1}>
-              <Button variant="contained" disabled={busy || draft.summary.trim() === '' || conflict !== undefined} onClick={() => void save(node.version)}>Save</Button>
+              <Button variant="contained" disabled={busy || draft.summary.trim() === '' || conflict !== undefined} onClick={() => void save(draft.version)}>Save</Button>
               <Button onClick={() => { setDraft(undefined); setConflict(undefined); setSaveError(undefined) }}>Cancel</Button>
             </Stack>
           </Stack>
         ) : (
           <>
             {node.notes === '' ? <Typography color="text.secondary">No notes yet</Typography> : <Markdown>{node.notes}</Markdown>}
-            <Button size="small" startIcon={<EditIcon />} sx={{ mt: 1 }} onClick={() => setDraft({ topic: node.topic, notes: node.notes, summary: '' })}>Edit notes</Button>
+            <Button size="small" startIcon={<EditIcon />} sx={{ mt: 1 }} onClick={() => setDraft({ version: node.version, topic: node.topic, notes: node.notes, summary: '' })}>Edit notes</Button>
             <FormError error={saveError instanceof Error ? saveError : undefined} />
           </>
         )}
       </Box>
+
+      {showHistory && (
+        <Box component="section" aria-label="History">
+          <Typography variant="subtitle2">History</Typography>
+          <NodeHistory nodeKey={node.key} rowVersion={node.version} refreshKey={refreshKey + reloads} onRestored={changed} onStale={load} />
+        </Box>
+      )}
 
       <Box component="section" aria-label="Growth areas">
         <Typography variant="subtitle2">Growth areas</Typography>
@@ -221,6 +244,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
 
       {dialog?.kind === 'child' && <NodeDialog mapKey={node.map} parent={node.key} onClose={() => setDialog(undefined)} onSaved={(n) => { changed(); onOpenNode(n.key) }} />}
       {dialog?.kind === 'growth' && <GrowthDialog nodeKey={node.key} growth={dialog.growth} onClose={() => setDialog(undefined)} onSaved={changed} />}
+      {dialog?.kind === 'direction' && <DirectionDialog mapKey={node.map} nodeKey={node.key} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'link' && <LinkDialog target={{ kind: 'node', key: node.key }} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'archive' && <ArchiveDialog target={{ kind: 'node', item: node }} onClose={() => setDialog(undefined)} onSaved={changed} />}
       {dialog?.kind === 'delete' && (
