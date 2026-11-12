@@ -388,6 +388,8 @@ export interface components {
          *     `agents_may_initiate` keeps the stored flag.
          */
         RoomAllowIn: {
+            /** Agent Aliases */
+            agent_aliases?: string[] | null;
             /** Agents May Initiate */
             agents_may_initiate?: boolean | null;
             /** Preset Id */
@@ -400,6 +402,8 @@ export interface components {
             /** Accept Request Id */
             accept_request_id: number | null;
             access: components["schemas"]["AccessView"];
+            /** Agent Aliases */
+            agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
             /** Alias */
@@ -446,6 +450,8 @@ export interface components {
         /** RoomDetail */
         RoomDetail: {
             access: components["schemas"]["AccessView"];
+            /** Agent Aliases */
+            agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
             /** Alias */
@@ -489,6 +495,8 @@ export interface components {
         };
         /** RoomSettingsIn */
         RoomSettingsIn: {
+            /** Agent Aliases */
+            agent_aliases?: string[] | null;
             /** Agents May Initiate */
             agents_may_initiate?: boolean | null;
             /** Anonymize Names */
@@ -501,6 +509,8 @@ export interface components {
         /** RoomView */
         RoomView: {
             access: components["schemas"]["AccessView"];
+            /** Agent Aliases */
+            agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
             /** Alias */
