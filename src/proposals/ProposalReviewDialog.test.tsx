@@ -18,7 +18,10 @@ beforeEach(() => {
   vault.listEntries.mockReset()
   vault.listEntries.mockResolvedValue([])
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+})
 
 // the dialog fetches the full view (all revisions) on mount; by default the server returns the same view
 const mount = (p = proposal(), onClose = vi.fn()) => {
@@ -43,7 +46,7 @@ describe('ProposalReviewDialog', () => {
   it('orders the cards grant, security, other and marks the changed one', () => {
     mount()
     const paths = screen.getAllByTestId('item-card').map((c) => c.getAttribute('data-path'))
-    expect(paths).toEqual(['kube_access', 'env.API_KEY', 'model'])
+    expect(paths).toEqual(['kube_access', 'projects.alpha', 'env.API_KEY', 'model', 'start_prompt', 'init_scripts'])
     expect(within(card('model')).getByText('changed since r1')).toBeTruthy()
     expect(within(card('kube_access')).queryByText(/changed since/)).toBeNull()
   })
@@ -54,6 +57,7 @@ describe('ProposalReviewDialog', () => {
     expect(submit.disabled).toBe(true)
     await click('Approve', within(card('kube_access')))
     await click('Approve', within(card('env.API_KEY')))
+    for (const path of ['projects.alpha', 'start_prompt', 'init_scripts']) await click('Approve', within(card(path)))
     expect(submit.disabled).toBe(true)
     await click('Rework', within(card('model')))
     expect(submit.disabled).toBe(true)
@@ -72,8 +76,11 @@ describe('ProposalReviewDialog', () => {
       revision: 2,
       items: [
         { path: 'kube_access', decision: 'approve' },
+        { path: 'projects.alpha', decision: 'approve' },
         { path: 'env.API_KEY', decision: 'approve' },
         { path: 'model', decision: 'approve' },
+        { path: 'start_prompt', decision: 'approve' },
+        { path: 'init_scripts', decision: 'approve' },
       ],
     })
     expect(await screen.findByText(/Review submitted/)).toBeTruthy()
@@ -87,12 +94,16 @@ describe('ProposalReviewDialog', () => {
     await userEvent.type(within(card('env.API_KEY')).getByRole('textbox'), 'no')
     await click('Rework', within(card('model')))
     await userEvent.type(within(card('model')).getByRole('textbox'), 'again')
+    for (const path of ['projects.alpha', 'start_prompt', 'init_scripts']) await click('Approve', within(card(path)))
     await click('Request rework')
     const body = api.reviewProposal.mock.calls[0][1]
     expect(body.items).toEqual([
       { path: 'kube_access', decision: 'approve' },
+      { path: 'projects.alpha', decision: 'approve' },
       { path: 'env.API_KEY', decision: 'deny', note: 'no' },
       { path: 'model', decision: 'rework', note: 'again' },
+      { path: 'start_prompt', decision: 'approve' },
+      { path: 'init_scripts', decision: 'approve' },
     ])
   })
 
@@ -101,7 +112,7 @@ describe('ProposalReviewDialog', () => {
     expect(screen.getByText(/stale: the target changed since this revision/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Approve all' })).toBeNull()
-    expect(screen.getAllByRole('button', { name: 'Rework' }).length).toBe(3)
+    expect(screen.getAllByRole('button', { name: 'Rework' }).length).toBe(6)
   })
 
   it('the stale flag alone also stales the dialog', () => {
@@ -134,6 +145,7 @@ describe('ProposalReviewDialog', () => {
     const submit = screen.getByRole('button', { name: 'Submit review' }) as HTMLButtonElement
     await click('Deny', within(card('kube_access')))
     await click('Deny', within(card('env.API_KEY')))
+    for (const path of ['projects.alpha', 'start_prompt', 'init_scripts']) await click('Deny', within(card(path)))
     expect(submit.disabled).toBe(true)
     await click('Deny', within(card('model')))
     expect(submit.disabled).toBe(false)
@@ -248,9 +260,42 @@ describe('ProposalReviewDialog', () => {
     expect(screen.queryByRole('button', { name: 'Open session' })).toBeNull()
   })
 
+  it('each item has a viewed checkbox keyed by proposal and revision', async () => {
+    mount()
+    await userEvent.click(within(card('model')).getByRole('checkbox', { name: 'Viewed' }))
+    expect(localStorage.getItem('agents-web:proposal-viewed:7:2:model')).toBe('1')
+    expect(within(card('model')).getByRole('button', { name: 'Expand model' })).toBeTruthy()
+  })
+
+  it('a new revision arriving in the open dialog resets the viewed and collapsed state', async () => {
+    api.reviewProposal.mockRejectedValue(new ApiError(409, 'revision_changed', 'nope'))
+    api.getProposal.mockResolvedValue(proposal({ revision: 3, revisions: [...proposal().revisions, { ...proposal().revisions[1], revision: 3 }] }))
+    mount()
+    await userEvent.click(within(card('model')).getByRole('checkbox', { name: 'Viewed' }))
+    expect(within(card('model')).getByRole('button', { name: 'Expand model' })).toBeTruthy()
+    await click('Approve all')
+    await click('Submit review')
+    await waitFor(() => expect(within(card('model')).getByRole('checkbox', { name: 'Viewed' })).toHaveProperty('checked', false))
+    expect(within(card('model')).queryByRole('button', { name: 'Expand model' })).toBeNull()
+  })
+
+  it('the project grant item renders as one added line', () => {
+    mount()
+    expect(within(card('projects.alpha')).getByTestId('grant-line').textContent).toBe('+ projects.alpha')
+  })
+
+  it('Approve all decides collapsed items too', async () => {
+    api.reviewProposal.mockResolvedValue(proposal({ status: 'applied' }))
+    mount()
+    await userEvent.click(within(card('model')).getByRole('checkbox', { name: 'Viewed' }))
+    await click('Approve all')
+    await click('Submit review')
+    expect(api.reviewProposal.mock.calls[0][1].items).toContainEqual({ path: 'model', decision: 'approve' })
+  })
+
   it('test_entries_loaded_once', async () => {
     mount()
-    expect(screen.getAllByTestId('item-card').length).toBe(3)
+    expect(screen.getAllByTestId('item-card').length).toBe(6)
     await waitFor(() => expect(vault.listEntries).toHaveBeenCalledTimes(1))
   })
 })

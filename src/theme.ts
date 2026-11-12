@@ -87,6 +87,56 @@ export const syntaxPalette = {
   invalid: terminalTheme.red,
 } as const
 
+export type DiffMode = 'light' | 'dark'
+
+/** Colours of a diff (lines, changed words, gutter markers, collapsed runs) per palette mode, GitHub-like. */
+export const diffPalette: Record<
+  DiffMode,
+  {
+    canvas: string
+    text: string
+    gutterText: string
+    border: string
+    removedLine: string
+    addedLine: string
+    removedWord: string
+    addedWord: string
+    removedMarker: string
+    addedMarker: string
+    collapsedBg: string
+    collapsedText: string
+  }
+> = {
+  dark: {
+    canvas: TOKENS.bgCanvas,
+    text: TOKENS.textPrimary,
+    gutterText: TOKENS.textDisabled,
+    border: TOKENS.border,
+    removedLine: 'rgba(229, 72, 77, 0.15)',
+    addedLine: 'rgba(76, 183, 130, 0.15)',
+    removedWord: 'rgba(229, 72, 77, 0.40)',
+    addedWord: 'rgba(76, 183, 130, 0.40)',
+    removedMarker: terminalTheme.red,
+    addedMarker: terminalTheme.green,
+    collapsedBg: TOKENS.bgRaised,
+    collapsedText: TOKENS.textSecondary,
+  },
+  light: {
+    canvas: '#ffffff',
+    text: '#1f2328',
+    gutterText: '#6e7781',
+    border: '#d0d7de',
+    removedLine: '#ffebe9',
+    addedLine: '#dafbe1',
+    removedWord: '#ffcecb',
+    addedWord: '#aceebb',
+    removedMarker: '#cf222e',
+    addedMarker: '#1a7f37',
+    collapsedBg: '#ddf4ff',
+    collapsedText: '#57606a',
+  },
+}
+
 const { regular, medium } = TOKENS.fontWeights
 const { xs, sm, md, lg, xl } = TOKENS.fontSizes
 const COARSE = '@media (pointer: coarse)'

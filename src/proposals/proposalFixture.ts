@@ -23,8 +23,11 @@ export const revision = (n: number, items: ProposalItemView[], o: Partial<Propos
 
 const envItem = item({ path: 'env.API_KEY', before: null, after: { value: 'on', expand: false }, security: true })
 const grantItem = item({ path: 'kube_access', before: false, after: true, grant: true, security: true })
+const startPromptItem = item({ path: 'start_prompt', before: 'You review PRs.\nBe brief.', after: 'You review PRs.\nBe thorough.' })
+const initScriptsItem = item({ path: 'init_scripts', before: ['echo a'], after: ['echo a', 'make test'] })
+const projectGrantItem = item({ path: 'projects.alpha', before: null, after: true, grant: true, security: true })
 
-/** Two revisions: r1 proposed model sonnet, r2 changed it to haiku; grant and env items are unchanged. */
+/** Two revisions: r1 proposed model sonnet, r2 changed it to haiku and added start_prompt, init_scripts and a project grant; kube_access and env items are unchanged. */
 export const proposal = (o: Partial<ProposalView> = {}): ProposalView => ({
   id: 7,
   kind: 'preset',
@@ -41,7 +44,7 @@ export const proposal = (o: Partial<ProposalView> = {}): ProposalView => ({
   closed_at: null,
   revisions: [
     revision(1, [item(), grantItem, envItem], { outcome: 'rework' }),
-    revision(2, [item({ after: 'haiku' }), grantItem, envItem]),
+    revision(2, [item({ after: 'haiku' }), grantItem, envItem, startPromptItem, initScriptsItem, projectGrantItem]),
   ],
   ...o,
 })

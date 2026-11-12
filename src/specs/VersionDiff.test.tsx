@@ -5,8 +5,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { VersionDiff } from './VersionDiff'
 
 vi.mock('../proposals/ValueDiff', () => ({
-  default: ({ before, after, text }: { before: string; after: string; text?: boolean }) => (
-    <div data-testid="value-diff" data-text={String(text)} data-before={before} data-after={after} />
+  default: ({ before, after, text, labels }: { before: string; after: string; text?: boolean; labels?: readonly [string, string] }) => (
+    <div data-testid="value-diff" data-text={String(text)} data-before={before} data-after={after} data-labels={labels?.join(',')} />
   ),
 }))
 
@@ -19,6 +19,11 @@ describe('VersionDiff', () => {
     expect(d.getAttribute('data-text')).toBe('true')
     expect(d.getAttribute('data-before')).toBe('old')
     expect(d.getAttribute('data-after')).toBe('new')
+  })
+
+  test('passes the version labels to the diff', async () => {
+    render(<VersionDiff before="old" after="new" beforeLabel="v1" afterLabel="v2" />)
+    expect((await screen.findByTestId('value-diff')).getAttribute('data-labels')).toBe('v1,v2')
   })
 
   test('the rendered toggle shows both bodies as markdown side by side', async () => {
