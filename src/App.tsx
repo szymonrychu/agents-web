@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import { Route, Routes, useSearchParams } from 'react-router'
 import { ChatView } from './chat/ChatView'
 import { useProject } from './projects/ProjectContext'
+import { RestartSessionDialog } from './sessions/RestartSessionDialog'
 import { DiscardSessionDialog } from './sessions/DiscardSessionDialog'
 import { InitScriptsDialog } from './sessions/InitScriptsDialog'
 import { PermissionModeDialog } from './sessions/PermissionModeDialog'
@@ -39,6 +40,7 @@ function SessionsShell() {
   // The main area shows the selected session or a settings page; only /tasks and /specs are routed.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
+  const [restarting, setRestarting] = useState<SessionView | null>(null)
   const [initScripts, setInitScripts] = useState<SessionView | null>(null)
   const [permissions, setPermissions] = useState<SessionView | null>(null)
   const [proposal, setProposal] = useState<ProposalView | null>(null)
@@ -69,6 +71,7 @@ function SessionsShell() {
         onInitScripts={setInitScripts}
         onPermissions={setPermissions}
         onDiscard={setDiscarding}
+        onRestart={setRestarting}
         onDismiss={dismiss}
         onSessionUpdated={update}
         onOpenProposals={openProposal}
@@ -105,6 +108,7 @@ function SessionsShell() {
       {proposal && <ProposalReviewDialog key={`${proposal.id}:${proposal.revision}`} proposal={proposal} onClose={() => setProposal(null)} onOpenSchedule={entries.some((e) => e.id === 'schedules') ? () => { setProposal(null); setView('schedules') } : undefined} onOpenSession={(id) => { setProposal(null); show(id) }} onChanged={() => setProposalsRefresh((n) => n + 1)} />}
       {initScripts && <InitScriptsDialog open session={initScripts} onClose={() => setInitScripts(null)} />}
       {permissions && <PermissionModeDialog open session={permissions} onClose={() => setPermissions(null)} />}
+      {restarting && <RestartSessionDialog open session={restarting} onClose={() => setRestarting(null)} />}
       {discarding && <DiscardSessionDialog open session={discarding} onClose={() => setDiscarding(null)} onDiscarded={() => setDiscarding(null)} />}
     </Box>
   )

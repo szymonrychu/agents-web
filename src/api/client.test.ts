@@ -5,6 +5,7 @@ import {
   getAgentDialog,
   requestAt,
   cancelSessionClose,
+  restartSession,
   copyPreset,
   createPreset,
   createSession,
@@ -182,6 +183,15 @@ describe('labels', () => {
     expect(calls[0][0]).toBe('/api/v1/sessions/s%201/close');
     expect(calls[0][1].method).toBe('DELETE');
     expect(calls[0][1].body).toBeUndefined();
+  });
+
+  it('restartSession posts to the session restart route', async () => {
+    const f = vi.fn(async () => new Response('{"command_ids":[1,2]}', { status: 202 }));
+    vi.stubGlobal('fetch', f);
+    await expect(restartSession('s 1')).resolves.toEqual({ command_ids: [1, 2] });
+    const calls = f.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe('/api/v1/sessions/s%201/restart');
+    expect(calls[0][1].method).toBe('POST');
   });
 });
 

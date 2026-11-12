@@ -33,7 +33,7 @@ const session = (id: string, slug: string, state: SessionView['summary']['state'
 const SESSIONS = [session('c1', 'alpha', 'working', 40), session('c2', 'bravo', 'waiting', 90)]
 
 function setup(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
-  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), ...over }
+  const props = { sessions: SESSIONS, selectedId: 'c2', onSelect: vi.fn(), onNew: vi.fn(), onDiscard: vi.fn(), onDismiss: vi.fn(), onInitScripts: vi.fn(), onPermissions: vi.fn(), onRestart: vi.fn(), onSessionUpdated: vi.fn(), settingsCategories: [], onOpenProposals: vi.fn(), ...over }
   render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><TopBar {...props} /></ThemeProvider></ProjectProvider></MemoryRouter>)
   return props
 }
@@ -95,9 +95,9 @@ describe('TopBar', () => {
     const { onDiscard } = setup()
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Discard'])
+    expect(items.map((i) => i.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Restart', 'Discard'])
     expect(screen.queryByText('Edit')).toBeNull()
-    fireEvent.click(items[3])
+    fireEvent.click(items[4])
     expect(onDiscard).toHaveBeenCalledWith(SESSIONS[0].session)
   })
 
@@ -106,6 +106,23 @@ describe('TopBar', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
     const link = screen.getByRole('menuitem', { name: 'Tasks' })
     expect(link.getAttribute('href')).toBe('/tasks?session=c1')
+  })
+
+  test('restart menu item calls onRestart', () => {
+    const { onRestart } = setup()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Restart' }))
+    expect(onRestart).toHaveBeenCalledWith(SESSIONS[0].session)
+  })
+
+  test('restart item is disabled while the session is deleting', () => {
+    const deleting = { ...SESSIONS[0], session: { ...SESSIONS[0].session, desired: 'deleting' as const } }
+    const { onRestart } = setup({ sessions: [deleting, SESSIONS[1]] })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    const item = screen.getByRole('menuitem', { name: 'Restart' })
+    expect(item.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(item)
+    expect(onRestart).not.toHaveBeenCalled()
   })
 
   test('permissions menu item calls onPermissions', () => {

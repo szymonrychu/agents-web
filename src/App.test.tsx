@@ -12,7 +12,7 @@ import { theme } from './theme'
 import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 
-const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn() }))
+const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn(), restartSession: vi.fn() }))
 const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
 const stream = vi.hoisted(() => ({ opts: null as null | StreamOptions, close: vi.fn() }))
 
@@ -364,11 +364,23 @@ describe('App', () => {
     expect(await screen.findByLabelText('Type the slug to confirm')).toBeTruthy()
   })
 
+  test('restart_from_top_bar_confirms_and_posts', async () => {
+    api.restartSession.mockResolvedValue({ command_ids: [1] })
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(2))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Restart' }))
+    expect(await screen.findByText(/Restart alpha\?/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }))
+    await waitFor(() => expect(api.restartSession).toHaveBeenCalledWith('c1'))
+    await waitFor(() => expect(screen.queryByText(/Restart alpha\?/)).toBeNull())
+  })
+
   test('no_edit_entry_point', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getAllByRole('button', { name: 'Session actions' })[0])
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Discard'])
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Init scripts', 'Permissions', 'Tasks', 'Restart', 'Discard'])
     expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: /edit/i })).toBeNull()
   })

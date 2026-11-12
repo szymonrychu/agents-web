@@ -40,6 +40,8 @@ export interface TopBarProps {
   onInitScripts: (session: SessionView) => void
   onPermissions: (session: SessionView) => void
   onDiscard: (session: SessionView) => void
+  /** Asks to restart every agent pod of the session. */
+  onRestart: (session: SessionView) => void
   /** Removes a discarded session's tab. */
   onDismiss: (id: string) => void
   /** A session returned by a REST call (the label edit), to show before the stream catches up. */
@@ -59,7 +61,7 @@ interface ActionsMenu {
   session: SessionView
 }
 
-export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey }: TopBarProps) {
+export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, onPermissions, onRestart, onDiscard, onDismiss, onSessionUpdated, settingsCategories, onOpenProposals, proposalsRefreshKey }: TopBarProps) {
   const { proposals, count: proposalCount } = useActiveProposals(onOpenProposals, proposalsRefreshKey)
   const waiting = proposals.filter((p) => p.status === 'open' || p.status === 'stale')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -137,6 +139,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onPermissions(target) }}>Permissions</MenuItem>
         <MenuItem component={RouterLink} to={`/tasks?session=${encodeURIComponent(actions?.session.id ?? '')}`} onClick={() => setActions(null)}>Tasks</MenuItem>
+        <MenuItem disabled={actions?.session.desired === 'deleting'} onClick={() => { const target = actions?.session; setActions(null); if (target) onRestart(target) }}>Restart</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onDiscard(target) }}>Discard</MenuItem>
       </Menu>
       <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} />
