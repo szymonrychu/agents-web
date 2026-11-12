@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
@@ -10,11 +11,14 @@ import { PlanTab } from './PlanTab'
 import { plan, step } from './testUtils'
 
 vi.mock('../editor/CodeEditor', () => ({
+  // Like the real editor: `doc` is applied on mount and when `docVersion` changes, later `doc` changes are ignored.
   default: function CodeEditorStandIn(props: CodeEditorProps) {
+    const [shown, setShown] = useState({ doc: props.doc, version: props.docVersion })
+    if (shown.version !== props.docVersion) setShown({ doc: props.doc, version: props.docVersion })
     return (
       <div data-testid="file-editor">
-        <span data-testid="editor-doc">{props.doc}</span>
-        <button type="button" onClick={() => props.onChange('new body')}>stand-in change</button>
+        <span data-testid="editor-doc">{shown.doc}</span>
+        <button type="button" onClick={() => { setShown({ ...shown, doc: 'new body' }); props.onChange('new body') }}>stand-in change</button>
       </div>
     )
   },
@@ -183,6 +187,23 @@ describe('step editor', () => {
     expect(await screen.findByText(/changed meanwhile, reloaded/)).toBeTruthy()
     expect(await screen.findByText(/Server title/)).toBeTruthy()
     expect((screen.getByRole('textbox', { name: 'Title' }) as HTMLInputElement).value).toBe('Draft title')
+  })
+
+  test('Use server values shows the server body in the editor and the next save sends it', async () => {
+    api.patchStep.mockRejectedValueOnce(new ApiError(412, 'stale_version', 'task changed since it was read'))
+    mount()
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit step 2' }))
+    await screen.findByTestId('editor-doc')
+    await userEvent.click(screen.getByRole('button', { name: 'stand-in change' }))
+    api.getStepTask.mockImplementation(async (key: string) => task({ key, title: 'Two', body: 'server body', version: 9, model: 'sonnet', depends_on: ['T-11'] }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save step' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Use server values' }))
+    expect(screen.getByTestId('editor-doc').textContent).toBe('server body')
+    const title = screen.getByRole('textbox', { name: 'Title' })
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Two c')
+    await userEvent.click(screen.getByRole('button', { name: 'Save step' }))
+    await waitFor(() => expect(api.patchStep).toHaveBeenLastCalledWith('T-12', { version: 9, title: 'Two c' }))
   })
 
   test('a double click on Up sends one reorder', async () => {
