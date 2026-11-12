@@ -1,14 +1,27 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ItemCard } from './ItemCard'
-import { toYaml } from './diffText'
+import type { DiffCounts } from './diffCounts'
+import { initScriptsDoc } from './diffText'
 import { item } from './proposalFixture'
+import { viewedKey } from './viewed'
 import type { EntryView } from '../vault/api'
 
-vi.mock('./ValueDiff', () => ({ default: ({ before, after, text }: { before: unknown; after: unknown; text?: boolean }) => <div data-testid="diff" data-text={String(Boolean(text))}>{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div> }))
-afterEach(cleanup)
+interface MockDiffProps { before: unknown; after: unknown; text?: boolean; expanded?: boolean; onCounts?: (c: DiffCounts) => void }
+function MockDiff({ before, after, text, expanded, onCounts }: MockDiffProps) {
+  useEffect(() => onCounts?.({ added: 2, removed: 1 }), [onCounts])
+  return <div data-testid="diff" data-text={String(Boolean(text))} data-expanded={String(Boolean(expanded))}>{`${JSON.stringify(before)}=>${JSON.stringify(after)}`}</div>
+}
+vi.mock('./ValueDiff', () => ({ default: MockDiff }))
+afterEach(() => {
+  cleanup()
+  setViewport(1200)
+  vi.restoreAllMocks()
+  localStorage.clear()
+})
 
 /** Installs a matchMedia that evaluates min-width / max-width queries against `width`. */
 function setViewport(width: number) {
@@ -56,9 +69,9 @@ describe('ItemCard', () => {
     expect((screen.getByRole('textbox') as HTMLInputElement).required).toBe(false)
   })
 
-  it('read-only shows the verdict and note, no buttons', () => {
+  it('read-only shows the verdict and note, no decision buttons', () => {
     render(<ItemCard {...base} readOnly item={item({ decision: 'rework', note: 'use haiku' })} />)
-    expect(screen.queryByRole('button')).toBeNull()
+    for (const name of ['Approve', 'Rework', 'Deny']) expect(screen.queryByRole('button', { name })).toBeNull()
     expect(screen.getByText('rework')).toBeTruthy()
     expect(screen.getByText('use haiku')).toBeTruthy()
   })
@@ -72,52 +85,146 @@ describe('ItemCard', () => {
     expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
   })
 
-  describe('narrow screens', () => {
-    const prompt = item({ path: 'prompt', before: 'old line one\nold line two', after: 'new prompt text' })
+  it('narrow screens still render the diff for prompts and structured items', async () => {
+    setViewport(400)
+    render(<ItemCard {...base} kind="schedule" item={item({ path: 'prompt', before: 'old line', after: 'new line' })} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('true')
+    cleanup()
+    render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before: { a: 1 }, after: { a: 2 } })} />)
+    expect(await screen.findByTestId('diff')).toBeTruthy()
+    expect(screen.queryByTestId('stack-before')).toBeNull()
+  })
 
-    it('a schedule prompt stacks Current and Proposed with both full texts, no diff', () => {
-      setViewport(400)
-      render(<ItemCard {...base} kind="schedule" item={prompt} />)
-      expect(screen.getByText('Current')).toBeTruthy()
-      expect(screen.getByText('Proposed')).toBeTruthy()
-      expect(screen.getByTestId('stack-before').textContent).toBe('old line one\nold line two')
-      expect(screen.getByTestId('stack-after').textContent).toBe('new prompt text')
-      expect(screen.queryByTestId('diff')).toBeNull()
-    })
+  it('header shows path, chips and line counts', async () => {
+    render(<ItemCard {...base} item={item({ grant: true })} />)
+    const header = screen.getByTestId('item-header')
+    expect(within(header).getByText('model')).toBeTruthy()
+    expect(within(header).getByText('grant')).toBeTruthy()
+    expect((await within(header).findByTestId('count-added')).textContent).toBe('+2')
+    expect(within(header).getByTestId('count-removed').textContent).toBe('-1')
+  })
 
-    it('an empty or missing prompt value shows a placeholder', () => {
-      setViewport(400)
-      render(<ItemCard {...base} kind="schedule" item={item({ path: 'prompt', before: null, after: '' })} />)
-      expect(screen.getAllByText('(empty)').length).toBe(2)
-    })
+  it('start_prompt diffs as text', async () => {
+    render(<ItemCard {...base} kind="preset" item={item({ path: 'start_prompt', before: 'a\nb', after: 'a\nc' })} />)
+    const d = await screen.findByTestId('diff')
+    expect(d.getAttribute('data-text')).toBe('true')
+    expect(d.textContent).toBe('"a\\nb"=>"a\\nc"')
+  })
 
-    it('a structured item stacks the YAML of before and after, no diff', () => {
-      setViewport(400)
-      const before = { url: 'http://a', args: ['x'] }
-      const after = { url: 'http://b', args: ['x', 'y'] }
-      render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before, after })} />)
-      expect(screen.getByText('Current')).toBeTruthy()
-      expect(screen.getByText('Proposed')).toBeTruthy()
-      expect(screen.getByTestId('stack-before').textContent).toBe(toYaml(before))
-      expect(screen.getByTestId('stack-after').textContent).toBe(toYaml(after))
-      expect(screen.queryByTestId('diff')).toBeNull()
-    })
+  it('init_scripts diffs per entry as text', async () => {
+    const before = ['echo a']
+    const after = ['echo a', 'make test']
+    render(<ItemCard {...base} kind="preset" item={item({ path: 'init_scripts', before, after })} />)
+    const d = await screen.findByTestId('diff')
+    expect(d.getAttribute('data-text')).toBe('true')
+    expect(d.textContent).toBe(`${JSON.stringify(initScriptsDoc(before))}=>${JSON.stringify(initScriptsDoc(after))}`)
+  })
 
-    it('scalar items keep the diff', async () => {
-      setViewport(400)
-      render(<ItemCard {...base} kind="schedule" item={item({ path: 'cron', before: 'a', after: 'b' })} />)
-      expect(await screen.findByTestId('diff')).toBeTruthy()
-    })
+  it('a schedule cron stays a YAML diff', async () => {
+    render(<ItemCard {...base} kind="schedule" item={item({ path: 'cron', before: '0 3 * * *', after: '0 4 * * *' })} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('false')
+  })
 
-    it('wide screens keep the diff for prompts and structured items', async () => {
-      setViewport(1200)
-      render(<ItemCard {...base} kind="schedule" item={prompt} />)
-      expect((await screen.findByTestId('diff')).getAttribute('data-text')).toBe('true')
-      cleanup()
-      render(<ItemCard {...base} item={item({ path: 'mcp_servers.git', before: { a: 1 }, after: { a: 2 } })} />)
-      expect(await screen.findByTestId('diff')).toBeTruthy()
-      expect(screen.queryByTestId('stack-before')).toBeNull()
+  it('a project grant is one added line', async () => {
+    render(<ItemCard {...base} item={item({ path: 'projects.alpha', before: null, after: true, grant: true, security: true })} />)
+    expect(screen.getByTestId('grant-line').textContent).toBe('+ projects.alpha')
+    expect(screen.queryByTestId('diff')).toBeNull()
+    expect(screen.getByTestId('count-added').textContent).toBe('+1')
+    expect(screen.getByTestId('count-removed').textContent).toBe('-0')
+    expect(screen.getByText('grant')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Show all lines of projects.alpha' })).toBeNull()
+    cleanup()
+    render(<ItemCard {...base} item={item({ path: 'projects.alpha', before: true, after: null, grant: true })} />)
+    expect(screen.queryByTestId('grant-line')).toBeNull()
+    expect(await screen.findByTestId('diff')).toBeTruthy()
+  })
+
+  it('collapse toggle hides and shows the body', async () => {
+    render(<ItemCard {...base} item={item()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse model' }))
+    const toggle = screen.getByRole('button', { name: 'Expand model' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull())
+    await userEvent.click(toggle)
+    expect(screen.getByRole('button', { name: 'Collapse model' }).getAttribute('aria-expanded')).toBe('true')
+    // role queries skip hidden elements: found means the collapsed body is shown again
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy())
+  })
+
+  it('a collapsed undecided item shows a pending chip', async () => {
+    render(<ItemCard {...base} item={item()} />)
+    expect(screen.queryByText('pending')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse model' }))
+    expect(within(screen.getByTestId('item-header')).getByText('pending')).toBeTruthy()
+  })
+
+  it('viewed collapses the item and persists per revision', async () => {
+    const { unmount } = render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Viewed' }))
+    expect(screen.getByRole('button', { name: 'Expand model' }).getAttribute('aria-expanded')).toBe('false')
+    expect(localStorage.getItem(viewedKey(7, 2, 'model'))).toBe('1')
+    unmount()
+    const again = render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    expect((screen.getByRole('checkbox', { name: 'Viewed' }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByRole('button', { name: 'Expand model' })).toBeTruthy()
+    again.unmount()
+    render(<ItemCard {...base} viewKey={viewedKey(7, 3, 'model')} item={item()} />)
+    expect((screen.getByRole('checkbox', { name: 'Viewed' }) as HTMLInputElement).checked).toBe(false)
+    expect(screen.getByRole('button', { name: 'Collapse model' })).toBeTruthy()
+  })
+
+  it('unchecking Viewed opens the item', async () => {
+    localStorage.setItem(viewedKey(7, 2, 'model'), '1')
+    render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Viewed' }))
+    expect(screen.getByRole('button', { name: 'Collapse model' }).getAttribute('aria-expanded')).toBe('true')
+    expect(localStorage.getItem(viewedKey(7, 2, 'model'))).toBeNull()
+  })
+
+  it('a viewed item reopened by the toggle stays viewed', async () => {
+    render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Viewed' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Expand model' }))
+    expect(screen.getByRole('button', { name: 'Collapse model' }).getAttribute('aria-expanded')).toBe('true')
+    expect((screen.getByRole('checkbox', { name: 'Viewed' }) as HTMLInputElement).checked).toBe(true)
+    // role queries skip hidden elements: found means the collapsed body is shown again
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy())
+  })
+
+  it('a viewed item still reports its counts', async () => {
+    localStorage.setItem(viewedKey(7, 2, 'model'), '1')
+    render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    expect((await screen.findByTestId('count-added')).textContent).toBe('+2')
+  })
+
+  it('expand context passes expanded to the diff', async () => {
+    render(<ItemCard {...base} item={item()} />)
+    expect((await screen.findByTestId('diff')).getAttribute('data-expanded')).toBe('false')
+    const button = screen.getByRole('button', { name: 'Show all lines of model' })
+    expect(button.getAttribute('aria-pressed')).toBe('false')
+    await userEvent.click(button)
+    expect(screen.getByTestId('diff').getAttribute('data-expanded')).toBe('true')
+    expect(button.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('no Viewed checkbox without a viewKey', () => {
+    render(<ItemCard {...base} item={item()} />)
+    expect(screen.queryByRole('checkbox', { name: 'Viewed' })).toBeNull()
+  })
+
+  it('storage failures do not break the card', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
     })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    render(<ItemCard {...base} viewKey={viewedKey(7, 2, 'model')} item={item()} />)
+    const box = screen.getByRole('checkbox', { name: 'Viewed' }) as HTMLInputElement
+    expect(box.checked).toBe(false)
+    await userEvent.click(box)
+    expect(box.checked).toBe(true)
+    expect(screen.getByRole('button', { name: 'Expand model' }).getAttribute('aria-expanded')).toBe('false')
   })
 
   describe('vault references', () => {

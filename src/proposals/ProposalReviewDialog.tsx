@@ -16,6 +16,7 @@ import { formatAge, useNow } from '../chat/agentAge'
 import { FormError } from '../triggers'
 import { getProposal, reviewProposal, type ProposalView, type ReviewItemIn } from './api'
 import { ItemCard, type Choice } from './ItemCard'
+import { viewedKey } from './viewed'
 import { useVaultEntries } from '../vault/useVaultEntries'
 import { RevisionHistory } from './RevisionHistory'
 import { changedPaths, orderItems } from './revisions'
@@ -153,6 +154,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSched
             stale={stale}
             changed={changed.has(i.path)}
             previous={previous?.revision}
+            viewKey={viewedKey(view.id, view.revision, i.path)}
             onChoice={(decision) => setEntry(i.path, { decision })}
             onNote={(note) => setEntry(i.path, { note })}
           />

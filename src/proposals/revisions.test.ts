@@ -9,7 +9,7 @@ test('orders grant items first, then other security items, then the rest', () =>
 
 test('marks the items whose proposed value differs from the previous revision', () => {
   const p = proposal()
-  expect([...changedPaths(p.revisions[1], p.revisions[0])]).toEqual(['model'])
+  expect([...changedPaths(p.revisions[1], p.revisions[0])]).toEqual(['model', 'start_prompt', 'init_scripts', 'projects.alpha'])
 })
 
 test('without a previous revision nothing is marked', () => {
