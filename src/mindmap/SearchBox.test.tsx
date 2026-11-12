@@ -71,6 +71,16 @@ describe('SearchBox', () => {
     expect(await screen.findByText(/lexical only/)).toBeTruthy()
   })
 
+  test('lexical mode never shows the lexical only hint', async () => {
+    api.searchNodes.mockResolvedValue({ items: [hit()], semantic: false, pending_embedding: 0 })
+    const u = userEvent.setup()
+    mount()
+    await u.click(screen.getByRole('button', { name: 'lexical' }))
+    await search(u)
+    await screen.findByRole('button', { name: /Child A/ })
+    expect(screen.queryByText(/lexical only/)).toBeNull()
+  })
+
   test('picking a hit opens it', async () => {
     const u = userEvent.setup()
     mount()

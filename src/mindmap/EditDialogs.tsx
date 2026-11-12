@@ -158,7 +158,7 @@ export function ArchiveDialog({ target, onClose, onSaved }: SavedProps<unknown> 
 
 export type DeleteTarget =
   | { kind: 'map'; key: string; label: string }
-  | { kind: 'node'; key: string; label: string; descendants?: number }
+  | { kind: 'node'; key: string; label: string }
   | { kind: 'growth'; key: string; label: string }
   | { kind: 'edge'; key: string; label: string }
   | { kind: 'link'; id: number; label: string }
@@ -168,10 +168,8 @@ export function cascadeText(t: DeleteTarget): string {
   switch (t.kind) {
     case 'map':
       return 'This also deletes every node of the map with its versions, growth areas, edges, links and directions.'
-    case 'node': {
-      const sub = t.descendants ? ` and its ${t.descendants} descendant node${t.descendants === 1 ? '' : 's'}` : ' and all its descendant nodes'
-      return `This also deletes the node${sub}, with their versions, growth areas, edges, links and directions.`
-    }
+    case 'node':
+      return 'This also deletes the node and all its descendant nodes, with their versions, growth areas, edges, links and directions.'
     case 'growth':
       return 'Nodes grown from this growth area stay; they only lose the reference.'
     case 'edge':

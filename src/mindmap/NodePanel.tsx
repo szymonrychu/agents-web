@@ -40,15 +40,20 @@ export interface NodePanelProps {
   /** Called after the node itself is deleted. */
   onDeleted: () => void
   onOpenNode: (key: string) => void
+  /** The map the page shows; a node of another map gets a notice with a way there. */
+  mapKey?: string
+  onOpenMap?: (mapKey: string, nodeKey: string) => void
 }
 
 interface Draft {
+  /** Row version the draft was started from: the optimistic-lock base a save sends. */
+  version: number
   topic: string
   notes: string
   summary: string
 }
 
-export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode }: NodePanelProps) {
+export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode, mapKey, onOpenMap }: NodePanelProps) {
   const [node, setNode] = useState<NodeView>()
   const [error, setError] = useState<unknown>()
   const [draft, setDraft] = useState<Draft>()
@@ -129,6 +134,11 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
   const linkList = node.links ?? []
   return (
     <Stack spacing={2} data-testid="node-panel" sx={{ minWidth: 0 }}>
+      {mapKey !== undefined && node.map !== mapKey && (
+        <Alert severity="info" action={onOpenMap && <Button color="inherit" size="small" onClick={() => onOpenMap(node.map, node.key)}>Open map</Button>}>
+          This node belongs to map {node.map}, not the one shown.
+        </Alert>
+      )}
       <Box>
         <Typography variant="h6" component="h2" sx={{ wordBreak: 'break-word' }}>{node.topic}</Typography>
         <Typography variant="caption" color="text.secondary">{node.key} - version {node.version} - {node.project}</Typography>
@@ -162,14 +172,14 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
             )}
             <FormError error={saveError instanceof Error ? saveError : undefined} />
             <Stack direction="row" spacing={1}>
-              <Button variant="contained" disabled={busy || draft.summary.trim() === '' || conflict !== undefined} onClick={() => void save(node.version)}>Save</Button>
+              <Button variant="contained" disabled={busy || draft.summary.trim() === '' || conflict !== undefined} onClick={() => void save(draft.version)}>Save</Button>
               <Button onClick={() => { setDraft(undefined); setConflict(undefined); setSaveError(undefined) }}>Cancel</Button>
             </Stack>
           </Stack>
         ) : (
           <>
             {node.notes === '' ? <Typography color="text.secondary">No notes yet</Typography> : <Markdown>{node.notes}</Markdown>}
-            <Button size="small" startIcon={<EditIcon />} sx={{ mt: 1 }} onClick={() => setDraft({ topic: node.topic, notes: node.notes, summary: '' })}>Edit notes</Button>
+            <Button size="small" startIcon={<EditIcon />} sx={{ mt: 1 }} onClick={() => setDraft({ version: node.version, topic: node.topic, notes: node.notes, summary: '' })}>Edit notes</Button>
             <FormError error={saveError instanceof Error ? saveError : undefined} />
           </>
         )}
@@ -178,7 +188,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
       {showHistory && (
         <Box component="section" aria-label="History">
           <Typography variant="subtitle2">History</Typography>
-          <NodeHistory nodeKey={node.key} rowVersion={node.version} refreshKey={refreshKey + reloads} onRestored={changed} />
+          <NodeHistory nodeKey={node.key} rowVersion={node.version} refreshKey={refreshKey + reloads} onRestored={changed} onStale={load} />
         </Box>
       )}
 

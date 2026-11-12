@@ -26,6 +26,7 @@ const when = (t: string | null) => (t ? ` ${new Date(t).toLocaleString()}` : '')
 export function DirectionsTab({ mapKey, refreshKey, selected, onOpenNode, onChanged }: DirectionsTabProps) {
   const [status, setStatus] = useState<DirectionStatus | ''>('')
   const [items, setItems] = useState<DirectionView[]>()
+  const [loadError, setLoadError] = useState<unknown>()
   const [error, setError] = useState<unknown>()
   const [reloads, setReloads] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -34,8 +35,8 @@ export function DirectionsTab({ mapKey, refreshKey, selected, onOpenNode, onChan
   useEffect(() => {
     let live = true
     listDirections({ map: mapKey, ...(status ? { status } : {}) }).then(
-      (d) => { if (live) setItems(d) },
-      (e: unknown) => { if (live) setError(e) },
+      (d) => { if (live) { setItems(d); setLoadError(undefined) } },
+      (e: unknown) => { if (live) setLoadError(e) },
     )
     return () => { live = false }
   }, [mapKey, status, refreshKey, reloads])
@@ -61,7 +62,7 @@ export function DirectionsTab({ mapKey, refreshKey, selected, onOpenNode, onChan
         <MenuItem value="">all</MenuItem>
         {DIRECTION_STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
       </TextField>
-      <FormError error={error instanceof Error ? error : undefined} />
+      <FormError error={[error, loadError].find((e) => e instanceof Error)} />
       {items?.length === 0 && <Typography color="text.secondary">No directions</Typography>}
       <Stack component="ul" spacing={1} sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {(items ?? []).map((d) => (

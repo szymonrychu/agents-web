@@ -19,11 +19,13 @@ export interface NodeHistoryProps {
   refreshKey: number
   /** Called after a restore saved a new version. */
   onRestored: () => void
+  /** Called when a restore answered 409, so the parent refetches the node and `rowVersion` catches up. */
+  onStale: () => void
 }
 
 type Shown = { kind: 'view'; version: VersionView } | { kind: 'diff'; before: VersionView; after: VersionView }
 
-export function NodeHistory({ nodeKey, rowVersion, refreshKey, onRestored }: NodeHistoryProps) {
+export function NodeHistory({ nodeKey, rowVersion, refreshKey, onRestored, onStale }: NodeHistoryProps) {
   const [versions, setVersions] = useState<VersionMeta[]>()
   const [shown, setShown] = useState<Shown>()
   const [error, setError] = useState<unknown>()
@@ -46,7 +48,7 @@ export function NodeHistory({ nodeKey, rowVersion, refreshKey, onRestored }: Nod
     try {
       await fn()
     } catch (e) {
-      if (conflictVersion(e) !== undefined) setStale(true)
+      if (conflictVersion(e) !== undefined) { setStale(true); onStale() }
       else setError(e)
     } finally {
       setBusy(false)

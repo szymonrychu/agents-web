@@ -12,14 +12,14 @@ const api = vi.hoisted(() => ({ getNode: vi.fn(), patchNode: vi.fn(), patchGrowt
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 
 vi.mock('./NodeHistory', () => ({
-  NodeHistory: (p: { nodeKey: string; rowVersion: number; onRestored: () => void }) => <button onClick={p.onRestored}>{`history ${p.nodeKey} row ${p.rowVersion}`}</button>,
+  NodeHistory: (p: { nodeKey: string; rowVersion: number; onRestored: () => void; onStale: () => void }) => <><button onClick={p.onRestored}>{`history ${p.nodeKey} row ${p.rowVersion}`}</button><button onClick={p.onStale}>stale</button></>,
 }))
 vi.mock('./DirectionDialog', () => ({
   DirectionDialog: (p: { mapKey: string; nodeKey?: string; onSaved: (d: unknown) => void }) => <button onClick={() => p.onSaved({})}>{`direction dialog ${p.mapKey} ${p.nodeKey}`}</button>,
 }))
 
-const mount = (onChanged = vi.fn()) =>
-  render(<ThemeProvider theme={theme}><NodePanel nodeKey="N-2" onChanged={onChanged} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>)
+const mount = (onChanged = vi.fn(), extra: { mapKey?: string; refreshKey?: number } = {}) =>
+  render(<ThemeProvider theme={theme}><NodePanel nodeKey="N-2" {...extra} onChanged={onChanged} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>)
 const user = () => userEvent.setup()
 const conflict = (current: number) => new ApiError(409, 'version_conflict', 'stale', { current_version: current })
 
@@ -114,6 +114,37 @@ describe('NodePanel', () => {
     await u.click(screen.getByRole('button', { name: 'history N-2 row 3' }))
     await waitFor(() => expect(api.getNode).toHaveBeenCalledTimes(1))
     expect(onChanged).toHaveBeenCalled()
+  })
+
+  test('a refresh during an edit keeps the base version, so Save hits a 409 instead of overwriting', async () => {
+    const u = user()
+    const panel = (refreshKey: number) => (
+      <ThemeProvider theme={theme}><NodePanel nodeKey="N-2" refreshKey={refreshKey} onChanged={() => {}} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>
+    )
+    const { rerender } = render(panel(0))
+    await u.click(await screen.findByRole('button', { name: /Edit notes/ }))
+    await u.type(screen.getByLabelText(/Change summary/), 'mine')
+    api.getNode.mockResolvedValue(nodeView({ version: 4, current_version: 4, notes: 'other writer' }))
+    api.patchNode.mockRejectedValueOnce(conflict(4))
+    rerender(panel(1))
+    await screen.findByText(/version 4/)
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.patchNode).toHaveBeenCalledWith('N-2', expect.objectContaining({ version: 3 })))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/version 4/)
+  })
+
+  test('a stale restore in the history reloads the node', async () => {
+    const u = user()
+    mount()
+    await u.click(await screen.findByRole('button', { name: 'History' }))
+    api.getNode.mockClear()
+    await u.click(screen.getByRole('button', { name: 'stale' }))
+    await waitFor(() => expect(api.getNode).toHaveBeenCalledTimes(1))
+  })
+
+  test('a node of another map shows a notice', async () => {
+    mount(vi.fn(), { mapKey: 'M-9' })
+    expect((await screen.findByText(/belongs to map M-1/))).toBeTruthy()
   })
 
   test('Send direction opens the dialog for this node and closes after it saved', async () => {

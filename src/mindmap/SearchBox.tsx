@@ -57,7 +57,7 @@ export function SearchBox({ project, onOpen }: SearchBoxProps) {
       </ToggleButtonGroup>
       <Button type="submit" size="small" variant="outlined" disabled={busy}>Search</Button>
       <FormError error={error instanceof Error ? error : undefined} />
-      {result && !result.semantic && <Alert severity="info">Results are lexical only: the embedder is unavailable.</Alert>}
+      {result && !result.semantic && mode !== 'lexical' && <Alert severity="info">Results are lexical only: the embedder is unavailable.</Alert>}
       {result && (
         <List dense disablePadding aria-label="Search results">
           {result.items.map((h) => (

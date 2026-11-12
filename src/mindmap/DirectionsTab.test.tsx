@@ -80,6 +80,16 @@ describe('DirectionsTab', () => {
     await waitFor(() => expect(api.listDirections).toHaveBeenCalledTimes(2))
   })
 
+  test('a successful reload clears an earlier list error', async () => {
+    api.listDirections.mockRejectedValueOnce(new ApiError(500, 'boom', 'list failed'))
+    const u = userEvent.setup()
+    mount()
+    expect((await screen.findByRole('alert')).textContent).toMatch(/list failed/)
+    await u.click(screen.getByRole('combobox', { name: 'State' }))
+    await u.click(await screen.findByRole('option', { name: 'open' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+
   test('a node link opens the node; the selected direction is marked', async () => {
     const u = userEvent.setup()
     mount('D-2')

@@ -12,13 +12,14 @@ import type { NodeStub } from './api'
 
 const api = vi.hoisted(() => ({ listProjects: vi.fn(), listMaps: vi.fn(), getMap: vi.fn(), getGraph: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
-vi.mock('./useMindmapStream', () => ({ useMindmapStream: () => {} }))
+const stream = vi.hoisted(() => vi.fn())
+vi.mock('./useMindmapStream', () => ({ useMindmapStream: stream }))
 vi.mock('./GraphView', () => ({
   GraphView: (p: { graph: { nodes: NodeStub[] }; onSelect: (n: NodeStub) => void }) => (
     <div>{p.graph.nodes.map((n) => <button key={n.key} onClick={() => p.onSelect(n)}>{`graph ${n.key}`}</button>)}</div>
   ),
 }))
-vi.mock('./NodePanel', () => ({ NodePanel: (p: { nodeKey: string }) => <div data-testid="node-panel">{p.nodeKey}</div> }))
+vi.mock('./NodePanel', () => ({ NodePanel: (p: { nodeKey: string; mapKey?: string }) => <div data-testid="node-panel">{p.nodeKey}</div> }))
 vi.mock('./DirectionsTab', () => ({
   DirectionsTab: (p: { mapKey: string; selected?: string | null }) => <div data-testid="directions-tab">{`${p.mapKey} ${p.selected ?? ''}`}</div>,
 }))
@@ -86,10 +87,32 @@ describe('MindmapsPage', () => {
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-3'))
   })
 
-  test('a node that is not in the graph opens no panel', async () => {
+  test('a node outside the loaded subgraph still opens its panel', async () => {
     mount('/mindmaps/M-1?node=N-99')
     await screen.findByRole('button', { name: 'graph N-1' })
-    expect(screen.queryByTestId('node-panel')).toBeNull()
+    expect((await screen.findByTestId('node-panel')).textContent).toBe('N-99')
+  })
+
+  test('the stream follows the project of the open map, not the selector', async () => {
+    api.getMap.mockResolvedValue(mapView({ project: 'other' }))
+    mount('/mindmaps/M-1')
+    await screen.findByRole('button', { name: 'graph N-1' })
+    expect(stream.mock.calls.at(-1)?.[0]).toBe('other')
+  })
+
+  test('a stale map response after a fast switch is ignored', async () => {
+    let resolveOld: (v: unknown) => void = () => {}
+    api.getMap.mockImplementation((k: string) => (k === 'M-1' ? new Promise((r) => { resolveOld = r }) : Promise.resolve(mapView({ key: 'M-2', title: 'Second map' }))))
+    api.getGraph.mockImplementation((k: string) => (k === 'M-1' ? Promise.resolve(subgraph()) : Promise.resolve(subgraph({ nodes: [{ ...subgraph().nodes[0], key: 'N-9', map: 'M-2' }] }))))
+    api.listMaps.mockResolvedValue([mapView(), mapView({ key: 'M-2', title: 'Second map' })])
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1')
+    await u.click(await screen.findByRole('link', { name: /Second map/ }))
+    await screen.findByRole('button', { name: 'graph N-9' })
+    resolveOld(mapView())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(screen.getByRole('button', { name: 'graph N-9' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'graph N-1' })).toBeNull()
   })
 
   test('?direction= opens the directions tab with that direction selected', async () => {

@@ -52,7 +52,7 @@ export function MindmapsPage() {
   const reload = useCallback(() => setRefresh((n) => n + 1), [])
   const enabled = mindmapEnabled()
 
-  useMindmapStream(enabled ? project : null, reload)
+  useMindmapStream(enabled ? (map?.project ?? project) : null, reload)
 
   useEffect(() => {
     if (!enabled) return
@@ -64,7 +64,12 @@ export function MindmapsPage() {
   }, [enabled, project, refresh])
   useEffect(() => {
     if (!enabled || !mapKey) return
-    Promise.all([getMap(mapKey), getGraph(mapKey)]).then(([m, g]) => { setMap(m); setGraph(g); setError(undefined) }, setError)
+    let live = true
+    Promise.all([getMap(mapKey), getGraph(mapKey)]).then(
+      ([m, g]) => { if (live) { setMap(m); setGraph(g); setError(undefined) } },
+      (e: unknown) => { if (live) setError(e) },
+    )
+    return () => { live = false }
   }, [enabled, mapKey, refresh])
 
   const select = (n: NodeStub) => navigate(mapPath(n.map, { node: n.key }))
@@ -144,11 +149,13 @@ export function MindmapsPage() {
           )}
         </Paper>
 
-        {selectedNode && (
+        {nodeKey && (
           <Paper variant="outlined" component="aside" aria-label="Node" sx={{ width: { md: 380 }, flexShrink: 0, p: 2, overflow: 'auto' }}>
             <NodePanel
-              key={selectedNode}
-              nodeKey={selectedNode}
+              key={nodeKey}
+              nodeKey={nodeKey}
+              mapKey={mapKey}
+              onOpenMap={(m, k) => navigate(mapPath(m, { node: k }))}
               refreshKey={refresh}
               onChanged={reload}
               onDeleted={() => { navigate(mapPath(mapKey)); reload() }}

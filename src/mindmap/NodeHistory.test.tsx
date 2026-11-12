@@ -17,11 +17,13 @@ vi.mock('../specs/VersionDiff', () => ({
 }))
 
 const onRestored = vi.fn()
-const mount = () => render(<ThemeProvider theme={theme}><NodeHistory nodeKey="N-2" rowVersion={7} refreshKey={0} onRestored={onRestored} /></ThemeProvider>)
+const onStale = vi.fn()
+const mount = () => render(<ThemeProvider theme={theme}><NodeHistory nodeKey="N-2" rowVersion={7} refreshKey={0} onRestored={onRestored} onStale={onStale} /></ThemeProvider>)
 
 beforeEach(() => {
   for (const m of Object.values(api)) m.mockReset()
   onRestored.mockReset()
+  onStale.mockReset()
   api.listVersions.mockResolvedValue([versionMeta(3, { author: 'agent', summary: 'third' }), versionMeta(2), versionMeta(1)])
   api.getVersion.mockImplementation(async (_k: string, v: number) => versionView(v))
   api.patchNode.mockResolvedValue(nodeView({ version: 8 }))
@@ -74,5 +76,6 @@ describe('NodeHistory', () => {
     await u.click(await screen.findByRole('button', { name: 'Restore v2' }))
     expect((await screen.findByRole('alert')).textContent).toMatch(/changed meanwhile/)
     expect(onRestored).not.toHaveBeenCalled()
+    expect(onStale).toHaveBeenCalledTimes(1)
   })
 })
