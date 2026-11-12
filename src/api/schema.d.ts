@@ -326,6 +326,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/presets/{ref}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant Preset Project
+         * @description File a grant of an extra project to a preset as a `preset_projects` proposal; sessions
+         *     created from the preset after the approval get it.
+         */
+        post: operations["grant_preset_project_agent_v1_admin_presets__ref__projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/presets/{ref}/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Preset Project
+         * @description Remove an extra project from a preset at once; running sessions keep theirs (revoke those
+         *     on each session). 404 when the project is not one of its extra projects.
+         */
+        delete: operations["revoke_preset_project_agent_v1_admin_presets__ref__projects__project__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/presets/{ref}/vault/{entry_id}": {
         parameters: {
             query?: never;
@@ -667,6 +709,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/sessions/{slug}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant Session Project
+         * @description File a grant of an extra project to a session as a `session_projects` proposal; the
+         *     session gets full membership in that project once the user approves it (no restart). 200
+         *     with the first proposal on a `client_key` replay.
+         */
+        post: operations["grant_session_project_agent_v1_admin_sessions__slug__projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Session Project
+         * @description Remove an extra project from a session at once (toward safe, the superleader's alone);
+         *     the session gets a notice. 404 when the project is not one of its extra projects.
+         */
+        delete: operations["revoke_session_project_agent_v1_admin_sessions__slug__projects__project__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/sessions/{slug}/restart": {
         parameters: {
             query?: never;
@@ -719,7 +804,8 @@ export interface paths {
         };
         /**
          * GET vault entries
-         * @description The vault entries in the caller's project scope and the env names to re-attach.
+         * @description The vault entries of the caller's projects (home and extra) and the env names to
+         *     re-attach.
          */
         get: operations["admin_vault_list"];
         put?: never;
@@ -919,6 +1005,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/chat/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The notes of the room bound to the caller's session (leader only) */
+        get: operations["notes_get_agent_v1_chat_notes_get"];
+        /** Replace the notes of the room bound to the caller's session (leader only) */
+        put: operations["notes_put_agent_v1_chat_notes_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/chat/reactions": {
         parameters: {
             query?: never;
@@ -948,6 +1052,42 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The skills of the room bound to the caller's session, no bodies (leader only) */
+        get: operations["skills_list_agent_v1_chat_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/skills/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One skill of the room bound to the caller's session (leader only) */
+        get: operations["skill_get_agent_v1_chat_skills__name__get"];
+        /** Create or replace a skill of the room bound to the caller's session (leader only) */
+        put: operations["skill_put_agent_v1_chat_skills__name__put"];
+        post?: never;
+        /** Delete a skill of the room bound to the caller's session (leader only) */
+        delete: operations["skill_delete_agent_v1_chat_skills__name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1148,9 +1288,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The caller's project, or every active project for a superleader
-         * @description Scope `project` (projects plan 3.3): the caller's own project, archived or not; a
-         *     superleader session gets every active project. No counts, as on the service port.
+         * The caller's projects, or every active project for a superleader
+         * @description Scope `project` (projects plan 3.3): the caller's own projects, home first then its extra
+         *     projects (T-120), archived or not; a superleader session gets every active project. No
+         *     counts, as on the service port.
          */
         get: operations["projects_agent_v1_projects_get"];
         put?: never;
@@ -1209,7 +1350,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Sessions the caller may message (superleaders, own project; all for a superleader) */
+        /** Sessions the caller may message (superleaders, own projects; all for a superleader) */
         get: operations["sessions_list_agent_v1_sessions_get"];
         put?: never;
         post?: never;
@@ -1666,6 +1807,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/presets/{preset_id}/extra-projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Preset Extra Projects
+         * @description The human sets a preset's extra projects directly; sessions created from it afterwards
+         *     get them, running sessions keep theirs.
+         */
+        put: operations["put_preset_extra_projects_api_v1_presets__preset_id__extra_projects_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -1931,6 +2093,27 @@ export interface paths {
         /** Stream Events */
         get: operations["stream_events_api_v1_sessions__session_id__events_stream_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/extra-projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Session Extra Projects
+         * @description The human sets a live session's extra projects directly; the change applies on the next
+         *     request (no restart) and the session gets a notice per added or removed project.
+         */
+        put: operations["put_session_extra_projects_api_v1_sessions__session_id__extra_projects_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2769,6 +2952,14 @@ export interface components {
             /** Next After Id */
             next_after_id: number | null;
         };
+        /**
+         * ExtraProjectsIn
+         * @description The human's direct set of a session's or preset's extra projects (main port, T-120).
+         */
+        ExtraProjectsIn: {
+            /** Extra Projects */
+            extra_projects: string[];
+        };
         /** FileContent */
         FileContent: {
             /**
@@ -3078,6 +3269,11 @@ export interface components {
             agent_id: string;
             /** Epoch */
             epoch: number | null;
+            /**
+             * Extra Projects
+             * @default []
+             */
+            extra_projects: string[];
             /** Leader */
             leader: string | null;
             /** Leader State */
@@ -3092,7 +3288,11 @@ export interface components {
             pod_name: string;
             /** Project */
             project: string;
-            project_room?: components["schemas"]["ProjectRoom"] | null;
+            /**
+             * Project Rooms
+             * @default []
+             */
+            project_rooms: components["schemas"]["ProjectRoom"][];
             /** Projects Scope */
             projects_scope: string;
             /**
@@ -3176,7 +3376,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant") | null;
             /**
              * Session Id
              * Format: uuid
@@ -3482,6 +3682,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Extra Projects
+             * @default []
+             */
+            extra_projects: string[];
+            /**
              * Id
              * Format: uuid
              */
@@ -3538,6 +3743,19 @@ export interface components {
             rendered: string | null;
             /** Variables */
             variables: string[];
+        };
+        /**
+         * ProjectGrantIn
+         * @description A superleader's request to add an extra project to a session or preset (T-120): filed
+         *     as a change proposal the human reviews.
+         */
+        ProjectGrantIn: {
+            /** Client Key */
+            client_key?: string | null;
+            /** Project */
+            project: string;
+            /** Reason */
+            reason: string;
         };
         /** ProjectIn */
         ProjectIn: {
@@ -3742,7 +3960,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "preset" | "schedule" | "session";
+            kind: "preset" | "schedule" | "session" | "session_projects" | "preset_projects";
             /** Proposer Slug */
             proposer_slug: string;
             /** Proposer Superleader */
@@ -4149,6 +4367,11 @@ export interface components {
              * @enum {string}
              */
             desired: "active" | "deleting";
+            /**
+             * Extra Projects
+             * @default []
+             */
+            extra_projects: string[];
             /** Generation */
             generation: number;
             /** Hive */
@@ -4396,6 +4619,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Extra Projects
+             * @default []
+             */
+            extra_projects: string[];
             /**
              * Id
              * Format: uuid
@@ -5305,6 +5533,79 @@ export interface operations {
             };
         };
     };
+    grant_preset_project_agent_v1_admin_presets__ref__projects_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectGrantIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_preset_project_agent_v1_admin_presets__ref__projects__project__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     attach_vault_agent_v1_admin_presets__ref__vault__entry_id__put: {
         parameters: {
             query?: never;
@@ -6113,6 +6414,79 @@ export interface operations {
             };
         };
     };
+    grant_session_project_agent_v1_admin_sessions__slug__projects_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectGrantIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_session_project_agent_v1_admin_sessions__slug__projects__project__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     restart_session_agent_v1_admin_sessions__slug__restart_post: {
         parameters: {
             query?: never;
@@ -6599,7 +6973,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description payload_too_large: the body exceeds 256 KiB */
+            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -6679,6 +7053,128 @@ export interface operations {
             };
         };
     };
+    notes_get_agent_v1_chat_notes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    notes_put_agent_v1_chat_notes_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Body */
+                    body: string;
+                    /** Expected Version */
+                    expected_version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     send_reaction_agent_v1_chat_reactions_post: {
         parameters: {
             query?: never;
@@ -6723,7 +7219,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description payload_too_large: the body exceeds 256 KiB */
+            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -6756,6 +7252,242 @@ export interface operations {
                 "x-orch-session"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    skills_list_agent_v1_chat_skills_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    skill_get_agent_v1_chat_skills__name__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    skill_put_agent_v1_chat_skills__name__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Body */
+                    body: string;
+                    /** Description */
+                    description: string;
+                    /** Expected Version */
+                    expected_version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The chat upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) or not_leader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description chat_unconfigured or chat_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    skill_delete_agent_v1_chat_skills__name__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -9308,6 +10040,41 @@ export interface operations {
             };
         };
     };
+    put_preset_extra_projects_api_v1_presets__preset_id__extra_projects_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtraProjectsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_projects_api_v1_projects_get: {
         parameters: {
             query?: {
@@ -9895,6 +10662,41 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_session_extra_projects_api_v1_sessions__session_id__extra_projects_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtraProjectsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
             /** @description Validation Error */
