@@ -14,7 +14,7 @@ describe('toDoc', () => {
   })
 
   it('structured values are sorted YAML', () => {
-    expect(toDoc({ b: 1, a: 2 })).toBe('a: 2\nb: 1\n')
+    expect(toDoc({ b: 1, a: 2 })).toBe('a: 2\nb: 1')
   })
 
   it('text mode keeps strings only', () => {
@@ -35,7 +35,7 @@ describe('initScriptsDoc', () => {
   })
 
   it('other values fall back to toDoc', () => {
-    expect(initScriptsDoc({ a: 1 })).toBe('a: 1\n')
+    expect(initScriptsDoc({ a: 1 })).toBe('a: 1')
   })
 })
 

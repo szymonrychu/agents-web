@@ -144,7 +144,7 @@ export function ProposalReviewDialog({ proposal, onClose, onChanged, onOpenSched
         <FormError error={error as Error | null} />
         {items.map((i) => (
           <ItemCard
-            key={i.path}
+            key={`${view.revision}:${i.path}`}
             item={i}
             entries={byId}
             kind={view.kind}

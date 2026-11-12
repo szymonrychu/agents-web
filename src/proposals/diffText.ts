@@ -4,7 +4,8 @@ import type { ProposalView } from './api'
 
 export const isStructured = (v: unknown): boolean => typeof v === 'object' && v !== null
 
-export const toYaml = (v: unknown): string => stringify(v, { sortMapEntries: true })
+/** Sorted YAML without its final newline: that newline ends the last line, it does not start an empty one in the pane. */
+export const toYaml = (v: unknown): string => stringify(v, { sortMapEntries: true }).replace(/\n$/, '')
 
 /**
  * The diff doc of a value. `text`: strings as raw multi-line text, anything else empty. Otherwise objects and arrays

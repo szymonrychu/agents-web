@@ -7,7 +7,7 @@ export interface DiffCounts {
   removed: number
 }
 
-const lineCount = (s: string): number => (s === '' ? 0 : s.split('\n').length)
+const lineCount = (s: string): number => (s === '' ? 0 : s.replace(/\n$/, '').split('\n').length)
 
 export function diffCounts(a: string, b: string): DiffCounts {
   if (a === '' || b === '') return { added: lineCount(b), removed: lineCount(a) }

@@ -13,6 +13,12 @@ describe('diffCounts', () => {
     expect(diffCounts('x', '')).toEqual({ added: 0, removed: 1 })
   })
 
+  it('a trailing newline of a YAML doc is not a line', () => {
+    expect(diffCounts('', 'a: 1\n')).toEqual({ added: 1, removed: 0 })
+    expect(diffCounts('a: 1\n', '')).toEqual({ added: 0, removed: 1 })
+    expect(diffCounts('', 'a: 1\nb: 2\n')).toEqual({ added: 2, removed: 0 })
+  })
+
   it('equal texts count nothing', () => {
     expect(diffCounts('same\ntext', 'same\ntext')).toEqual({ added: 0, removed: 0 })
   })

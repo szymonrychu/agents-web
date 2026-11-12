@@ -267,6 +267,18 @@ describe('ProposalReviewDialog', () => {
     expect(within(card('model')).getByRole('button', { name: 'Expand model' })).toBeTruthy()
   })
 
+  it('a new revision arriving in the open dialog resets the viewed and collapsed state', async () => {
+    api.reviewProposal.mockRejectedValue(new ApiError(409, 'revision_changed', 'nope'))
+    api.getProposal.mockResolvedValue(proposal({ revision: 3, revisions: [...proposal().revisions, { ...proposal().revisions[1], revision: 3 }] }))
+    mount()
+    await userEvent.click(within(card('model')).getByRole('checkbox', { name: 'Viewed' }))
+    expect(within(card('model')).getByRole('button', { name: 'Expand model' })).toBeTruthy()
+    await click('Approve all')
+    await click('Submit review')
+    await waitFor(() => expect(within(card('model')).getByRole('checkbox', { name: 'Viewed' })).toHaveProperty('checked', false))
+    expect(within(card('model')).queryByRole('button', { name: 'Expand model' })).toBeNull()
+  })
+
   it('the project grant item renders as one added line', () => {
     mount()
     expect(within(card('projects.alpha')).getByTestId('grant-line').textContent).toBe('+ projects.alpha')
