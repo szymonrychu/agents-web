@@ -17,6 +17,7 @@ import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { FormError, PresetSelect } from '../triggers'
 import { addRule, deleteRule, getRoom, listRules, setRoomSettings } from './api'
 import type { RoomDetail, RuleView } from './api'
+import { formatAliases, parseAliases } from './aliases'
 import { RoomMessages } from './RoomMessages'
 import { AccessChip } from './RoomsTable'
 
@@ -45,6 +46,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const [trigger, setTrigger] = useState('')
   const [mayInitiate, setMayInitiate] = useState(false)
   const [anonymize, setAnonymize] = useState(false)
+  const [aliasesText, setAliasesText] = useState('')
   const [error, setError] = useState<Error>()
   const [pending, setPending] = useState<Pending | null>(null)
   const [reload, setReload] = useState(0)
@@ -58,6 +60,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
       setTrigger(r.trigger ?? '')
       setMayInitiate(r.agents_may_initiate)
       setAnonymize(r.anonymize_names)
+      setAliasesText(formatAliases(r.agent_aliases))
     }, (e: unknown) => !cancelled && setError(e instanceof Error ? e : new Error(String(e))))
     return () => { cancelled = true }
   }, [roomId])
@@ -82,8 +85,9 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
   const save = async () => {
     setError(undefined)
     try {
-      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate, anonymize_names: anonymize })
+      const updated = await setRoomSettings(roomId, { preset_id: preset || null, trigger: (trigger || null) as 'all' | 'mention' | null, agents_may_initiate: mayInitiate, anonymize_names: anonymize, agent_aliases: parseAliases(aliasesText) })
       setRoom(updated)
+      setAliasesText(formatAliases(updated.agent_aliases))
       onChanged()
     } catch (e) {
       fail(e)
@@ -139,6 +143,14 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               <MenuItem value="all">All messages</MenuItem>
               <MenuItem value="mention">Only when mentioned</MenuItem>
             </TextField>
+            <TextField
+              size="small"
+              label="Agent aliases"
+              value={aliasesText}
+              onChange={(e) => setAliasesText(e.target.value)}
+              fullWidth
+              helperText="Comma-separated names people use to call the agent here, e.g. bot. Matched as whole words; the bot's own tag and replies to it always work."
+            />
             <FormControlLabel control={<Switch checked={mayInitiate} onChange={(e) => setMayInitiate(e.target.checked)} />} label="Agents may start chats" />
             <FormControlLabel control={<Switch checked={anonymize} onChange={(e) => setAnonymize(e.target.checked)} />} label="Anonymize names" />
             <Typography variant="caption" color="text.secondary">Senders are shown to the agent as user-&lt;hash&gt; / admin-&lt;hash&gt;.</Typography>

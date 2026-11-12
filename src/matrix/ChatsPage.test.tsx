@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { MessageView, RoomDetail, RoomView } from './api'
 import { ChatsPage } from './ChatsPage'
@@ -19,7 +20,7 @@ const room = (id: string, over: Partial<RoomView> = {}): RoomView => ({
   room_id: id, alias: null, name: `Room ${id}`, kind: 'dm', membership: 'join', encrypted: false, message_request: false,
   member_count: 2, access: { state: 'default', reason: 'default policy', rule_id: null }, preset_id: null, trigger: null,
   pending: { allowed: true, denied_count: 0, denied_senders: [], invited: false, inviter: null, last_denied_at: null, message_request: false },
-  effective_preset_id: null, effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, agents_may_initiate: false, anonymize_names: false, binding: null, ...over,
+  effective_preset_id: null, effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], binding: null, ...over,
 })
 const detail = (r: RoomView): RoomDetail => ({
   ...r,
@@ -120,14 +121,14 @@ describe('ChatsPage', () => {
     await user.click(screen.getByRole('option', { name: 'Only when mentioned' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention', agents_may_initiate: false, anonymize_names: false })
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
     expect(within(drawer).getByText(/validation_error: bad preset/)).toBeTruthy()
     api.setRoomSettings.mockResolvedValueOnce(detail(rooms[0]))
     await user.click(within(drawer).getByRole('combobox', { name: 'Preset' }))
     await user.click(screen.getByRole('option', { name: 'Default preset' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
   })
 
   test('saves agents may start chats with the preset and trigger in one call', async () => {
@@ -148,7 +149,7 @@ describe('ChatsPage', () => {
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
     expect(api.setRoomSettings).toHaveBeenCalledTimes(1)
-    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false })
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
   })
 
   test('loads and saves the anonymize names toggle, true and false', async () => {
@@ -167,14 +168,54 @@ describe('ChatsPage', () => {
     expect(toggle.checked).toBe(true)
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: true })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: true, agent_aliases: [] })
     expect(toggle.checked).toBe(true)
     api.setRoomSettings.mockResolvedValue(detail({ ...rooms[0], anonymize_names: false }))
     await user.click(toggle)
     expect(toggle.checked).toBe(false)
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+  })
+
+  test('loads, edits, saves and clears agent aliases', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    rooms[0] = { ...rooms[0], agent_aliases: ['bot', 'Agent'] }
+    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: ['bot', 'helper'] }))
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    const field = within(drawer).getByRole('textbox', { name: 'Agent aliases' }) as HTMLInputElement
+    expect(field.value).toBe('bot, Agent')
+    expect(within(drawer).getByText("Comma-separated names people use to call the agent here, e.g. bot. Matched as whole words; the bot's own tag and replies to it always work.")).toBeTruthy()
+    await user.clear(field)
+    await user.type(field, 'bot, helper')
+    await user.click(within(drawer).getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: ['bot', 'helper'] })
+    expect(field.value).toBe('bot, helper')
+    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: [] }))
+    await user.clear(field)
+    await user.click(within(drawer).getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(field.value).toBe('')
+  })
+
+  test('shows the server error for an invalid alias', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    api.setRoomSettings.mockRejectedValueOnce(new ApiError(422, 'invalid_request', 'alias too long'))
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    await user.type(within(drawer).getByRole('textbox', { name: 'Agent aliases' }), 'x')
+    await user.click(within(drawer).getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(within(drawer).getByText(/invalid_request: alias too long/)).toBeTruthy()
   })
 
   test('shows the anonymize names toggle on for an anonymized room', async () => {
