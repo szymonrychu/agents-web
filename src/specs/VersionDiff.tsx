@@ -30,7 +30,7 @@ export function VersionDiff({ before, after, beforeLabel, afterLabel }: VersionD
       </Box>
       {mode === 'diff' ? (
         <Suspense fallback={<Skeleton variant="rectangular" height={120} />}>
-          <ValueDiff key={`${beforeLabel}|${afterLabel}`} before={before} after={after} text />
+          <ValueDiff key={`${beforeLabel}|${afterLabel}`} before={before} after={after} text labels={[beforeLabel, afterLabel]} />
         </Suspense>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>

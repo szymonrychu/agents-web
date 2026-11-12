@@ -1,83 +1,126 @@
 /**
- * Read-only side-by-side diff of two values. Scalars render as a two-column text row; objects and arrays render as
- * sorted YAML in a CodeMirror MergeView (a-b, unchanged runs collapsed, no revert controls). Default export so callers
- * can load it with `React.lazy`, keeping CodeMirror out of the main chunk.
+ * Read-only diff of two values, GitHub "Files changed" style. Every value becomes a doc (`toDoc`): from md up a
+ * CodeMirror MergeView side by side (a-b, captions above the panes), below md one editor with `unifiedMergeView`
+ * (removed lines above added ones). Unchanged runs collapse unless `expanded`; no revert or merge controls. Colours
+ * follow the MUI palette mode. Default export so callers load it with `React.lazy`, keeping CodeMirror out of the
+ * main chunk.
  */
-import { MergeView } from '@codemirror/merge'
+import { MergeView, unifiedMergeView } from '@codemirror/merge'
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import Box from '@mui/material/Box'
-import { useLayoutEffect, useRef, type JSX } from 'react'
-import { editorAppearance } from '../editor/highlight'
-import { isStructured, toDoc } from './diffText'
+import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useEffect, useLayoutEffect, useRef, type JSX } from 'react'
+import { diffAppearance } from '../editor/diffTheme'
+import type { DiffMode } from '../theme'
+import { diffCounts, type DiffCounts } from './diffCounts'
+import { toDoc } from './diffText'
 
 export interface ValueDiffProps {
   before: unknown
   after: unknown
-  /** Strings diff as raw multi-line text (a schedule prompt) instead of YAML. */
+  /** Strings diff as raw multi-line text (a prompt) instead of YAML. */
   text?: boolean
+  /** Names of the two sides, captions of the panes and labels of the editors. */
+  labels?: readonly [string, string]
+  /** Show every line: unchanged runs are not collapsed. */
+  expanded?: boolean
+  /** Called with the +N -M line counts whenever the compared docs change. */
+  onCounts?: (c: DiffCounts) => void
 }
 
-const scalarText = (v: unknown): string => (typeof v === 'string' ? v : v === undefined ? '' : JSON.stringify(v))
+const DEFAULT_LABELS = ['Current', 'Proposed'] as const
+const COLLAPSE = { margin: 3 }
 
-const sideExtensions: Extension = [
+const sideExtensions = (mode: DiffMode, label: string): Extension => [
   lineNumbers(),
   EditorState.readOnly.of(true),
   EditorView.editable.of(false),
   EditorView.lineWrapping,
-  editorAppearance,
+  diffAppearance(mode),
+  EditorView.contentAttributes.of({ 'aria-label': label }),
 ]
 
-function MergeDiff({ before, after, text }: ValueDiffProps): JSX.Element {
+export default function ValueDiff({ before, after, text, labels = DEFAULT_LABELS, expanded = false, onCounts }: ValueDiffProps): JSX.Element {
+  const theme = useTheme()
+  const narrow = useMediaQuery(theme.breakpoints.down('md'))
+  const mode: DiffMode = theme.palette.mode
   const host = useRef<HTMLDivElement>(null)
-  // the docs, not the props, key the effect: an object prop with a new identity but equal content must not rebuild
+  // the docs, not the props, key the effects: an object prop with a new identity but equal content must not rebuild
   const docA = toDoc(before, text)
   const docB = toDoc(after, text)
+  const [labelA, labelB] = labels
 
-  // rebuilt whenever the compared texts change, so content and measured line heights never go stale
+  // the latest callback, so a new function identity neither rebuilds the view nor re-reports
+  const countsRef = useRef(onCounts)
   useLayoutEffect(() => {
-    const view = new MergeView({
-      parent: host.current ?? undefined,
-      a: { doc: docA, extensions: sideExtensions },
-      b: { doc: docB, extensions: sideExtensions },
-      orientation: 'a-b',
-      collapseUnchanged: { margin: 3 },
-    })
+    countsRef.current = onCounts
+  })
+  useEffect(() => {
+    countsRef.current?.(diffCounts(docA, docB))
+  }, [docA, docB])
+
+  // rebuilt whenever the compared texts, the layout, the expansion or the palette mode change
+  useLayoutEffect(() => {
+    const parent = host.current ?? undefined
+    let views: EditorView[]
+    let destroy: () => void
+    if (narrow) {
+      const view = new EditorView({
+        parent,
+        doc: docB,
+        extensions: [
+          sideExtensions(mode, `${labelA} to ${labelB}`),
+          unifiedMergeView({ original: docA, mergeControls: false, gutter: true, ...(expanded ? {} : { collapseUnchanged: COLLAPSE }) }),
+        ],
+      })
+      views = [view]
+      destroy = () => view.destroy()
+    } else {
+      const merge = new MergeView({
+        parent,
+        a: { doc: docA, extensions: sideExtensions(mode, labelA) },
+        b: { doc: docB, extensions: sideExtensions(mode, labelB) },
+        orientation: 'a-b',
+        gutter: true,
+        ...(expanded ? {} : { collapseUnchanged: COLLAPSE }),
+      })
+      views = [merge.a, merge.b]
+      destroy = () => merge.destroy()
+    }
     // wrapped lines change height with the host width: re-measure on resize
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => { view.a.requestMeasure(); view.b.requestMeasure() })
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => views.forEach((v) => v.requestMeasure()))
     if (observer && host.current) observer.observe(host.current)
     return () => {
       observer?.disconnect()
-      view.destroy()
+      destroy()
     }
-  }, [docA, docB])
+  }, [docA, docB, narrow, expanded, mode, labelA, labelB])
 
   return (
-    <Box
-      ref={host}
-      data-testid="value-diff-merge"
-      sx={{
-        height: 360,
-        overflow: 'auto',
-        // below md the two columns stack; .cm-mergeView stays a block so the editors row spans its full width
-        // editors size to their content (highlight.ts gives them height:100%, which overlaps wrapped lines in a fixed host); the host scrolls
-        '& .cm-editor': { height: 'auto' },
-        '& .cm-mergeViewEditors': { flexDirection: { xs: 'column', md: 'row' } },
-      }}
-    />
-  )
-}
-
-export default function ValueDiff({ before, after, text }: ValueDiffProps): JSX.Element {
-  if (text || isStructured(before) || isStructured(after)) return <MergeDiff before={before} after={after} text={text} />
-  return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1, fontFamily: 'monospace' }}>
-      <Box data-testid="value-diff-before" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-        {scalarText(before)}
-      </Box>
-      <Box data-testid="value-diff-after" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-        {scalarText(after)}
-      </Box>
+    <Box>
+      {!narrow && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            {labelA}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {labelB}
+          </Typography>
+        </Box>
+      )}
+      <Box
+        ref={host}
+        data-testid={narrow ? 'value-diff-unified' : 'value-diff-merge'}
+        sx={{
+          maxHeight: '60vh',
+          overflow: 'auto',
+          // editors size to their content (highlight.ts gives them height:100%); the host scrolls past the max
+          '& .cm-editor': { height: 'auto' },
+        }}
+      />
     </Box>
   )
 }
