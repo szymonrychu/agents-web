@@ -15,6 +15,7 @@ import type { SessionView } from './api/client'
 import { TopBar } from './layout/TopBar'
 import { Workspace } from './layout/Workspace'
 import { sortedAgents, useSessions } from './ribbon/useSessions'
+import { lastTalkedSuperleader, orderSessions } from './ribbon/orderSessions'
 import { menuEntries } from './backends/registry'
 import { getConfig } from './config/backends'
 import { TerminalPanel } from './terminal/TerminalPanel'
@@ -24,10 +25,23 @@ import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
 
+const EMPTY: ReadonlySet<string> = new Set()
+
 export const APP_NAME = 'Agent Orchestrator';
 
 function SessionsShell() {
-  const { state, sessions, select, dismiss, update } = useSessions(useProject().project)
+  const { state, sessions: alphabetical, select, dismiss, update } = useSessions(useProject().project)
+  // The tab order is derived on every render (pins over the alphabetical list) and never stored.
+  const lastTalkedId = useMemo(() => lastTalkedSuperleader(alphabetical), [alphabetical])
+  const sessions = useMemo(() => orderSessions(alphabetical, { lastTalkedId, attentionIds: EMPTY }), [alphabetical, lastTalkedId])
+  // The first tab is latched as the selection once sessions load, and again when the chosen one disappears
+  // (the reducer clears a selection whose session is gone, and keeps one made before its session arrives);
+  // a later reorder never moves it. Declared before the `?session=` effect so an explicit choice made in the
+  // same commit wins. The render falls back to the first tab for the first frame.
+  const firstId = sessions[0]?.session.id ?? null
+  useEffect(() => {
+    if (state.loaded && firstId !== null && state.selectedId === null) select(firstId)
+  }, [state.loaded, state.selectedId, firstId, select])
   // `/?session=<id>` (the Tasks page links waiting sessions this way) selects that session once it is known, once.
   const wanted = useSearchParams()[0].get('session')
   const applied = useRef<string | null>(null)
@@ -51,7 +65,6 @@ function SessionsShell() {
     if (proposal) return false
     setProposal(p)
   }
-  // The first session by slug is selected until a tab is chosen, and again when the chosen one disappears.
   const selectedId = state.selectedId !== null && state.selectedId in state.sessions ? state.selectedId : (sessions[0]?.session.id ?? null)
   const selected = selectedId === null ? null : state.sessions[selectedId]
   const config = getConfig()

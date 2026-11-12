@@ -162,6 +162,13 @@ describe('TopBar', () => {
     expect(onSelect).toHaveBeenCalledWith('c1')
   })
 
+  test('hamburger_lists_sessions_in_given_order', () => {
+    setup({ sessions: [SESSIONS[1], SESSIONS[0]] })
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    const items = within(screen.getByRole('list', { name: 'Sessions' })).getAllByRole('button')
+    expect(items.map((i) => i.textContent)).toEqual(['bravo', 'alpha'])
+  })
+
   test('hamburger_choosing_session_closes_drawer', async () => {
     setup()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))

@@ -32,7 +32,7 @@ import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
 
 export interface TopBarProps {
-  /** Sessions in display order (the caller passes `sortedSessions`). */
+  /** Sessions in display order, already derived by the caller (pins over the alphabetical list); never re-sorted here. */
   sessions: SessionEntry[]
   selectedId: string | null
   onSelect: (id: string) => void

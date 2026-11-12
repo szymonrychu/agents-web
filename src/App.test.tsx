@@ -160,6 +160,37 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /Proposals, \d+ waiting/, hidden: true })).toBeNull())
   })
 
+  test('last_talked_superleader_tab_is_first', async () => {
+    const zulu = { ...session('c3', 'zulu'), spec: { session_messaging: true }, last_user_message_at: '2026-05-01T10:00:00Z' } as SessionView
+    api.listSessions.mockResolvedValue([session('c2', 'beta'), session('c1', 'alpha'), zulu])
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(3))
+    expect(tabs().map((t) => /^(zulu|alpha|beta)/.exec(t.textContent ?? '')?.[1])).toEqual(['zulu', 'alpha', 'beta'])
+  })
+
+  test('default_selection_does_not_jump_when_pins_change', async () => {
+    const gamma = { ...session('c3', 'gamma'), spec: { session_messaging: true } } as SessionView
+    api.listSessions.mockResolvedValue([session('c2', 'beta'), session('c1', 'alpha'), gamma])
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(3))
+    expect(selectedTab()?.textContent).toContain('alpha')
+    emit('session_status', { session: { ...gamma, last_user_message_at: '2026-05-01T10:00:00Z' } })
+    await waitFor(() => expect(tabs()[0].textContent).toContain('gamma'))
+    expect(tabs().map((t) => /^(gamma|alpha|beta)/.exec(t.textContent ?? '')?.[1])).toEqual(['gamma', 'alpha', 'beta'])
+    expect(selectedTab()?.textContent).toContain('alpha')
+  })
+
+  test('pin_moves_when_the_pinned_superleader_is_discarded', async () => {
+    const lead = (id: string, slug: string, at: string) => ({ ...session(id, slug), spec: { session_messaging: true }, last_user_message_at: at }) as SessionView
+    api.listSessions.mockResolvedValue([lead('c1', 'alpha', '2026-05-01T10:00:00Z'), lead('c2', 'beta', '2026-05-02T10:00:00Z'), session('c3', 'gamma')])
+    mount()
+    await waitFor(() => expect(tabs()).toHaveLength(3))
+    const names = () => tabs().map((t) => /^(alpha|beta|gamma)/.exec(t.textContent ?? '')?.[1])
+    expect(names()).toEqual(['beta', 'alpha', 'gamma'])
+    emit('session_removed', { session_id: 'c2' })
+    await waitFor(() => expect(names()).toEqual(['alpha', 'beta', 'gamma']))
+  })
+
   test('top_bar_replaces_ribbon', async () => {
     mount()
     await waitFor(() => expect(tabs()).toHaveLength(2))
