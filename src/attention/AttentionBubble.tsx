@@ -17,7 +17,7 @@ export function AttentionBubble({ slug, attention, onOpen }: AttentionBubbleProp
       size="small"
       component="span"
       role="button"
-      aria-label={n > 0 ? `${n} open decisions for ${slug}` : `${slug} is waiting for input`}
+      aria-label={n > 0 ? `${n} open ${n === 1 ? 'decision' : 'decisions'} for ${slug}` : `${slug} is waiting for input`}
       // Tab fires onChange before a child's onClick and ignores preventDefault: only stopPropagation keeps the tab as it is.
       onClick={(e) => {
         e.stopPropagation()

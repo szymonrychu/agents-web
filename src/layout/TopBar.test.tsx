@@ -139,7 +139,7 @@ describe('TopBar', () => {
 
   test('bubble has an accessible name with count and slug', () => {
     setup({ attention: new Map([['c2', { decisions: 1, tasks: [], prompt: false }]]) })
-    expect(within(screen.getAllByRole('tab')[1]).getByRole('button', { name: '1 open decisions for bravo' })).toBeTruthy()
+    expect(within(screen.getAllByRole('tab')[1]).getByRole('button', { name: '1 open decision for bravo' })).toBeTruthy()
   })
 
   test('session header links to tasks filtered by session', () => {

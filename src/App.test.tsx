@@ -213,7 +213,7 @@ describe('App', () => {
     test('attention_session_pinned_after_last_talked_and_restored', async () => {
       mount()
       await waitFor(() => expect(names()).toEqual(['zulu', 'beta', 'alpha', 'gamma']))
-      expect(within(tabs()[1]).getByRole('button', { name: '1 open decisions for beta' })).toBeTruthy()
+      expect(within(tabs()[1]).getByRole('button', { name: '1 open decision for beta' })).toBeTruthy()
       tasksApi.listTasks.mockResolvedValue({ items: [], next_cursor: null })
       act(() => stream.taskOpts!.onEvent({ key: 'T-7' }, { type: 'task_changed', id: '2' }))
       await waitFor(() => expect(names()).toEqual(['zulu', 'alpha', 'beta', 'gamma']))
@@ -225,7 +225,7 @@ describe('App', () => {
       await waitFor(() => expect(names()).toEqual(['zulu', 'beta', 'alpha', 'gamma']))
       await waitFor(() => expect(selectedTab()).toBeTruthy())
       const selected = selectedTab()?.textContent
-      fireEvent.click(within(tabs()[1]).getByRole('button', { name: '1 open decisions for beta' }))
+      fireEvent.click(within(tabs()[1]).getByRole('button', { name: '1 open decision for beta' }))
       const dialog = await screen.findByRole('dialog', { name: 'Decisions waiting in beta' })
       // the open modal hides the tabs from the accessibility tree
       expect(screen.getAllByRole('tab', { hidden: true }).find((t) => t.getAttribute('aria-selected') === 'true')?.textContent).toBe(selected)
