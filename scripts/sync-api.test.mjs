@@ -180,3 +180,23 @@ test("knows the vault backend and records agents-vault", () => {
   assert.equal(readFileSync(join(proj, "openapi/vault.json"), "utf8"), doc);
   assert.equal(readFileSync(join(proj, "openapi/vault.source"), "utf8"), `agents-vault ${git(src, "rev-parse", "HEAD")}\n`);
 });
+
+test("knows the mindmap backend and records agents-mindmap", () => {
+  const doc = '{"openapi":"3.1.0","paths":{}}\n';
+  const src = makeSource(doc);
+  const proj = makeProject();
+  const r = run(proj, "mindmap", "--from", src);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/mindmap.json"), "utf8"), doc);
+  assert.equal(readFileSync(join(proj, "openapi/mindmap.source"), "utf8"), `agents-mindmap ${git(src, "rev-parse", "HEAD")}\n`);
+});
+
+test("reads mindmap from the sibling agents-mindmap checkout by default", () => {
+  const doc = '{"openapi":"3.1.0","paths":{"/mindmap/api/v1/maps":{}}}\n';
+  const parent = mkdtempSync(join(tmpdir(), "sync-parent-"));
+  const src = makeSource(doc, join(parent, "agents-mindmap"));
+  const proj = makeProject(join(parent, "agents-web"));
+  const r = run(proj, "mindmap");
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(proj, "openapi/mindmap.source"), "utf8"), `agents-mindmap ${git(src, "rev-parse", "HEAD")}\n`);
+});

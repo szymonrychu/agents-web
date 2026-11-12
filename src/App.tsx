@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -26,6 +26,9 @@ import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
 import { useAttention } from './attention/useAttention'
 import { DecisionsPreviewDialog } from './attention/DecisionsPreviewDialog'
+
+// The graph libraries load only when the page is opened.
+const MindmapsRoute = lazy(() => import('./mindmap/routes'))
 
 export const APP_NAME = 'Agent Orchestrator';
 
@@ -140,6 +143,7 @@ export default function App() {
     <Routes>
       <Route path="/tasks/*" element={<TasksRoute />} />
       <Route path="/specs/*" element={<SpecsRoute />} />
+      <Route path="/mindmaps/*" element={<Suspense fallback={null}><MindmapsRoute /></Suspense>} />
       <Route path="*" element={<SessionsShell />} />
     </Routes>
   )

@@ -60,3 +60,15 @@ describe('defaults', () => {
     expect(backendBase('orchestrator')).toBe('/api/v1');
   });
 });
+
+describe('mindmap backend', () => {
+  it('accepts the mindmap base path and reports it configured', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'mindmap', label: 'Mindmaps', basePath: '/mindmap/api/v1' }] })));
+    await loadConfig(f as unknown as typeof fetch);
+    expect(isConfigured('mindmap')).toBe(true);
+    expect(backendBase('mindmap')).toBe('/mindmap/api/v1');
+    resetConfig();
+    expect(isConfigured('mindmap')).toBe(false);
+  });
+});
+
