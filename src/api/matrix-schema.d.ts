@@ -328,6 +328,16 @@ export interface components {
             direction: "in" | "out";
             /** Id */
             id: string;
+            /** Media Kind */
+            media_kind?: ("image" | "video" | "audio" | "file" | "sticker") | null;
+            /** Media Mime */
+            media_mime?: string | null;
+            /** Media Reason */
+            media_reason?: string | null;
+            /** Media Size */
+            media_size?: number | null;
+            /** Media Status */
+            media_status?: ("attached" | "not_attached") | null;
             /** Reason */
             reason: string | null;
             /** Run Id */
@@ -406,6 +416,8 @@ export interface components {
             agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
+            /** Agents May Send Files */
+            agents_may_send_files: boolean;
             /** Alias */
             alias: string | null;
             /** Anonymize Names */
@@ -454,6 +466,8 @@ export interface components {
             agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
+            /** Agents May Send Files */
+            agents_may_send_files: boolean;
             /** Alias */
             alias: string | null;
             /** Anonymize Names */
@@ -499,6 +513,8 @@ export interface components {
             agent_aliases?: string[] | null;
             /** Agents May Initiate */
             agents_may_initiate?: boolean | null;
+            /** Agents May Send Files */
+            agents_may_send_files?: boolean | null;
             /** Anonymize Names */
             anonymize_names?: boolean | null;
             /** Preset Id */
@@ -513,6 +529,8 @@ export interface components {
             agent_aliases: string[];
             /** Agents May Initiate */
             agents_may_initiate: boolean;
+            /** Agents May Send Files */
+            agents_may_send_files: boolean;
             /** Alias */
             alias: string | null;
             /** Anonymize Names */

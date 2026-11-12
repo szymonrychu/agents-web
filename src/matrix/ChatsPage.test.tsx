@@ -20,7 +20,7 @@ const room = (id: string, over: Partial<RoomView> = {}): RoomView => ({
   room_id: id, alias: null, name: `Room ${id}`, kind: 'dm', membership: 'join', encrypted: false, message_request: false,
   member_count: 2, access: { state: 'default', reason: 'default policy', rule_id: null }, preset_id: null, trigger: null,
   pending: { allowed: true, denied_count: 0, denied_senders: [], invited: false, inviter: null, last_denied_at: null, message_request: false },
-  effective_preset_id: null, effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], binding: null, ...over,
+  effective_preset_id: null, effective_trigger: 'all', queued: 0, last_event_at: '2026-10-25T10:00:00Z', session: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false, binding: null, ...over,
 })
 const detail = (r: RoomView): RoomDetail => ({
   ...r,
@@ -121,14 +121,14 @@ describe('ChatsPage', () => {
     await user.click(screen.getByRole('option', { name: 'Only when mentioned' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: 'p1', trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false })
     expect(within(drawer).getByText(/validation_error: bad preset/)).toBeTruthy()
     api.setRoomSettings.mockResolvedValueOnce(detail(rooms[0]))
     await user.click(within(drawer).getByRole('combobox', { name: 'Preset' }))
     await user.click(screen.getByRole('option', { name: 'Default preset' }))
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false })
   })
 
   test('saves agents may start chats with the preset and trigger in one call', async () => {
@@ -149,7 +149,7 @@ describe('ChatsPage', () => {
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
     expect(api.setRoomSettings).toHaveBeenCalledTimes(1)
-    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenCalledWith('!a', { preset_id: null, trigger: 'mention', agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false })
   })
 
   test('loads and saves the anonymize names toggle, true and false', async () => {
@@ -168,20 +168,63 @@ describe('ChatsPage', () => {
     expect(toggle.checked).toBe(true)
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: true, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: true, agent_aliases: [], agents_may_send_files: false })
     expect(toggle.checked).toBe(true)
     api.setRoomSettings.mockResolvedValue(detail({ ...rooms[0], anonymize_names: false }))
     await user.click(toggle)
     expect(toggle.checked).toBe(false)
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false })
+  })
+
+  test('loads and saves the agents may send files switch, default off', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    api.setRoomSettings.mockResolvedValue(detail({ ...rooms[0], agents_may_send_files: true }))
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    const toggle = within(drawer).getByRole('switch', { name: 'Agents may send files' }) as HTMLInputElement
+    expect(toggle.checked).toBe(false)
+    expect(within(drawer).getByText(/Off by default/)).toBeTruthy()
+    await user.click(toggle)
+    await user.click(within(drawer).getByRole('button', { name: 'Save' }))
+    await flush()
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: true })
+    expect(toggle.checked).toBe(true)
+  })
+
+  test('shows the agents may send files switch on for an enabled room', async () => {
+    rooms[0] = { ...rooms[0], agents_may_send_files: true }
+    mount()
+    await flush()
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(screen.getByText('Alice DM'))
+    await flush()
+    expect((within(screen.getByRole('dialog')).getByRole('switch', { name: 'Agents may send files' }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  test('shows an attachment chip only for rows with media', async () => {
+    api.listRoomMessages.mockResolvedValue([
+      msg('m1', { media_kind: 'image', media_size: 183211, media_status: 'attached', body: null }),
+      msg('m2', { media_kind: 'file', media_size: 2048, media_status: 'not_attached', media_reason: 'unsupported_type' }),
+      msg('m3'),
+    ])
+    mount()
+    await flush()
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(screen.getByText('Alice DM'))
+    await flush()
+    expect(screen.getByText('photo, 179 KB, attached')).toBeTruthy()
+    expect(screen.getByText('file, 2 KB, not attached: unsupported_type')).toBeTruthy()
+    expect(within(screen.getByText('body m3').closest('tr')!).queryByText(/KB|attached/)).toBeNull()
+    expect(screen.getAllByText(/attached/)).toHaveLength(2)
   })
 
   test('loads, edits, saves and clears agent aliases', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     rooms[0] = { ...rooms[0], agent_aliases: ['bot', 'Agent'] }
-    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: ['bot', 'helper'] }))
+    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: ['bot', 'helper'], agents_may_send_files: false }))
     mount()
     await flush()
     await user.click(screen.getByText('Alice DM'))
@@ -194,13 +237,13 @@ describe('ChatsPage', () => {
     await user.type(field, 'bot, helper')
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: ['bot', 'helper'] })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: ['bot', 'helper'], agents_may_send_files: false })
     expect(field.value).toBe('bot, helper')
-    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: [] }))
+    api.setRoomSettings.mockResolvedValueOnce(detail({ ...rooms[0], agent_aliases: [], agents_may_send_files: false }))
     await user.clear(field)
     await user.click(within(drawer).getByRole('button', { name: 'Save' }))
     await flush()
-    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [] })
+    expect(api.setRoomSettings).toHaveBeenLastCalledWith('!a', { preset_id: null, trigger: null, agents_may_initiate: false, anonymize_names: false, agent_aliases: [], agents_may_send_files: false })
     expect(field.value).toBe('')
   })
 

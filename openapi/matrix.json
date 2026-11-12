@@ -218,6 +218,72 @@
             "title": "Id",
             "type": "string"
           },
+          "media_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image",
+                  "video",
+                  "audio",
+                  "file",
+                  "sticker"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Kind"
+          },
+          "media_mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Mime"
+          },
+          "media_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Reason"
+          },
+          "media_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Size"
+          },
+          "media_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "attached",
+                  "not_attached"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Status"
+          },
           "reason": {
             "anyOf": [
               {
@@ -473,6 +539,10 @@
             "title": "Agents May Initiate",
             "type": "boolean"
           },
+          "agents_may_send_files": {
+            "title": "Agents May Send Files",
+            "type": "boolean"
+          },
           "alias": {
             "anyOf": [
               {
@@ -645,6 +715,7 @@
           "agents_may_initiate",
           "anonymize_names",
           "agent_aliases",
+          "agents_may_send_files",
           "session",
           "binding",
           "last_event_at",
@@ -671,6 +742,10 @@
           },
           "agents_may_initiate": {
             "title": "Agents May Initiate",
+            "type": "boolean"
+          },
+          "agents_may_send_files": {
+            "title": "Agents May Send Files",
             "type": "boolean"
           },
           "alias": {
@@ -841,6 +916,7 @@
           "agents_may_initiate",
           "anonymize_names",
           "agent_aliases",
+          "agents_may_send_files",
           "session",
           "binding",
           "last_event_at",
@@ -877,6 +953,17 @@
               }
             ],
             "title": "Agents May Initiate"
+          },
+          "agents_may_send_files": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agents May Send Files"
           },
           "anonymize_names": {
             "anyOf": [
@@ -934,6 +1021,10 @@
           },
           "agents_may_initiate": {
             "title": "Agents May Initiate",
+            "type": "boolean"
+          },
+          "agents_may_send_files": {
+            "title": "Agents May Send Files",
             "type": "boolean"
           },
           "alias": {
@@ -1097,6 +1188,7 @@
           "agents_may_initiate",
           "anonymize_names",
           "agent_aliases",
+          "agents_may_send_files",
           "session",
           "binding",
           "last_event_at",
