@@ -30,20 +30,27 @@ const sideExtensions: Extension = [
 
 function MergeDiff({ before, after, text }: ValueDiffProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null)
-  // the view is built once from the props of the first render
-  const initial = useRef({ before, after, text })
+  // the docs, not the props, key the effect: an object prop with a new identity but equal content must not rebuild
+  const docA = toDoc(before, text)
+  const docB = toDoc(after, text)
 
-  // created once per mount
+  // rebuilt whenever the compared texts change, so content and measured line heights never go stale
   useLayoutEffect(() => {
     const view = new MergeView({
       parent: host.current ?? undefined,
-      a: { doc: toDoc(initial.current.before, initial.current.text), extensions: sideExtensions },
-      b: { doc: toDoc(initial.current.after, initial.current.text), extensions: sideExtensions },
+      a: { doc: docA, extensions: sideExtensions },
+      b: { doc: docB, extensions: sideExtensions },
       orientation: 'a-b',
       collapseUnchanged: { margin: 3 },
     })
-    return () => view.destroy()
-  }, [])
+    // wrapped lines change height with the host width: re-measure on resize
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => { view.a.requestMeasure(); view.b.requestMeasure() })
+    if (observer && host.current) observer.observe(host.current)
+    return () => {
+      observer?.disconnect()
+      view.destroy()
+    }
+  }, [docA, docB])
 
   return (
     <Box
@@ -53,6 +60,8 @@ function MergeDiff({ before, after, text }: ValueDiffProps): JSX.Element {
         height: 360,
         overflow: 'auto',
         // below md the two columns stack; .cm-mergeView stays a block so the editors row spans its full width
+        // editors size to their content (highlight.ts gives them height:100%, which overlaps wrapped lines in a fixed host); the host scrolls
+        '& .cm-editor': { height: 'auto' },
         '& .cm-mergeViewEditors': { flexDirection: { xs: 'column', md: 'row' } },
       }}
     />

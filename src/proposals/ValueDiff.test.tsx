@@ -126,4 +126,31 @@ describe('ValueDiff', () => {
     expect(view.a.state.doc.toString()).toBe('')
     expect(view.b.state.doc.toString()).toBe('hello')
   })
+
+  it('rebuilds the merge view when the compared values change', () => {
+    const destroy = vi.spyOn(MergeView.prototype, 'destroy')
+    const { rerender, container } = render(<ValueDiff text before={'one\nold'} after={'one\nnew'} />)
+    rerender(<ValueDiff text before={'two\nolder'} after={'two\nnewer'} />)
+    expect(destroy).toHaveBeenCalledTimes(1)
+    expect(container.querySelectorAll('.cm-mergeView')).toHaveLength(1)
+    const view = built.views[built.views.length - 1] as MergeView
+    expect(view.a.state.doc.toString()).toBe('two\nolder')
+    expect(view.b.state.doc.toString()).toBe('two\nnewer')
+  })
+
+  it('does not rebuild when re-rendered with equal values', () => {
+    const { rerender } = render(<ValueDiff before={{ a: 1 }} after={{ a: 2 }} />)
+    rerender(<ValueDiff before={{ a: 1 }} after={{ a: 2 }} />)
+    expect(built.views).toHaveLength(1)
+  })
+
+  it('sizes the editors to their content inside the scrolling host, not to 100% of it', () => {
+    const { container } = render(<ValueDiff text before={'a long line '.repeat(80)} after={'b long line '.repeat(80)} />)
+    const host = screen.getByTestId('value-diff-merge')
+    expect(getComputedStyle(host).overflow).toBe('auto')
+    expect(container.querySelectorAll('.cm-editor')).toHaveLength(2)
+    // jsdom does not resolve CodeMirror's scoped theme, so check the host's own emitted rule
+    const css = Array.from(document.querySelectorAll('style'), (el) => el.textContent ?? '').join('')
+    expect(css).toMatch(/\.cm-editor\{[^}]*height:auto/)
+  })
 })
