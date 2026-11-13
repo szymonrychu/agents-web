@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { Route, Routes, useSearchParams } from 'react-router'
+import { SessionExpiredBanner } from './api/SessionExpiredBanner'
 import { ChatView } from './chat/ChatView'
 import { useProject } from './projects/ProjectContext'
 import { RestartSessionDialog } from './sessions/RestartSessionDialog'
@@ -140,11 +141,14 @@ function SessionsShell() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/tasks/*" element={<TasksRoute />} />
-      <Route path="/specs/*" element={<SpecsRoute />} />
-      <Route path="/mindmaps/*" element={<Suspense fallback={null}><MindmapsRoute /></Suspense>} />
-      <Route path="*" element={<SessionsShell />} />
-    </Routes>
+    <>
+      <SessionExpiredBanner />
+      <Routes>
+        <Route path="/tasks/*" element={<TasksRoute />} />
+        <Route path="/specs/*" element={<SpecsRoute />} />
+        <Route path="/mindmaps/*" element={<Suspense fallback={null}><MindmapsRoute /></Suspense>} />
+        <Route path="*" element={<SessionsShell />} />
+      </Routes>
+    </>
   )
 }

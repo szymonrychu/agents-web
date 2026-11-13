@@ -20,7 +20,7 @@ afterEach(() => {
 describe('devices api', () => {
   it('lists devices under the configured basePath', async () => {
     await listDevices();
-    expect(f.mock.calls[0]).toEqual([`${BASE}/devices`, { method: 'GET', headers: undefined, body: undefined }]);
+    expect(f.mock.calls[0]).toEqual([`${BASE}/devices`, { method: 'GET', headers: { Accept: 'application/json' }, body: undefined }]);
   });
 
   it('pairs a sketch device and returns the pairing code', async () => {

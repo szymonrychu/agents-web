@@ -4,6 +4,7 @@ import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-libr
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
+import { markSessionExpired, resetSessionExpired } from '../api/session'
 import { FormError, PresetSelect, RunStatusChip, usePoll } from './index'
 
 const wrap = (ui: React.ReactElement) => render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
@@ -112,6 +113,17 @@ describe('usePoll', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
     expect(fn).toHaveBeenCalledTimes(2)
     expect(result.current.data).toBe('b')
+  })
+
+  test('stops polling once the session is expired', async () => {
+    const fn = vi.fn().mockResolvedValue(1)
+    renderHook(() => usePoll(fn, 1000, []))
+    await act(async () => {})
+    expect(fn).toHaveBeenCalledTimes(1)
+    act(() => markSessionExpired())
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(fn).toHaveBeenCalledTimes(1)
+    resetSessionExpired()
   })
 
   test('exposes errors', async () => {
