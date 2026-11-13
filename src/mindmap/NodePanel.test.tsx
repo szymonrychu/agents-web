@@ -2,11 +2,12 @@
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import { NodePanel } from './NodePanel'
-import { edgeView, growth, nodeView } from './testUtils'
+import { edgeView, growth, link, nodeView } from './testUtils'
 
 const api = vi.hoisted(() => ({ getNode: vi.fn(), patchNode: vi.fn(), patchGrowth: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -18,8 +19,8 @@ vi.mock('./DirectionDialog', () => ({
   DirectionDialog: (p: { mapKey: string; nodeKey?: string; onSaved: (d: unknown) => void }) => <button onClick={() => p.onSaved({})}>{`direction dialog ${p.mapKey} ${p.nodeKey}`}</button>,
 }))
 
-const mount = (onChanged = vi.fn(), extra: { mapKey?: string; refreshKey?: number } = {}) =>
-  render(<ThemeProvider theme={theme}><NodePanel nodeKey="N-2" {...extra} onChanged={onChanged} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>)
+const mount = (onChanged = vi.fn(), extra: { mapKey?: string; refreshKey?: number; descendants?: number } = {}) =>
+  render(<MemoryRouter><ThemeProvider theme={theme}><NodePanel nodeKey="N-2" {...extra} onChanged={onChanged} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider></MemoryRouter>)
 const user = () => userEvent.setup()
 const conflict = (current: number) => new ApiError(409, 'version_conflict', 'stale', { current_version: current })
 
@@ -40,6 +41,25 @@ async function startEditing(u: ReturnType<typeof user>) {
 }
 
 describe('NodePanel', () => {
+  test('task and spec keys link to their taskboard pages', async () => {
+    api.getNode.mockResolvedValue(nodeView({
+      links: [link({ id: 5, ref_key: 'T-12' }), link({ id: 6, ref_key: 'S-3' })],
+      growth_areas: [growth({ status: 'taken', task_key: 'T-7' })],
+    }))
+    mount()
+    expect((await screen.findByRole('link', { name: 'T-12' })).getAttribute('href')).toBe('/tasks/T-12')
+    expect(screen.getByRole('link', { name: 'S-3' }).getAttribute('href')).toBe('/specs/S-3')
+    expect(screen.getByRole('link', { name: 'T-7' }).getAttribute('href')).toBe('/tasks/T-7')
+  })
+
+  test('the node delete dialog names the descendant count', async () => {
+    const u = user()
+    mount(vi.fn(), { descendants: 4 })
+    const section = await screen.findByRole('button', { name: 'Delete' })
+    await u.click(section)
+    expect(screen.getByText(/4 descendant nodes/)).toBeTruthy()
+  })
+
   test('renders notes through the markdown renderer', async () => {
     mount()
     const bold = await screen.findByText('bold')
@@ -119,7 +139,7 @@ describe('NodePanel', () => {
   test('a refresh during an edit keeps the base version, so Save hits a 409 instead of overwriting', async () => {
     const u = user()
     const panel = (refreshKey: number) => (
-      <ThemeProvider theme={theme}><NodePanel nodeKey="N-2" refreshKey={refreshKey} onChanged={() => {}} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider>
+      <MemoryRouter><ThemeProvider theme={theme}><NodePanel nodeKey="N-2" refreshKey={refreshKey} onChanged={() => {}} onDeleted={() => {}} onOpenNode={() => {}} /></ThemeProvider></MemoryRouter>
     )
     const { rerender } = render(panel(0))
     await u.click(await screen.findByRole('button', { name: /Edit notes/ }))

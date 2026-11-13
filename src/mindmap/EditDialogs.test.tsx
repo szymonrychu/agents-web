@@ -134,6 +134,16 @@ describe('DeleteDialog', () => {
     await waitFor(() => expect(api.deleteNode).toHaveBeenCalledWith('N-2'))
   })
 
+  test('a node delete with a known count says how many descendants go with it', () => {
+    mount(<DeleteDialog target={{ kind: 'node', key: 'N-2', label: 'Child A', descendants: 1 }} onClose={() => {}} onDeleted={() => {}} />)
+    expect(screen.getByText(/1 descendant node\b/)).toBeTruthy()
+  })
+
+  test('a node delete without descendants says it deletes only the node', () => {
+    mount(<DeleteDialog target={{ kind: 'node', key: 'N-2', label: 'Child A', descendants: 0 }} onClose={() => {}} onDeleted={() => {}} />)
+    expect(screen.getByText(/no descendant nodes/)).toBeTruthy()
+  })
+
   test('deletes a growth area, an edge and a link', async () => {
     const u = user()
     for (const [target, fn, arg] of [

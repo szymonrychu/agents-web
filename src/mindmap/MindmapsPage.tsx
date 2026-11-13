@@ -18,18 +18,27 @@ import Typography from '@mui/material/Typography'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useProject } from '../projects/ProjectContext'
 import { FormError } from '../triggers'
-import { getGraph, getMap, listMaps, listProjects, mindmapEnabled } from './api'
+import { getGraph, getMap, listDirections, listMaps, listProjects, mindmapEnabled } from './api'
 import type { MapView, NodeStub, ProjectCount, Subgraph } from './api'
 import { DirectionDialog } from './DirectionDialog'
 import { DirectionsTab } from './DirectionsTab'
 import { ArchiveDialog, DeleteDialog, LinkDialog, MapDialog, NodeDialog } from './EditDialogs'
 import { GraphView } from './GraphView'
+import { countDescendants } from './graphLayout'
 import type { Direction } from './graphLayout'
+import { MapLinks } from './MapLinks'
 import { NodePanel } from './NodePanel'
 import { mapPath } from './paths'
 import { SearchBox } from './SearchBox'
 import { useMindmapStream } from './useMindmapStream'
 
+/** Nodes of the map in the loaded graph (stubs of other maps excluded); the graph is depth-limited, so a truncated one says "at least". */
+const nodeCount = (g: Subgraph, mapKey: string): string => {
+  const n = g.nodes.filter((x) => x.map === mapKey && !x.stub).length
+  return `${g.truncated ? 'at least ' : ''}${n} ${n === 1 ? 'node' : 'nodes'}`
+}
+
+type MapTab = 'graph' | 'directions' | 'links'
 type Dialog = 'new-map' | 'edit-map' | 'archive-map' | 'delete-map' | 'link-map' | 'new-node' | 'direction-map'
 
 export function MindmapsPage() {
@@ -42,13 +51,14 @@ export function MindmapsPage() {
   const [projects, setProjects] = useState<ProjectCount[]>([])
   const [project, setProject] = useState<string | null>(globalProject)
   const [maps, setMaps] = useState<MapView[]>([])
+  const [openDirections, setOpenDirections] = useState<Map<string, number>>(new Map())
   const [map, setMap] = useState<MapView>()
   const [graph, setGraph] = useState<Subgraph>()
   const [dir, setDir] = useState<Direction>('TB')
   const [error, setError] = useState<unknown>()
   const [refresh, setRefresh] = useState(0)
   const [dialog, setDialog] = useState<Dialog>()
-  const [pickedTab, setPickedTab] = useState<'graph' | 'directions'>('graph')
+  const [pickedTab, setPickedTab] = useState<MapTab>('graph')
   const reload = useCallback(() => setRefresh((n) => n + 1), [])
   const enabled = mindmapEnabled()
 
@@ -61,6 +71,14 @@ export function MindmapsPage() {
   useEffect(() => {
     if (!enabled) return
     listMaps({ project }).then((m) => { setMaps(m); setError(undefined) }, setError)
+  }, [enabled, project, refresh])
+  useEffect(() => {
+    if (!enabled) return
+    listDirections({ project, status: 'open' }).then((ds) => {
+      const counts = new Map<string, number>()
+      for (const d of ds) counts.set(d.map, (counts.get(d.map) ?? 0) + 1)
+      setOpenDirections(counts)
+    }, setError)
   }, [enabled, project, refresh])
   useEffect(() => {
     if (!enabled || !mapKey) return
@@ -76,7 +94,7 @@ export function MindmapsPage() {
   const openNode = (key: string) => navigate(mapPath(mapKey, { node: key, direction: directionKey ?? undefined }))
   /** `?direction=` always shows the directions tab; picking Graph drops it from the URL. */
   const tab = directionKey ? 'directions' : pickedTab
-  const pickTab = (t: 'graph' | 'directions') => {
+  const pickTab = (t: MapTab) => {
     setPickedTab(t)
     if (t === 'graph' && directionKey) navigate(mapPath(mapKey, { node: nodeKey ?? undefined }))
   }
@@ -106,7 +124,8 @@ export function MindmapsPage() {
           <List dense disablePadding>
             {maps.map((m) => (
               <ListItemButton key={m.key} selected={m.key === mapKey} component={RouterLink} to={mapPath(m.key)}>
-                <ListItemText primary={m.title} secondary={`${m.key} - ${m.project}`} />
+                <ListItemText primary={m.title} secondary={`${m.key} - ${m.project}${m.key === map?.key && graph ? ` - ${nodeCount(graph, m.key)}` : ''}`} />
+                {(openDirections.get(m.key) ?? 0) > 0 && <Chip size="small" color="warning" sx={{ mr: 0.5 }} label={`${openDirections.get(m.key)} open ${openDirections.get(m.key) === 1 ? 'direction' : 'directions'}`} />}
                 <Chip size="small" label={m.kind} />
                 {m.status === 'archived' && <Chip size="small" label="archived" sx={{ ml: 0.5 }} />}
               </ListItemButton>
@@ -132,14 +151,17 @@ export function MindmapsPage() {
                 <Button size="small" onClick={() => setDialog('archive-map')}>Archive</Button>
                 <Button size="small" color="error" onClick={() => setDialog('delete-map')}>Delete</Button>
               </Stack>
-              <Tabs value={tab} onChange={(_, v: 'graph' | 'directions') => pickTab(v)} aria-label="Map views" sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={tab} onChange={(_, v: MapTab) => pickTab(v)} aria-label="Map views" sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tab value="graph" label="Graph" />
                 <Tab value="directions" label="Directions" />
+                <Tab value="links" label="Links" />
               </Tabs>
               {tab === 'graph' ? (
                 <Box sx={{ flexGrow: 1, minHeight: 0 }}>
                   <GraphView graph={graph} dir={dir} selected={selectedNode} onSelect={select} onChanged={reload} />
                 </Box>
+              ) : tab === 'links' ? (
+                <MapLinks mapKey={map.key} refreshKey={refresh} onChanged={reload} />
               ) : (
                 <DirectionsTab mapKey={map.key} refreshKey={refresh} selected={directionKey} onOpenNode={openNode} onChanged={reload} />
               )}
@@ -160,6 +182,7 @@ export function MindmapsPage() {
               onChanged={reload}
               onDeleted={() => { navigate(mapPath(mapKey)); reload() }}
               onOpenNode={openNode}
+              descendants={graph?.nodes.some((n) => n.key === nodeKey) ? countDescendants(graph.nodes, nodeKey) : undefined}
             />
           </Paper>
         )}

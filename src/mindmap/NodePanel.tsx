@@ -22,6 +22,7 @@ import { DirectionDialog } from './DirectionDialog'
 import { ArchiveDialog, DeleteDialog, GrowthDialog, LinkDialog, NodeDialog } from './EditDialogs'
 import type { DeleteTarget } from './EditDialogs'
 import { NodeHistory } from './NodeHistory'
+import { RefLink } from './RefLink'
 
 type Dialog =
   | { kind: 'child' }
@@ -43,6 +44,8 @@ export interface NodePanelProps {
   /** The map the page shows; a node of another map gets a notice with a way there. */
   mapKey?: string
   onOpenMap?: (mapKey: string, nodeKey: string) => void
+  /** Nodes below this one in the loaded graph; named in the delete confirmation when known. */
+  descendants?: number
 }
 
 interface Draft {
@@ -53,7 +56,7 @@ interface Draft {
   summary: string
 }
 
-export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode, mapKey, onOpenMap }: NodePanelProps) {
+export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpenNode, mapKey, onOpenMap, descendants }: NodePanelProps) {
   const [node, setNode] = useState<NodeView>()
   const [error, setError] = useState<unknown>()
   const [draft, setDraft] = useState<Draft>()
@@ -151,7 +154,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
         <Button size="small" onClick={() => setDialog({ kind: 'direction' })}>Send direction</Button>
         <Button size="small" onClick={() => setShowHistory((v) => !v)}>History</Button>
         <Button size="small" onClick={() => setDialog({ kind: 'archive' })}>Archive</Button>
-        <Button size="small" color="error" onClick={() => setDialog({ kind: 'delete', target: { kind: 'node', key: node.key, label: node.topic } })}>Delete</Button>
+        <Button size="small" color="error" onClick={() => setDialog({ kind: 'delete', target: { kind: 'node', key: node.key, label: node.topic, descendants } })}>Delete</Button>
       </Stack>
 
       <Box component="section" aria-label="Node notes">
@@ -198,7 +201,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
           {growthAreas.map((g, i) => (
             <Stack key={g.key} component="li" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <Chip size="small" label={g.status} />
-              <Typography sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.sm, wordBreak: 'break-word' }}>{g.text}</Typography>
+              <Typography sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.sm, wordBreak: 'break-word' }}>{g.text}{g.task_key && <>{' '}<RefLink refKey={g.task_key} /></>}</Typography>
               <IconButton size="small" aria-label={`Move ${g.key} up`} disabled={i === 0} onClick={() => void moveGrowth(i, -1)}><ArrowUpwardIcon fontSize="inherit" /></IconButton>
               <IconButton size="small" aria-label={`Move ${g.key} down`} disabled={i === growthAreas.length - 1} onClick={() => void moveGrowth(i, 1)}><ArrowDownwardIcon fontSize="inherit" /></IconButton>
               <IconButton size="small" aria-label={`Edit ${g.key}`} onClick={() => setDialog({ kind: 'growth', growth: g })}><EditIcon fontSize="inherit" /></IconButton>
@@ -234,7 +237,7 @@ export function NodePanel({ nodeKey, refreshKey = 0, onChanged, onDeleted, onOpe
           {linkList.map((l) => (
             <Stack key={l.id} component="li" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <Chip size="small" label={l.relation.replace(/_/g, ' ')} />
-              <Typography sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.sm }}>{l.ref_key}{l.note ? ` - ${l.note}` : ''}</Typography>
+              <Typography sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.sm }}><RefLink refKey={l.ref_key} />{l.note ? ` - ${l.note}` : ''}</Typography>
               <IconButton size="small" aria-label={`Delete link ${l.ref_key}`} onClick={() => setDialog({ kind: 'delete', target: { kind: 'link', id: l.id, label: `link ${l.ref_key}` } })}><DeleteOutlineIcon fontSize="inherit" /></IconButton>
             </Stack>
           ))}
