@@ -19,6 +19,7 @@ import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { addComment, getTask, patchTask, type Task, type TaskPatch } from './api'
 import { DecisionCard } from './DecisionCard'
+import { MindmapLinksPanel } from './MindmapLinksPanel'
 import { TodoList } from './TodoList'
 import { useTaskStream } from './useTaskStream'
 
@@ -188,6 +189,7 @@ export function TaskDetail({ taskKey }: { taskKey: string }) {
       </Section>
       <Section title="Todo"><TodoList task={task} onChanged={() => void refresh()} /></Section>
       <Section title="Comments"><Comments task={task} onChanged={() => void refresh()} /></Section>
+      <MindmapLinksPanel taskKey={task.key} />
       <Section title="Waiting sessions">
         {task.waiting_sessions.length === 0 && <Typography color="text.secondary">No session is waiting</Typography>}
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

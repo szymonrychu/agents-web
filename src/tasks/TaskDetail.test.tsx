@@ -3,6 +3,7 @@ import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
+import { loadConfig, resetConfig } from '../config/backends'
 import { decision, mountTasks, task } from './testUtils'
 
 const api = vi.hoisted(() => ({
@@ -11,6 +12,8 @@ const api = vi.hoisted(() => ({
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, taskStreamUrl: () => '/tb/stream' }))
 const specsApi = vi.hoisted(() => ({ listSpecs: vi.fn() }))
 vi.mock('../specs/api', async (orig) => ({ ...(await orig<typeof import('../specs/api')>()), ...specsApi }))
+const mindmapApi = vi.hoisted(() => ({ listLinks: vi.fn() }))
+vi.mock('../mindmap/api', async (orig) => ({ ...(await orig<typeof import('../mindmap/api')>()), ...mindmapApi }))
 const stream = vi.hoisted(() => ({ opts: null as null | { onEvent: (d: unknown, i: { type: string; id: string }) => void } }))
 vi.mock('../api/stream', () => ({
   openStream: (_url: string, opts: { onEvent: (d: unknown, i: { type: string; id: string }) => void }) => {
@@ -20,7 +23,8 @@ vi.mock('../api/stream', () => ({
 }))
 
 beforeEach(() => {
-  for (const f of [...Object.values(api), ...Object.values(specsApi)]) f.mockReset()
+  for (const f of [...Object.values(api), ...Object.values(specsApi), ...Object.values(mindmapApi)]) f.mockReset()
+  mindmapApi.listLinks.mockResolvedValue([])
   specsApi.listSpecs.mockResolvedValue({ items: [{ key: 'S-1', title: 'Plans' }, { key: 'S-2', title: 'Other' }], next_cursor: null })
   api.getTask.mockResolvedValue(task({
     decisions: [decision()], open_decisions: 1, blocked: true, labels: ['infra'],
@@ -30,9 +34,23 @@ beforeEach(() => {
     events: [{ id: 1, actor_kind: 'agent', actor_session: 's1', actor_slug: 'agent-x', kind: 'created', detail: null, at: '2026-11-01T10:00:00Z' }],
   }))
 })
-afterEach(cleanup)
+afterEach(() => { cleanup(); resetConfig() })
 
 describe('task detail', () => {
+  test('without the mindmap backend no Mind map panel renders and /links is not requested', async () => {
+    mountTasks('/tasks/T-1')
+    await screen.findByText('First task')
+    expect(screen.queryByRole('heading', { name: 'Mind map' })).toBeNull()
+    expect(mindmapApi.listLinks).not.toHaveBeenCalled()
+  })
+
+  test('with the mindmap backend the Mind map panel asks for the task links', async () => {
+    await loadConfig((async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'mindmap', label: 'M', basePath: '/mindmap/api/v1' }] }))) as unknown as typeof fetch)
+    mountTasks('/tasks/T-1')
+    await screen.findByRole('heading', { name: 'Mind map' })
+    expect(mindmapApi.listLinks).toHaveBeenCalledWith('T-1')
+  })
+
   test('shows description, waiting sessions, comments and history', async () => {
     mountTasks('/tasks/T-1')
     await screen.findByText('First task')
