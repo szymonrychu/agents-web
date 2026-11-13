@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
@@ -61,8 +62,9 @@ export function SearchBox({ project, onOpen }: SearchBoxProps) {
       {result && (
         <List dense disablePadding aria-label="Search results">
           {result.items.map((h) => (
-            <ListItemButton key={h.key} onClick={() => onOpen(h)}>
-              <ListItemText primary={h.topic} secondary={h.snippet} slotProps={{ secondary: { sx: { wordBreak: 'break-word' } } }} />
+            <ListItemButton key={h.key} onClick={() => onOpen(h)} sx={{ flexWrap: 'wrap' }}>
+              <ListItemText primary={h.topic} secondary={h.snippet} sx={{ flexBasis: '100%' }} slotProps={{ secondary: { sx: { wordBreak: 'break-word' } } }} />
+              {h.signals.map((sig) => <Chip key={sig} size="small" variant="outlined" label={sig} sx={{ mr: 0.5 }} />)}
             </ListItemButton>
           ))}
           {result.items.length === 0 && <ListItemText secondary="No matches" sx={{ px: 1 }} />}

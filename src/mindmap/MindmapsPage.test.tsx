@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { loadConfig, resetConfig } from '../config/backends'
 import { theme } from '../theme'
 import { MindmapsRoute } from './routes'
-import { mapView, subgraph } from './testUtils'
+import { direction, mapView, subgraph } from './testUtils'
 import type { NodeStub } from './api'
 
-const api = vi.hoisted(() => ({ listProjects: vi.fn(), listMaps: vi.fn(), getMap: vi.fn(), getGraph: vi.fn() }))
+const api = vi.hoisted(() => ({ listProjects: vi.fn(), listMaps: vi.fn(), getMap: vi.fn(), getGraph: vi.fn(), listDirections: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 const stream = vi.hoisted(() => vi.fn())
 vi.mock('./useMindmapStream', () => ({ useMindmapStream: stream }))
@@ -23,6 +23,7 @@ vi.mock('./NodePanel', () => ({ NodePanel: (p: { nodeKey: string; mapKey?: strin
 vi.mock('./DirectionsTab', () => ({
   DirectionsTab: (p: { mapKey: string; selected?: string | null }) => <div data-testid="directions-tab">{`${p.mapKey} ${p.selected ?? ''}`}</div>,
 }))
+vi.mock('./MapLinks', () => ({ MapLinks: (p: { mapKey: string }) => <div data-testid="map-links">{p.mapKey}</div> }))
 vi.mock('./SearchBox', () => ({
   SearchBox: (p: { onOpen: (h: { key: string; map: string }) => void }) => <button onClick={() => p.onOpen({ key: 'N-3', map: 'M-1' })}>search hit</button>,
 }))
@@ -52,6 +53,7 @@ beforeEach(async () => {
   api.listMaps.mockResolvedValue([mapView()])
   api.getMap.mockResolvedValue(mapView())
   api.getGraph.mockResolvedValue(subgraph())
+  api.listDirections.mockResolvedValue([])
 })
 afterEach(() => {
   cleanup()
@@ -113,6 +115,24 @@ describe('MindmapsPage', () => {
     await new Promise((r) => setTimeout(r, 20))
     expect(screen.getByRole('button', { name: 'graph N-9' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'graph N-1' })).toBeNull()
+  })
+
+  test('the map list shows the open directions per map and the node count of the shown map', async () => {
+    api.listMaps.mockResolvedValue([mapView(), mapView({ key: 'M-2', title: 'Second map' })])
+    api.listDirections.mockResolvedValue([direction({ map: 'M-2' }), direction({ key: 'D-2', map: 'M-2' }), direction({ key: 'D-3', map: 'M-1' })])
+    mount('/mindmaps/M-1')
+    const first = await screen.findByRole('link', { name: /Research map/ })
+    await waitFor(() => expect(first.textContent).toMatch(/1 open direction(?!s)/))
+    expect(screen.getByRole('link', { name: /Second map/ }).textContent).toMatch(/2 open directions/)
+    expect(api.listDirections).toHaveBeenCalledWith({ project: null, status: 'open' })
+    await waitFor(() => expect(first.textContent).toMatch(/3 nodes/))
+  })
+
+  test('the Links tab shows the map links', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1')
+    await u.click(await screen.findByRole('tab', { name: 'Links' }))
+    expect(screen.getByTestId('map-links').textContent).toBe('M-1')
   })
 
   test('?direction= opens the directions tab with that direction selected', async () => {

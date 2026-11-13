@@ -158,10 +158,14 @@ export function ArchiveDialog({ target, onClose, onSaved }: SavedProps<unknown> 
 
 export type DeleteTarget =
   | { kind: 'map'; key: string; label: string }
-  | { kind: 'node'; key: string; label: string }
+  /** `descendants` is the number of nodes below it when known (the page counts them in the loaded graph). */
+  | { kind: 'node'; key: string; label: string; descendants?: number }
   | { kind: 'growth'; key: string; label: string }
   | { kind: 'edge'; key: string; label: string }
   | { kind: 'link'; id: number; label: string }
+
+const descendantText = (n: number | undefined): string =>
+  n === undefined ? 'the node and all its descendant nodes' : n === 0 ? 'the node (it has no descendant nodes)' : `the node and its ${n} descendant ${n === 1 ? 'node' : 'nodes'}`
 
 /** What a hard delete takes with it, spelled out in the confirm dialog. */
 export function cascadeText(t: DeleteTarget): string {
@@ -169,7 +173,7 @@ export function cascadeText(t: DeleteTarget): string {
     case 'map':
       return 'This also deletes every node of the map with its versions, growth areas, edges, links and directions.'
     case 'node':
-      return 'This also deletes the node and all its descendant nodes, with their versions, growth areas, edges, links and directions.'
+      return `This also deletes ${descendantText(t.descendants)}, with their versions, growth areas, edges, links and directions.`
     case 'growth':
       return 'Nodes grown from this growth area stay; they only lose the reference.'
     case 'edge':

@@ -65,3 +65,18 @@ export function dropTarget(dragged: { id: string; position: { x: number; y: numb
   const hit = nodes.find((n) => n.id !== dragged.id && cx >= n.position.x && cx <= n.position.x + NODE_W && cy >= n.position.y && cy <= n.position.y + NODE_H);
   return hit?.id ?? null;
 }
+
+/** Number of nodes below `key` in the loaded subgraph, following parent links. */
+export function countDescendants(nodes: { key: string; parent: string | null }[], key: string): number {
+  const children = new Map<string, string[]>();
+  for (const n of nodes) if (n.parent) children.set(n.parent, [...(children.get(n.parent) ?? []), n.key]);
+  const seen = new Set<string>();
+  const stack = [...(children.get(key) ?? [])];
+  while (stack.length) {
+    const k = stack.pop() as string;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    stack.push(...(children.get(k) ?? []));
+  }
+  return seen.size;
+}

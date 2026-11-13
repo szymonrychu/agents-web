@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
@@ -25,6 +25,17 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('SearchBox', () => {
+  test('shows a chip per match signal of a hit', async () => {
+    api.searchNodes.mockResolvedValue({ items: [hit({ signals: ['fts', 'semantic'] })], semantic: true, pending_embedding: 0 })
+    const u = userEvent.setup()
+    mount()
+    await search(u)
+    const list = await screen.findByRole('list', { name: 'Search results' })
+    expect(within(list).getByText('fts')).toBeTruthy()
+    expect(within(list).getByText('semantic')).toBeTruthy()
+    expect(within(list).queryByText('trgm')).toBeNull()
+  })
+
   test('defaults to own scope and hybrid mode', async () => {
     const u = userEvent.setup()
     mount()
