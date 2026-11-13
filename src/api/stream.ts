@@ -1,5 +1,6 @@
 /** EventSource wrapper: tracks the last event id, reconnects with capped exponential backoff. */
 import type { AgentView, SessionView } from './client';
+import { isSessionExpired, markSessionExpired } from './session';
 
 export interface StreamInfo {
   type: string;
@@ -29,6 +30,23 @@ function withAfterId(url: string, afterId: number | undefined): string {
   return `${url}${url.includes('?') ? '&' : '?'}after_id=${afterId}`;
 }
 
+/**
+ * EventSource cannot set headers, so it sends `Accept: text/event-stream` and an expired login gets a 302 plus a new
+ * CSRF cookie on every reconnect. After an error, one fetch that also accepts JSON (the SSO proxy then answers 401
+ * and sets no cookie) tells an expired session from a network blip; a live answer is aborted at its headers.
+ */
+async function probeExpired(url: string): Promise<boolean> {
+  const abort = new AbortController();
+  try {
+    const res = await fetch(url, { headers: { Accept: 'text/event-stream, application/json' }, signal: abort.signal });
+    return res.status === 401;
+  } catch {
+    return false;
+  } finally {
+    abort.abort();
+  }
+}
+
 export function openStream(url: string, opts: StreamOptions): Stream {
   const Source = opts.eventSource ?? EventSource;
   let lastId: number | undefined = opts.afterId;
@@ -52,7 +70,7 @@ export function openStream(url: string, opts: StreamOptions): Stream {
 
   const connect = () => {
     timer = null;
-    if (closed) return;
+    if (closed || isSessionExpired()) return;
     const es = new Source(withAfterId(url, lastId));
     source = es;
     es.onopen = () => {
@@ -66,6 +84,12 @@ export function openStream(url: string, opts: StreamOptions): Stream {
       opts.onError?.();
       timer = setTimeout(connect, delay);
       delay = Math.min(delay * 2, BACKOFF_MAX_MS);
+      void probeExpired(url).then((expired) => {
+        if (!expired) return;
+        markSessionExpired();
+        if (timer !== null) clearTimeout(timer);
+        timer = null;
+      });
     };
   };
 

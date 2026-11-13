@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isSessionExpired, resetSessionExpired } from './session';
 import {
   ApiError,
   answerAgentDialog,
@@ -229,5 +230,28 @@ describe('agent dialog', () => {
     const e = (await answerAgentDialog('a1', { action: 'allow', request_id: 'perm_0123456789ab' }).catch((err: unknown) => err)) as ApiError;
     expect(e).toBeInstanceOf(ApiError);
     expect(e).toMatchObject({ status: 409, code: 'permission_resolved' });
+  });
+});
+
+describe('client Accept and expired session', () => {
+  afterEach(() => resetSessionExpired());
+
+  it('sends Accept: application/json on every request', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await getSession('a');
+    await deleteSession('a');
+    const calls = f.mock.calls as unknown as Array<[string, RequestInit]>;
+    expect(calls[0][1].headers).toMatchObject({ Accept: 'application/json' });
+    expect(calls[1][1].headers).toMatchObject({ Accept: 'application/json' });
+  });
+
+  it('marks the session expired on 401 and sends nothing afterwards', async () => {
+    const f = vi.fn(async () => new Response('', { status: 401 }));
+    vi.stubGlobal('fetch', f);
+    await expect(getSession('a')).rejects.toMatchObject({ status: 401 });
+    expect(isSessionExpired()).toBe(true);
+    await expect(getSession('a')).rejects.toMatchObject({ status: 401, code: 'session_expired' });
+    expect(f).toHaveBeenCalledTimes(1);
   });
 });

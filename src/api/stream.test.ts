@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { isSessionExpired, resetSessionExpired } from './session';
 import { STATUS_EVENTS, openStream, statusEventFromFrame } from './stream';
 
 class FakeSource {
@@ -29,7 +30,11 @@ beforeEach(() => {
   FakeSource.all = [];
   vi.useFakeTimers();
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  resetSessionExpired();
+});
 
 describe('openStream', () => {
   it('reconnects with capped exponential backoff', () => {
@@ -181,5 +186,29 @@ describe('status stream', () => {
     expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 4, reason: 'handover: context full' })).toMatchObject({ reason: 'handover: context full' });
     expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 5 })).toMatchObject({ reason: null });
     expect(statusEventFromFrame('leader_changed', { session_id: 's1', agent_id: 'a1', epoch: 5, reason: null })).toMatchObject({ reason: null });
+  });
+});
+
+describe('openStream on an expired session', () => {
+  it('probes with an Accept that includes application/json and stops reconnecting on 401', async () => {
+    const f = vi.fn(async () => new Response('', { status: 401 }));
+    vi.stubGlobal('fetch', f);
+    openStream('/s', { onEvent: () => {}, eventSource: ctor });
+    last().onerror?.();
+    await vi.advanceTimersByTimeAsync(0);
+    const init = (f.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
+    expect(init.headers).toMatchObject({ Accept: 'text/event-stream, application/json' });
+    expect(isSessionExpired()).toBe(true);
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(FakeSource.all).toHaveLength(1);
+  });
+
+  it('keeps reconnecting when the probe is not a 401', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200 })));
+    openStream('/s', { onEvent: () => {}, eventSource: ctor });
+    last().onerror?.();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(FakeSource.all).toHaveLength(2);
+    expect(isSessionExpired()).toBe(false);
   });
 });

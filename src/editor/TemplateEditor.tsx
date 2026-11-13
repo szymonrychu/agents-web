@@ -9,6 +9,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import { lazy, Suspense, useState, type JSX } from 'react'
+import { markSessionExpired } from '../api/session'
 
 const CodeEditor = lazy(() => import('./CodeEditor'))
 
@@ -39,9 +40,10 @@ export function postTemplatePreview(previewUrl: string, surface: string): (templ
   return async (template) => {
     const res = await fetch(previewUrl, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { Accept: 'application/json', 'content-type': 'application/json' },
       body: JSON.stringify({ template, surface }),
     })
+    if (res.status === 401) markSessionExpired()
     if (!res.ok) throw new Error(`preview failed: HTTP ${res.status}`)
     const body = (await res.json()) as Partial<TemplatePreview>
     return { rendered: body.rendered ?? null, error: body.error ?? null, variables: body.variables ?? [] }

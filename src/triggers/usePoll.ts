@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isSessionExpired, subscribeSessionExpired } from '../api/session'
 
 export interface PollResult<T> {
   data: T | undefined
@@ -23,6 +24,7 @@ export function usePoll<T>(fn: () => Promise<T>, intervalMs: number, deps: reado
   const alive = useRef(true)
 
   const refresh = useCallback(async () => {
+    if (isSessionExpired()) return
     const mine = generation.current
     if (inFlight.current === mine) return
     inFlight.current = mine
@@ -51,12 +53,14 @@ export function usePoll<T>(fn: () => Promise<T>, intervalMs: number, deps: reado
       void refresh()
       timer = setInterval(() => void refresh(), intervalMs)
     }
-    const onVisibility = () => (visible() ? start() : stop())
-    if (visible()) start()
+    const onVisibility = () => (visible() && !isSessionExpired() ? start() : stop())
+    const unsubscribe = subscribeSessionExpired(stop)
+    if (visible() && !isSessionExpired()) start()
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       alive.current = false
       stop()
+      unsubscribe()
       document.removeEventListener('visibilitychange', onVisibility)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

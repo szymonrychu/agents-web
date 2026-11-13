@@ -40,7 +40,7 @@ describe('writeFile', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('/orch/api/v1/sessions/c1/files/content?path=src%2Fa+b.txt')
     expect(init?.method).toBe('PUT')
-    expect(init?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(init?.headers).toEqual({ Accept: 'application/json', 'Content-Type': 'application/json' })
     expect(init?.body).toBe(JSON.stringify({ content: 'x\n', expected }))
   })
 

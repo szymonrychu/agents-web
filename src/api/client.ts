@@ -1,6 +1,7 @@
 /** Typed access to /api/v1, derived from the generated OpenAPI schema. */
 import { backendBase } from '../config/backends';
 import type { components } from './schema';
+import { isSessionExpired, markSessionExpired } from './session';
 
 type S = components['schemas'];
 export type SessionView = S['SessionView'];
@@ -82,11 +83,15 @@ export const request = <T>(method: string, path: string, body?: unknown): Promis
 
 /** Like `request`, against another backend's base path. */
 export async function requestAt<T>(basePath: string, method: string, path: string, body?: unknown): Promise<T> {
+  // Once the session is known to be expired nothing more is sent: every unauthenticated request to the SSO proxy costs a cookie.
+  if (isSessionExpired()) throw new ApiError(401, 'session_expired', 'Session expired');
+  // `Accept: application/json` makes the SSO proxy answer 401 (no redirect, no new CSRF cookie) when the login is gone.
   const res = await fetch(`${basePath}${path}`, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (res.status === 401) markSessionExpired();
   if (!res.ok) throw await toError(res);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
