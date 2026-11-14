@@ -145,7 +145,15 @@ describe('pending self-close', () => {
 describe('inactivity issues', () => {
   test('issue text for inactivity close', () => {
     const s = session({ close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'inactivity', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'quiet for 4 h' })
-    expect(sessionIssue(s, [])).toEqual({ kind: 'closing', text: 'closing for inactivity, by 14:05Z' })
+    expect(sessionIssue(s, [])).toEqual({ kind: 'closing', text: 'closing for inactivity when idle, not before 14:05Z' })
+  })
+  test('inactivity close without a deadline', () => {
+    expect(sessionIssue(session({ close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'inactivity', close_deadline_at: null }), [])).toEqual({ kind: 'closing', text: 'closing for inactivity' })
+  })
+  test('autoclose issue text with and without a deadline', () => {
+    const base = { close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'autoclose' as const }
+    expect(sessionIssue(session({ ...base, close_deadline_at: '2026-11-02T14:05:00Z' }), [])).toEqual({ kind: 'closing', text: 'lifetime reached, closing when idle, not before 14:05Z' })
+    expect(sessionIssue(session({ ...base, close_deadline_at: null }), [])).toEqual({ kind: 'closing', text: 'lifetime reached, closing when idle' })
   })
   test('self-close issue text is unchanged', () => {
     expect(sessionIssue(session({ close_requested_at: '2026-11-02T10:00:00Z', close_kind: 'self', close_reason: 'done' }), [])).toEqual({ kind: 'closing', text: 'closing when idle: done' })

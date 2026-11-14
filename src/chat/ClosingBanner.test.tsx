@@ -86,12 +86,26 @@ describe('ClosingBanner', () => {
     const f = vi.fn(async () => json(200, {}))
     vi.stubGlobal('fetch', f)
     mount(session({ close_kind: 'inactivity', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'quiet for 4 h' }))
-    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity when idle, by 14:05Z at the latest: quiet for 4 h')
+    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity when idle, not before 14:05Z: quiet for 4 h')
     await act(async () => fireEvent.click(keep()))
     expect(f).toHaveBeenCalledTimes(1)
     const calls = f.mock.calls as unknown as [string, RequestInit][]
     expect(calls[0][0]).toBe('/api/v1/sessions/s1/close')
     expect(calls[0][1].method).toBe('DELETE')
+  })
+
+  test('inactivity banner without a deadline', () => {
+    mount(session({ close_kind: 'inactivity', close_deadline_at: null, close_reason: null }))
+    expect(screen.getByRole('alert').textContent).toContain('Closing for inactivity, requested 2m ago')
+  })
+
+  test('autoclose banner with and without a deadline', () => {
+    const a = mount(session({ close_kind: 'autoclose', close_deadline_at: '2026-11-02T14:05:00Z', close_reason: 'lifetime' }))
+    expect(screen.getByRole('alert').textContent).toContain('Lifetime reached: closing when idle, not before 14:05Z: lifetime')
+    expect(keep()).toBeTruthy()
+    a.unmount()
+    mount(session({ close_kind: 'autoclose', close_deadline_at: null, close_reason: null }))
+    expect(screen.getByRole('alert').textContent).toContain('Lifetime reached: closing when idle, requested 2m ago')
   })
 
   test('self-close banner unchanged', () => {

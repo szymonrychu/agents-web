@@ -4583,7 +4583,7 @@ export interface components {
             /** Close Deadline At */
             close_deadline_at?: string | null;
             /** Close Kind */
-            close_kind?: ("self" | "inactivity") | null;
+            close_kind?: ("self" | "inactivity" | "autoclose") | null;
             /** Close Reason */
             close_reason?: string | null;
             /** Close Requested At */
