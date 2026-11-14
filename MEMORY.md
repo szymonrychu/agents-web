@@ -1,3 +1,7 @@
+## 2026-11-14 (session-rotation, T-362)
+
+- Close wording: the UI never claims a close "at the latest" (the orchestrator now waits for idleness after `close_deadline_at`), so inactivity reads "not before HH:MMZ" and the new close kind `autoclose` reads "lifetime reached, closing when idle". The openapi sync was applied by hand for the `close_kind` enum only (`openapi/orchestrator.json`, `src/api/schema.d.ts`, `orchestrator.source` left at its pin): a full `sync:api` from the orchestrator branch pulls unrelated drift that breaks `tsc -b` in test fixtures (`mindmap` meta). Run a full sync once the orchestrator PR is released.
+
 ## 2026-11-12 (research-mindmaps, Task 17)
 
 - Mindmaps page (backend `mindmap`, menu order 41, base path /mindmap/api/v1) in `src/mindmap/`, a routed page like Tasks and Specs: the menu entry navigates to `/mindmaps`, the route `/mindmaps/:mapKey?node=N-n&direction=D-n` is loaded with `React.lazy` in App.tsx. `openapi/mindmap.json` vendored from agents-mindmap v0.1.0 (b6fdd1f, which already has the search `semantic` field). `?direction=` opens the directions tab; node history, directions and search are built (Task 18).
