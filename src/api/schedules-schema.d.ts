@@ -116,7 +116,10 @@ export interface paths {
         };
         /** Get Schedule */
         get: operations["get_schedule_schedules_api_v1_schedules__schedule_id__get"];
-        /** Replace Schedule */
+        /**
+         * Replace Schedule
+         * @description Optional `If-Match: "<updated_at>"`: replace only if the schedule is unchanged, else 412.
+         */
         put: operations["replace_schedule_schedules_api_v1_schedules__schedule_id__put"];
         post?: never;
         /** Delete Schedule */
@@ -202,6 +205,16 @@ export interface components {
         };
         /** RunView */
         RunView: {
+            /** Chain Depth */
+            chain_depth: number;
+            /** Chain Ref */
+            chain_ref: string | null;
+            /** Chain Source */
+            chain_source: string | null;
+            /** Chain Status */
+            chain_status: string | null;
+            /** Chained From */
+            chained_from: string | null;
             /**
              * Created At
              * Format: date-time
@@ -221,6 +234,10 @@ export interface components {
             id: string;
             /** Message Id */
             message_id: string | null;
+            /** Previous Name */
+            previous_name: string | null;
+            /** Previous Status */
+            previous_status: string | null;
             /** Reason */
             reason: string | null;
             /** Reuse */
@@ -238,6 +255,8 @@ export interface components {
             started_at: string | null;
             /** Status */
             status: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[] | null;
             /** Trigger */
             trigger: string;
             /**
@@ -264,6 +283,8 @@ export interface components {
             preset_id: string;
             /** Prompt */
             prompt: string;
+            /** Then Schedule Ids */
+            then_schedule_ids?: string[];
             /** Timezone */
             timezone?: string | null;
         };
@@ -295,6 +316,8 @@ export interface components {
             preset_id: string;
             /** Prompt */
             prompt: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[];
             /** Timezone */
             timezone: string;
             /**
@@ -609,7 +632,9 @@ export interface operations {
     replace_schedule_schedules_api_v1_schedules__schedule_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
             path: {
                 schedule_id: string;
             };
@@ -628,6 +653,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description malformed If-Match header (bad_request) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description source address is not allowed (forbidden) */
@@ -650,6 +684,15 @@ export interface operations {
             };
             /** @description a schedule with this name already exists (conflict) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the schedule changed since the If-Match value was read (precondition_failed) */
+            412: {
                 headers: {
                     [name: string]: unknown;
                 };

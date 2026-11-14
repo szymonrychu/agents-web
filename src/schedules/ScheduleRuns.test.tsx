@@ -17,10 +17,10 @@ const run = (over: Partial<RunView> = {}): RunView =>
     created_at: '2026-10-27T06:00:00Z', updated_at: '2026-10-27T06:00:00Z', ...over,
   }) as RunView
 
-const mount = (props: { refreshKey?: number; onOpenSession?: (id: string) => void } = {}) => {
+const mount = (props: { refreshKey?: number; onOpenSession?: (id: string) => void; onOpenSourceRun?: (n: string, r: string) => void; focusRunId?: string } = {}) => {
   const ui = (refreshKey: number) => (
     <ThemeProvider theme={theme}>
-      <ScheduleRuns scheduleId="s1" timezone="Europe/Warsaw" refreshKey={refreshKey} onOpenSession={props.onOpenSession} />
+      <ScheduleRuns scheduleId="s1" timezone="Europe/Warsaw" refreshKey={refreshKey} onOpenSession={props.onOpenSession} onOpenSourceRun={props.onOpenSourceRun} focusRunId={props.focusRunId} />
     </ThemeProvider>
   )
   const r = render(ui(props.refreshKey ?? 0))
@@ -88,5 +88,49 @@ describe('refresh', () => {
     rerender(1)
     await act(async () => {})
     expect(api.listScheduleRuns).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('chains', () => {
+  test('a chained run names its source schedule and links to the source run', async () => {
+    api.listScheduleRuns.mockResolvedValue([
+      run({ id: 'c1', trigger: 'chained', chained_from: 'src-run', chain_source: 'schedule', previous_name: 'research' } as Partial<RunView>),
+    ])
+    const onOpenSourceRun = vi.fn()
+    mount({ onOpenSourceRun })
+    await userEvent.click(await screen.findByRole('link', { name: 'chained from research' }))
+    expect(onOpenSourceRun).toHaveBeenCalledWith('research', 'src-run')
+  })
+
+  test('focusRunId scrolls the run row into view once loaded', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    api.listScheduleRuns.mockResolvedValue([run({ id: 'x1' })])
+    mount({ focusRunId: 'x1' })
+    await screen.findByRole('table')
+    expect(scroll).toHaveBeenCalled()
+    expect(scroll.mock.contexts[0]).toBe(document.getElementById('run-x1'))
+  })
+
+  test('a webhook-sourced chained run says so and has no run link', async () => {
+    api.listScheduleRuns.mockResolvedValue([
+      run({ id: 'c2', trigger: 'chained', chained_from: null, chain_source: 'webhook', previous_name: 'github-pr' } as Partial<RunView>),
+    ])
+    mount()
+    expect(await screen.findByText('chained from webhook github-pr')).toBeTruthy()
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  test('source runs show a chain status chip; runs without a chain show none', async () => {
+    api.listScheduleRuns.mockResolvedValue([
+      run({ id: 'a', fire_time: '2026-10-28T06:00:00Z', chain_status: 'pending' } as Partial<RunView>),
+      run({ id: 'b', fire_time: '2026-10-27T06:00:00Z', chain_status: 'fired' } as Partial<RunView>),
+      run({ id: 'c', fire_time: '2026-10-26T06:00:00Z', chain_status: 'skipped' } as Partial<RunView>),
+      run({ id: 'd', fire_time: '2026-10-25T06:00:00Z', chain_status: 'expired' } as Partial<RunView>),
+      run({ id: 'e', fire_time: '2026-10-24T06:00:00Z', chain_status: null } as Partial<RunView>),
+    ])
+    mount()
+    for (const s of ['pending', 'fired', 'skipped', 'expired']) expect(await screen.findByLabelText(`chain ${s}`)).toBeTruthy()
+    expect(screen.getAllByLabelText(/^chain /)).toHaveLength(4)
   })
 })

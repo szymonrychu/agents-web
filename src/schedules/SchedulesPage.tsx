@@ -42,6 +42,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
   const { project } = useProject()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [runKeys, setRunKeys] = useState<Record<string, number>>({})
+  const [focus, setFocus] = useState<{ scheduleId: string; runId: string } | null>(null)
   const [form, setForm] = useState<FormTarget>(null)
   const [deleting, setDeleting] = useState<ScheduleView | null>(null)
   const [actionError, setActionError] = useState<FormErrorValue>(null)
@@ -74,6 +75,12 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
       if (!next.delete(id)) next.add(id)
       return next
     })
+  const openSourceRun = (name: string, runId: string) => {
+    const source = (data ?? []).find((s) => s.name === name)
+    if (!source) return
+    setExpanded((e) => new Set(e).add(source.id))
+    setFocus({ scheduleId: source.id, runId })
+  }
   const saved = () => {
     setForm(null)
     void act(async () => {})
@@ -130,7 +137,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
                 {expanded.has(s.id) && (
                   <TableRow>
                     <TableCell colSpan={10}>
-                      <ScheduleRuns scheduleId={s.id} timezone={s.timezone} refreshKey={runKeys[s.id] ?? 0} onOpenSession={onOpenSession} />
+                      <ScheduleRuns scheduleId={s.id} timezone={s.timezone} refreshKey={runKeys[s.id] ?? 0} onOpenSession={onOpenSession} onOpenSourceRun={openSourceRun} focusRunId={focus?.scheduleId === s.id ? focus.runId : undefined} />
                     </TableCell>
                   </TableRow>
                 )}

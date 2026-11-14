@@ -9,7 +9,7 @@ import { theme } from '../theme'
 import type { ScheduleView } from './api'
 import { ScheduleForm } from './ScheduleForm'
 
-const api = vi.hoisted(() => ({ previewSchedule: vi.fn(), createSchedule: vi.fn(), updateSchedule: vi.fn() }))
+const api = vi.hoisted(() => ({ previewSchedule: vi.fn(), createSchedule: vi.fn(), updateSchedule: vi.fn(), listSchedules: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 const client = vi.hoisted(() => ({ listPresets: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...client }))
@@ -30,6 +30,7 @@ beforeEach(() => {
     { id: 'p2', name: 'Other preset', is_default: false },
   ])
   api.previewSchedule.mockResolvedValue({ next_fires: FIRES })
+  api.listSchedules.mockResolvedValue([sched(), sched({ id: 's2', name: 'pill' }), sched({ id: 's3', name: 'report' })])
 })
 afterEach(cleanup)
 
@@ -191,7 +192,7 @@ describe('save', () => {
     await u.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
     expect(api.createSchedule).toHaveBeenCalledWith({
-      name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/Warsaw', preset_id: 'p1', prompt: 'Do it', enabled: true,
+      name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/Warsaw', preset_id: 'p1', prompt: 'Do it', enabled: true, then_schedule_ids: [],
     })
     expect(api.updateSchedule).not.toHaveBeenCalled()
   })
@@ -206,7 +207,7 @@ describe('save', () => {
     await u.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
     expect(api.updateSchedule).toHaveBeenCalledWith('s1', {
-      name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/London', preset_id: 'p2', prompt: 'changed', enabled: true,
+      name: 'nightly', cron: '0 6 * * *', timezone: 'Europe/London', preset_id: 'p2', prompt: 'changed', enabled: true, then_schedule_ids: [],
     })
     expect(api.createSchedule).not.toHaveBeenCalled()
   })
@@ -269,5 +270,67 @@ describe('errors', () => {
     await screen.findByText(/name already taken/)
     await userEvent.setup().type(screen.getByLabelText('Name'), 'x')
     expect(screen.queryByText(/name already taken/)).toBeNull()
+  })
+})
+
+describe('chain targets', () => {
+  const thenRun = () => screen.findByRole('combobox', { name: 'Then run' })
+  const pick = async (u: ReturnType<typeof userEvent.setup>, name: string) => {
+    await u.click(await thenRun())
+    await u.click(await screen.findByRole('option', { name }))
+  }
+
+  test('sends the selected ids in the order picked and explains the semantics', async () => {
+    api.createSchedule.mockResolvedValue(sched({ id: 'new' }))
+    const u = userEvent.setup()
+    mount()
+    await fill(u)
+    await pick(u, 'report')
+    await pick(u, 'pill')
+    expect(screen.getByText(/Each runs once when a session of this schedule finishes after a handled run\. A disabled schedule still runs when chained\./)).toBeTruthy()
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.createSchedule).toHaveBeenCalled())
+    expect(api.createSchedule.mock.calls[0][0].then_schedule_ids).toEqual(['s3', 's2'])
+  })
+
+  test('excludes the schedule itself from the options', async () => {
+    const u = userEvent.setup()
+    mount(sched())
+    await u.click(await thenRun())
+    expect(await screen.findByRole('option', { name: 'pill' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: 'nightly' })).toBeNull()
+  })
+
+  test('shows the current targets when editing and sends [] once they are cleared', async () => {
+    api.updateSchedule.mockResolvedValue(sched())
+    const u = userEvent.setup()
+    mount(sched({ then_schedule_ids: ['s2'] }))
+    expect(await screen.findByText('pill')).toBeTruthy()
+    await u.click(await screen.findByTestId('CancelIcon'))
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.updateSchedule).toHaveBeenCalled())
+    expect(api.updateSchedule.mock.calls[0][1].then_schedule_ids).toEqual([])
+  })
+
+  test('an untouched edit sends the current list unchanged (PUT replaces)', async () => {
+    api.updateSchedule.mockResolvedValue(sched())
+    const u = userEvent.setup()
+    mount(sched({ then_schedule_ids: ['s2', 's3'] }))
+    await screen.findByText('pill')
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.updateSchedule).toHaveBeenCalled())
+    expect(api.updateSchedule.mock.calls[0][1].then_schedule_ids).toEqual(['s2', 's3'])
+  })
+
+  test('409 chain_cycle and 422 chain_* errors show through the form error', async () => {
+    api.updateSchedule.mockRejectedValueOnce(apiError(409, 'chain_cycle', 'these links would form a cycle'))
+    const u = userEvent.setup()
+    mount(sched({ then_schedule_ids: ['s2'] }))
+    await screen.findByText('pill')
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText(/chain_cycle: these links would form a cycle/)).toBeTruthy()
+    api.updateSchedule.mockRejectedValueOnce(apiError(422, 'chain_target_unknown', 'schedule x does not exist'))
+    await u.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText(/chain_target_unknown: schedule x does not exist/)).toBeTruthy()
   })
 })

@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { EndpointCreated, EndpointView } from './api'
 import { EndpointFormDialog } from './EndpointFormDialog'
@@ -15,6 +16,8 @@ const api = vi.hoisted(() => ({
   getMeta: vi.fn(),
 }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
+const sched = vi.hoisted(() => ({ schedulesEnabled: vi.fn(), listSchedules: vi.fn() }))
+vi.mock('../schedules/api', async (orig) => ({ ...(await orig<typeof import('../schedules/api')>()), ...sched }))
 const client = vi.hoisted(() => ({ listPresets: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...client }))
 
@@ -41,6 +44,10 @@ afterAll(() => {
 beforeEach(() => {
   Object.values(api).forEach((m) => { m.mockReset() })
   client.listPresets.mockReset()
+  sched.schedulesEnabled.mockReset()
+  sched.listSchedules.mockReset()
+  sched.schedulesEnabled.mockReturnValue(false)
+  sched.listSchedules.mockResolvedValue([{ id: 's1', name: 'research' }, { id: 's2', name: 'pill' }])
   api.getMeta.mockResolvedValue(META)
   client.listPresets.mockResolvedValue([
     { id: 'p1', name: 'Default preset', is_default: true },
@@ -217,5 +224,75 @@ describe('clone', () => {
     mount({ mode: 'clone', endpoint: view() })
     await u.click(button('Clone'))
     await waitFor(() => expect(api.cloneEndpoint).toHaveBeenCalledWith('7', {}))
+  })
+})
+
+describe('chain targets', () => {
+  const pick = async (u: User, name: string) => {
+    await u.click(await screen.findByRole('combobox', { name: 'Then run' }))
+    await u.click(await screen.findByRole('option', { name }))
+  }
+
+  test('without a schedules backend there is no chain field', async () => {
+    mount()
+    await screen.findByRole('combobox', { name: 'Preset' })
+    expect(screen.queryByRole('combobox', { name: 'Then run' })).toBeNull()
+  })
+
+  test('create sends the chosen schedules in order', async () => {
+    sched.schedulesEnabled.mockReturnValue(true)
+    api.createEndpoint.mockResolvedValue(created({ secret: 'x' }))
+    const u = userEvent.setup()
+    const { onDone } = mount()
+    await choose(u, 'Preset', /Default preset/)
+    await pick(u, 'pill')
+    await pick(u, 'research')
+    await u.click(button('Create'))
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(api.createEndpoint.mock.calls[0][0].then_schedule_ids).toEqual(['s2', 's1'])
+  })
+
+  test('edit sends then_schedule_ids only when changed', async () => {
+    sched.schedulesEnabled.mockReturnValue(true)
+    api.patchEndpoint.mockResolvedValue(created())
+    const u = userEvent.setup()
+    mount({ mode: 'edit', endpoint: view({ then_schedule_ids: ['s1'] }) })
+    await screen.findByText('research')
+    await choose(u, 'Preset', /Other preset/)
+    await u.click(button('Save'))
+    await waitFor(() => expect(api.patchEndpoint).toHaveBeenCalled())
+    expect(api.patchEndpoint).toHaveBeenLastCalledWith('7', { preset_id: 'p2' })
+    cleanup()
+    api.patchEndpoint.mockClear()
+    mount({ mode: 'edit', endpoint: view({ then_schedule_ids: ['s1'] }) })
+    await pick(u, 'pill')
+    await u.click(button('Save'))
+    await waitFor(() => expect(api.patchEndpoint).toHaveBeenCalled())
+    expect(api.patchEndpoint).toHaveBeenLastCalledWith('7', { then_schedule_ids: ['s1', 's2'] })
+  })
+
+  test('clearing the list on edit sends []', async () => {
+    sched.schedulesEnabled.mockReturnValue(true)
+    api.patchEndpoint.mockResolvedValue(created())
+    const u = userEvent.setup()
+    mount({ mode: 'edit', endpoint: view({ then_schedule_ids: ['s1'] }) })
+    await screen.findByText('research')
+    await u.click(screen.getByTestId('CancelIcon'))
+    await u.click(button('Save'))
+    await waitFor(() => expect(api.patchEndpoint).toHaveBeenCalled())
+    expect(api.patchEndpoint).toHaveBeenLastCalledWith('7', { then_schedule_ids: [] })
+  })
+
+  test('422 chaining_unconfigured and chain_target_unknown are shown', async () => {
+    sched.schedulesEnabled.mockReturnValue(true)
+    const u = userEvent.setup()
+    mount({ mode: 'edit', endpoint: view() })
+    await pick(u, 'pill')
+    api.patchEndpoint.mockRejectedValueOnce(new ApiError(422, 'chaining_unconfigured', 'chaining is not configured'))
+    await u.click(button('Save'))
+    expect(await screen.findByText(/chaining_unconfigured: chaining is not configured/)).toBeTruthy()
+    api.patchEndpoint.mockRejectedValueOnce(new ApiError(422, 'chain_target_unknown', 'schedule s9 does not exist'))
+    await u.click(button('Save'))
+    expect(await screen.findByText(/chain_target_unknown: schedule s9 does not exist/)).toBeTruthy()
   })
 })
