@@ -27,7 +27,7 @@ export function mountSpecs(path: string) {
 export const spec = (over: Partial<Spec> = {}): Spec => ({
   key: 'S-1', project: 'default', name: 'task-plans', title: 'Task plans', status: 'draft', labels: [], assignee_session: null, assignee_slug: null,
   created_by: { kind: 'agent', session: 's1', slug: 'agent-x' }, version: 2, created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-01T10:00:00Z',
-  url: '/specs/S-1', documents: [], tasks: [], open_comments: 0, ...over,
+  url: '/specs/S-1', documents: [], tasks: [], open_comments: 0, preset_id: null, starts: [], ...over,
 })
 
 export const specDoc = (over: Partial<SpecDocument> = {}): SpecDocument => ({
@@ -57,5 +57,5 @@ export const plan = (over: Partial<Plan> = {}): Plan => ({
 })
 
 export const gate = (over: Partial<Gate> = {}): Gate => ({
-  key: 'S-1', status: 'draft', approved_versions: null, gate_task: 'T-4', decisions: [], gate: 'none', approved: false, ...over,
+  key: 'S-1', status: 'draft', approved_versions: null, gate_task: 'T-4', decisions: [], gate: 'none', approved: false, approvable: false, open_decisions: [], ...over,
 })

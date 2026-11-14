@@ -9,9 +9,12 @@ import type { Project } from './api'
 import { MemoryRouter } from 'react-router'
 import { ProjectProvider, useProject } from './ProjectContext'
 import { ProjectsPage } from './ProjectsPage'
+import { loadConfig, resetConfig } from '../config/backends'
 
 const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn(), listProjectMessages: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
+const queueApi = vi.hoisted(() => ({ listSpecQueue: vi.fn(), moveQueued: vi.fn(), removeQueued: vi.fn(), putAutostart: vi.fn() }))
+vi.mock('./autostartApi', async (orig) => ({ ...(await orig<typeof import('./autostartApi')>()), ...queueApi }))
 
 const project = (slug: string, over: Partial<Project> = {}): Project => ({
   slug, name: `Name ${slug}`, description: `About ${slug}`, archived: false, created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-01T10:00:00Z', presets: 3, sessions: 5, ...over,
@@ -22,11 +25,13 @@ function Selector() {
 const mount = () => render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><Selector /><ProjectsPage onBack={() => {}} /></ThemeProvider></ProjectProvider></MemoryRouter>)
 
 beforeEach(() => {
-  for (const f of Object.values(api)) f.mockReset()
+  for (const f of [...Object.values(api), ...Object.values(queueApi)]) f.mockReset()
+  queueApi.listSpecQueue.mockResolvedValue([])
   api.listProjects.mockResolvedValue([project('default'), project('alpha', { presets: 1, sessions: 2 })])
   api.projectsSummary.mockResolvedValue([{ project: 'alpha', open_tasks: 7, waiting_decisions: 4 }])
 })
 afterEach(() => {
+  resetConfig()
   cleanup()
   vi.restoreAllMocks()
 })
@@ -142,5 +147,34 @@ describe('ProjectsPage', () => {
     await user.click(within(row).getByRole('button', { name: 'Archive' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Archive' }))
     expect(await screen.findByText(/project_archived/)).toBeTruthy()
+  })
+  describe('autostart', () => {
+    beforeEach(async () => {
+      await loadConfig((async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'taskboard', label: 'T', basePath: '/taskboard/api/v1' }] }))) as unknown as typeof fetch)
+      queueApi.listSpecQueue.mockResolvedValue([
+        { project: 'alpha', max_active_sessions: 2, max_usage_pct: 80, state: 'ready', items: [
+          { id: 1, spec: 'S-1', title: 'One', position: 1, ordinal: 1, hold_reason: null, created_at: '2026-11-14T10:00:00Z' },
+          { id: 2, spec: 'S-2', title: 'Two', position: 2, ordinal: 2, hold_reason: null, created_at: '2026-11-14T10:00:00Z' },
+        ] },
+      ])
+    })
+
+    test('expanding a project shows its autostart panel', async () => {
+      const user = userEvent.setup()
+      mount()
+      const row = (await screen.findByText('Name alpha')).closest('tr')!
+      expect(screen.queryByRole('table', { name: 'Spec queue' })).toBeNull()
+      await user.click(within(row).getByRole('button', { name: 'Autostart' }))
+      expect(await screen.findByRole('table', { name: 'Spec queue' })).toBeTruthy()
+      expect(await screen.findByText('One')).toBeTruthy()
+    })
+
+    test('queued count chip', async () => {
+      mount()
+      const row = (await screen.findByText('Name alpha')).closest('tr')!
+      expect(await within(row).findByText('2 queued')).toBeTruthy()
+      const other = (await screen.findByText('Name default')).closest('tr')!
+      expect(within(other).queryByText(/queued/)).toBeNull()
+    })
   })
 })

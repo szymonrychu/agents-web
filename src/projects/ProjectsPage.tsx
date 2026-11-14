@@ -1,5 +1,5 @@
 /** Projects: list with preset, session, task and decision counts; create, edit and archive. */
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -16,11 +16,15 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { isConfigured } from '../config/backends'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { useProject } from './ProjectContext'
 import { ProjectRoom } from './ProjectRoom'
+import { listSpecQueue } from './autostartApi'
+import type { ProjectQueue } from './autostartApi'
+import { SpecQueuePanel } from './SpecQueuePanel'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
 
@@ -87,12 +91,16 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
   const { refreshProjects } = useProject()
   const { data, error, refresh } = usePoll(() => listProjects(showArchived), POLL_MS, [showArchived])
   const board = usePoll(() => projectsSummary().catch((): ProjectSummary[] => []), POLL_MS, [])
+  const queues = usePoll(() => listSpecQueue().catch((): ProjectQueue[] => []), POLL_MS, [])
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const autostart = isConfigured('taskboard')
   const [editing, setEditing] = useState<Editing | null>(null)
   const [archiving, setArchiving] = useState<Project | null>(null)
   const [room, setRoom] = useState<string | null>(null)
   const [actionError, setActionError] = useState<Error | null>(null)
 
   const summaryOf = (slug: string) => board.data?.find((s) => s.project === slug)
+  const queuedOf = (slug: string) => queues.data?.find((q) => q.project === slug)?.items.length ?? 0
   const count = (n: number | null | undefined) => (n === null || n === undefined ? '-' : n)
 
   const setArchived = async (p: Project, archived: boolean) => {
@@ -136,11 +144,14 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
         <TableBody>
           {(data ?? []).map((p) => {
             const s = summaryOf(p.slug)
+            const queued = queuedOf(p.slug)
             return (
-              <TableRow key={p.slug}>
+              <Fragment key={p.slug}>
+              <TableRow>
                 <TableCell>
                   {p.name} <Typography component="span" color="text.secondary">({p.slug})</Typography>
                   {p.archived && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}
+                  {queued > 0 && <Chip size="small" color="info" label={`${queued} queued`} sx={{ ml: 1 }} />}
                 </TableCell>
                 <TableCell>{p.description}</TableCell>
                 <TableCell align="right">{count(p.presets)}</TableCell>
@@ -148,6 +159,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
                 <TableCell align="right">{count(s?.open_tasks)}</TableCell>
                 <TableCell align="right">{count(s?.waiting_decisions)}</TableCell>
                 <TableCell align="right">
+                  {autostart && <Button size="small" aria-expanded={expanded === p.slug} onClick={() => setExpanded(expanded === p.slug ? null : p.slug)}>Autostart</Button>}
                   <Button size="small" onClick={() => setRoom(p.slug)}>Room</Button>
                   <Button size="small" onClick={() => setEditing({ mode: 'edit', project: p })}>Edit</Button>
                   {p.archived ? (
@@ -157,6 +169,12 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
                   )}
                 </TableCell>
               </TableRow>
+              {autostart && expanded === p.slug && (
+                <TableRow>
+                  <TableCell colSpan={7}><SpecQueuePanel project={p.slug} /></TableCell>
+                </TableRow>
+              )}
+              </Fragment>
             )
           })}
         </TableBody>
