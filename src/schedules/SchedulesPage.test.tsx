@@ -48,6 +48,20 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('SchedulesPage', () => {
+  test('a chained run link opens the source schedule runs and scrolls to the source run', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    api.listScheduleRuns.mockImplementation(async (id: string) =>
+      id === 's1'
+        ? [run({ id: 'c1', trigger: 'chained', chained_from: 'src-run', chain_source: 'schedule', previous_name: 'Nightly' } as Partial<RunView>)]
+        : [run({ id: 'src-run', schedule_id: 's2' })])
+    mount()
+    await userEvent.click(await screen.findByRole('button', { name: 'Show runs of Morning' }))
+    await userEvent.click(await screen.findByRole('link', { name: 'chained from Nightly' }))
+    await waitFor(() => expect(api.listScheduleRuns).toHaveBeenCalledWith('s2', 20))
+    await waitFor(() => expect(scroll.mock.contexts.some((c) => (c as Element).id === 'run-src-run')).toBe(true))
+  })
+
   test('lists schedules with next fire time and last run status', async () => {
     mount()
     const row = (await screen.findByText('Morning')).closest('tr')!

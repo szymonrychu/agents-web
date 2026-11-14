@@ -17,10 +17,10 @@ const run = (over: Partial<RunView> = {}): RunView =>
     created_at: '2026-10-27T06:00:00Z', updated_at: '2026-10-27T06:00:00Z', ...over,
   }) as RunView
 
-const mount = (props: { refreshKey?: number; onOpenSession?: (id: string) => void } = {}) => {
+const mount = (props: { refreshKey?: number; onOpenSession?: (id: string) => void; onOpenSourceRun?: (n: string, r: string) => void; focusRunId?: string } = {}) => {
   const ui = (refreshKey: number) => (
     <ThemeProvider theme={theme}>
-      <ScheduleRuns scheduleId="s1" timezone="Europe/Warsaw" refreshKey={refreshKey} onOpenSession={props.onOpenSession} />
+      <ScheduleRuns scheduleId="s1" timezone="Europe/Warsaw" refreshKey={refreshKey} onOpenSession={props.onOpenSession} onOpenSourceRun={props.onOpenSourceRun} focusRunId={props.focusRunId} />
     </ThemeProvider>
   )
   const r = render(ui(props.refreshKey ?? 0))
@@ -96,9 +96,20 @@ describe('chains', () => {
     api.listScheduleRuns.mockResolvedValue([
       run({ id: 'c1', trigger: 'chained', chained_from: 'src-run', chain_source: 'schedule', previous_name: 'research' } as Partial<RunView>),
     ])
-    mount()
-    const link = await screen.findByRole('link', { name: 'chained from research' })
-    expect(link.getAttribute('href')).toBe('#run-src-run')
+    const onOpenSourceRun = vi.fn()
+    mount({ onOpenSourceRun })
+    await userEvent.click(await screen.findByRole('link', { name: 'chained from research' }))
+    expect(onOpenSourceRun).toHaveBeenCalledWith('research', 'src-run')
+  })
+
+  test('focusRunId scrolls the run row into view once loaded', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    api.listScheduleRuns.mockResolvedValue([run({ id: 'x1' })])
+    mount({ focusRunId: 'x1' })
+    await screen.findByRole('table')
+    expect(scroll).toHaveBeenCalled()
+    expect(scroll.mock.contexts[0]).toBe(document.getElementById('run-x1'))
   })
 
   test('a webhook-sourced chained run says so and has no run link', async () => {
