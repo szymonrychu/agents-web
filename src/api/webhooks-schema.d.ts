@@ -249,6 +249,8 @@ export interface components {
             secret?: string | null;
             /** Suffix */
             suffix: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[];
             /** Type */
             type: string;
             /**
@@ -289,6 +291,8 @@ export interface components {
             prompt_template?: string | null;
             /** Suffix */
             suffix?: string | null;
+            /** Then Schedule Ids */
+            then_schedule_ids?: string[];
             /** Type */
             type: string;
             /** Username */
@@ -319,6 +323,8 @@ export interface components {
             prompt_template?: string | null;
             /** Suffix */
             suffix?: string | null;
+            /** Then Schedule Ids */
+            then_schedule_ids?: string[] | null;
             /** Username */
             username?: string | null;
         };
@@ -355,6 +361,8 @@ export interface components {
             prompt_template: string | null;
             /** Suffix */
             suffix: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[];
             /** Type */
             type: string;
             /**
@@ -373,6 +381,8 @@ export interface components {
             action: string | null;
             /** Author */
             author: string | null;
+            /** Chain Status */
+            chain_status: string | null;
             /** Dedup Key */
             dedup_key: string;
             /** Deliveries */
@@ -418,6 +428,8 @@ export interface components {
             started_at: string | null;
             /** Status */
             status: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[] | null;
             /** Title */
             title: string | null;
             /** Type */
@@ -438,6 +450,8 @@ export interface components {
             action: string | null;
             /** Author */
             author: string | null;
+            /** Chain Status */
+            chain_status: string | null;
             /** Dedup Key */
             dedup_key: string;
             /** Deliveries */
@@ -479,6 +493,8 @@ export interface components {
             started_at: string | null;
             /** Status */
             status: string;
+            /** Then Schedule Ids */
+            then_schedule_ids: string[] | null;
             /** Title */
             title: string | null;
             /** Type */

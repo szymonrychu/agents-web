@@ -48,6 +48,13 @@ describe('schedules api routes', () => {
     await createSchedule(body);
     expect(call()).toMatchObject({ url: `${BASE}/schedules`, method: 'POST', body: JSON.stringify(body) });
     f.mockClear();
+    const chained = { ...body, then_schedule_ids: ['s2', 's3'] };
+    await createSchedule(chained);
+    expect(call().body).toBe(JSON.stringify(chained));
+    f.mockClear();
+    await updateSchedule('s1', { ...body, then_schedule_ids: [] });
+    expect(call().body).toBe(JSON.stringify({ ...body, then_schedule_ids: [] }));
+    f.mockClear();
     await updateSchedule('s1', body);
     expect(call()).toMatchObject({ url: `${BASE}/schedules/s1`, method: 'PUT', body: JSON.stringify(body) });
     f.mockClear();

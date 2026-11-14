@@ -6,7 +6,7 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
-import { RunStatusChip } from '../triggers'
+import { ChainStatusChip, RunStatusChip } from '../triggers'
 import type { RunStatus } from '../triggers'
 import type { EventView } from './api'
 
@@ -33,7 +33,7 @@ export function EventsTable({ events }: EventsTableProps) {
     <Table size="small">
       <TableHead>
         <TableRow>
-          {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Session'].map((h) => (
+          {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'].map((h) => (
             <TableCell key={h}>{h}</TableCell>
           ))}
         </TableRow>
@@ -56,6 +56,7 @@ export function EventsTable({ events }: EventsTableProps) {
                 <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
                 <Routing event={e} />
               </TableCell>
+              <TableCell><ChainStatusChip status={e.chain_status} /></TableCell>
               <TableCell>{e.session_slug ?? e.session_id}</TableCell>
             </TableRow>
           )

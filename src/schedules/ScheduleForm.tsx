@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError } from '../api/client'
 import TemplateEditor, { type TemplatePreview } from '../editor/TemplateEditor'
-import { FormError, PresetSelect } from '../triggers'
+import { ChainTargetsSelect, FormError, PresetSelect } from '../triggers'
 import { createSchedule, previewSchedule, updateSchedule } from './api'
 import type { ScheduleView } from './api'
 
@@ -61,6 +61,7 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
   const [presetId, setPresetId] = useState(schedule?.preset_id ?? '')
   const [prompt, setPrompt] = useState(schedule?.prompt ?? '')
   const [enabled, setEnabled] = useState(schedule?.enabled ?? true)
+  const [thenIds, setThenIds] = useState<string[]>(schedule?.then_schedule_ids ?? [])
   const [preview, setPreview] = useState<Preview | null>(null)
   const [saveErrors, setSaveErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<unknown>(null)
@@ -112,7 +113,7 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
   const valid = name.trim() !== '' && cron.trim() !== '' && presetId !== '' && prompt.trim() !== ''
 
   const submit = async () => {
-    const body = { name: name.trim(), cron: cron.trim(), timezone, preset_id: presetId, prompt, enabled }
+    const body = { name: name.trim(), cron: cron.trim(), timezone, preset_id: presetId, prompt, enabled, then_schedule_ids: thenIds }
     setBusy(true)
     setSaveErrors({})
     setFormError(null)
@@ -160,6 +161,7 @@ export function ScheduleForm({ schedule, onSaved, onCancel }: ScheduleFormProps)
       <FormHelperText error={Boolean(err('prompt'))}>
         {err('prompt') ?? `Jinja2, sent to the agent on each fire. Variables: ${PROMPT_VARIABLES.map((v) => `{{ ${v} }}`).join(', ')} (fired_at is ISO 8601, in the schedule's timezone).`}
       </FormHelperText>
+      <ChainTargetsSelect value={thenIds} onChange={edit(null, setThenIds)} excludeId={schedule?.id} />
       <FormControlLabel control={<Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />} label="Enabled" />
       <FormError error={formError as never} />
       <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>

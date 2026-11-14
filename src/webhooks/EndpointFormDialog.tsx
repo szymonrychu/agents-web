@@ -16,7 +16,8 @@ import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { FormError, PresetSelect } from '../triggers'
+import { schedulesEnabled } from '../schedules/api'
+import { ChainTargetsSelect, FormError, PresetSelect } from '../triggers'
 import TemplateEditor, { type TemplatePreview } from '../editor/TemplateEditor'
 import { cloneEndpoint, createEndpoint, getMeta, patchEndpoint, previewTemplate } from './api'
 import type { CloneIn, EndpointCreated, EndpointIn, EndpointPatch, EndpointView, FilterResult, Filters, WebhookMeta } from './api'
@@ -64,6 +65,7 @@ function Body({ mode, endpoint, onClose, onDone, onRotate }: Omit<EndpointFormDi
   const [example, setExample] = useState(sampleFor(type))
   const [exampleTouched, setExampleTouched] = useState(false)
   const [filters, setFilters] = useState<Filters>(endpoint?.filters ?? EMPTY_FILTERS)
+  const [thenIds, setThenIds] = useState<string[]>(endpoint?.then_schedule_ids ?? [])
   const [meta, setMeta] = useState<WebhookMeta | null>(null)
   const [metaError, setMetaError] = useState<unknown>(null)
   const [rendered, setRendered] = useState<string | null>(null)
@@ -99,6 +101,7 @@ function Body({ mode, endpoint, onClose, onDone, onRotate }: Omit<EndpointFormDi
     const nextTemplate = template.trim() ? template : null
     if (nextTemplate !== endpoint.prompt_template) out.prompt_template = nextTemplate
     if (!sameJson(filters, endpoint.filters)) out.filters = filters
+    if (!sameJson(thenIds, endpoint.then_schedule_ids ?? [])) out.then_schedule_ids = thenIds
     if (!sameJson(auth, authOf(endpoint))) Object.assign(out, authPayload(auth))
     if (auth.mode === 'basic' && (username || null) !== endpoint.username) out.username = username || null
     return out
@@ -175,6 +178,7 @@ function Body({ mode, endpoint, onClose, onDone, onRotate }: Omit<EndpointFormDi
         }
         if (template.trim()) body.prompt_template = template
         if (hasRules) body.filters = filters
+        if (thenIds.length > 0) body.then_schedule_ids = thenIds
         onDone(await createEndpoint(body))
       }
     } catch (e) {
@@ -261,6 +265,7 @@ function Body({ mode, endpoint, onClose, onDone, onRotate }: Omit<EndpointFormDi
                 {onRotate && !modeChanged && <Button onClick={onRotate}>Rotate secret</Button>}
               </Box>
             )}
+            {schedulesEnabled() && <ChainTargetsSelect value={thenIds} onChange={setThenIds} helperText="Each runs once when the session of a handled event finishes. A disabled schedule still runs when chained." />}
             <TemplateEditor
               label="Prompt template" value={template} onChange={(t) => { setTemplate(t); clearPreview() }}
               preview={previewPrompt} previewLabel="Preview template"
