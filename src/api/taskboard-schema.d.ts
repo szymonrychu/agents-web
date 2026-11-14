@@ -55,6 +55,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/projects/{slug}/autostart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Autostart */
+        get: operations["get_autostart_taskboard_api_v1_projects__slug__autostart_get"];
+        /** Put Autostart */
+        put: operations["put_autostart_taskboard_api_v1_projects__slug__autostart_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/specs": {
         parameters: {
             query?: never;
@@ -67,6 +85,57 @@ export interface paths {
         put?: never;
         /** Create Spec */
         post: operations["create_spec_taskboard_api_v1_specs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Queue */
+        get: operations["get_queue_taskboard_api_v1_specs_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/queue/{start_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Start */
+        delete: operations["remove_start_taskboard_api_v1_specs_queue__start_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/specs/queue/{start_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move Start */
+        post: operations["move_start_taskboard_api_v1_specs_queue__start_id__move_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -528,6 +597,29 @@ export interface components {
             /** Slug */
             slug: string | null;
         };
+        /**
+         * AutostartPut
+         * @description Both keys are required; null unsets a limit (autostart stays off until both are set).
+         */
+        AutostartPut: {
+            /** Max Active Sessions */
+            max_active_sessions: number | null;
+            /** Max Usage Pct */
+            max_usage_pct: number | null;
+        };
+        /** AutostartView */
+        AutostartView: {
+            /** Configured */
+            configured: boolean;
+            /** Max Active Sessions */
+            max_active_sessions: number | null;
+            /** Max Usage Pct */
+            max_usage_pct: number | null;
+            /** Project */
+            project: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
         /** CommentCreate */
         CommentCreate: {
             /** Body */
@@ -736,6 +828,8 @@ export interface components {
         };
         /** Gate */
         Gate: {
+            /** Approvable */
+            approvable: boolean;
             /** Approved */
             approved: boolean;
             /** Approved Versions */
@@ -753,6 +847,8 @@ export interface components {
             gate_task: string | null;
             /** Key */
             key: string;
+            /** Open Decisions */
+            open_decisions: components["schemas"]["GateOpenDecision"][];
             /**
              * Status
              * @enum {string}
@@ -772,6 +868,15 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "answered";
+        };
+        /** GateOpenDecision */
+        GateOpenDecision: {
+            /** Id */
+            id: number;
+            /** Question */
+            question: string;
+            /** Task */
+            task: string;
         };
         /** NextStep */
         NextStep: {
@@ -831,6 +936,55 @@ export interface components {
             tech_stack: string;
             /** Version */
             version: number;
+        };
+        /** ProjectQueue */
+        ProjectQueue: {
+            /** Items */
+            items: components["schemas"]["QueueItem"][];
+            /** Max Active Sessions */
+            max_active_sessions: number | null;
+            /** Max Usage Pct */
+            max_usage_pct: number | null;
+            /** Project */
+            project: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "off" | "idle" | "ready" | "at_limit" | "usage_high" | "usage_unknown" | "usage_refused" | "orchestrator_unavailable";
+        };
+        /**
+         * QueueItem
+         * @description A queued start; `position` is the displayed rank 1..n within the project.
+         */
+        QueueItem: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Hold Reason */
+            hold_reason: string | null;
+            /** Id */
+            id: number;
+            /** Ordinal */
+            ordinal: number;
+            /** Position */
+            position: number;
+            /** Spec */
+            spec: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * QueueMove
+         * @description Move to the 1-based rank `position` or just before the queued start `before` (one).
+         */
+        QueueMove: {
+            /** Before */
+            before?: number | null;
+            /** Position */
+            position?: number | null;
         };
         /**
          * Ref
@@ -958,8 +1112,12 @@ export interface components {
             name: string;
             /** Open Comments */
             open_comments: number;
+            /** Preset Id */
+            preset_id: string | null;
             /** Project */
             project: string;
+            /** Starts */
+            starts: components["schemas"]["SpecStartView"][];
             /**
              * Status
              * @enum {string}
@@ -1026,6 +1184,48 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** SpecQueue */
+        SpecQueue: {
+            /** Projects */
+            projects: components["schemas"]["ProjectQueue"][];
+        };
+        /**
+         * SpecStartView
+         * @description One approval's start record: `status` is new, queued, in_progress, handled, failed or
+         *     removed; `mode` is nudged or started once handled.
+         */
+        SpecStartView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error */
+            error: string | null;
+            /** Hold Reason */
+            hold_reason: string | null;
+            /** Id */
+            id: number;
+            /** Mode */
+            mode: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /** Position */
+            position: number | null;
+            /** Project */
+            project: string;
+            /** Session Id */
+            session_id: string | null;
+            /** Slug */
+            slug: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** SpecSummary */
         SpecSummary: {
             /** Assignee Session */
@@ -1044,6 +1244,8 @@ export interface components {
             labels: string[];
             /** Name */
             name: string;
+            /** Preset Id */
+            preset_id: string | null;
             /** Project */
             project: string;
             /**
@@ -1360,6 +1562,90 @@ export interface operations {
             };
         };
     };
+    get_autostart_taskboard_api_v1_projects__slug__autostart_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutostartView"];
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_autostart_taskboard_api_v1_projects__slug__autostart_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutostartPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutostartView"];
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, unknown_project, project_archived, project_mismatch) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the orchestrator cannot validate the project (upstream_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_specs_taskboard_api_v1_specs_get: {
         parameters: {
             query?: {
@@ -1385,7 +1671,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecPage"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1427,7 +1713,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecDetail"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1436,7 +1722,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1474,6 +1760,146 @@ export interface operations {
             };
         };
     };
+    get_queue_taskboard_api_v1_specs_queue_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecQueue"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    remove_start_taskboard_api_v1_specs_queue__start_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                start_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    move_start_taskboard_api_v1_specs_queue__start_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                start_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueueMove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectQueue"];
+                };
+            };
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such spec, document or comment (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request, no_suggestion, dependency_cycle) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_spec_taskboard_api_v1_specs__key__get: {
         parameters: {
             query?: never;
@@ -1494,7 +1920,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecDetail"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1532,7 +1958,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1576,7 +2002,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecDetail"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1594,7 +2020,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1655,7 +2081,7 @@ export interface operations {
                     "application/json": components["schemas"]["CommentList"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1708,7 +2134,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecComment"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1771,7 +2197,7 @@ export interface operations {
                     "application/json": components["schemas"]["SuggestionAccepted"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1789,7 +2215,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1839,7 +2265,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecComment"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1857,7 +2283,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1898,7 +2324,7 @@ export interface operations {
                     "application/json": components["schemas"]["SpecComment"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1916,7 +2342,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1956,7 +2382,7 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentList"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2007,7 +2433,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2061,7 +2487,7 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentVersion"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2132,7 +2558,7 @@ export interface operations {
                     "application/json": components["schemas"]["Section"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2185,7 +2611,7 @@ export interface operations {
                     "application/json": components["schemas"]["VersionPage"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2234,7 +2660,7 @@ export interface operations {
                     "application/json": components["schemas"]["Gate"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2274,7 +2700,7 @@ export interface operations {
                     "application/json": components["schemas"]["Plan"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2318,7 +2744,7 @@ export interface operations {
                     "application/json": components["schemas"]["Plan"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2376,7 +2802,7 @@ export interface operations {
                     "application/json": components["schemas"]["StepList"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2420,7 +2846,7 @@ export interface operations {
                     "application/json": components["schemas"]["StepKeys"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2438,7 +2864,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress) */
+            /** @description conflict (name_taken, already_resolved, already_decided, step_in_progress, decisions_open, with decisions on an agent approval; not_queued on the queue routes) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2500,7 +2926,7 @@ export interface operations {
                     "application/json": components["schemas"]["Step"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2578,7 +3004,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2631,7 +3057,7 @@ export interface operations {
                     "application/json": components["schemas"]["StepsVersion"];
                 };
             };
-            /** @description forbidden (forbidden, user_only, project_forbidden) */
+            /** @description forbidden (forbidden, user_only, superleader_only, project_forbidden) */
             403: {
                 headers: {
                     [name: string]: unknown;

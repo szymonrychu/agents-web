@@ -58,6 +58,13 @@ describe('spec page', () => {
     expect(screen.getByRole('link', { name: 'T-4' }).getAttribute('href')).toBe('/tasks/T-4')
   })
 
+  test('shows the trigger state from spec.starts', async () => {
+    api.getSpec.mockResolvedValue(full({ starts: [{ id: 1, ordinal: 1, status: 'handled', mode: 'started', project: 'default', position: null, hold_reason: null, slug: 'impl-1', session_id: 's-3', error: null, created_at: '2026-11-14T10:00:00Z', updated_at: '2026-11-14T10:00:00Z' }] }))
+    mountSpecs('/specs/S-1')
+    const link = await screen.findByRole('link', { name: 'Started session impl-1' })
+    expect(link.getAttribute('href')).toBe('/?session=s-3')
+  })
+
   test('Approve patches the status with the spec version', async () => {
     mountSpecs('/specs/S-1')
     await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))

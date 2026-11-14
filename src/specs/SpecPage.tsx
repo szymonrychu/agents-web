@@ -24,6 +24,7 @@ import { createComment, getSpec, patchSpec, type Spec, type SpecStatus } from '.
 import { GatePanel } from './GatePanel'
 import { docPath } from './paths'
 import { PlanTab } from './PlanTab'
+import { StartState } from './StartState'
 import { useSpecStream } from './useSpecStream'
 
 const POLL_MS = 10000
@@ -111,6 +112,7 @@ export function SpecPage({ specKey }: { specKey: string }) {
         {(spec.open_comments ?? 0) > 0 && <Chip size="small" color="warning" label={`${spec.open_comments} open comments`} />}
       </Box>
       <LabelChips labels={spec.labels} />
+      <StartState starts={spec.starts} />
       <FormError error={error} />
       <FormError error={actionError} />
       {stale && <Alert severity="warning">The spec changed since you opened it; it was reloaded, try again.</Alert>}
