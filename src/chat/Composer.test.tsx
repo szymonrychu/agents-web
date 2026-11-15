@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, MessageView } from '../api/client'
 import type { StreamOptions } from '../api/stream'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { Composer } from './Composer'
 import { QueueStrip } from './QueueStrip'
@@ -33,6 +34,7 @@ const msg = (over: Partial<MessageView>): MessageView =>
 const wrap = (ui: React.ReactNode) => render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   stream.opened.length = 0
   api.postMessage.mockResolvedValue({ id: 9 })
   api.listMessages.mockResolvedValue([])
@@ -133,6 +135,57 @@ describe('Composer', () => {
     fireEvent.keyDown(input(), { key: 'Enter' })
     expect((await screen.findByRole('alert')).textContent).toContain('session is being discarded')
     expect((input() as HTMLTextAreaElement).value).toBe('x')
+  })
+})
+
+describe('Composer on a desktop with a mouse', () => {
+  test('keeps one row, a text Send button, the lane hint and Enter to send', async () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    expect(screen.queryByTestId('composer-row-options')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send' }).textContent).toBe('Send')
+    expect(screen.getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
+    expect(input().getAttribute('enterkeyhint')).toBe('send')
+    fireEvent.change(input(), { target: { value: 'go' } })
+    expect(fireEvent.keyDown(input(), { key: 'Enter' })).toBe(false)
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'go', lane: 'regular' }))
+  })
+})
+
+describe.each([
+  ['a phone', 375],
+  ['an iPad in landscape', 1440],
+])('Composer on %s (touch)', (_name, width) => {
+  beforeEach(() => setViewport(width, { coarse: true }))
+
+  test('puts the message and an icon Send in the first row, lane and target in the second', () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    const main = screen.getByTestId('composer-row-main')
+    expect(within(main).getByRole('textbox', { name: 'Message' })).toBeTruthy()
+    const send = within(main).getByRole('button', { name: 'Send' })
+    expect(send.textContent).not.toContain('Send')
+    const options = screen.getByTestId('composer-row-options')
+    expect(within(options).getByRole('combobox', { name: 'Lane' })).toBeTruthy()
+    expect(within(options).getByRole('combobox', { name: 'Target agent' })).toBeTruthy()
+  })
+
+  test('moves the lane hint into the lane menu', () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    expect(screen.queryByText('Regular: delivered at the next tool boundary of a running turn.')).toBeNull()
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
+    const listbox = screen.getByRole('listbox')
+    expect(within(listbox).getByText('Idle: waits until the agent is free.')).toBeTruthy()
+    expect(within(listbox).getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
+    expect(within(listbox).getByText('Priority: interrupts the agent right now.')).toBeTruthy()
+  })
+
+  test('Return inserts a newline and only the Send button sends', async () => {
+    wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
+    expect(input().getAttribute('enterkeyhint')).toBe('enter')
+    fireEvent.change(input(), { target: { value: 'line one' } })
+    expect(fireEvent.keyDown(input(), { key: 'Enter' })).toBe(true)
+    expect(api.postMessage).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'line one', lane: 'regular' }))
   })
 })
 
