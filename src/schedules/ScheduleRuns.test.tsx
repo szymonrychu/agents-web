@@ -4,7 +4,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import type { RunView } from './api'
 import { ScheduleRuns } from './ScheduleRuns'
 
@@ -29,6 +29,7 @@ const mount = (props: { refreshKey?: number; onOpenSession?: (id: string) => voi
 }
 
 beforeEach(() => {
+  setViewport(1440)
   api.listScheduleRuns.mockReset()
   api.listScheduleRuns.mockResolvedValue([])
 })
@@ -136,11 +137,34 @@ describe('chains', () => {
   })
 })
 
-describe('table on phones', () => {
-  test('scrolls inside a TableContainer and hides Trigger and Chain', async () => {
-    api.listScheduleRuns.mockResolvedValue([run()])
+describe('runs by layout', () => {
+  const runs = () => api.listScheduleRuns.mockResolvedValue([
+    run({ id: 'a', session_id: 'sess-1', session_slug: 'nightly-1', chain_status: 'fired' } as Partial<RunView>),
+    run({ id: 'b', fire_time: '2026-10-26T06:00:00Z', trigger: 'manual' }),
+  ])
+
+  test('phones show one card per run with trigger, chain and session', async () => {
+    setViewport(375, { coarse: true })
+    runs()
+    mount({ onOpenSession: vi.fn() })
+    const card = await screen.findByRole('article', { name: 'Run a' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(card.id).toBe('run-a')
+    const c = within(card)
+    for (const label of ['Trigger', 'Chain', 'Session']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByRole('link', { name: 'nightly-1' })).toBeTruthy()
+    expect(c.getByLabelText('chain fired')).toBeTruthy()
+    expect(card.querySelector('time')).toBeTruthy()
+    const bare = within(screen.getByRole('article', { name: 'Run b' }))
+    expect(bare.getByText('Session', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
+  })
+
+  test('wide screens keep the table with run-<id> rows', async () => {
+    runs()
     mount()
-    await screen.findAllByRole('row')
-    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Fire time', 'Trigger', 'Status', 'Chain', 'Session'])).toEqual([])
+    await screen.findByRole('table', { name: 'Runs' })
+    expect(screen.queryByRole('article')).toBeNull()
+    expect(document.getElementById('run-a')?.tagName).toBe('TR')
   })
 })

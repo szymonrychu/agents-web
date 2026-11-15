@@ -31,32 +31,3 @@ export function emittedInMedia(el: Element, media: string): string {
   }
   return out.join(';')
 }
-
-/**
- * Table guard: the table sits in a TableContainer, each `hidden` header cell emits display:none on xs and a table cell from sm
- * (hideOnPhone), and each `shown` header cell does not. `table` is the <table> element.
- */
-export function phoneColumnProblems(table: Element, hidden: string[], shown: string[]): string[] {
-  const problems: string[] = []
-  if (!table.closest('.MuiTableContainer-root')) problems.push('table is not inside a TableContainer')
-  const header = (label: string) => Array.from(table.querySelectorAll('thead th')).find((th) => th.textContent === label)
-  // hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } }: none from 0 px, a table cell again from 600 px
-  const phone = (el: Element) => emittedInMedia(el, '(min-width:0px)').includes('display:none') && emittedInMedia(el, '(min-width:600px)').includes('display:table-cell')
-  // body cells of a column must follow its header: every row with one cell per header column
-  const headers = Array.from(table.querySelectorAll('thead th'))
-  const rows = Array.from(table.querySelectorAll('tbody tr')).filter((tr) => tr.children.length === headers.length)
-  const bodyCells = (th: Element) => rows.map((tr) => tr.children[headers.indexOf(th)])
-  for (const label of hidden) {
-    const th = header(label)
-    if (!th) problems.push(`no header ${label}`)
-    else if (!phone(th)) problems.push(`header ${label} is not hidden on phones`)
-    else if (!bodyCells(th).every(phone)) problems.push(`body cells of ${label} are not hidden on phones`)
-  }
-  for (const label of shown) {
-    const th = header(label)
-    if (!th) problems.push(`no header ${label}`)
-    else if (phone(th)) problems.push(`header ${label} is hidden on phones`)
-    else if (bodyCells(th).some(phone)) problems.push(`body cells of ${label} are hidden on phones`)
-  }
-  return problems
-}

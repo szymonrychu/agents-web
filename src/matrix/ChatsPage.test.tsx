@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
-import { phoneColumnProblems } from '../test/emittedCss'
 import type { MessageView, RoomDetail, RoomView } from './api'
 import { ChatsPage } from './ChatsPage'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({
   getMeta: vi.fn(), listRooms: vi.fn(), getRoom: vi.fn(), setRoomSettings: vi.fn(),
@@ -37,6 +37,7 @@ const flush = (ms = 0) => act(async () => { await vi.advanceTimersByTimeAsync(ms
 
 let rooms: RoomView[]
 beforeEach(() => {
+  setViewport(1440)
   vi.useFakeTimers({ shouldAdvanceTime: true })
   for (const f of [...Object.values(api), ...Object.values(client), onOpenSession]) f.mockReset()
   rooms = [
@@ -388,24 +389,65 @@ describe('ChatsPage', () => {
 })
 
 describe('ChatsPage tables on phones', () => {
-  test('the rooms table scrolls in a TableContainer and hides low-priority columns', async () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('rooms are one card each with their meta fields, and tapping Open opens the drawer', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mount()
     await flush()
-    const table = screen.getByText('Alice DM').closest('table')!
-    expect(phoneColumnProblems(table, ['Members', 'Preset', 'Project', 'Trigger'], ['Name', 'Kind', 'Flags', 'Access', 'Session', 'Last activity', 'Queued'])).toEqual([])
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(3)
+    const card = screen.getByRole('article', { name: 'Room Alice DM' })
+    const c = within(card)
+    for (const f of ['Kind', 'Flags', 'Access', 'Session', 'Last activity', 'Queued']) expect(c.getByText(f, { selector: 'dt' })).toBeTruthy()
+    for (const f of ['Members', 'Preset', 'Trigger']) expect(c.queryByText(f, { selector: 'dt' })).toBeNull()
+    expect(c.getByText('Queued', { selector: 'dt' }).nextElementSibling?.textContent).toBe('3')
+    expect(c.getByText('Message request')).toBeTruthy()
+    await user.click(c.getByRole('button', { name: 'Open Room Alice DM' }))
+    await flush()
+    expect(screen.getByRole('dialog', { name: 'Room details' })).toBeTruthy()
   })
 
-  test('the room drawer members and messages tables scroll in a TableContainer', async () => {
+  test('the session link inside a card opens the session, not the drawer', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mount()
+    await flush()
+    await user.click(within(screen.getByRole('article', { name: 'Room Alice DM' })).getByRole('button', { name: 'agent-x' }))
+    expect(onOpenSession).toHaveBeenCalledWith('sid-1')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('the room drawer members and messages are cards', async () => {
     api.listRoomMessages.mockResolvedValue([msg('m1')])
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mount()
     await flush()
+    await user.click(screen.getByRole('button', { name: 'Open Room Alice DM' }))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    expect(within(drawer).queryByRole('table')).toBeNull()
+    const member = within(drawer).getByRole('article', { name: 'Member Alice' })
+    for (const f of ['Matrix id', 'Facebook id', 'Access']) expect(within(member).getByText(f, { selector: 'dt' })).toBeTruthy()
+    expect(within(member).getByText('@fb_1:hs')).toBeTruthy()
+    const message = within(drawer).getByRole('article', { name: /^Message / })
+    for (const f of ['Dir', 'Sender', 'Status']) expect(within(message).getByText(f, { selector: 'dt' })).toBeTruthy()
+    expect(within(message).getByText('body m1')).toBeTruthy()
+  })
+})
+
+describe('ChatsPage tables on wide screens', () => {
+  test('rooms, members and messages are tables with every column', async () => {
+    api.listRoomMessages.mockResolvedValue([msg('m1')])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mount()
+    await flush()
+    const rooms = screen.getByRole('table', { name: 'Rooms' })
+    for (const h of ['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued']) expect(within(rooms).getByRole('columnheader', { name: h })).toBeTruthy()
     await user.click(screen.getByText('Alice DM'))
     await flush()
     const drawer = screen.getByRole('dialog')
-    const members = within(drawer).getByText('@fb_1:hs').closest('table')!
-    expect(phoneColumnProblems(members, [], ['Name', 'Matrix id', 'Facebook id', 'Access'])).toEqual([])
-    const messages = within(drawer).getByText('body m1').closest('table')!
-    expect(phoneColumnProblems(messages, [], ['Dir', 'Time', 'Sender', 'Body', 'Status'])).toEqual([])
+    expect(within(within(drawer).getByRole('table', { name: 'Members' })).getByText('@fb_1:hs')).toBeTruthy()
+    const messages = within(drawer).getByRole('table', { name: 'Messages' })
+    for (const h of ['Dir', 'Time', 'Sender', 'Body', 'Status']) expect(within(messages).getByRole('columnheader', { name: h })).toBeTruthy()
   })
 })

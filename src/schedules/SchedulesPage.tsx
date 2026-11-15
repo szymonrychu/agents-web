@@ -1,31 +1,25 @@
 /** Settings > Schedules: every schedule with enable/disable, run now, edit, delete and expandable runs. */
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Switch from '@mui/material/Switch'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { presetInProject } from '../projects/scope'
 import { useProject } from '../projects/ProjectContext'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
+import type { RowAction } from '../layout/RowActions'
+import { DateTime } from '../common/DateTime'
 import { FormError, ProjectCell, RunStatusChip, usePoll, usePresetIndex } from '../triggers'
 import type { FormErrorValue, RunStatus } from '../triggers'
 import { deleteSchedule, listSchedules, runScheduleNow, updateSchedule } from './api'
 import type { ScheduleView } from './api'
 import { ScheduleForm } from './ScheduleForm'
 import { ScheduleRuns } from './ScheduleRuns'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
-
-const col = phoneColumns(['Cron', 'Timezone', 'Preset', 'Project', 'Last run'])
 
 export interface SchedulesPageProps {
   onBack: () => void
@@ -37,8 +31,6 @@ export interface SchedulesPageProps {
 type FormTarget = ScheduleView | 'new' | null
 
 const POLL_MS = 10_000
-
-const fireTime = (iso: string, timeZone: string) => new Date(iso).toLocaleString(undefined, { timeZone, dateStyle: 'medium', timeStyle: 'short' })
 
 export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
   const { data, error, refresh } = usePoll(listSchedules, POLL_MS, [])
@@ -90,14 +82,32 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
     void act(async () => {})
   }
 
+  const actions = (s: ScheduleView): RowAction[] => {
+    const open = expanded.has(s.id)
+    return [
+      { label: open ? 'Hide runs' : 'Show runs', ariaLabel: `${open ? 'Hide' : 'Show'} runs of ${s.name}`, expanded: open, onClick: () => toggleRuns(s.id) },
+      { label: 'Run now', ariaLabel: `Run ${s.name} now`, onClick: () => void runNow(s) },
+      { label: 'Edit', ariaLabel: `Edit ${s.name}`, onClick: () => setForm(s) },
+      { label: 'Delete', ariaLabel: `Delete ${s.name}`, color: 'error', onClick: () => setDeleting(s) },
+    ]
+  }
+  const columns: Column<ScheduleView>[] = [
+    { key: 'enabled', label: 'Enabled', role: 'control', render: (s) => <Switch size="small" checked={s.enabled} onChange={() => void toggle(s)} slotProps={{ input: { 'aria-label': `Enable ${s.name}` } }} /> },
+    { key: 'name', label: 'Name', role: 'primary', render: (s) => s.name },
+    { key: 'next', label: 'Next fire', role: 'meta', render: (s) => <DateTime iso={s.enabled ? s.next_fires[0] : null} timeZone={s.timezone} /> },
+    { key: 'last', label: 'Last run', role: 'meta', render: (s) => (s.last_run ? <RunStatusChip status={s.last_run.status as RunStatus} reason={s.last_run.reason ?? undefined} /> : '-') },
+    { key: 'cron', label: 'Cron', role: 'meta', render: (s) => <Box component="span" sx={{ fontFamily: 'monospace' }}>{s.cron}</Box> },
+    { key: 'timezone', label: 'Timezone', role: 'meta', render: (s) => s.timezone },
+    { key: 'preset', label: 'Preset', role: 'meta', render: (s) => presets[s.preset_id]?.name ?? s.preset_id },
+    { key: 'project', label: 'Project', role: 'meta', render: (s) => <ProjectCell presetId={s.preset_id} index={presets} /> },
+  ]
+
   const schedules = (data ?? []).filter((s) => presetInProject(s.preset_id, presets, project))
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Schedules</Typography>
+      <PageHeader title="Schedules" onBack={onBack}>
         <Button variant="contained" onClick={() => setForm('new')}>New schedule</Button>
-      </Box>
+      </PageHeader>
       <FormError error={error} />
       <FormError error={actionError} />
       {data && schedules.length === 0 ? (
@@ -105,52 +115,19 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
           No schedules yet. A schedule starts an agent session from a preset on a cron timetable, sending it a prompt each time it fires.
         </Typography>
       ) : (
-        <TableContainer sx={TABLE_SCROLL_SX}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              {['', 'Enabled', 'Name', 'Cron', 'Timezone', 'Preset', 'Project', 'Next fire', 'Last run', ''].map((h, i) => <TableCell key={i} sx={col(h)}>{h}</TableCell>)}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {schedules.map((s) => (
-              <Fragment key={s.id}>
-                <TableRow>
-                  <TableCell>
-                    <Button size="small" aria-expanded={expanded.has(s.id)} aria-label={`${expanded.has(s.id) ? 'Hide' : 'Show'} runs of ${s.name}`} onClick={() => toggleRuns(s.id)}>
-                      {expanded.has(s.id) ? '-' : '+'}
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <Switch size="small" checked={s.enabled} onChange={() => void toggle(s)} slotProps={{ input: { 'aria-label': `Enable ${s.name}` } }} />
-                  </TableCell>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell sx={col('Cron', { fontFamily: 'monospace' })}>{s.cron}</TableCell>
-                  <TableCell sx={col('Timezone')}>{s.timezone}</TableCell>
-                  <TableCell sx={col('Preset')}>{presets[s.preset_id]?.name ?? s.preset_id}</TableCell>
-                  <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={s.preset_id} index={presets} /></TableCell>
-                  <TableCell>{s.enabled && s.next_fires[0] ? fireTime(s.next_fires[0], s.timezone) : '-'}</TableCell>
-                  <TableCell sx={col('Last run')}>
-                    {s.last_run ? <RunStatusChip status={s.last_run.status as RunStatus} reason={s.last_run.reason ?? undefined} /> : '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button size="small" onClick={() => void runNow(s)}>Run now</Button>
-                    <Button size="small" aria-label={`Edit ${s.name}`} onClick={() => setForm(s)}>Edit</Button>
-                    <Button size="small" color="error" aria-label={`Delete ${s.name}`} onClick={() => setDeleting(s)}>Delete</Button>
-                  </TableCell>
-                </TableRow>
-                {expanded.has(s.id) && (
-                  <TableRow>
-                    <TableCell colSpan={10}>
-                      <ScheduleRuns scheduleId={s.id} timezone={s.timezone} refreshKey={runKeys[s.id] ?? 0} onOpenSession={onOpenSession} onOpenSourceRun={openSourceRun} focusRunId={focus?.scheduleId === s.id ? focus.runId : undefined} />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </Fragment>
-            ))}
-          </TableBody>
-        </Table>
-        </TableContainer>
+        <ResponsiveTable
+          rows={schedules}
+          columns={columns}
+          rowKey={(s) => s.id}
+          ariaLabel="Schedules"
+          cardLabel={(s) => `Schedule ${s.name}`}
+          actions={actions}
+          below={(s) =>
+            expanded.has(s.id) ? (
+              <ScheduleRuns scheduleId={s.id} timezone={s.timezone} refreshKey={runKeys[s.id] ?? 0} onOpenSession={onOpenSession} onOpenSourceRun={openSourceRun} focusRunId={focus?.scheduleId === s.id ? focus.runId : undefined} />
+            ) : null
+          }
+        />
       )}
       <Dialog open={form !== null} onClose={() => setForm(null)} fullWidth maxWidth="sm">
         <DialogTitle>{form === 'new' || form === null ? 'New schedule' : 'Edit schedule'}</DialogTitle>

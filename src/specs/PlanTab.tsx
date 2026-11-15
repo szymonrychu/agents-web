@@ -4,12 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
 import { ApiError } from '../api/client'
@@ -22,7 +16,8 @@ import { CHANGED_MEANWHILE, PlanHeaderEditor } from './PlanHeaderEditor'
 import { StepEditor, type StepEditorTarget } from './StepEditor'
 import { stepsGraph } from './StepsGraph'
 import { useSpecStream } from './useSpecStream'
-import { TABLE_SCROLL_SX } from '../layout/tables'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
+import type { RowAction } from '../layout/RowActions'
 
 
 const POLL_MS = 10000
@@ -50,6 +45,35 @@ function Refs({ refs }: { refs: Step['refs'] }) {
     </Box>
   )
 }
+
+const STEP_COLUMNS: Column<Step>[] = [
+  { key: 'step', label: '#', role: 'meta', render: (s) => s.step },
+  {
+    key: 'title',
+    label: 'Step',
+    role: 'primary',
+    render: (s) => (
+      <>
+        <Link component={RouterLink} to={taskPath(s.key)}>{s.key}</Link> {s.title}
+        {s.todo_total > 0 && <Typography component="span" color="text.secondary"> {`(${s.todo_done}/${s.todo_total})`}</Typography>}
+      </>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    role: 'meta',
+    render: (s) => (
+      <>
+        <Chip size="small" label={s.status.replace('_', ' ')} />
+        {s.ready && <Chip size="small" color="success" label="ready" sx={{ ml: 0.5 }} />}
+      </>
+    ),
+  },
+  { key: 'assignee', label: 'Assignee', role: 'meta', render: (s) => s.assignee_session || '-' },
+  { key: 'model', label: 'Model', role: 'meta', render: (s) => s.model || '-' },
+  { key: 'refs', label: 'Refs', role: 'meta', render: (s) => (s.refs.length > 0 ? <Refs refs={s.refs} /> : '-') },
+]
 
 function Header({ plan }: { plan: Plan }) {
   const blocks: [string, string | string[]][] = [
@@ -114,6 +138,15 @@ export function PlanTab({ specKey }: { specKey: string }) {
     ;[order[i], order[i + by]] = [order[i + by], order[i]]
     return guarded(() => reorderSteps(specKey, stepsVersion, order))
   }
+  const stepActions = (s: Step, i: number): RowAction[] => [
+    { label: 'Edit', ariaLabel: `Edit step ${s.step}`, onClick: () => setEditing({ mode: 'edit', step: s }) },
+    { label: 'Up', ariaLabel: `Move step ${s.step} up`, disabled: pending || i === 0, onClick: () => void move(i, -1) },
+    { label: 'Down', ariaLabel: `Move step ${s.step} down`, disabled: pending || i === steps.length - 1, onClick: () => void move(i, 1) },
+    { label: 'Add after', ariaLabel: `Add step after ${s.step}`, onClick: () => setEditing({ mode: 'new', after: s.step }) },
+    ...(droppable(s)
+      ? [{ label: 'Drop', ariaLabel: `Drop step ${s.step}`, color: 'error' as const, disabled: pending, onClick: () => void guarded(() => patchStep(s.key, { version: s.version, status: 'dropped' })) }]
+      : []),
+  ]
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <FormError error={error} />
@@ -131,48 +164,14 @@ export function PlanTab({ specKey }: { specKey: string }) {
       {steps.length === 0 && <Typography color="text.secondary">No steps</Typography>}
       {steps.length > 0 && (
         <>
-          <TableContainer sx={TABLE_SCROLL_SX}>
-          <Table size="small" aria-label="Steps">
-            <TableHead>
-              <TableRow>
-                <TableCell>#</TableCell>
-                <TableCell>Step</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Assignee</TableCell>
-                <TableCell>Model</TableCell>
-                <TableCell>Refs</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {steps.map((s, i) => (
-                <TableRow key={s.key} hover>
-                  <TableCell>{s.step}</TableCell>
-                  <TableCell>
-                    <Link component={RouterLink} to={taskPath(s.key)}>{s.key}</Link> {s.title}
-                    {s.todo_total > 0 && <Typography component="span" color="text.secondary"> {`(${s.todo_done}/${s.todo_total})`}</Typography>}
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="small" label={s.status.replace('_', ' ')} />
-                    {s.ready && <Chip size="small" color="success" label="ready" sx={{ ml: 0.5 }} />}
-                  </TableCell>
-                  <TableCell>{s.assignee_session}</TableCell>
-                  <TableCell>{s.model}</TableCell>
-                  <TableCell><Refs refs={s.refs} /></TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-                      <Button size="small" aria-label={`Edit step ${s.step}`} onClick={() => setEditing({ mode: 'edit', step: s })}>Edit</Button>
-                      <Button size="small" aria-label={`Move step ${s.step} up`} disabled={pending || i === 0} onClick={() => void move(i, -1)}>Up</Button>
-                      <Button size="small" aria-label={`Move step ${s.step} down`} disabled={pending || i === steps.length - 1} onClick={() => void move(i, 1)}>Down</Button>
-                      <Button size="small" aria-label={`Add step after ${s.step}`} onClick={() => setEditing({ mode: 'new', after: s.step })}>Add after</Button>
-                      {droppable(s) && <Button size="small" color="warning" disabled={pending} aria-label={`Drop step ${s.step}`} onClick={() => void guarded(() => patchStep(s.key, { version: s.version, status: 'dropped' }))}>Drop</Button>}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </TableContainer>
+          <ResponsiveTable
+            rows={steps}
+            columns={STEP_COLUMNS}
+            rowKey={(s) => s.key}
+            ariaLabel="Plan steps"
+            cardLabel={(s) => `Step ${s.step}`}
+            actions={(s) => stepActions(s, steps.findIndex((x) => x.key === s.key))}
+          />
           <MermaidBlock source={stepsGraph(steps)} />
         </>
       )}

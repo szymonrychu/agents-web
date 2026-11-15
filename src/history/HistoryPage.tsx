@@ -7,7 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
 import { FormError } from '../triggers'
 import { listSessions } from './api'
 import type { SessionSummary, SessionsQuery } from './api'
@@ -22,6 +22,7 @@ export interface HistoryPageProps {
 const PAGE = 50
 const MIN_Q = 3
 const DATE_FIELD = { slotProps: { inputLabel: { shrink: true } } } as const
+const FILTER_SX = { width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } } as const
 
 /** Start of the picked local day, as ISO 8601. */
 const dayStart = (day: string) => new Date(`${day}T00:00:00`).toISOString()
@@ -94,10 +95,7 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>History</Typography>
-      </Box>
+      <PageHeader title="History" onBack={onBack} />
       <RetentionCard />
       <Box component="form" onSubmit={submit} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
@@ -108,16 +106,16 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
             onChange={(e) => setQ(e.target.value)}
             error={qTooShort}
             helperText={qTooShort ? `Type at least ${MIN_Q} characters` : undefined}
-            sx={{ flexGrow: 1, minWidth: 240 }}
+            sx={{ flexGrow: 1, width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 240 } }}
           />
           <FormControlLabel control={<Switch checked={regex} onChange={(e) => setRegex(e.target.checked)} />} label="Regex" />
         </Box>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} />
-          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} />
-          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} />
-          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} />
-          <Button type="submit" variant="contained" disabled={qTooShort || loading}>Search</Button>
+          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} sx={FILTER_SX} />
+          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} sx={FILTER_SX} />
+          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} sx={FILTER_SX} />
+          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} sx={FILTER_SX} />
+          <Button type="submit" variant="contained" disabled={qTooShort || loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>Search</Button>
         </Box>
       </Box>
       <FormError error={error} />

@@ -9,6 +9,7 @@ import { theme } from '../theme'
 import type { EndpointView, Filters } from './api'
 import { EndpointsList } from './EndpointsList'
 import { sampleFor } from './samples'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({
   listEndpoints: vi.fn(),
@@ -62,6 +63,7 @@ const section = (dialog: HTMLElement, side: RegExp) => within(dialog).getByRole(
 const valuesOf = (region: HTMLElement) => within(region).getAllByLabelText('Values').map((el) => (el as HTMLTextAreaElement).value)
 
 beforeEach(() => {
+  setViewport(1440)
   Object.values(api).forEach((m) => m.mockReset())
   client.listPresets.mockReset()
   client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Default preset', is_default: true }])

@@ -2,7 +2,8 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { mountTasks, task } from './testUtils'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
@@ -21,6 +22,7 @@ const loc = () => screen.getByTestId('loc').textContent ?? ''
 const lastCall = () => api.listTasks.mock.calls.at(-1)?.[0]
 
 beforeEach(() => {
+  setViewport(1440)
   api.listTasks.mockReset()
   api.createTask.mockReset()
   api.listTasks.mockResolvedValue({ items: [task({ key: 'T-2', title: 'Blocked one', open_decisions: 2, blocked: true, labels: ['infra', 'p1'], assignee_session: 's1' }), task()], next_cursor: null })
@@ -33,6 +35,12 @@ describe('tasks list', () => {
     await screen.findByText('First task')
     expect(lastCall()).toMatchObject({ status: 'active' })
     expect(loc()).toBe('/tasks')
+  })
+
+  test('Back is a link to the home page', async () => {
+    mountTasks('/tasks')
+    await screen.findByText('First task')
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/')
   })
 
   test('list is filtered by the selected project and shows it', async () => {
@@ -140,10 +148,36 @@ describe('tasks list', () => {
   })
 })
 
-describe('tasks table on phones', () => {
-  test('sits in a scroll container and hides low-priority columns', async () => {
+describe('tasks on phones', () => {
+  test('one card per task with key, title, status and labels', async () => {
+    setViewport(375, { coarse: true })
+    api.listTasks.mockResolvedValue({ items: [task({ key: 'T-2', title: 'Blocked one', open_decisions: 2, labels: ['infra'], project: 'agents', assignee_session: 's1' }), task()], next_cursor: null })
     mountTasks('/tasks')
-    await screen.findByText('Blocked one')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Project', 'Assignee'], ['Key', 'Title', 'Status', 'Labels'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Task T-2' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByRole('link', { name: 'T-2' })).toBeTruthy()
+    expect(c.getByText('Blocked one')).toBeTruthy()
+    for (const label of ['Status', 'Labels', 'Project', 'Assignee']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('infra')).toBeTruthy()
+    expect(c.getByText('agents')).toBeTruthy()
+    expect(c.getByRole('link', { name: 's1' })).toBeTruthy()
+  })
+
+  test('unassigned tasks and empty labels render a dash in the card', async () => {
+    setViewport(375, { coarse: true })
+    mountTasks('/tasks')
+    const card = await screen.findByRole('article', { name: 'Task T-1' })
+    const dd = (name: string) => within(card).getByText(name, { selector: 'dt' }).nextElementSibling as HTMLElement
+    expect(dd('Assignee').textContent).toBe('-')
+    expect(dd('Labels').textContent).toBe('-')
+  })
+
+  test('the key never wraps', async () => {
+    setViewport(375, { coarse: true })
+    mountTasks('/tasks')
+    const link = await screen.findByRole('link', { name: 'T-2' })
+    expect(emittedCssFor(link)).toMatch(/white-space:\s*nowrap/)
   })
 })

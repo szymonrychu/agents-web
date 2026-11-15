@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { ApiError } from '../api/client'
 import { task } from '../tasks/testUtils'
 import { mountSpecs, spec, specDoc } from './testUtils'
@@ -24,6 +24,7 @@ const full = (over = {}) =>
   spec({ status: 'review', labels: ['plans'], documents: [specDoc(), specDoc({ path: 'research/topic.md', version: 1, size: 9 })], tasks: ['T-4'], open_comments: 2, ...over })
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of Object.values(api)) f.mockReset()
   api.getSpec.mockResolvedValue(full())
   api.getTask.mockResolvedValue(task({ key: 'T-4', title: 'Gate task', open_decisions: 1 }))
@@ -138,10 +139,23 @@ describe('spec page', () => {
 })
 
 describe('spec page documents table', () => {
-  test('sits in a scroll container and hides low-priority columns on phones', async () => {
+  test('on a wide screen it is a table with the columns in order', async () => {
     mountSpecs('/specs/S-1')
     await screen.findByText('Task plans')
-    const table = (await screen.findByRole('link', { name: 'research/topic.md' })).closest('table') as HTMLElement
-    expect(phoneColumnProblems(table, [], ['Path', 'Version', 'Size', 'Updated'])).toEqual([])
+    const table = await screen.findByRole('table', { name: 'Documents' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Path', 'Version', 'Size', 'Updated'])
+  })
+
+  test('on a phone each document is a card with version, size and updated time', async () => {
+    setViewport(375, { coarse: true })
+    mountSpecs('/specs/S-1')
+    const card = await screen.findByRole('article', { name: 'Document research/topic.md' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByRole('link', { name: 'research/topic.md' })).toBeTruthy()
+    for (const label of ['Version', 'Size', 'Updated']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('v1')).toBeTruthy()
+    expect(c.getByText('9 B')).toBeTruthy()
   })
 })

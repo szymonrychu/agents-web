@@ -1,29 +1,13 @@
 /** The recent webhook events: one row per event with its status, reason and routing. */
 import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Tooltip from '@mui/material/Tooltip'
 import { ChainStatusChip, RunStatusChip } from '../triggers'
 import type { RunStatus } from '../triggers'
 import type { EventView } from './api'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
-
-const col = phoneColumns(['Endpoint'])
+import { DateTime } from '../common/DateTime'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 export interface EventsTableProps {
   events: EventView[]
-}
-
-const UNITS: [number, string][] = [[86400, 'd'], [3600, 'h'], [60, 'm']]
-
-function relative(iso: string): string {
-  const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
-  for (const [size, unit] of UNITS) if (secs >= size) return `${Math.floor(secs / size)}${unit} ago`
-  return `${secs}s ago`
 }
 
 function Routing({ event }: { event: EventView }) {
@@ -32,42 +16,36 @@ function Routing({ event }: { event: EventView }) {
   return null
 }
 
+const ref = (e: EventView) => (e.repo && e.number != null ? `${e.repo}#${e.number}` : (e.repo ?? ''))
+
+const COLUMNS: Column<EventView>[] = [
+  { key: 'received', label: 'Received', role: 'meta', render: (e) => <DateTime iso={e.received_at} /> },
+  { key: 'endpoint', label: 'Endpoint', role: 'none', render: (e) => `${e.endpoint_suffix} (${e.type})` },
+  { key: 'kind', label: 'Kind', role: 'meta', render: (e) => e.kind || '-' },
+  { key: 'item', label: 'Item', role: 'meta', render: (e) => (e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref(e)}</Link> : (ref(e) || '-')) },
+  { key: 'title', label: 'Title', role: 'primary', render: (e) => e.title || '-' },
+  {
+    key: 'status', label: 'Status', role: 'meta',
+    render: (e) => (
+      <>
+        <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
+        <Routing event={e} />
+      </>
+    ),
+  },
+  { key: 'chain', label: 'Chain', role: 'meta', render: (e) => (e.chain_status ? <ChainStatusChip status={e.chain_status} /> : '-') },
+  { key: 'session', label: 'Session', role: 'meta', render: (e) => e.session_slug ?? e.session_id ?? '-' },
+]
+
 export function EventsTable({ events }: EventsTableProps) {
   return (
-    <TableContainer sx={TABLE_SCROLL_SX}>
-    <Table size="small">
-      <TableHead>
-        <TableRow>
-          {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'].map((h) => (
-            <TableCell key={h} sx={col(h)}>{h}</TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {events.map((e) => {
-          const ref = e.repo && e.number != null ? `${e.repo}#${e.number}` : (e.repo ?? '')
-          return (
-            <TableRow key={e.id} id={`event-${e.id}`}>
-              <TableCell>
-                <Tooltip title={new Date(e.received_at).toLocaleString()}>
-                  <span>{relative(e.received_at)}</span>
-                </Tooltip>
-              </TableCell>
-              <TableCell sx={col('Endpoint')}>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
-              <TableCell>{e.kind}</TableCell>
-              <TableCell>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
-              <TableCell>{e.title}</TableCell>
-              <TableCell>
-                <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
-                <Routing event={e} />
-              </TableCell>
-              <TableCell><ChainStatusChip status={e.chain_status} /></TableCell>
-              <TableCell>{e.session_slug ?? e.session_id}</TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
-    </TableContainer>
+    <ResponsiveTable
+      rows={events}
+      columns={COLUMNS}
+      rowKey={(e) => String(e.id)}
+      rowId={(e) => `event-${e.id}`}
+      ariaLabel="Events"
+      cardLabel={(e) => `Event ${e.id}`}
+    />
   )
 }

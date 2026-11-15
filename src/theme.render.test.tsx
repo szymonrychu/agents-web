@@ -3,12 +3,14 @@ import { EditorView } from '@codemirror/view'
 import Dialog from '@mui/material/Dialog'
 import CssBaseline from '@mui/material/CssBaseline'
 import MenuItem from '@mui/material/MenuItem'
+import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { editorChrome } from './editor/highlight'
-import { emittedCss, emittedCssFor } from './test/emittedCss'
+import { emittedCss, emittedCssFor, emittedInMedia } from './test/emittedCss'
+import { setViewport } from './test/viewport'
 import { theme } from './theme'
 
 // emotion's stylis drops the spaces after colons and commas
@@ -88,4 +90,24 @@ describe('dialogs on phones in emitted CSS', () => {
     expect(block.lastIndexOf('margin:0')).toBeGreaterThan(block.indexOf('margin:16px'))
     expect(block).toMatch(/max-width:100%/)
   })
+})
+
+describe('switch on a touch device', () => {
+  it.each([['medium', undefined], ['small', 'small' as const]])(
+    'the switch base stays absolutely positioned under (pointer: coarse), %s',
+    (_name, size) => {
+      setViewport(375, { coarse: true })
+      const { container } = render(
+        <ThemeProvider theme={theme}>
+          <Switch size={size} slotProps={{ input: { 'aria-label': 'x' } }} />
+        </ThemeProvider>,
+      )
+      const base = container.querySelector('.MuiSwitch-switchBase')!
+      expect(emittedInMedia(base, '(pointer: coarse)')).toContain('content:""')
+      // the declarations before the ::after hit box: the last position set on the base itself must be absolute
+      const own = compact(emittedCssFor(base))
+      const before = own.slice(0, own.indexOf('content:""'))
+      expect(before.match(/position:(\w+)/g)?.at(-1)).toBe('position:absolute')
+    },
+  )
 })

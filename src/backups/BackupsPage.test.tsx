@@ -3,7 +3,8 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { ApiError } from '../api/client'
 import { loadConfig, resetConfig } from '../config/backends'
 import { theme } from '../theme'
@@ -23,6 +24,7 @@ const mount = () => render(<ThemeProvider theme={theme}><BackupsPage onBack={() 
 const rowOf = async (name: string) => (await screen.findByText(name)).closest('tr') as HTMLElement
 
 beforeEach(async () => {
+  setViewport(1440)
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   Object.values(api).forEach((m) => m.mockReset())
@@ -125,10 +127,29 @@ describe('BackupsPage', () => {
   })
 })
 
-describe('BackupsPage table on phones', () => {
-  test('sits in a scroll container and hides low-priority columns', async () => {
+describe('BackupsPage on phones', () => {
+  test('one card per archive with size, age, references and one actions menu', async () => {
+    setViewport(375, { coarse: true })
     mount()
-    await rowOf('team-a')
-    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Name', 'Size', 'Age', 'Referenced by'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Backup team-a' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByText('team-a')).toBeTruthy()
+    expect(c.getByText('protected')).toBeTruthy()
+    for (const label of ['Size', 'Age', 'Referenced by']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('5.0 MiB')).toBeTruthy()
+    expect(c.getByRole('link', { name: 'Download team-a' })).toBeTruthy()
+    expect(c.getByRole('button', { name: 'Actions for Backup team-a' })).toBeTruthy()
+    const bare = within(screen.getByRole('article', { name: 'Backup team-b' }))
+    expect(bare.getByText('Referenced by', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
+  })
+
+  test('a wide screen keeps the table with a Name column that does not split words', async () => {
+    mount()
+    const row = await rowOf('team-a')
+    expect(screen.getByRole('table', { name: 'Backups' })).toBeTruthy()
+    expect(within(row).getByRole('button', { name: 'Delete team-a' })).toBeTruthy()
+    expect(emittedCssFor(row.querySelector('td')!)).toMatch(/word-break:\s*normal/)
   })
 })

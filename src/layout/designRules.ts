@@ -23,8 +23,9 @@ export const MEDIA_QUERY_FILES = ['layout/useLayout.ts', 'proposals/ValueDiff.ts
 const INPUT_TAG = /(?<![\w.])<(TextField|InputBase|OutlinedInput|FilledInput|Input|Select|NativeSelect|Autocomplete|input|textarea|select)(?=[\s/>])/g
 const FONT_SIZE = /fontSize|font-size|font:/
 const DIALOG_TAG = /(?<![\w.])<Dialog(?=[\s>])/g
-/** Rendered markdown tables are the one Table outside a TableContainer (they scroll with the document body). */
-export const TABLE_EXEMPT_FILES = ['markdown/Markdown.tsx']
+/** The only files that may render a <Table>: ResponsiveTable (cards on phones) and rendered markdown (scrolls with the document body, no TableContainer). */
+export const TABLE_WITHOUT_CONTAINER = ['markdown/Markdown.tsx']
+export const TABLE_FILES = ['layout/ResponsiveTable.tsx', ...TABLE_WITHOUT_CONTAINER]
 const TABLE_TAG = /(?<![\w.])<Table(?=[\s>])/
 const HOVER_REVEAL = /:hover[^'"\n{}]*['"]?\s*:\s*\{[^}]*\b(opacity|visibility)\b/g
 const ALLOWED_WEIGHTS = ['400', '500']
@@ -99,8 +100,9 @@ export function designViolations(path: string, source: string): string[] {
     const at = source.search(/\buseMediaQuery\b/)
     if (at >= 0) add('media-query', lineAt(at), 'useMediaQuery outside useLayout, use useLayout() or useTouchOrSmall()')
   }
-  if (!TABLE_EXEMPT_FILES.includes(path) && TABLE_TAG.test(source) && !/<TableContainer\b/.test(source)) {
-    add('table', lineAt(source.search(TABLE_TAG)), '<Table> needs a <TableContainer sx={TABLE_SCROLL_SX}> (scrolls sideways on phones)')
+  if (TABLE_TAG.test(source)) {
+    if (!TABLE_FILES.includes(path)) add('table', lineAt(source.search(TABLE_TAG)), '<Table> outside ResponsiveTable: use layout/ResponsiveTable (cards on phones)')
+    else if (!TABLE_WITHOUT_CONTAINER.includes(path) && !/<TableContainer\b/.test(source)) add('table', lineAt(source.search(TABLE_TAG)), '<Table> needs a <TableContainer sx={TABLE_SCROLL_SX}> (scrolls sideways on phones)')
   }
   for (const m of source.matchAll(HOVER_REVEAL)) add('hover-reveal', lineAt(m.index), `${m[1]} set under :hover, everything must be visible without hover`)
   return out

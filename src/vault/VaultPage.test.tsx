@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 import { theme } from '../theme'
+import { setViewport } from '../test/viewport'
 import { ApiError } from '../api/client'
 import type { EntryView } from './api'
 import { envNameError, parseLabels } from './validate'
@@ -54,6 +55,7 @@ const mount = () => render(<ThemeProvider theme={theme}><VaultPage onBack={() =>
 const user = () => userEvent.setup()
 
 beforeEach(() => {
+  setViewport(1440)
   for (const m of Object.values(api)) m.mockReset()
   api.listEntries.mockResolvedValue([entry(), other])
   api.createEntry.mockResolvedValue(entry())
@@ -476,6 +478,15 @@ describe('detail', () => {
 })
 
 describe('filter row', () => {
+  test('on phones the label filter takes the full row', async () => {
+    setViewport(375, { coarse: true })
+    mount()
+    await screen.findByText('registry')
+    const root = screen.getByRole('combobox', { name: 'Label' }).closest('.MuiFormControl-root')!
+    expect(emittedInMedia(root, '(min-width:0px)')).toContain('width:100%')
+    expect(emittedInMedia(root, '(min-width:600px)')).toContain('min-width:160px')
+  })
+
   test('the text filter is full width on a phone and grows from a 240px minimum from sm up', async () => {
     mount()
     await screen.findByText('registry')

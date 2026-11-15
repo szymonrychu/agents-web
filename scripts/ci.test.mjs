@@ -19,8 +19,21 @@ test("triggers: push main and pull requests, no tags", () => {
   assert.ok("pull_request" in on);
 });
 
-test("exactly the five jobs", () => {
-  assert.deepEqual(Object.keys(wf.jobs).sort(), ["chart", "chart-publish", "images", "release", "web"]);
+test("exactly the six jobs", () => {
+  assert.deepEqual(Object.keys(wf.jobs).sort(), ["chart", "chart-publish", "e2e", "images", "release", "web"]);
+});
+
+test("e2e job: webkit only, builds then runs the smoke", () => {
+  const steps = wf.jobs.e2e.steps;
+  const at = (re) => steps.findIndex((s) => re.test(s.run ?? ""));
+  const install = at(/^npx playwright install --with-deps webkit$/);
+  const build = at(/^npm run build$/);
+  const smoke = at(/^npm run test:e2e$/);
+  assert.ok(install >= 0 && build > install && smoke > build, "install, build, test:e2e in that order");
+  assert.ok(!/chromium|firefox/.test(runs("e2e")), "webkit only");
+  assert.ok(!JSON.stringify(wf.jobs.e2e).includes("secrets."), "no secrets");
+  assert.equal(wf.jobs.e2e.if, undefined, "runs on pull requests too");
+  assert.equal(wf.jobs.e2e.permissions, undefined);
 });
 
 test("web job: node 24 with npm cache and the four npm scripts", () => {
@@ -136,7 +149,7 @@ test("test_release_job_runs_last_on_main_push", () => {
   assert.equal(j.if, MAIN);
   const others = Object.keys(wf.jobs).filter((n) => n !== "release").sort();
   assert.deepEqual([...j.needs].sort(), others);
-  assert.deepEqual([...j.needs].sort(), ["chart", "chart-publish", "images", "web"]);
+  assert.deepEqual([...j.needs].sort(), ["chart", "chart-publish", "e2e", "images", "web"]);
   assert.deepEqual(j.permissions, { contents: "write" });
   assert.deepEqual(j.concurrency, { group: "release", "cancel-in-progress": false });
 });

@@ -4,7 +4,8 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import type { RunView, ScheduleView } from './api'
 import { SchedulesPage } from './SchedulesPage'
 
@@ -40,6 +41,7 @@ const mount = (onOpenSession?: (id: string) => void) =>
   render(<ThemeProvider theme={theme}><SchedulesPage onBack={() => {}} onOpenSession={onOpenSession} /></ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   Object.values(api).forEach((m) => m.mockReset())
   client.listPresets.mockReset()
   client.listPresets.mockResolvedValue([{ id: 'p1', name: 'Reviewer', project: 'agents' }])
@@ -69,7 +71,7 @@ describe('SchedulesPage', () => {
     expect(within(row).getByText('0 6 * * 1-5')).toBeTruthy()
     expect(within(row).getByText('UTC')).toBeTruthy()
     expect(within(row).getByText('Reviewer')).toBeTruthy()
-    expect(within(row).getByText(/2026/)).toBeTruthy()
+    expect(row.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-27T06:00:00Z')
     expect(within(row).getByText(/handled/)).toBeTruthy()
     const other = screen.getByText('Nightly').closest('tr')!
     expect(within(other).queryByText(/handled/)).toBeNull()
@@ -113,12 +115,12 @@ describe('SchedulesPage', () => {
     api.runScheduleNow.mockResolvedValueOnce(run())
     mount()
     await screen.findByText('Morning')
-    await user.click(screen.getAllByRole('button', { name: 'Run now' })[0])
+    await user.click(screen.getByRole('button', { name: 'Run Morning now' }))
     expect(api.runScheduleNow).toHaveBeenCalledWith('s1')
     await waitFor(() => expect(api.listSchedules).toHaveBeenCalledTimes(2))
     expect(await screen.findByRole('table', { name: 'Runs' })).toBeTruthy()
     api.runScheduleNow.mockRejectedValueOnce(new Error('queue down'))
-    await user.click(screen.getAllByRole('button', { name: 'Run now' })[1])
+    await user.click(screen.getByRole('button', { name: 'Run Morning now' }))
     expect(await screen.findByText(/queue down/)).toBeTruthy()
   })
 
@@ -168,10 +170,58 @@ describe('SchedulesPage', () => {
   })
 })
 
-describe('SchedulesPage table on phones', () => {
-  test('scrolls inside a TableContainer and hides the low-priority columns', async () => {
+describe('SchedulesPage on phones', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('shows one card per schedule with name, next fire and the enabled switch', async () => {
     mount()
-    await screen.findByText('Morning')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Cron', 'Timezone', 'Preset', 'Project', 'Last run'], ['Enabled', 'Name', 'Next fire'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Schedule Morning' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByText('Morning')).toBeTruthy()
+    expect(c.getByText('Next fire', { selector: 'dt' })).toBeTruthy()
+    const time = card.querySelector('time')!
+    expect(time.getAttribute('datetime')).toBe('2026-10-27T06:00:00Z')
+    expect(c.getByRole('switch', { name: 'Enable Morning' })).toBeTruthy()
+  })
+
+  test('the actions menu runs, edits, deletes and shows runs', async () => {
+    const user = userEvent.setup()
+    mount()
+    await user.click(await screen.findByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Show runs of Morning' }))
+    const card = screen.getByRole('article', { name: 'Schedule Morning' })
+    expect(await within(card).findByRole('list', { name: 'Runs' })).toBeTruthy()
+    await user.click(within(card).getByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete Morning' }))
+    expect(await screen.findByText('Delete schedule?')).toBeTruthy()
+  })
+
+  test('the actions menu runs now and edits', async () => {
+    api.runScheduleNow.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    mount()
+    await user.click(await screen.findByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Run Morning now' }))
+    await waitFor(() => expect(api.runScheduleNow).toHaveBeenCalledWith('s1'))
+    await user.click(await screen.findByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Edit Morning' }))
+    expect(await screen.findByText('form edit Morning')).toBeTruthy()
+  })
+
+  test('the card shows the time zone and a monospace cron', async () => {
+    api.listSchedules.mockResolvedValue([sched('s1', 'Morning', { timezone: 'Europe/Warsaw' })])
+    mount()
+    const card = await screen.findByRole('article', { name: 'Schedule Morning' })
+    expect(within(card).getByText('Timezone', { selector: 'dt' })).toBeTruthy()
+    expect(within(card).getByText('Europe/Warsaw')).toBeTruthy()
+    expect(emittedCssFor(within(card).getByText('0 6 * * 1-5'))).toMatch(/font-family:\s*monospace/)
+  })
+
+  test('next fire renders compact without wrapping', async () => {
+    mount()
+    const card = await screen.findByRole('article', { name: 'Schedule Morning' })
+    expect(emittedCssFor(card.querySelector('time')!)).toMatch(/white-space:\s*nowrap/)
   })
 })

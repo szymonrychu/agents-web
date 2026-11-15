@@ -4,12 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
@@ -21,13 +15,14 @@ import { TOKENS } from '../theme'
 import { getTask, type Task } from '../tasks/api'
 import { taskPath } from '../tasks/paths'
 import { FormError, usePoll } from '../triggers'
-import { createComment, getSpec, patchSpec, type Spec, type SpecStatus } from './api'
+import { createComment, getSpec, patchSpec, type Spec, type SpecDocument, type SpecStatus } from './api'
 import { GatePanel } from './GatePanel'
 import { docPath } from './paths'
 import { PlanTab } from './PlanTab'
 import { StartState } from './StartState'
 import { useSpecStream } from './useSpecStream'
-import { TABLE_SCROLL_SX } from '../layout/tables'
+import { DateTime } from '../common/DateTime'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 
 const POLL_MS = 10000
@@ -43,6 +38,13 @@ async function loadBundle(key: string): Promise<Bundle> {
   const tasks = await Promise.all((spec.tasks ?? []).map((t) => getTask(t).catch(() => null)))
   return { spec, tasks: tasks.filter((t): t is Task => t !== null) }
 }
+
+const documentColumns = (specKey: string): Column<SpecDocument>[] => [
+  { key: 'path', label: 'Path', role: 'primary', render: (d) => <Link component={RouterLink} to={docPath(specKey, d.path)}>{d.path}</Link> },
+  { key: 'version', label: 'Version', role: 'meta', render: (d) => `v${d.version}` },
+  { key: 'size', label: 'Size', role: 'meta', render: (d) => `${d.size} B` },
+  { key: 'updated', label: 'Updated', role: 'meta', render: (d) => <DateTime iso={d.updated_at} /> },
+]
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -141,29 +143,14 @@ export function SpecPage({ specKey }: { specKey: string }) {
       {tab === 'documents' && (
         <>
         <Section title="Documents">
-          {(spec.documents ?? []).length === 0 && <Typography color="text.secondary">No documents</Typography>}
-          <TableContainer sx={TABLE_SCROLL_SX}>
-          <Table size="small" aria-label="Documents">
-            <TableHead>
-              <TableRow>
-                <TableCell>Path</TableCell>
-                <TableCell>Version</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Updated</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(spec.documents ?? []).map((d) => (
-                <TableRow key={d.path} hover>
-                  <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
-                  <TableCell>{`v${d.version}`}</TableCell>
-                  <TableCell>{`${d.size} B`}</TableCell>
-                  <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </TableContainer>
+          <ResponsiveTable
+            rows={spec.documents ?? []}
+            columns={documentColumns(spec.key)}
+            rowKey={(d) => d.path}
+            ariaLabel="Documents"
+            cardLabel={(d) => `Document ${d.path}`}
+            empty={<Typography color="text.secondary">No documents</Typography>}
+          />
         </Section>
         <Section title="Tasks">
           {tasks.length === 0 && <Typography color="text.secondary">No linked tasks</Typography>}

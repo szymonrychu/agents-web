@@ -3,8 +3,8 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
 import { ApiError } from '../api/client'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import type { DeviceView } from './api'
 import { DevicesPage } from './DevicesPage'
@@ -19,6 +19,7 @@ const device = (id: string, over: Partial<DeviceView> = {}): DeviceView => ({
 const mount = () => render(<ThemeProvider theme={theme}><DevicesPage onBack={() => {}} /></ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of Object.values(api)) f.mockReset()
   api.listDevices.mockResolvedValue([device('d1'), device('d2', { revoked_at: '2026-11-02T10:00:00Z' })])
 })
@@ -32,10 +33,10 @@ describe('DevicesPage', () => {
     mount()
     const active = (await screen.findByText('Tab d1')).closest('tr')!
     expect(within(active).getByText('Active')).toBeTruthy()
-    expect(within(active).getByRole('button', { name: 'Revoke' })).toBeTruthy()
+    expect(within(active).getByRole('button', { name: 'Revoke Tab d1' })).toBeTruthy()
     const revoked = screen.getByText('Tab d2').closest('tr')!
     expect(within(revoked).getByText(/Revoked/)).toBeTruthy()
-    expect(within(revoked).queryByRole('button', { name: 'Revoke' })).toBeNull()
+    expect(within(revoked).queryByRole('button', { name: 'Revoke Tab d2' })).toBeNull()
   })
 
   const created = (over = {}) => ({ device_id: 'd3', name: 'Boox', plugin: 'sketch', code: '123456', expires_at: '2026-11-04T10:10:00Z', expires_in: 600, ...over })
@@ -170,7 +171,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockResolvedValue(undefined)
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     expect(api.revokeDevice).not.toHaveBeenCalled()
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Revoke' }))
@@ -182,7 +183,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockRejectedValue(new ApiError(404, 'http_error', 'not found'))
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     const before = api.listDevices.mock.calls.length
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
     expect(await screen.findByText(/already revoked or no longer exists/i)).toBeTruthy()
@@ -194,7 +195,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockRejectedValue(new ApiError(500, 'http_error', 'boom'))
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     const before = api.listDevices.mock.calls.length
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
     expect(await screen.findByText('boom')).toBeTruthy()
@@ -205,7 +206,7 @@ describe('DevicesPage', () => {
     const user = userEvent.setup()
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(api.revokeDevice).not.toHaveBeenCalled()
   })
@@ -243,10 +244,39 @@ describe('DevicesPage', () => {
   })
 })
 
-describe('DevicesPage table on phones', () => {
-  test('sits in a scroll container and hides low-priority columns', async () => {
+describe('DevicesPage layouts', () => {
+  test('on phones: one card per device with every field and an actions menu', async () => {
+    setViewport(375, { coarse: true })
     mount()
-    await screen.findByText('Tab d1')
-    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Name', 'Plugin', 'Created', 'State', 'Actions'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Device Tab d1' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByText('Tab d1')).toBeTruthy()
+    for (const label of ['Plugin', 'Created', 'State']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('sketch')).toBeTruthy()
+    expect(c.getByText('Active')).toBeTruthy()
+    expect(card.querySelector('time')).toBeTruthy()
+    expect(c.getByRole('button', { name: 'Actions for Device Tab d1' })).toBeTruthy()
+    // a revoked device has nothing to act on
+    const revoked = screen.getByRole('article', { name: 'Device Tab d2' })
+    expect(within(revoked).getByText(/Revoked/)).toBeTruthy()
+    expect(within(revoked).queryByRole('button', { name: /Actions for/ })).toBeNull()
+  })
+
+  test('on phones: Revoke from the card menu opens the confirmation', async () => {
+    setViewport(375, { coarse: true })
+    const user = userEvent.setup()
+    mount()
+    await user.click(await screen.findByRole('button', { name: 'Actions for Device Tab d1' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Revoke Tab d1' }))
+    expect(screen.getByRole('dialog', { name: /Revoke Tab d1/ })).toBeTruthy()
+  })
+
+  test('on wide screens: a devices table with inline Revoke', async () => {
+    mount()
+    const table = await screen.findByRole('table', { name: 'Devices' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Plugin', 'Created', 'State', ''])
+    expect(screen.queryByRole('article')).toBeNull()
   })
 })

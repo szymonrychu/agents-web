@@ -7,6 +7,7 @@ import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 import { theme } from '../theme'
 import type { EndpointView, EventView } from './api'
 import { WebhooksPage } from './WebhooksPage'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listEvents: vi.fn(), listEndpoints: vi.fn(), getMeta: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -27,6 +28,7 @@ const mount = () => render(<ThemeProvider theme={theme}><WebhooksPage onBack={()
 const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0) })
 
 beforeEach(() => {
+  setViewport(1440)
   vi.useFakeTimers({ shouldAdvanceTime: true })
   api.listEvents.mockReset()
   api.listEndpoints.mockReset()
@@ -126,6 +128,17 @@ describe('WebhooksPage state', () => {
 })
 
 describe('WebhooksPage filters', () => {
+  test('on phones both filters take the full row', async () => {
+    setViewport(375, { coarse: true })
+    api.listEvents.mockResolvedValue([])
+    mount()
+    await flush()
+    for (const name of ['Status', 'Endpoint']) {
+      const root = screen.getByRole('combobox', { name }).closest('.MuiFormControl-root')!
+      expect(emittedInMedia(root, '(min-width:0px)'), name).toContain('width:100%')
+    }
+  })
+
   test('the filter row wraps, each field is full width on a phone and keeps its old minimum from sm up', async () => {
     api.listEvents.mockResolvedValue([])
     mount()

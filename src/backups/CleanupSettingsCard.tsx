@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import InputAdornment from '@mui/material/InputAdornment'
 import Paper from '@mui/material/Paper'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
@@ -24,11 +25,11 @@ const RUN_POLL_MAX_READS = 24
 type NumberKey = 'retention_days' | 'keep_newest' | 'interval_seconds' | 'grace_seconds'
 
 /** Same bounds as the orchestrator (`settings.py` SWEEP_*_MAX and the SQL CHECKs). */
-export const FIELDS: { key: NumberKey; label: string; min: number; max: number }[] = [
-  { key: 'retention_days', label: 'Retention (days)', min: 1, max: 3650 },
-  { key: 'keep_newest', label: 'Keep newest per name', min: 1, max: 1000 },
-  { key: 'interval_seconds', label: 'Interval (seconds)', min: 60, max: 2592000 },
-  { key: 'grace_seconds', label: 'Grace (seconds)', min: 0, max: 604800 },
+export const FIELDS: { key: NumberKey; label: string; unit?: string; min: number; max: number }[] = [
+  { key: 'retention_days', label: 'Retention', unit: 'days', min: 1, max: 3650 },
+  { key: 'keep_newest', label: 'Keep newest', min: 1, max: 1000 },
+  { key: 'interval_seconds', label: 'Interval', unit: 's', min: 60, max: 2592000 },
+  { key: 'grace_seconds', label: 'Grace', unit: 's', min: 0, max: 604800 },
 ]
 
 /** The form keeps number inputs as strings so a half-typed value is not rewritten under the cursor. */
@@ -190,19 +191,22 @@ export function CleanupSettingsCard() {
       <FormError error={error} />
       {view && form && (
         <>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2 }}>
             <FormControlLabel control={<Switch checked={form.enabled} onChange={(_, enabled) => setForm({ ...form, enabled })} />} label="Sweep enabled" />
             <FormControlLabel control={<Switch checked={form.dry_run} onChange={(_, dry_run) => setForm({ ...form, dry_run })} />} label="Dry run" />
           </Box>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
             {FIELDS.map((f) => {
               const bad = !inRange(form[f.key], f.min, f.max)
               return (
                 <TextField
-                  key={f.key} size="small" type="number" label={f.label} value={form[f.key]} error={bad}
-                  helperText={bad ? `Must be ${f.min} to ${f.max}` : f.key === 'grace_seconds' ? `default ${view.defaults.grace_seconds}` : undefined}
+                  key={f.key} size="small" type="number" fullWidth label={f.label} value={form[f.key]} error={bad}
+                  helperText={bad ? `Must be ${f.min} to ${f.max}` : f.key === 'grace_seconds' ? `default ${view.defaults.grace_seconds}` : f.key === 'keep_newest' ? 'per name' : undefined}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                  slotProps={{ htmlInput: { min: f.min, max: f.max, step: 1 } }}
+                  slotProps={{
+                    htmlInput: { min: f.min, max: f.max, step: 1 },
+                    input: f.unit ? { endAdornment: <InputAdornment position="end">{f.unit}</InputAdornment> } : undefined,
+                  }}
                 />
               )
             })}

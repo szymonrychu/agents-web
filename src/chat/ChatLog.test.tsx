@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import * as React from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import {
   act,
@@ -23,7 +24,10 @@ const virtuosoProps = vi.hoisted(() => ({
     firstItemIndex: number;
     followOutput: (b: boolean) => unknown;
     atBottomThreshold: number;
+    atBottomStateChange: (b: boolean) => void;
   },
+  first: null as null | { followOutput: (b: boolean) => unknown },
+  scrollToIndex: vi.fn(),
 }));
 const api = vi.hoisted(() => ({ listEvents: vi.fn(), listMessages: vi.fn(async () => []) }));
 const stream = vi.hoisted(() => ({
@@ -46,19 +50,23 @@ vi.mock("../api/stream", () => ({
 }));
 // jsdom has no layout, so Virtuoso renders nothing: a stand-in that renders every item, the header and a start-reached trigger.
 vi.mock("react-virtuoso", () => ({
-  Virtuoso: (props: {
+  Virtuoso: React.forwardRef((props: {
     data: unknown[];
     firstItemIndex: number;
     itemContent: (i: number, d: unknown) => React.ReactNode;
     startReached: () => void;
     followOutput: (atBottom: boolean) => unknown;
     atBottomThreshold: number;
-    components: { Header: () => React.ReactNode };
-  }) => {
+    atBottomStateChange: (b: boolean) => void;
+    context: unknown;
+    components: { Header: (p: { context: unknown }) => React.ReactNode };
+  }, ref: React.Ref<unknown>) => {
     virtuosoProps.last = props;
+    virtuosoProps.first ??= props;
+    React.useImperativeHandle(ref, () => ({ scrollToIndex: virtuosoProps.scrollToIndex }));
     return (
       <div>
-        <props.components.Header />
+        <props.components.Header context={props.context} />
         <button onClick={props.startReached}>reach top</button>
         {props.data.map((d, i) => (
           <div key={props.firstItemIndex + i}>
@@ -67,7 +75,7 @@ vi.mock("react-virtuoso", () => ({
         ))}
       </div>
     );
-  },
+  }),
 }));
 
 const session = {
@@ -418,8 +426,41 @@ describe("ChatLog", () => {
     await screen.findByText("x");
     expect(virtuosoProps.last!.atBottomThreshold).toBe(48);
     expect(FOLLOW_PX).toBe(48);
-    expect(virtuosoProps.last!.followOutput(true)).toBe("auto");
-    expect(virtuosoProps.last!.followOutput(false)).toBe(false);
+  });
+
+  // Virtuoso passes isAtBottom || scrollingInProgress to followOutput; its own scroll corrections on iOS made that true while the
+  // user read history, which pulled the view to the newest message. The callback must rely on atBottomStateChange only.
+  test("follows output by the tracked at-bottom state, not by Virtuoso's argument", async () => {
+    api.listEvents.mockResolvedValue({ events: [text(5, "x")], has_more_before: false, next_after_id: 5 });
+    mount();
+    await screen.findByText("x");
+    const v = () => virtuosoProps.last!;
+    expect(v().followOutput(false)).toBe("auto");
+    act(() => v().atBottomStateChange(false));
+    expect(v().followOutput(true)).toBe(false);
+    act(() => v().atBottomStateChange(true));
+    expect(v().followOutput(false)).toBe("auto");
+  });
+
+  test("keeps followOutput referentially stable across renders", async () => {
+    api.listEvents.mockResolvedValue({ events: [text(5, "x")], has_more_before: false, next_after_id: 5 });
+    mount();
+    await screen.findByText("x");
+    const before = virtuosoProps.last!.followOutput;
+    act(() => virtuosoProps.last!.atBottomStateChange(false));
+    expect(virtuosoProps.last!.followOutput).toBe(before);
+  });
+
+  test("shows Jump to latest only while scrolled up and scrolls to the last item", async () => {
+    api.listEvents.mockResolvedValue({ events: [text(5, "x")], has_more_before: false, next_after_id: 5 });
+    mount();
+    await screen.findByText("x");
+    expect(screen.queryByRole("button", { name: "Jump to latest" })).toBeNull();
+    act(() => virtuosoProps.last!.atBottomStateChange(false));
+    fireEvent.click(screen.getByRole("button", { name: "Jump to latest" }));
+    expect(virtuosoProps.scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "smooth" });
+    act(() => virtuosoProps.last!.atBottomStateChange(true));
+    expect(screen.queryByRole("button", { name: "Jump to latest" })).toBeNull();
   });
 });
 

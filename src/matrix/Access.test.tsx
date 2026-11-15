@@ -5,11 +5,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
-import { phoneColumnProblems } from '../test/emittedCss'
 import type { MatrixMeta, UserView } from './api'
 import { DefaultPreset } from './DefaultPreset'
 import { RulesPanel } from './RulesPanel'
 import { UsersTable } from './UsersTable'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listUsers: vi.fn(), listRules: vi.fn(), addRule: vi.fn(), deleteRule: vi.fn(), getSettings: vi.fn(), setSettings: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -27,6 +27,7 @@ const flush = (ms = 0) => act(async () => { await vi.advanceTimersByTimeAsync(ms
 const wrap = (el: React.ReactNode) => render(<ThemeProvider theme={theme}>{el}</ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   vi.useFakeTimers({ shouldAdvanceTime: true })
   for (const f of [...Object.values(api), ...Object.values(client)]) f.mockReset()
   api.listUsers.mockResolvedValue([user('@fb_1:hs', { facebook_id: '1001', display_name: 'Alice' }), user('@bob:hs', { display_name: 'Bob' })])
@@ -140,18 +141,46 @@ describe('Access', () => {
 })
 
 describe('Access tables on phones', () => {
-  test('the users table scrolls in a TableContainer and hides Rooms', async () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('users are one card each with an actions menu that opens the confirm', async () => {
+    const u = ue()
     wrap(<UsersTable />)
     await flush()
-    const table = screen.getByText('Alice').closest('table')!
-    expect(phoneColumnProblems(table, [], ['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'])).toEqual([])
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const card = within(screen.getByRole('article', { name: 'User Alice' }))
+    for (const f of ['Matrix id', 'Facebook id', 'Rooms', 'Access']) expect(card.getByText(f, { selector: 'dt' })).toBeTruthy()
+    expect(card.getByText('Rooms', { selector: 'dt' }).nextElementSibling?.textContent).toBe('2')
+    expect(card.queryByRole('button', { name: 'Allow' })).toBeNull()
+    await u.click(card.getByRole('button', { name: 'Actions for User Alice' }))
+    await u.click(await screen.findByRole('menuitem', { name: 'Deny User Alice' }))
+    expect(screen.getByRole('button', { name: 'Deny' })).toBeTruthy()
+    expect(api.addRule).not.toHaveBeenCalled()
   })
 
-  test('the rules tables scroll in a TableContainer and hide Created', async () => {
+  test('rules are cards with Edit preamble and Delete in the menu', async () => {
+    const u = ue()
     wrap(<RulesPanel meta={meta} />)
     await flush()
+    expect(screen.queryByRole('table')).toBeNull()
+    const list = screen.getByRole('list', { name: 'allow rules' })
+    const card = within(within(list).getByRole('article', { name: 'Rule 1001' }))
+    for (const f of ['Kind', 'Note', 'Preamble', 'Created']) expect(card.getByText(f, { selector: 'dt' })).toBeTruthy()
+    expect(card.getByText('friend')).toBeTruthy()
+    await u.click(card.getByRole('button', { name: 'Actions for Rule 1001' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit preamble Rule 1001' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Delete Rule 1001' })).toBeTruthy()
+  })
+})
+
+describe('Access tables on wide screens', () => {
+  test('users and rules are tables with every column', async () => {
+    wrap(<><UsersTable /><RulesPanel meta={meta} /></>)
+    await flush()
+    for (const h of ['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access']) expect(within(screen.getByRole('table', { name: 'Users' })).getByRole('columnheader', { name: h })).toBeTruthy()
     for (const name of ['allow rules', 'deny rules']) {
-      expect(phoneColumnProblems(screen.getByRole('table', { name }), [], ['Kind', 'Value', 'Note', 'Preamble', 'Created'])).toEqual([])
+      for (const h of ['Kind', 'Value', 'Note', 'Preamble', 'Created']) expect(within(screen.getByRole('table', { name })).getByRole('columnheader', { name: h })).toBeTruthy()
     }
   })
 })

@@ -10,7 +10,8 @@ import { MemoryRouter } from 'react-router'
 import { ProjectProvider, useProject } from './ProjectContext'
 import { ProjectsPage } from './ProjectsPage'
 import { loadConfig, resetConfig } from '../config/backends'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn(), listProjectMessages: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -26,6 +27,7 @@ function Selector() {
 const mount = () => render(<MemoryRouter><ProjectProvider><ThemeProvider theme={theme}><Selector /><ProjectsPage onBack={() => {}} /></ThemeProvider></ProjectProvider></MemoryRouter>)
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of [...Object.values(api), ...Object.values(queueApi)]) f.mockReset()
   queueApi.listSpecQueue.mockResolvedValue([])
   api.listProjects.mockResolvedValue([project('default'), project('alpha', { presets: 1, sessions: 2 })])
@@ -180,11 +182,35 @@ describe('ProjectsPage', () => {
   })
 })
 
-describe('ProjectsPage phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('ProjectsPage on phones', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('one card per project with counts and one actions menu', async () => {
     mount()
-    await screen.findByText('Name alpha')
-    const table = screen.getByText('Name alpha').closest('table')!
-    expect(phoneColumnProblems(table, [], ['Project', 'Description', 'Presets', 'Sessions', 'Open tasks', 'Waiting decisions'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Project Name alpha' })
+    expect(screen.queryByRole('table')).toBeNull()
+    const c = within(card)
+    await waitFor(() => expect(c.getByText('Open tasks', { selector: 'dt' }).nextElementSibling?.textContent).toBe('7'))
+    expect(c.getByText('Waiting decisions', { selector: 'dt' }).nextElementSibling?.textContent).toBe('4')
+    for (const label of ['Presets', 'Sessions']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('About alpha')).toBeTruthy()
+    expect(c.getAllByRole('button', { name: 'Actions for Project Name alpha' })).toHaveLength(1)
+    expect(c.queryByRole('button', { name: 'Edit' })).toBeNull()
+  })
+
+  test('the actions menu opens the queue inside the card', async () => {
+    await loadConfig((async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'taskboard', label: 'T', basePath: '/taskboard/api/v1' }] }))) as unknown as typeof fetch)
+    const user = userEvent.setup()
+    mount()
+    const card = await screen.findByRole('article', { name: 'Project Name alpha' })
+    await user.click(within(card).getByRole('button', { name: 'Actions for Project Name alpha' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Autostart Project Name alpha' }))
+    expect(await within(card).findByLabelText('Max active sessions')).toBeTruthy()
+  })
+
+  test('the header wraps', async () => {
+    mount()
+    const title = await screen.findByRole('heading', { name: 'Projects' })
+    expect(emittedCssFor(title.parentElement!)).toMatch(/flex-wrap:\s*wrap/)
   })
 })

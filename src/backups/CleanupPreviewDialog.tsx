@@ -1,27 +1,30 @@
 /** Dry-run preview of the archive cleanup sweep: what it would delete now and the retention settings. Deletes nothing. */
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { useEffect, useState } from 'react'
 import { cleanupPreview } from '../api/archives'
 import type { CleanupPreview } from '../api/archives'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 import { formatBytes } from './format'
-import { TABLE_SCROLL_SX } from '../layout/tables'
 
 export interface CleanupPreviewDialogProps {
   open: boolean
   onClose: () => void
 }
+
+type WouldDelete = CleanupPreview['would_delete'][number]
+
+const COLUMNS: Column<WouldDelete>[] = [
+  { key: 'key', label: 'Archive', role: 'primary', sx: { wordBreak: 'normal' }, render: (i) => <Box component="span" sx={{ fontFamily: 'monospace' }}>{i.key}</Box> },
+  { key: 'size', label: 'Size', role: 'meta', align: 'right', render: (i) => formatBytes(i.size) },
+  { key: 'reason', label: 'Reason', role: 'meta', render: (i) => i.reason },
+]
 
 const sweepText = (p: CleanupPreview) => (!p.sweep_enabled ? 'Sweep is off' : p.sweep_dry_run ? 'Sweep is on, in dry-run mode: nothing is deleted automatically' : 'Sweep is on: these archives are deleted automatically')
 
@@ -64,26 +67,7 @@ export function CleanupPreviewDialog({ open, onClose }: CleanupPreviewDialogProp
             ) : (
               <>
                 <Typography>{`${preview.count} archives, ${formatBytes(preview.total_bytes)} would be deleted`}</Typography>
-                <TableContainer sx={TABLE_SCROLL_SX}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Archive</TableCell>
-                      <TableCell align="right">Size</TableCell>
-                      <TableCell>Reason</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {preview.would_delete.map((i) => (
-                      <TableRow key={i.key}>
-                        <TableCell sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{i.key}</TableCell>
-                        <TableCell align="right">{formatBytes(i.size)}</TableCell>
-                        <TableCell>{i.reason}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </TableContainer>
+                <ResponsiveTable rows={preview.would_delete} columns={COLUMNS} rowKey={(i) => i.key} ariaLabel="Cleanup preview" cardLabel={(i) => `Archive ${i.key}`} />
               </>
             )}
           </>

@@ -167,9 +167,8 @@ const touchSized = {
   [COARSE]: { minHeight: TOUCH_TARGET_PX, minWidth: TOUCH_TARGET_PX },
 }
 
-/** An invisible 44px hit box centred on a small visible control (checkbox thumb, chip); the layout box does not change. */
-export const hitArea44 = {
-  position: 'relative',
+/** The invisible 44px hit box alone, for controls that are already positioned (the Switch base is absolute). */
+export const hitBox44 = {
   '&::after': {
     content: '""',
     position: 'absolute',
@@ -180,6 +179,9 @@ export const hitArea44 = {
     transform: 'translate(-50%, -50%)',
   },
 } as const
+
+/** hitBox44 on a positioned parent, for small visible controls (checkbox thumb, chip); the layout box does not change. */
+export const hitArea44 = { position: 'relative', ...hitBox44 } as const
 
 export const theme = createTheme({
   palette: {
@@ -288,7 +290,10 @@ export const theme = createTheme({
       styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
     },
     MuiSwitch: {
-      styleOverrides: { switchBase: { [COARSE]: hitArea44 } },
+      styleOverrides: {
+        // the Switch root clips the ::after (overflow hidden): the effective touch area is the root plus its FormControlLabel
+        switchBase: { [COARSE]: hitBox44 },
+      },
     },
     MuiTreeItem: {
       styleOverrides: { content: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },

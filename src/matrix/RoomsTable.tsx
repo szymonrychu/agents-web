@@ -3,20 +3,12 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import { ProjectCell } from '../triggers'
 import type { PresetInfo } from '../triggers'
 import type { RoomView } from './api'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
-
-const col = phoneColumns(['Members', 'Preset', 'Project', 'Trigger'])
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 export const KINDS: Record<string, string> = { dm: 'DM', group: 'Group', matrix: 'Matrix', infrastructure: 'Infrastructure' }
 export const ACCESS_STATES = ['allowed', 'denied', 'default']
@@ -46,10 +38,41 @@ export interface RoomsTableProps {
   onOpenSession: (sessionId: string) => void
 }
 
+const roomName = (r: RoomView) => r.name ?? r.alias ?? r.room_id
+
 export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onSelect, onOpenSession }: RoomsTableProps) {
+  const columns: Column<RoomView>[] = [
+    { key: 'name', label: 'Name', role: 'primary', render: roomName },
+    { key: 'kind', label: 'Kind', role: 'meta', render: (r) => (r.kind ? (KINDS[r.kind] ?? r.kind) : '-') },
+    {
+      key: 'flags', label: 'Flags', role: 'meta',
+      render: (r) => (r.message_request || r.encrypted ? (
+        <>
+          {r.message_request && <Chip size="small" variant="outlined" label="Message request" sx={{ mr: 0.5 }} />}
+          {r.encrypted && <Chip size="small" variant="outlined" label="Encrypted" />}
+        </>
+      ) : '-'),
+    },
+    { key: 'members', label: 'Members', role: 'none', render: (r) => r.member_count },
+    { key: 'access', label: 'Access', role: 'meta', render: (r) => <AccessChip access={r.access} /> },
+    { key: 'preset', label: 'Preset', role: 'none', render: (r) => (r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-') },
+    { key: 'project', label: 'Project', role: 'none', sx: { whiteSpace: 'nowrap' }, render: (r) => <ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /> },
+    { key: 'trigger', label: 'Trigger', role: 'none', render: (r) => r.effective_trigger },
+    {
+      key: 'session', label: 'Session', role: 'meta',
+      render: (r) => (r.session?.id ? (
+        <Link component="button" onClick={() => onOpenSession(r.session!.id!)}>{r.session.slug ?? r.session.id}</Link>
+      ) : (r.session?.slug || '-')),
+    },
+    {
+      key: 'activity', label: 'Last activity', role: 'meta',
+      render: (r) => (r.last_event_at ? <Tooltip title={new Date(r.last_event_at).toLocaleString()}><span>{relative(r.last_event_at)}</span></Tooltip> : '-'),
+    },
+    { key: 'queued', label: 'Queued', role: 'meta', render: (r) => r.queued },
+  ]
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Box sx={{ display: 'flex', gap: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField select size="small" label="Kind" value={kind} onChange={(e) => onKind(e.target.value)} sx={{ minWidth: 180 }}>
           <MenuItem value={ALL}>all</MenuItem>
           {Object.entries(KINDS).map(([k, label]) => <MenuItem key={k} value={k}>{label}</MenuItem>)}
@@ -59,45 +82,14 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
           {ACCESS_STATES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
       </Box>
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rooms.map((r) => (
-            <TableRow key={r.room_id} hover sx={{ cursor: 'pointer' }} onClick={() => onSelect(r)}>
-              <TableCell>{r.name ?? r.alias ?? r.room_id}</TableCell>
-              <TableCell>{r.kind ? (KINDS[r.kind] ?? r.kind) : ''}</TableCell>
-              <TableCell>
-                {r.message_request && <Chip size="small" variant="outlined" label="Message request" sx={{ mr: 0.5 }} />}
-                {r.encrypted && <Chip size="small" variant="outlined" label="Encrypted" />}
-              </TableCell>
-              <TableCell sx={col('Members')}>{r.member_count}</TableCell>
-              <TableCell><AccessChip access={r.access} /></TableCell>
-              <TableCell sx={col('Preset')}>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
-              <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
-              <TableCell sx={col('Trigger')}>{r.effective_trigger}</TableCell>
-              <TableCell>
-                {r.session?.id ? (
-                  <Link component="button" onClick={(e) => { e.stopPropagation(); onOpenSession(r.session!.id!) }}>
-                    {r.session.slug ?? r.session.id}
-                  </Link>
-                ) : (r.session?.slug ?? '')}
-              </TableCell>
-              <TableCell>
-                {r.last_event_at && (
-                  <Tooltip title={new Date(r.last_event_at).toLocaleString()}><span>{relative(r.last_event_at)}</span></Tooltip>
-                )}
-              </TableCell>
-              <TableCell>{r.queued}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable
+        rows={rooms}
+        columns={columns}
+        rowKey={(r) => r.room_id}
+        ariaLabel="Rooms"
+        cardLabel={(r) => `Room ${roomName(r)}`}
+        onRowClick={onSelect}
+      />
     </Box>
   )
 }

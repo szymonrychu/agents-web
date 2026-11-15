@@ -9,6 +9,9 @@ import { ApiError } from '../api/client'
 import type { Meta, PresetView } from '../api/client'
 import { editorText, editorView, setEditorText, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
+import { emittedInMedia } from '../test/emittedCss'
+import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
+import { setViewport } from '../test/viewport'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
@@ -33,6 +36,7 @@ const field = (label: string) => screen.getByLabelText(label) as HTMLInputElemen
 const button = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement
 
 beforeEach(() => {
+  setViewport(1440)
   Object.values(api).forEach((f) => f.mockReset())
   api.getMeta.mockResolvedValue(meta())
 })
@@ -116,6 +120,19 @@ describe('PresetForm project', () => {
     wrap(<PresetForm open preset={preset({ project: 'old' })} {...noop} />)
     await userEvent.click(button('Save'))
     expect((await screen.findByRole('alert')).textContent).toContain('project "old" is archived')
+  })
+})
+
+describe('PresetForm on phones', () => {
+  test('on phones paired size fields stack', async () => {
+    setViewport(375, { coarse: true })
+    wrap(<PresetForm open onClose={vi.fn()} onSaved={vi.fn()} />)
+    await ready()
+    for (const label of ['CPU request', 'Memory request', QUOTA_FIELD_LABELS.five_hour]) {
+      const row = field(label).closest('.MuiFormControl-root')!.parentElement as HTMLElement
+      expect(emittedInMedia(row, '(min-width:0px)'), label).toContain('flex-direction:column')
+      expect(emittedInMedia(row, '(min-width:600px)'), label).toContain('flex-direction:row')
+    }
   })
 })
 

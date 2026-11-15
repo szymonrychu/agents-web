@@ -3,12 +3,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -17,14 +11,21 @@ import { Link as RouterLink, useSearchParams } from 'react-router'
 import { LabelChips } from '../labels/LabelChips'
 import { LabelEditor } from '../labels/LabelEditor'
 import { useProject } from '../projects/ProjectContext'
-import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { listSpecs, type SpecSummary, type SpecPage, type SpecStatus } from './api'
 import { specPath } from './paths'
 import { useSpecStream } from './useSpecStream'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
-const col = phoneColumns(['Name', 'Project'])
+const COLUMNS = (addLabel: (label: string) => void): Column<SpecSummary>[] => [
+  { key: 'key', label: 'Key', role: 'primary', render: (s) => <Link component={RouterLink} to={specPath(s.key)}>{s.key}</Link> },
+  { key: 'name', label: 'Name', role: 'meta', render: (s) => s.name || '-' },
+  { key: 'title', label: 'Title', role: 'secondary', render: (s) => s.title },
+  { key: 'status', label: 'Status', role: 'meta', render: (s) => <Chip size="small" label={s.status} /> },
+  { key: 'project', label: 'Project', role: 'meta', render: (s) => <Chip size="small" variant="outlined" label={s.project} /> },
+  { key: 'labels', label: 'Labels', role: 'meta', render: (s) => (s.labels.length > 0 ? <LabelChips labels={s.labels} onClick={addLabel} /> : '-') },
+]
 
 const POLL_MS = 10000
 type Filter = SpecStatus | 'all'
@@ -79,10 +80,7 @@ export function SpecsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto', p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button component={RouterLink} to="/">Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Specs</Typography>
-      </Box>
+      <PageHeader title="Specs" backTo="/" />
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <ToggleButtonGroup
           exclusive
@@ -101,32 +99,7 @@ export function SpecsPage() {
         </Box>
       </Box>
       <FormError error={error} />
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small" aria-label="Specs">
-        <TableHead>
-          <TableRow>
-            <TableCell>Key</TableCell>
-            <TableCell sx={col('Name')}>Name</TableCell>
-            <TableCell>Title</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell sx={col('Project')}>Project</TableCell>
-            <TableCell>Labels</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((s) => (
-            <TableRow key={s.key} hover>
-              <TableCell><Link component={RouterLink} to={specPath(s.key)}>{s.key}</Link></TableCell>
-              <TableCell sx={col('Name')}>{s.name}</TableCell>
-              <TableCell>{s.title}</TableCell>
-              <TableCell><Chip size="small" label={s.status} /></TableCell>
-              <TableCell sx={col('Project')}><Chip size="small" variant="outlined" label={s.project} /></TableCell>
-              <TableCell><LabelChips labels={s.labels} onClick={addLabel} /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable rows={items} columns={COLUMNS(addLabel)} rowKey={(s) => s.key} ariaLabel="Specs" cardLabel={(s) => `Spec ${s.key}`} />
       {!loading && items.length === 0 && !error && <Typography color="text.secondary">No specs</Typography>}
       {next !== null && <Box><Button onClick={() => void loadMore()}>Load more</Button></Box>}
     </Box>

@@ -15,6 +15,10 @@ run = ["npm run lint", "shellcheck --severity=error scripts/*.sh"]
 description = "Run fmt"
 run = "npm run fmt"
 
+[tasks."test:e2e"]
+description = "Run the WebKit phone smoke (needs the build and a Playwright WebKit install)"
+run = "npm run test:e2e"
+
 [tasks."test:chart"]
 description = "Run the chart tests"
 run = "npm run test:chart"

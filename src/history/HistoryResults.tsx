@@ -1,25 +1,16 @@
 /** The history search results: one row per discarded session, with its hit count and up to 3 snippets. */
-import { Fragment } from 'react'
-import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
+import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { DateTime } from '../common/DateTime'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { SessionSummary } from './api'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
-
-const col = phoneColumns(['Preset', 'Created', 'Records', 'Size'])
 
 export interface HistoryResultsProps {
   sessions: SessionSummary[]
   onOpen: (session: SessionSummary) => void
 }
 
-const COLUMNS = ['Session', 'Preset', 'Created', 'Discarded', 'Records', 'Size', 'Hits']
 const MAX_SNIPPETS = 3
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB']
 
@@ -38,42 +29,36 @@ export const formatCounts = (counts: Record<string, number>) =>
 
 const formatHits = (hits: number) => `${hits} ${hits === 1 ? 'hit' : 'hits'}`
 
+const COLUMNS: Column<SessionSummary>[] = [
+  { key: 'session', label: 'Session', role: 'primary', render: (s) => s.slug },
+  { key: 'preset', label: 'Preset', role: 'meta', render: (s) => s.preset_name || '-' },
+  { key: 'created', label: 'Created', role: 'meta', render: (s) => <DateTime iso={s.created_at} /> },
+  { key: 'discarded', label: 'Discarded', role: 'meta', render: (s) => <DateTime iso={s.discarded_at} /> },
+  { key: 'records', label: 'Records', role: 'meta', render: (s) => formatCounts(s.record_counts) || '-' },
+  { key: 'size', label: 'Size', role: 'meta', render: (s) => formatSize(s.bytes) },
+  { key: 'hits', label: 'Hits', role: 'meta', render: (s) => (s.hits == null ? '-' : formatHits(s.hits)) },
+]
+
 export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
   return (
-    <TableContainer sx={TABLE_SCROLL_SX}>
-    <Table size="small">
-      <TableHead>
-        <TableRow>
-          {COLUMNS.map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {sessions.map((s) => (
-          <Fragment key={s.id}>
-            <TableRow hover onClick={() => onOpen(s)} sx={{ cursor: 'pointer', '& > td': s.matches.length > 0 ? { borderBottom: 0 } : undefined }}>
-              <TableCell><Link component="button" type="button" underline="hover">{s.slug}</Link></TableCell>
-              <TableCell sx={col('Preset')}>{s.preset_name}</TableCell>
-              <TableCell sx={col('Created')}>{new Date(s.created_at).toLocaleString()}</TableCell>
-              <TableCell>{new Date(s.discarded_at).toLocaleString()}</TableCell>
-              <TableCell sx={col('Records')}>{formatCounts(s.record_counts)}</TableCell>
-              <TableCell sx={col('Size')}>{formatSize(s.bytes)}</TableCell>
-              <TableCell>{s.hits == null ? '' : formatHits(s.hits)}</TableCell>
-            </TableRow>
-            {s.matches.length > 0 && (
-              <TableRow hover onClick={() => onOpen(s)} sx={{ cursor: 'pointer' }}>
-                <TableCell colSpan={COLUMNS.length} sx={{ pt: 0 }}>
-                  {s.matches.slice(0, MAX_SNIPPETS).map((m) => (
-                    <Typography key={m.record_id} component="div" noWrap sx={{ fontFamily: MONO_FONT, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>
-                      <span>{m.kind}</span>{' '}<span>{m.snippet}</span>
-                    </Typography>
-                  ))}
-                </TableCell>
-              </TableRow>
-            )}
-          </Fragment>
-        ))}
-      </TableBody>
-    </Table>
-    </TableContainer>
+    <ResponsiveTable
+      rows={sessions}
+      columns={COLUMNS}
+      rowKey={(s) => String(s.id)}
+      ariaLabel="History results"
+      cardLabel={(s) => `Session ${s.slug}`}
+      onRowClick={onOpen}
+      below={(s) =>
+        s.matches.length > 0 && (
+          <Box onClick={() => onOpen(s)} sx={{ cursor: 'pointer', minWidth: 0 }}>
+            {s.matches.slice(0, MAX_SNIPPETS).map((m) => (
+              <Typography key={m.record_id} component="div" noWrap sx={{ fontFamily: MONO_FONT, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>
+                <span>{m.kind}</span>{' '}<span>{m.snippet}</span>
+              </Typography>
+            ))}
+          </Box>
+        )
+      }
+    />
   )
 }

@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
+import { setViewport } from '../test/viewport'
 import type { CleanupPreview } from '../api/archives'
 import { theme } from '../theme'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
@@ -18,6 +18,7 @@ const preview = (o: Partial<CleanupPreview> = {}): CleanupPreview => ({
 const mount = (onClose = vi.fn()) => render(<ThemeProvider theme={theme}><CleanupPreviewDialog open onClose={onClose} /></ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   api.cleanupPreview.mockReset()
 })
 afterEach(cleanup)
@@ -52,11 +53,25 @@ describe('CleanupPreviewDialog', () => {
   })
 })
 
-describe('CleanupPreviewDialog table on phones', () => {
-  test('sits in a scroll container and keeps every column', async () => {
+describe('CleanupPreviewDialog layouts', () => {
+  test('on phones each archive is a card with its size and reason', async () => {
+    setViewport(375, { coarse: true })
+    api.cleanupPreview.mockResolvedValue(preview())
+    mount()
+    const card = await screen.findByRole('article', { name: 'Archive p/old-1.tar.zst' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(within(card).getByText('p/old-1.tar.zst')).toBeTruthy()
+    for (const label of ['Size', 'Reason']) expect(within(card).getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(within(card).getByText('2.0 KiB')).toBeTruthy()
+    expect(within(card).getByText('older than 30 days')).toBeTruthy()
+  })
+
+  test('on a wide screen it is a table with every column', async () => {
     api.cleanupPreview.mockResolvedValue(preview())
     mount()
     await screen.findByText('p/old-1.tar.zst')
-    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Archive', 'Size', 'Reason'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Cleanup preview' })
+    for (const h of ['Archive', 'Size', 'Reason']) expect(within(table).getByRole('columnheader', { name: h })).toBeTruthy()
   })
 })
