@@ -79,7 +79,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
-          sx={{ minWidth: 160 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
         >
           <option value="">All labels</option>
           {allLabels.map((l) => (

@@ -108,16 +108,16 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
             onChange={(e) => setQ(e.target.value)}
             error={qTooShort}
             helperText={qTooShort ? `Type at least ${MIN_Q} characters` : undefined}
-            sx={{ flexGrow: 1, minWidth: 240 }}
+            sx={{ flexGrow: 1, width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 240 } }}
           />
           <FormControlLabel control={<Switch checked={regex} onChange={(e) => setRegex(e.target.checked)} />} label="Regex" />
         </Box>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} />
-          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} />
-          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} />
-          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} />
-          <Button type="submit" variant="contained" disabled={qTooShort || loading}>Search</Button>
+          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
+          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
+          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
+          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
+          <Button type="submit" variant="contained" disabled={qTooShort || loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>Search</Button>
         </Box>
       </Box>
       <FormError error={error} />

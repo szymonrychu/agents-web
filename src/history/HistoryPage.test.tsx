@@ -9,6 +9,7 @@ import type { SessionSummary } from './api'
 import { HistoryPage } from './HistoryPage'
 import { formatDateTime } from '../common/dates'
 import { setViewport } from '../test/viewport'
+import { emittedInMedia } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn(), getRetention: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -94,6 +95,19 @@ describe('HistoryPage search', () => {
       session: 'my-slug',
       limit: 50,
     })
+  })
+})
+
+describe('HistoryPage search form on phones', () => {
+  test('on phones every search field takes the full row', () => {
+    setViewport(375, { coarse: true })
+    mount()
+    for (const label of ['Search', 'From', 'To', 'Preset', 'Session']) {
+      const root = screen.getByLabelText(label).closest('.MuiFormControl-root')!
+      expect(emittedInMedia(root, '(min-width:0px)'), label).toContain('width:100%')
+      expect(emittedInMedia(root, '(min-width:600px)'), label).toContain('width:auto')
+    }
+    expect(emittedInMedia(screen.getByRole('button', { name: 'Search' }), '(min-width:0px)')).toContain('width:100%')
   })
 })
 

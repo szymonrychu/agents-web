@@ -128,6 +128,17 @@ describe('WebhooksPage state', () => {
 })
 
 describe('WebhooksPage filters', () => {
+  test('on phones both filters take the full row', async () => {
+    setViewport(375, { coarse: true })
+    api.listEvents.mockResolvedValue([])
+    mount()
+    await flush()
+    for (const name of ['Status', 'Endpoint']) {
+      const root = screen.getByRole('combobox', { name }).closest('.MuiFormControl-root')!
+      expect(emittedInMedia(root, '(min-width:0px)'), name).toContain('width:100%')
+    }
+  })
+
   test('the filter row wraps, each field is full width on a phone and keeps its old minimum from sm up', async () => {
     api.listEvents.mockResolvedValue([])
     mount()

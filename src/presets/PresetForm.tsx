@@ -133,7 +133,7 @@ function VaultRefCell({ index, row, entries, targetLabels, serverError, onEnv }:
         <Chip size="small" label="vault" />
         <Typography variant="body2" data-testid={`vault-ref-${index}`}>{refText(ref, entries.byId)}</Typography>
         {entry && (
-          <TextField select size="small" label={`Entry env ${index + 1}`} value={ref.env} onChange={(e) => onEnv(e.target.value)} sx={{ minWidth: '12rem' }}>
+          <TextField select size="small" label={`Entry env ${index + 1}`} value={ref.env} onChange={(e) => onEnv(e.target.value)} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '12rem' } }}>
             {(envView ? entry.envs : [{ env: ref.env }, ...entry.envs]).map((e) => (
               <MenuItem key={e.env} value={e.env}>{e.env}</MenuItem>
             ))}
@@ -462,11 +462,11 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {template('startPrompt', 'Start prompt', 'web_chat_start', 'Delivered as the first turn of the session; the session, webhook, chat or cron prompts follow after it.')}
           {text('maxAttempts', 'Max attempts')}
           {text('autoCompact', 'Auto-compact percent')}
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
             {text('cpuRequest', 'CPU request')}
             {text('cpuLimit', 'CPU limit')}
           </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
             {text('memRequest', 'Memory request')}
             {text('memLimit', 'Memory limit')}
           </Box>
@@ -476,7 +476,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('inactivityClose', 'Close after quiet seconds', { help: inactivityHelp(meta?.inactivity.close_seconds) })}
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <FormLabel component="legend">Usage quota</FormLabel>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
               {text('quotaFiveHour', QUOTA_FIELD_LABELS.five_hour)}
               {text('quotaSevenDay', QUOTA_FIELD_LABELS.seven_day)}
             </Box>
