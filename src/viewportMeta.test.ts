@@ -29,7 +29,9 @@ describe('index.html and index.css', () => {
   test('#root follows the visual viewport; html and body keep the 100vh then 100dvh fallback', () => {
     const root = /#root\s*\{([^}]*)\}/.exec(css.replace(/html,\s*body,\s*#root/, ''))?.[1] ?? ''
     expect(root).toContain('height: var(--app-height, 100dvh)')
-    expect(root).toContain('translateY(var(--app-top, 0px))')
+    // no transform (so no containing block or stacking context) unless the hook is active
+    expect(root).toContain('transform: var(--app-shift, none)')
+    expect(root).not.toContain('translateY')
     expect(css).toMatch(/html,\s*body,\s*#root\s*\{[^}]*height:\s*100vh;\s*height:\s*100dvh/)
   })
 })

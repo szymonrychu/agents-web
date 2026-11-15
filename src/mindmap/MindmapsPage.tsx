@@ -236,7 +236,7 @@ export function MindmapsPage() {
       </Box>
 
       {phone && (
-        <Drawer anchor="bottom" variant="temporary" open={nodeKey !== null} onClose={closeNode} slotProps={{ paper: { 'aria-label': 'Node', sx: { maxHeight: '85dvh', ...safeArea(['bottom', 'left', 'right'], 16) } } }}>
+        <Drawer anchor="bottom" variant="temporary" open={nodeKey !== null} onClose={closeNode} slotProps={{ paper: { 'aria-label': 'Node', sx: { maxHeight: '85%', ...safeArea(['bottom', 'left', 'right'], 16) } } }}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1 }}>
             <IconButton aria-label="Close node" onClick={closeNode}>
               <CloseIcon fontSize="small" />

@@ -206,6 +206,8 @@ describe('MindmapsPage on a phone', () => {
     expect(screen.getAllByTestId('node-panel')).toHaveLength(1)
     expect(screen.queryByRole('complementary', { name: 'Node' })).toBeNull()
     expect(panel.closest('.MuiDrawer-root')).toBeTruthy()
+    // a share of the drawer root, which follows the visible area above the keyboard (dvh does not)
+    expect(emittedCssFor(panel.closest('.MuiDrawer-paper')!)).toContain('max-height:85%')
     await u.click(screen.getByRole('button', { name: 'Close node' }))
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1'))
   })

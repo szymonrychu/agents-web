@@ -152,6 +152,13 @@ export const TOUCH_OR_SMALL = `@media ${TOUCH_OR_SMALL_QUERY}` as const
 /** Every focusable text surface, incl. CodeMirror and the xterm helper textarea whose own styles would undercut the floor. */
 export const NO_ZOOM_SELECTOR =
   'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea, select, [contenteditable]:not([contenteditable=false]), .cm-editor, .cm-content, .xterm .xterm-helper-textarea'
+/**
+ * MUI modal roots render to body as position:fixed against the layout viewport, which iOS does not shrink for the
+ * on-screen keyboard; on touch or small viewports they take the visible area that useVisualViewport writes (unset: the
+ * full viewport). Popover and Menu roots are left alone: their paper is placed from the anchor rect, measured in the
+ * same layout-viewport coordinates as their fixed root.
+ */
+const VISIBLE_AREA = { [TOUCH_OR_SMALL]: { top: 'var(--app-top, 0px)', bottom: 'auto', height: 'var(--app-height, 100%)' } }
 const sized = (px: number, fontWeight: number) => ({ fontSize: `${px / 16}rem`, fontWeight, letterSpacing: 0 })
 const BORDER = `${TOKENS.borderWidth}px solid ${TOKENS.border}`
 const touchSized = {
@@ -226,6 +233,7 @@ export const theme = createTheme({
     },
     MuiDialog: {
       styleOverrides: {
+        root: VISIBLE_AREA,
         // a short confirmation (no fullWidth) stays centred with a gutter
         paper: { [PHONE]: { margin: '16px' } },
         // every form dialog sets fullWidth: on a phone it is a full-screen sheet clear of the notch and Home Indicator
@@ -245,6 +253,12 @@ export const theme = createTheme({
         },
         // fullScreen without fullWidth must not inherit the gutter of the paper rule above
         paperFullScreen: { [PHONE]: { margin: 0, maxWidth: '100%' } },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        // the transform makes the temporary drawer's root the containing block of its position:fixed paper
+        modal: { [TOUCH_OR_SMALL]: { ...VISIBLE_AREA[TOUCH_OR_SMALL], transform: 'translateZ(0)' } },
       },
     },
     MuiButton: {

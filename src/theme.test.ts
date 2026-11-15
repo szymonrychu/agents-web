@@ -169,6 +169,18 @@ describe('dialogs on phones', () => {
   })
 })
 
+describe('modal surfaces follow the visual viewport', () => {
+  const visible = { top: 'var(--app-top, 0px)', bottom: 'auto', height: 'var(--app-height, 100%)' }
+
+  it('the Dialog root is sized to the visible area only on touch or small viewports', () => {
+    expect(comp.MuiDialog.styleOverrides.root).toEqual({ [TOUCH_OR_SMALL]: visible })
+  })
+
+  it('the temporary Drawer root is sized to the visible area and holds its fixed paper', () => {
+    expect(comp.MuiDrawer.styleOverrides.modal).toEqual({ [TOUCH_OR_SMALL]: { ...visible, transform: 'translateZ(0)' } })
+  })
+})
+
 describe('exported constants', () => {
   it('are opaque token aliases', () => {
     expect(CANVAS_BG).toBe(TOKENS.bgCanvas)

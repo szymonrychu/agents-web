@@ -30,6 +30,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   document.documentElement.style.removeProperty('--app-height')
   document.documentElement.style.removeProperty('--app-top')
+  document.documentElement.style.removeProperty('--app-shift')
 })
 
 describe('useVisualViewport on touch', () => {
@@ -39,6 +40,7 @@ describe('useVisualViewport on touch', () => {
     renderHook(() => useVisualViewport())
     expect(prop('--app-height')).toBe('700px')
     expect(prop('--app-top')).toBe('0px')
+    expect(prop('--app-shift')).toBe('translateY(0px)')
   })
 
   test('resize and scroll update the variables', () => {
@@ -51,6 +53,7 @@ describe('useVisualViewport on touch', () => {
     vv.dispatchEvent(new Event('scroll'))
     flushFrames()
     expect(prop('--app-top')).toBe('120px')
+    expect(prop('--app-shift')).toBe('translateY(120px)')
   })
 
   test('two events in one frame cause one write', () => {
@@ -74,6 +77,7 @@ describe('useVisualViewport on touch', () => {
     expect(cancelAnimationFrame).toHaveBeenCalledTimes(1)
     expect(prop('--app-height')).toBe('')
     expect(prop('--app-top')).toBe('')
+    expect(prop('--app-shift')).toBe('')
     for (const type of ['resize', 'scroll']) {
       const handler = add.mock.calls.find((c) => c[0] === type)?.[1]
       expect(handler).toBeTruthy()
