@@ -1,12 +1,12 @@
 /** Settings > Usage: how much of the Claude plan windows (5-hour, weekly) the agents have used. */
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import { Suspense, lazy } from 'react'
 import { formatAge, useNow } from '../chat/agentAge'
+import { PageHeader } from '../layout/PageHeader'
 import { TOKENS } from '../theme'
 import { usePoll } from '../triggers'
 import { getCurrent } from './api'
@@ -88,10 +88,7 @@ export function UsagePage({ onBack }: UsagePageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Usage</Typography>
-      </Box>
+      <PageHeader title="Usage" onBack={onBack} />
       {error && <Alert severity="warning">Usage service unavailable</Alert>}
       {anyStale && <Alert severity="warning">Usage data is stale</Alert>}
       {probeFailed && <Alert severity="warning">{`Last probe failed: ${probe.error ?? 'unknown error'}`}</Alert>}

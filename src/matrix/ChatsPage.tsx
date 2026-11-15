@@ -2,13 +2,12 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import { presetInProject } from '../projects/scope'
 import { useProject } from '../projects/ProjectContext'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
 import { FormError, usePoll, usePresetIndex } from '../triggers'
 import { getMeta, listRooms } from './api'
 import { ALL, RoomsTable } from './RoomsTable'
@@ -38,11 +37,9 @@ export function ChatsPage({ onBack, onOpenSession }: ChatsPageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Chats</Typography>
-        {meta && <Typography color="text.secondary">{meta.user_id}</Typography>}
-      </Box>
+      <PageHeader title="Chats" onBack={onBack}>
+        {meta && <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>{meta.user_id}</Typography>}
+      </PageHeader>
       {meta && !meta.sync.healthy && (
         <Alert severity="warning">
           Matrix sync is unhealthy{meta.sync.last_sync_at ? `; last sync ${new Date(meta.sync.last_sync_at).toLocaleString()}` : ''}.

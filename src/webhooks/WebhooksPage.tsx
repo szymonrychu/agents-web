@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { PageHeader } from '../layout/PageHeader'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { listEndpoints, listEvents } from './api'
@@ -66,10 +67,7 @@ export function WebhooksPage({ onBack }: WebhooksPageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Webhooks</Typography>
-      </Box>
+      <PageHeader title="Webhooks" onBack={onBack} />
       <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography component="h2" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.md }}>Endpoints</Typography>

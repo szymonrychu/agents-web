@@ -6,7 +6,7 @@ import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
 import { FormError } from '../triggers'
 import { listEntries } from './api'
 import type { EntryView } from './api'
@@ -65,11 +65,9 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Vault</Typography>
+      <PageHeader title="Vault" onBack={onBack}>
         <Button variant="contained" onClick={() => setDialog({ kind: 'create' })}>New entry</Button>
-      </Box>
+      </PageHeader>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField size="small" label="Filter" value={text} onChange={(e) => setText(e.target.value)} sx={{ flexGrow: 1, width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 240 } }} />
         <TextField
