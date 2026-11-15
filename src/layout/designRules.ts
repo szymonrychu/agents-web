@@ -16,6 +16,14 @@ export const SOURCES: Record<string, string> = {
 
 /** Files allowed to hold colour literals: the theme tokens. */
 const COLOUR_FILES = ['theme.ts']
+/** Short yes/no confirmations: they stay a centred dialog on phones, every other Dialog is fullWidth or fullScreen. */
+export const CONFIRM_DIALOG_FILES = ['layout/ConfirmDialog.tsx', 'vault/DeleteDialog.tsx']
+/** Files allowed to call useMediaQuery: layout decisions go through useLayout; the others pick a diff or dialog variant. */
+export const MEDIA_QUERY_FILES = ['layout/useLayout.ts', 'proposals/ValueDiff.tsx', 'proposals/ProposalReviewDialog.tsx', 'attention/DecisionsPreviewDialog.tsx']
+const INPUT_TAG = /(?<![\w.])<(TextField|InputBase|OutlinedInput|FilledInput|Input|Select|NativeSelect|Autocomplete|input|textarea|select)(?=[\s/>])/g
+const FONT_SIZE = /fontSize|font-size|font:/
+const DIALOG_TAG = /(?<![\w.])<Dialog(?=[\s>])/g
+const HOVER_REVEAL = /:hover[^'"\n{}]*['"]?\s*:\s*\{[^}]*\b(opacity|visibility)\b/g
 const ALLOWED_WEIGHTS = ['400', '500']
 const OFF_GRID_SPACING = /(?<![\d.])(1\.25|0\.75|1\.5|2\.5)(?!\d)/
 const SPACING_KEY = /(?<![\w.])(m|p|mt|mb|ml|mr|mx|my|pt|pb|pl|pr|px|py|gap|rowGap|columnGap|spacing|margin\w*|padding\w*)\s*[:=]\s*(\{[^}]*\}|[^,}\n]+)/g
@@ -76,5 +84,18 @@ export function designViolations(path: string, source: string): string[] {
     if (m[1] === 'Alert' && /\bvariant\s*=\s*\{?\s*['"]filled['"]/.test(tag)) add('alert', lineAt(m.index), 'Alert variant="filled" is banned')
     if (m[1] !== 'Alert' && /\btitle\s*=/.test(tag)) add('title', lineAt(m.index), `title= on <${m[1]}>, use aria-label`)
   }
+  for (const m of source.matchAll(INPUT_TAG)) {
+    if (FONT_SIZE.test(source.slice(m.index, tagEnd(source, m.index)))) add('input-font', lineAt(m.index), `fontSize on <${m[1]}>, the theme owns input size (16 px floor)`)
+  }
+  if (!CONFIRM_DIALOG_FILES.includes(path)) {
+    for (const m of source.matchAll(DIALOG_TAG)) {
+      if (!/\bfull(Width|Screen)\b/.test(source.slice(m.index, tagEnd(source, m.index)))) add('dialog', lineAt(m.index), '<Dialog> needs fullWidth or fullScreen (full screen on phones)')
+    }
+  }
+  if (!MEDIA_QUERY_FILES.includes(path)) {
+    const at = source.search(/\buseMediaQuery\b/)
+    if (at >= 0) add('media-query', lineAt(at), 'useMediaQuery outside useLayout, use useLayout() or useTouchOrSmall()')
+  }
+  for (const m of source.matchAll(HOVER_REVEAL)) add('hover-reveal', lineAt(m.index), `${m[1]} set under :hover, everything must be visible without hover`)
   return out
 }
