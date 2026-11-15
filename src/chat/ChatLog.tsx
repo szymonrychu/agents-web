@@ -1,8 +1,9 @@
 /** Virtualised chat log: older pages prepend without moving the view, new items stick to the bottom. */
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import { Virtuoso } from 'react-virtuoso'
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { ChatEntry } from './entries'
 import type { ChatItem } from './chatModel'
 import type { SubagentIndex } from './SubagentPane'
@@ -34,6 +35,23 @@ export interface ChatLogProps {
   subagents?: SubagentIndex
 }
 
+interface HeaderContext {
+  older: boolean
+}
+
+/** Module-level so Virtuoso does not remount it on every render; state arrives through the context prop. */
+function LogHeader({ context }: { context?: HeaderContext }) {
+  return (
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        {context?.older ? 'Loading older messages' : 'Start of history'}
+      </Typography>
+    </Box>
+  )
+}
+
+const COMPONENTS = { Header: LogHeader }
+
 export function ChatLog({ items, hasMoreBefore, loadingOlder, onLoadOlder, subagents }: ChatLogProps) {
   const [track, setTrack] = useState<Track>({ items, index: START_INDEX })
   let index = track.index
@@ -41,26 +59,43 @@ export function ChatLog({ items, hasMoreBefore, loadingOlder, onLoadOlder, subag
     index = nextFirstIndex(track, items)
     setTrack({ items, index })
   }
+  // Own the at-bottom state: Virtuoso passes followOutput `isAtBottom || scrollingInProgress`, and on iOS its own scroll
+  // corrections (older pages prepending, rows above being measured) count as "at bottom" and pulled the view to the newest message.
+  const atBottom = useRef(true)
+  const [scrolledUp, setScrolledUp] = useState(false)
+  const virtuoso = useRef<VirtuosoHandle>(null)
+  const follow = useCallback(() => (atBottom.current ? 'auto' : false), [])
+  const onAtBottom = useCallback((b: boolean) => {
+    atBottom.current = b
+    setScrolledUp(!b)
+  }, [])
   return (
-    <Virtuoso
-      style={{ flexGrow: 1, minHeight: 0 }}
-      data={items}
-      firstItemIndex={index}
-      initialTopMostItemIndex={Math.max(items.length - 1, 0)}
-      followOutput={(atBottom) => (atBottom ? 'auto' : false)}
-      atBottomThreshold={FOLLOW_PX}
-      startReached={onLoadOlder}
-      computeItemKey={(_i, item) => item.eventId}
-      itemContent={(_i, item) => <ChatEntry item={item} subagents={subagents} />}
-      components={{
-        Header: () => (
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {hasMoreBefore || loadingOlder ? 'Loading older messages' : 'Start of history'}
-            </Typography>
-          </Box>
-        ),
-      }}
-    />
+    <Box sx={{ position: 'relative', flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Virtuoso
+        ref={virtuoso}
+        style={{ flexGrow: 1, minHeight: 0 }}
+        data={items}
+        firstItemIndex={index}
+        initialTopMostItemIndex={Math.max(items.length - 1, 0)}
+        followOutput={follow}
+        atBottomStateChange={onAtBottom}
+        atBottomThreshold={FOLLOW_PX}
+        startReached={onLoadOlder}
+        computeItemKey={(_i, item) => item.eventId}
+        itemContent={(_i, item) => <ChatEntry item={item} subagents={subagents} />}
+        context={{ older: hasMoreBefore || loadingOlder }}
+        components={COMPONENTS}
+      />
+      {scrolledUp && (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => virtuoso.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'smooth' })}
+          sx={{ position: 'absolute', right: 16, bottom: 16, borderRadius: 4 }}
+        >
+          Jump to latest
+        </Button>
+      )}
+    </Box>
   )
 }
