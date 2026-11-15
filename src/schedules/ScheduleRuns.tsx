@@ -1,6 +1,7 @@
 /** The last runs of one schedule, newest first: fire time in the schedule's zone, trigger, status and session. */
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -11,6 +12,9 @@ import { ChainStatusChip, RunStatusChip, usePoll } from '../triggers'
 import type { RunStatus } from '../triggers'
 import { listScheduleRuns } from './api'
 import type { RunView } from './api'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Trigger', 'Chain'])
 
 const LIMIT = 20
 const POLL_MS = 10_000
@@ -51,11 +55,12 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
   if (data.length === 0) return <Typography color="text.secondary">No runs yet</Typography>
   const runs = [...data].sort((a, b) => Date.parse(b.fire_time) - Date.parse(a.fire_time))
   return (
+    <TableContainer sx={TABLE_SCROLL_SX}>
     <Table size="small" aria-label="Runs">
       <TableHead>
         <TableRow>
           {['Fire time', 'Trigger', 'Status', 'Chain', 'Session'].map((h) => (
-            <TableCell key={h}>{h}</TableCell>
+            <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>
           ))}
         </TableRow>
       </TableHead>
@@ -63,11 +68,11 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
         {runs.map((r) => (
           <TableRow key={r.id} id={`run-${r.id}`}>
             <TableCell>{fireTime(r.fire_time, timezone)}</TableCell>
-            <TableCell><Trigger run={r} onOpenSourceRun={onOpenSourceRun} /></TableCell>
+            <TableCell sx={hideOnPhone}><Trigger run={r} onOpenSourceRun={onOpenSourceRun} /></TableCell>
             <TableCell>
               <RunStatusChip status={r.status as RunStatus} reason={r.reason ?? undefined} />
             </TableCell>
-            <TableCell><ChainStatusChip status={r.chain_status} /></TableCell>
+            <TableCell sx={hideOnPhone}><ChainStatusChip status={r.chain_status} /></TableCell>
             <TableCell>
               {r.session_id && onOpenSession ? (
                 <Link component="button" type="button" role="link" onClick={() => onOpenSession(r.session_id!)}>{r.session_slug ?? r.session_id}</Link>
@@ -79,5 +84,6 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
         ))}
       </TableBody>
     </Table>
+    </TableContainer>
   )
 }

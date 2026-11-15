@@ -1,6 +1,7 @@
 /** The recent webhook events: one row per event with its status, reason and routing. */
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -9,6 +10,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { ChainStatusChip, RunStatusChip } from '../triggers'
 import type { RunStatus } from '../triggers'
 import type { EventView } from './api'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Endpoint', 'Kind', 'Item', 'Chain', 'Session'])
 
 export interface EventsTableProps {
   events: EventView[]
@@ -30,11 +34,12 @@ function Routing({ event }: { event: EventView }) {
 
 export function EventsTable({ events }: EventsTableProps) {
   return (
+    <TableContainer sx={TABLE_SCROLL_SX}>
     <Table size="small">
       <TableHead>
         <TableRow>
           {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'].map((h) => (
-            <TableCell key={h}>{h}</TableCell>
+            <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>
           ))}
         </TableRow>
       </TableHead>
@@ -48,20 +53,21 @@ export function EventsTable({ events }: EventsTableProps) {
                   <span>{relative(e.received_at)}</span>
                 </Tooltip>
               </TableCell>
-              <TableCell>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
-              <TableCell>{e.kind}</TableCell>
-              <TableCell>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
+              <TableCell sx={hideOnPhone}>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
+              <TableCell sx={hideOnPhone}>{e.kind}</TableCell>
+              <TableCell sx={hideOnPhone}>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
               <TableCell>{e.title}</TableCell>
               <TableCell>
                 <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
                 <Routing event={e} />
               </TableCell>
-              <TableCell><ChainStatusChip status={e.chain_status} /></TableCell>
-              <TableCell>{e.session_slug ?? e.session_id}</TableCell>
+              <TableCell sx={hideOnPhone}><ChainStatusChip status={e.chain_status} /></TableCell>
+              <TableCell sx={hideOnPhone}>{e.session_slug ?? e.session_id}</TableCell>
             </TableRow>
           )
         })}
       </TableBody>
     </Table>
+    </TableContainer>
   )
 }

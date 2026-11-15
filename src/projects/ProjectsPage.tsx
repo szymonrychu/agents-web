@@ -10,6 +10,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -27,6 +28,7 @@ import type { ProjectQueue } from './autostartApi'
 import { SpecQueuePanel } from './SpecQueuePanel'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 const POLL_MS = 15_000
 const NAME_MAX = 80
@@ -129,14 +131,15 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
       </Box>
       <FormError error={actionError} />
       <FormError error={error} />
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell>Project</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell align="right">Presets</TableCell>
-            <TableCell align="right">Sessions</TableCell>
-            <TableCell align="right">Open tasks</TableCell>
+            <TableCell sx={hideOnPhone}>Description</TableCell>
+            <TableCell sx={hideOnPhone} align="right">Presets</TableCell>
+            <TableCell sx={hideOnPhone} align="right">Sessions</TableCell>
+            <TableCell sx={hideOnPhone} align="right">Open tasks</TableCell>
             <TableCell align="right">Waiting decisions</TableCell>
             <TableCell />
           </TableRow>
@@ -153,10 +156,10 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
                   {p.archived && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}
                   {queued > 0 && <Chip size="small" color="info" label={`${queued} queued`} sx={{ ml: 1 }} />}
                 </TableCell>
-                <TableCell>{p.description}</TableCell>
-                <TableCell align="right">{count(p.presets)}</TableCell>
-                <TableCell align="right">{count(p.sessions)}</TableCell>
-                <TableCell align="right">{count(s?.open_tasks)}</TableCell>
+                <TableCell sx={hideOnPhone}>{p.description}</TableCell>
+                <TableCell sx={hideOnPhone} align="right">{count(p.presets)}</TableCell>
+                <TableCell sx={hideOnPhone} align="right">{count(p.sessions)}</TableCell>
+                <TableCell sx={hideOnPhone} align="right">{count(s?.open_tasks)}</TableCell>
                 <TableCell align="right">{count(s?.waiting_decisions)}</TableCell>
                 <TableCell align="right">
                   {autostart && <Button size="small" aria-expanded={expanded === p.slug} onClick={() => setExpanded(expanded === p.slug ? null : p.slug)}>Autostart</Button>}
@@ -179,6 +182,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
           })}
         </TableBody>
       </Table>
+      </TableContainer>
       {editing && (
         <ProjectDialog
           editing={editing}

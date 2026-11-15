@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { PlanTab } from './PlanTab'
 import { plan, step } from './testUtils'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({ getPlan: vi.fn(), listSteps: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, specStreamUrl: () => '/tb/stream' }))
@@ -57,5 +58,13 @@ describe('plan tab', () => {
     render(<MemoryRouter><PlanTab specKey="S-1" /></MemoryRouter>)
     expect(await screen.findByText('No steps')).toBeTruthy()
     expect(screen.queryByTestId('graph')).toBeNull()
+  })
+})
+
+describe('plan tab phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    render(<MemoryRouter><PlanTab specKey="S-1" /></MemoryRouter>)
+    await screen.findByText('Write schema')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Assignee', 'Model', 'Refs'], ['#', 'Step', 'Status', 'Actions'])).toEqual([])
   })
 })

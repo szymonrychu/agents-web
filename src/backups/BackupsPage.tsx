@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,9 @@ import type { FormErrorValue } from '../triggers'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
 import { CleanupSettingsCard } from './CleanupSettingsCard'
 import { formatBytes } from './format'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Size'])
 
 export interface BackupsPageProps {
   onBack: () => void
@@ -97,10 +101,11 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
         <Typography color="text.secondary">No archives yet</Typography>
       ) : (
         items && (
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                {['Name', 'Size', 'Age', 'Referenced by', ''].map((h, i) => <TableCell key={i} align={h === 'Size' ? 'right' : undefined}>{h}</TableCell>)}
+                {['Name', 'Size', 'Age', 'Referenced by', ''].map((h, i) => <TableCell key={i} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined} align={h === 'Size' ? 'right' : undefined}>{h}</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -110,7 +115,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
                     {a.name}
                     {a.protected && <Chip size="small" color="warning" label="protected" sx={{ ml: 1 }} />}
                   </TableCell>
-                  <TableCell align="right">{formatBytes(a.size)}</TableCell>
+                  <TableCell sx={hideOnPhone} align="right">{formatBytes(a.size)}</TableCell>
                   <TableCell>{`${formatAge(now - Date.parse(a.last_modified))} ago`}</TableCell>
                   <TableCell>{a.referenced_by.join(', ')}</TableCell>
                   <TableCell align="right">
@@ -121,6 +126,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         )
       )}
       {cursor !== null && <Button onClick={() => void loadMore()}>Load more</Button>}

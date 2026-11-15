@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -14,6 +15,9 @@ import type { RunStatus } from '../triggers'
 import { listRoomMessages } from './api'
 import type { MessageView } from './api'
 import { mediaChipText } from './media'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Dir'])
 
 const PAGE = 50
 
@@ -47,16 +51,17 @@ export function RoomMessages({ roomId }: { roomId: string }) {
       {data && messages.length === 0 ? (
         <Typography color="text.secondary">No messages yet.</Typography>
       ) : (
+        <TableContainer sx={TABLE_SCROLL_SX}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['Dir', 'Time', 'Sender', 'Body', 'Status'].map((h) => <TableCell key={h}>{h}</TableCell>)}
+              {['Dir', 'Time', 'Sender', 'Body', 'Status'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
             {messages.map((m) => (
               <TableRow key={m.id}>
-                <TableCell>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
+                <TableCell sx={hideOnPhone}>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
                 <TableCell>{new Date(m.at).toLocaleString()}</TableCell>
                 <TableCell>{m.sender_name ?? m.sender}</TableCell>
                 <TableCell><MessageBody m={m} /></TableCell>
@@ -65,6 +70,7 @@ export function RoomMessages({ roomId }: { roomId: string }) {
             ))}
           </TableBody>
         </Table>
+        </TableContainer>
       )}
       {canLoadMore && <Button onClick={() => void loadOlder()} sx={{ alignSelf: 'flex-start' }}>Load older</Button>}
     </Box>

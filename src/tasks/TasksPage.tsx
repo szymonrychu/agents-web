@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -22,6 +23,7 @@ import { listTasks, type ListStatus, type Task, type TaskPage } from './api'
 import { CreateTaskDialog } from './CreateTaskDialog'
 import { taskPath } from './paths'
 import { useTaskStream } from './useTaskStream'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 const POLL_MS = 10000
 const STATUSES: { value: ListStatus; label: string }[] = [
@@ -100,15 +102,16 @@ export function TasksPage() {
         </Box>
       </Box>
       <FormError error={error} />
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label="Tasks">
         <TableHead>
           <TableRow>
             <TableCell>Key</TableCell>
             <TableCell>Title</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Project</TableCell>
-            <TableCell>Labels</TableCell>
-            <TableCell>Assignee</TableCell>
+            <TableCell sx={hideOnPhone}>Project</TableCell>
+            <TableCell sx={hideOnPhone}>Labels</TableCell>
+            <TableCell sx={hideOnPhone}>Assignee</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -122,15 +125,16 @@ export function TasksPage() {
                 </Box>
               </TableCell>
               <TableCell><Chip size="small" label={t.status.replace('_', ' ')} /></TableCell>
-              <TableCell><Chip size="small" variant="outlined" label={t.project} /></TableCell>
-              <TableCell><LabelChips labels={t.labels} onClick={addLabel} /></TableCell>
-              <TableCell>
+              <TableCell sx={hideOnPhone}><Chip size="small" variant="outlined" label={t.project} /></TableCell>
+              <TableCell sx={hideOnPhone}><LabelChips labels={t.labels} onClick={addLabel} /></TableCell>
+              <TableCell sx={hideOnPhone}>
                 {t.assignee_session && <Link component={RouterLink} to={`/tasks?session=${encodeURIComponent(t.assignee_session)}`}>{t.assignee_session}</Link>}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {!loading && items.length === 0 && !error && <Typography color="text.secondary">No tasks</Typography>}
       {next !== null && <Box><Button onClick={() => void loadMore()}>Load more</Button></Box>}
       {creating && <CreateTaskDialog open onClose={() => setCreating(false)} onCreated={(t) => { setCreating(false); navigate(taskPath(t.key)) }} />}

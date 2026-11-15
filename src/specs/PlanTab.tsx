@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,7 @@ import { CHANGED_MEANWHILE, PlanHeaderEditor } from './PlanHeaderEditor'
 import { StepEditor, type StepEditorTarget } from './StepEditor'
 import { stepsGraph } from './StepsGraph'
 import { useSpecStream } from './useSpecStream'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 const POLL_MS = 10000
 
@@ -128,15 +130,16 @@ export function PlanTab({ specKey }: { specKey: string }) {
       {steps.length === 0 && <Typography color="text.secondary">No steps</Typography>}
       {steps.length > 0 && (
         <>
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small" aria-label="Steps">
             <TableHead>
               <TableRow>
                 <TableCell>#</TableCell>
                 <TableCell>Step</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Assignee</TableCell>
-                <TableCell>Model</TableCell>
-                <TableCell>Refs</TableCell>
+                <TableCell sx={hideOnPhone}>Assignee</TableCell>
+                <TableCell sx={hideOnPhone}>Model</TableCell>
+                <TableCell sx={hideOnPhone}>Refs</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -152,9 +155,9 @@ export function PlanTab({ specKey }: { specKey: string }) {
                     <Chip size="small" label={s.status.replace('_', ' ')} />
                     {s.ready && <Chip size="small" color="success" label="ready" sx={{ ml: 0.5 }} />}
                   </TableCell>
-                  <TableCell>{s.assignee_session}</TableCell>
-                  <TableCell>{s.model}</TableCell>
-                  <TableCell><Refs refs={s.refs} /></TableCell>
+                  <TableCell sx={hideOnPhone}>{s.assignee_session}</TableCell>
+                  <TableCell sx={hideOnPhone}>{s.model}</TableCell>
+                  <TableCell sx={hideOnPhone}><Refs refs={s.refs} /></TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
                       <Button size="small" aria-label={`Edit step ${s.step}`} onClick={() => setEditing({ mode: 'edit', step: s })}>Edit</Button>
@@ -168,6 +171,7 @@ export function PlanTab({ specKey }: { specKey: string }) {
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
           <MermaidBlock source={stepsGraph(steps)} />
         </>
       )}

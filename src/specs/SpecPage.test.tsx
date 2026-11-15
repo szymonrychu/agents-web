@@ -2,6 +2,7 @@
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import { ApiError } from '../api/client'
 import { task } from '../tasks/testUtils'
 import { mountSpecs, spec, specDoc } from './testUtils'
@@ -133,5 +134,14 @@ describe('spec page', () => {
     api.getSpec.mockRejectedValue(new ApiError(404, 'not_found', 'gone'))
     mountSpecs('/specs/S-1')
     expect(await screen.findByText('Spec S-1 not found')).toBeTruthy()
+  })
+})
+
+describe('spec page documents table', () => {
+  test('sits in a scroll container and hides low-priority columns on phones', async () => {
+    mountSpecs('/specs/S-1')
+    await screen.findByText('Task plans')
+    const table = (await screen.findByRole('link', { name: 'research/topic.md' })).closest('table') as HTMLElement
+    expect(phoneColumnProblems(table, ['Size', 'Updated'], ['Path', 'Version'])).toEqual([])
   })
 })

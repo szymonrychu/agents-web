@@ -7,6 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,7 @@ import type { RoomDetail, RuleView } from './api'
 import { formatAliases, parseAliases } from './aliases'
 import { RoomMessages } from './RoomMessages'
 import { AccessChip } from './RoomsTable'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
 type Pending = 'allow' | 'deny' | 'remove'
 
@@ -162,6 +164,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
           </Box>
           <Typography component="h3" variant="subtitle1">Members</Typography>
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small">
             <TableHead>
               <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Access'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
@@ -177,6 +180,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
           <RoomMessages roomId={room.room_id} />
         </Box>
       )}

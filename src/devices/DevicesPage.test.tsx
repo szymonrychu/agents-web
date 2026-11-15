@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { DeviceView } from './api'
@@ -239,5 +240,13 @@ describe('DevicesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Pair' }))
     expect(await screen.findByText(/network error/i)).toBeTruthy()
     expect(screen.queryByLabelText('Pairing code')).toBeNull()
+  })
+})
+
+describe('DevicesPage table on phones', () => {
+  test('sits in a scroll container and hides low-priority columns', async () => {
+    mount()
+    await screen.findByText('Tab d1')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Plugin', 'Created'], ['Name', 'State', 'Actions'])).toEqual([])
   })
 })

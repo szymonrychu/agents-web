@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -14,6 +15,9 @@ import { FormError, usePoll } from '../triggers'
 import { addRule, listUsers } from './api'
 import type { UserView } from './api'
 import { AccessChip } from './RoomsTable'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Rooms'])
 
 interface Pending {
   user: UserView
@@ -50,9 +54,10 @@ export function UsersTable() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <TextField size="small" label="Search" value={q} onChange={(e) => setQ(e.target.value)} sx={{ maxWidth: 320 }} />
       <FormError error={loadError ?? error} />
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
-          <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {(users ?? []).map((u) => (
@@ -60,7 +65,7 @@ export function UsersTable() {
               <TableCell>{u.display_name}</TableCell>
               <TableCell>{u.user_id}</TableCell>
               <TableCell>{u.facebook_id}</TableCell>
-              <TableCell>{u.rooms.length}</TableCell>
+              <TableCell sx={hideOnPhone}>{u.rooms.length}</TableCell>
               <TableCell><AccessChip access={u.access} /></TableCell>
               <TableCell>
                 <Button size="small" disabled={disabled} onClick={() => setPending({ user: u, list: 'allow' })}>Allow</Button>
@@ -70,6 +75,7 @@ export function UsersTable() {
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {users && users.length === 0 && <Typography color="text.secondary">No users found.</Typography>}
       <ConfirmDialog
         open={pending !== null}

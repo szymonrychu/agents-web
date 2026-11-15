@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -20,6 +21,7 @@ import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { FormError, usePoll } from '../triggers'
 import { moveQueued, listSpecQueue, putAutostart, removeQueued, STATE_TEXT } from './autostartApi'
 import type { ProjectQueue, QueueItem } from './autostartApi'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 const POLL_MS = 10_000
 const CHANGED = 'changed meanwhile, reloaded'
@@ -122,13 +124,14 @@ export function SpecQueuePanel({ project }: { project: string }) {
       <FormError error={error} />
       <FormError error={actionError} />
       {notice && <Alert severity="warning">{notice}</Alert>}
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label="Spec queue">
         <TableHead>
           <TableRow>
             <TableCell>#</TableCell>
             <TableCell>Spec</TableCell>
             <TableCell>Title</TableCell>
-            <TableCell>Queued</TableCell>
+            <TableCell sx={hideOnPhone}>Queued</TableCell>
             <TableCell />
           </TableRow>
         </TableHead>
@@ -150,7 +153,7 @@ export function SpecQueuePanel({ project }: { project: string }) {
               <TableCell>{item.position}</TableCell>
               <TableCell><RouterLink to={`/specs/${encodeURIComponent(item.spec)}`}>{item.spec}</RouterLink></TableCell>
               <TableCell>{item.title}</TableCell>
-              <TableCell>{`${formatAge(now - Date.parse(item.created_at))} ago`}</TableCell>
+              <TableCell sx={hideOnPhone}>{`${formatAge(now - Date.parse(item.created_at))} ago`}</TableCell>
               <TableCell align="right">
                 <IconButton size="small" aria-label={`Move ${item.spec} up`} disabled={busy || i === 0} onClick={() => void move(item, { position: item.position - 1 })}><ArrowUpwardIcon fontSize="inherit" /></IconButton>
                 <IconButton size="small" aria-label={`Move ${item.spec} down`} disabled={busy || i === items.length - 1} onClick={() => void move(item, { position: item.position + 1 })}><ArrowDownwardIcon fontSize="inherit" /></IconButton>
@@ -168,6 +171,7 @@ export function SpecQueuePanel({ project }: { project: string }) {
           )}
         </TableBody>
       </Table>
+      </TableContainer>
       <ConfirmDialog
         open={removing !== null}
         title={`Remove ${removing?.spec ?? ''} from the queue?`}

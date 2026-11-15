@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
+import { phoneColumnProblems } from '../test/emittedCss'
 import type { RunView, ScheduleView } from './api'
 import { SchedulesPage } from './SchedulesPage'
 
@@ -164,5 +165,13 @@ describe('SchedulesPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(screen.queryByText('form edit Morning')).toBeNull()
     expect(api.listSchedules).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('SchedulesPage table on phones', () => {
+  test('scrolls inside a TableContainer and hides the low-priority columns', async () => {
+    mount()
+    await screen.findByText('Morning')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Cron', 'Timezone', 'Preset', 'Project', 'Last run'], ['Enabled', 'Name', 'Next fire'])).toEqual([])
   })
 })

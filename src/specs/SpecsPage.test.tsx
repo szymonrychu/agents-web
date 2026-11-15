@@ -3,6 +3,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mountSpecs, spec } from './testUtils'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null }))
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, projects: [], setProject: () => {} }) }))
@@ -87,5 +88,13 @@ describe('specs list', () => {
     api.listSpecs.mockResolvedValue({ items: [], next_cursor: null })
     mountSpecs('/specs')
     expect(await screen.findByText('No specs')).toBeTruthy()
+  })
+})
+
+describe('specs list phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    mountSpecs('/specs')
+    await screen.findByText('Other spec')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Name', 'Project', 'Labels'], ['Key', 'Title', 'Status'])).toEqual([])
   })
 })

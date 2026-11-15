@@ -8,6 +8,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -20,6 +21,9 @@ import { FormError, usePoll } from '../triggers'
 import { addRule, deleteRule, listRules, patchRule } from './api'
 import { connectorPreview } from './PreamblePanel'
 import type { MatrixMeta, RuleView } from './api'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Created'])
 
 const LISTS = ['allow', 'deny']
 
@@ -93,9 +97,10 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
   const section = (name: string, items: RuleView[]) => (
     <Box key={name} component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Typography component="h3" variant="subtitle1">{name === 'allow' ? 'Allow list' : 'Deny list'}</Typography>
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label={`${name} rules`}>
         <TableHead>
-          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {items.map((r) => (
@@ -104,7 +109,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
               <TableCell>{r.value}</TableCell>
               <TableCell>{r.note}</TableCell>
               <TableCell>{r.preamble ? 'custom' : 'default'}</TableCell>
-              <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
+              <TableCell sx={hideOnPhone}>{new Date(r.created_at).toLocaleString()}</TableCell>
               <TableCell>
                 <Button size="small" onClick={() => startEdit(r)}>Edit preamble</Button>
                 <Button size="small" color="error" onClick={() => setRemoving(r)}>Delete</Button>
@@ -113,6 +118,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {loaded && items.length === 0 && <Typography color="text.secondary">No rules.</Typography>}
     </Box>
   )

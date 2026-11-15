@@ -23,6 +23,9 @@ export const MEDIA_QUERY_FILES = ['layout/useLayout.ts', 'proposals/ValueDiff.ts
 const INPUT_TAG = /(?<![\w.])<(TextField|InputBase|OutlinedInput|FilledInput|Input|Select|NativeSelect|Autocomplete|input|textarea|select)(?=[\s/>])/g
 const FONT_SIZE = /fontSize|font-size|font:/
 const DIALOG_TAG = /(?<![\w.])<Dialog(?=[\s>])/g
+/** Rendered markdown tables are the one Table outside a TableContainer (they scroll with the document body). */
+export const TABLE_EXEMPT_FILES = ['markdown/Markdown.tsx']
+const TABLE_TAG = /(?<![\w.])<Table(?=[\s>])/
 const HOVER_REVEAL = /:hover[^'"\n{}]*['"]?\s*:\s*\{[^}]*\b(opacity|visibility)\b/g
 const ALLOWED_WEIGHTS = ['400', '500']
 const OFF_GRID_SPACING = /(?<![\d.])(1\.25|0\.75|1\.5|2\.5)(?!\d)/
@@ -95,6 +98,9 @@ export function designViolations(path: string, source: string): string[] {
   if (!MEDIA_QUERY_FILES.includes(path)) {
     const at = source.search(/\buseMediaQuery\b/)
     if (at >= 0) add('media-query', lineAt(at), 'useMediaQuery outside useLayout, use useLayout() or useTouchOrSmall()')
+  }
+  if (!TABLE_EXEMPT_FILES.includes(path) && TABLE_TAG.test(source) && !/<TableContainer\b/.test(source)) {
+    add('table', lineAt(source.search(TABLE_TAG)), '<Table> needs a <TableContainer sx={TABLE_SCROLL_SX}> (scrolls sideways on phones)')
   }
   for (const m of source.matchAll(HOVER_REVEAL)) add('hover-reveal', lineAt(m.index), `${m[1]} set under :hover, everything must be visible without hover`)
   return out

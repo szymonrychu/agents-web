@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import type { CleanupPreview } from '../api/archives'
 import { theme } from '../theme'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
@@ -48,5 +49,14 @@ describe('CleanupPreviewDialog', () => {
     expect(await screen.findByText('boom')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('CleanupPreviewDialog table on phones', () => {
+  test('sits in a scroll container and keeps every column', async () => {
+    api.cleanupPreview.mockResolvedValue(preview())
+    mount()
+    await screen.findByText('p/old-1.tar.zst')
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Archive', 'Size', 'Reason'])).toEqual([])
   })
 })

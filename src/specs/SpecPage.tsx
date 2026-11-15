@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -26,6 +27,7 @@ import { docPath } from './paths'
 import { PlanTab } from './PlanTab'
 import { StartState } from './StartState'
 import { useSpecStream } from './useSpecStream'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 const POLL_MS = 10000
 
@@ -139,13 +141,14 @@ export function SpecPage({ specKey }: { specKey: string }) {
         <>
         <Section title="Documents">
           {(spec.documents ?? []).length === 0 && <Typography color="text.secondary">No documents</Typography>}
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small" aria-label="Documents">
             <TableHead>
               <TableRow>
                 <TableCell>Path</TableCell>
                 <TableCell>Version</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Updated</TableCell>
+                <TableCell sx={hideOnPhone}>Size</TableCell>
+                <TableCell sx={hideOnPhone}>Updated</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -153,12 +156,13 @@ export function SpecPage({ specKey }: { specKey: string }) {
                 <TableRow key={d.path} hover>
                   <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
                   <TableCell>{`v${d.version}`}</TableCell>
-                  <TableCell>{`${d.size} B`}</TableCell>
-                  <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
+                  <TableCell sx={hideOnPhone}>{`${d.size} B`}</TableCell>
+                  <TableCell sx={hideOnPhone}>{new Date(d.updated_at).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         </Section>
         <Section title="Tasks">
           {tasks.length === 0 && <Typography color="text.secondary">No linked tasks</Typography>}

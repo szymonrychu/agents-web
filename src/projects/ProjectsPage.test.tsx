@@ -10,6 +10,7 @@ import { MemoryRouter } from 'react-router'
 import { ProjectProvider, useProject } from './ProjectContext'
 import { ProjectsPage } from './ProjectsPage'
 import { loadConfig, resetConfig } from '../config/backends'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn(), patchProject: vi.fn(), projectsSummary: vi.fn(), listProjectMessages: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -176,5 +177,14 @@ describe('ProjectsPage', () => {
       const other = (await screen.findByText('Name default')).closest('tr')!
       expect(within(other).queryByText(/queued/)).toBeNull()
     })
+  })
+})
+
+describe('ProjectsPage phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    mount()
+    await screen.findByText('Name alpha')
+    const table = screen.getByText('Name alpha').closest('table')!
+    expect(phoneColumnProblems(table, ['Description', 'Presets', 'Sessions', 'Open tasks'], ['Project', 'Waiting decisions'])).toEqual([])
   })
 })

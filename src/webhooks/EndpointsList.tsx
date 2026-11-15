@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -18,6 +19,7 @@ import { CopyButton } from './copy'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointFormDialog, type EndpointFormMode } from './EndpointFormDialog'
 import { FiltersDialog } from './FiltersDialog'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
 
 export interface EndpointsListProps {
   refreshKey: number
@@ -101,11 +103,12 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
           {onCreate && <Button variant="outlined" onClick={onCreate}>New endpoint</Button>}
         </Box>
       ) : (
+        <TableContainer sx={TABLE_SCROLL_SX}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell>Auth</TableCell><TableCell>Preset</TableCell><TableCell>Project</TableCell><TableCell>Username</TableCell>
-              <TableCell>Created</TableCell><TableCell>Rotated</TableCell><TableCell />
+              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell sx={hideOnPhone}>Auth</TableCell><TableCell sx={hideOnPhone}>Preset</TableCell><TableCell sx={hideOnPhone}>Project</TableCell><TableCell sx={hideOnPhone}>Username</TableCell>
+              <TableCell sx={hideOnPhone}>Created</TableCell><TableCell sx={hideOnPhone}>Rotated</TableCell><TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
@@ -115,12 +118,12 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
                   <span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} />
                 </TableCell>
                 <TableCell>{ep.type}</TableCell>
-                <TableCell>{ep.auth_mode}</TableCell>
-                <TableCell>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
-                <TableCell>{ep.username}</TableCell>
-                <TableCell>{when(ep.created_at)}</TableCell>
-                <TableCell>{when(ep.credentials_rotated_at)}</TableCell>
+                <TableCell sx={hideOnPhone}>{ep.auth_mode}</TableCell>
+                <TableCell sx={hideOnPhone}>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
+                <TableCell sx={{ ...hideOnPhone, whiteSpace: 'nowrap' }}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
+                <TableCell sx={hideOnPhone}>{ep.username}</TableCell>
+                <TableCell sx={hideOnPhone}>{when(ep.created_at)}</TableCell>
+                <TableCell sx={hideOnPhone}>{when(ep.credentials_rotated_at)}</TableCell>
                 <TableCell align="right">
                   <Button size="small" onClick={() => setForm({ mode: 'edit', endpoint: ep })}>Edit</Button>
                   <Button size="small" onClick={() => setForm({ mode: 'clone', endpoint: ep })}>Clone</Button>
@@ -132,6 +135,7 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
             ))}
           </TableBody>
         </Table>
+        </TableContainer>
       )}
       <ConfirmDialog
         open={rotating !== null} title="Rotate credentials?" confirmLabel="Rotate"

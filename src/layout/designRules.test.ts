@@ -120,6 +120,14 @@ describe('designViolations rule fixtures', () => {
     expect(rulesOf("'&:hover': { bgcolor: 'action.hover' }")).toEqual([])
   })
 
+  it('(m) every Table sits in a TableContainer scroll box', () => {
+    expect(rulesOf('<Table size="small">')).toEqual(['table'])
+    expect(rulesOf('<TableContainer sx={TABLE_SCROLL_SX}><Table size="small">')).toEqual([])
+    expect(rulesOf('<TableRow>')).toEqual([])
+    expect(rulesOf('<TableCell>x</TableCell>')).toEqual([])
+    expect(rulesOf('<Table size="small">', 'markdown/Markdown.tsx')).toEqual([])
+  })
+
   it('names the line of the violation', () => {
     const [msg] = designViolations(PATH, "a\nb\nconst c = '#fff'")
     expect(msg).toContain('line 3')

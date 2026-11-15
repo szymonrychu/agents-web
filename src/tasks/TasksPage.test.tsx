@@ -2,6 +2,7 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import { mountTasks, task } from './testUtils'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
@@ -136,5 +137,13 @@ describe('tasks list', () => {
     expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Project' }).textContent).toBe('Ops')
     ctx.project = null
     ctx.projects = []
+  })
+})
+
+describe('tasks table on phones', () => {
+  test('sits in a scroll container and hides low-priority columns', async () => {
+    mountTasks('/tasks')
+    await screen.findByText('Blocked one')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Project', 'Labels', 'Assignee'], ['Key', 'Title', 'Status'])).toEqual([])
   })
 })

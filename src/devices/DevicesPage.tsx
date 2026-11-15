@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -17,6 +18,9 @@ import { FormError, usePoll } from '../triggers'
 import { listDevices, pairDevice, regenerateCode, revokeDevice } from './api'
 import type { DeviceView, NewCode } from './api'
 import { PairingCode } from './PairingCode'
+import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+
+const HIDE_ON_PHONE = new Set(['Plugin', 'Created'])
 
 const POLL_MS = 15_000
 const CODE_POLL_MS = 3_000
@@ -149,16 +153,17 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
           {pairedName} is paired.
         </Alert>
       )}
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
-          <TableRow>{['Name', 'Plugin', 'Created', 'State', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Name', 'Plugin', 'Created', 'State', 'Actions'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {(data ?? []).map((d) => (
             <TableRow key={d.device_id}>
               <TableCell>{d.name}</TableCell>
-              <TableCell>{d.plugin}</TableCell>
-              <TableCell>{when(d.created_at)}</TableCell>
+              <TableCell sx={hideOnPhone}>{d.plugin}</TableCell>
+              <TableCell sx={hideOnPhone}>{when(d.created_at)}</TableCell>
               <TableCell>{d.revoked_at ? `Revoked ${when(d.revoked_at)}` : STATE_LABEL[d.state as keyof typeof STATE_LABEL] ?? d.state}</TableCell>
               <TableCell>
                 {!d.revoked_at && <Button size="small" color="error" onClick={() => setRevoking(d)}>Revoke</Button>}
@@ -167,6 +172,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {data && data.length === 0 && <Typography color="text.secondary">No devices paired yet.</Typography>}
       <ConfirmDialog
         open={revoking !== null}
