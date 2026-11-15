@@ -198,6 +198,27 @@ describe('SchedulesPage on phones', () => {
     expect(await screen.findByText('Delete schedule?')).toBeTruthy()
   })
 
+  test('the actions menu runs now and edits', async () => {
+    api.runScheduleNow.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    mount()
+    await user.click(await screen.findByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Run now Schedule Morning' }))
+    await waitFor(() => expect(api.runScheduleNow).toHaveBeenCalledWith('s1'))
+    await user.click(await screen.findByRole('button', { name: 'Actions for Schedule Morning' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Edit Morning' }))
+    expect(await screen.findByText('form edit Morning')).toBeTruthy()
+  })
+
+  test('the card shows the time zone and a monospace cron', async () => {
+    api.listSchedules.mockResolvedValue([sched('s1', 'Morning', { timezone: 'Europe/Warsaw' })])
+    mount()
+    const card = await screen.findByRole('article', { name: 'Schedule Morning' })
+    expect(within(card).getByText('Timezone', { selector: 'dt' })).toBeTruthy()
+    expect(within(card).getByText('Europe/Warsaw')).toBeTruthy()
+    expect(emittedCssFor(within(card).getByText('0 6 * * 1-5'))).toMatch(/font-family:\s*monospace/)
+  })
+
   test('next fire renders compact without wrapping', async () => {
     mount()
     const card = await screen.findByRole('article', { name: 'Schedule Morning' })

@@ -71,7 +71,7 @@ export function TasksPage() {
   }
 
   const columns: Column<Task>[] = [
-    { key: 'key', label: 'Key', role: 'primary', render: (t) => <Link component={RouterLink} to={taskPath(t.key)} sx={{ whiteSpace: 'nowrap' }}>{t.key}</Link>, sx: { whiteSpace: 'nowrap' } },
+    { key: 'key', label: 'Key', role: 'primary', render: (t) => <Link component={RouterLink} to={taskPath(t.key)} sx={{ whiteSpace: 'nowrap' }}>{t.key}</Link> },
     {
       key: 'title',
       label: 'Title',
@@ -84,13 +84,13 @@ export function TasksPage() {
       ),
     },
     { key: 'status', label: 'Status', role: 'meta', render: (t) => <Chip size="small" label={t.status.replace('_', ' ')} /> },
-    { key: 'labels', label: 'Labels', role: 'meta', render: (t) => <LabelChips labels={t.labels} onClick={addLabel} /> },
-    { key: 'project', label: 'Project', role: 'meta', render: (t) => <Chip size="small" variant="outlined" label={t.project} /> },
+    { key: 'labels', label: 'Labels', role: 'meta', render: (t) => (t.labels.length > 0 ? <LabelChips labels={t.labels} onClick={addLabel} /> : '-') },
+    { key: 'project', label: 'Project', role: 'meta', render: (t) => (t.project ? <Chip size="small" variant="outlined" label={t.project} /> : '-') },
     {
       key: 'assignee',
       label: 'Assignee',
       role: 'meta',
-      render: (t) => (t.assignee_session ? <Link component={RouterLink} to={`/tasks?session=${encodeURIComponent(t.assignee_session)}`}>{t.assignee_session}</Link> : null),
+      render: (t) => (t.assignee_session ? <Link component={RouterLink} to={`/tasks?session=${encodeURIComponent(t.assignee_session)}`}>{t.assignee_session}</Link> : '-'),
     },
   ]
 

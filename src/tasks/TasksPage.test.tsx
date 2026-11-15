@@ -159,6 +159,15 @@ describe('tasks on phones', () => {
     expect(c.getByRole('link', { name: 's1' })).toBeTruthy()
   })
 
+  test('unassigned tasks and empty labels render a dash in the card', async () => {
+    setViewport(375, { coarse: true })
+    mountTasks('/tasks')
+    const card = await screen.findByRole('article', { name: 'Task T-1' })
+    const dd = (name: string) => within(card).getByText(name, { selector: 'dt' }).nextElementSibling as HTMLElement
+    expect(dd('Assignee').textContent).toBe('-')
+    expect(dd('Labels').textContent).toBe('-')
+  })
+
   test('the key never wraps', async () => {
     setViewport(375, { coarse: true })
     mountTasks('/tasks')

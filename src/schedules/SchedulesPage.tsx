@@ -96,8 +96,8 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
     { key: 'name', label: 'Name', role: 'primary', render: (s) => s.name },
     { key: 'next', label: 'Next fire', role: 'meta', render: (s) => <DateTime iso={s.enabled ? s.next_fires[0] : null} timeZone={s.timezone} /> },
     { key: 'last', label: 'Last run', role: 'meta', render: (s) => (s.last_run ? <RunStatusChip status={s.last_run.status as RunStatus} reason={s.last_run.reason ?? undefined} /> : '-') },
-    { key: 'cron', label: 'Cron', role: 'meta', render: (s) => s.cron, sx: { fontFamily: 'monospace' } },
-    { key: 'timezone', label: 'Timezone', role: 'none', render: (s) => s.timezone },
+    { key: 'cron', label: 'Cron', role: 'meta', render: (s) => <Box component="span" sx={{ fontFamily: 'monospace' }}>{s.cron}</Box> },
+    { key: 'timezone', label: 'Timezone', role: 'meta', render: (s) => s.timezone },
     { key: 'preset', label: 'Preset', role: 'meta', render: (s) => presets[s.preset_id]?.name ?? s.preset_id },
     { key: 'project', label: 'Project', role: 'meta', render: (s) => <ProjectCell presetId={s.preset_id} index={presets} /> },
   ]
