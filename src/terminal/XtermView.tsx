@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTouchOrSmall } from '../layout/useLayout'
 import { MONO_FONT, TOKENS, terminalTheme } from '../theme'
 import { KeyBar } from './KeyBar'
-import { applyCtrl } from './keys'
+import { applyCtrl, forCursorMode } from './keys'
 import { openTerminalSocket } from './terminalSocket'
 import type { TerminalSocket, TerminalStatus } from './terminalSocket'
 
@@ -54,7 +54,8 @@ export function XtermView({ url, onStatus }: XtermViewProps) {
       },
     })
     term.onData((data) => {
-      if (!ctrlRef.current) return socket.send(data)
+      // only a single typed character takes Ctrl: terminal replies (focus, cursor reports) and pastes pass unchanged
+      if (!ctrlRef.current || data.length !== 1 || data === '\x1b') return socket.send(data)
       ctrlRef.current = false
       setCtrlState(false)
       socket.send(applyCtrl(data))
@@ -83,7 +84,7 @@ export function XtermView({ url, onStatus }: XtermViewProps) {
 
   const sendKey = (seq: string) => {
     setCtrl(false)
-    socketRef.current?.send(seq)
+    socketRef.current?.send(forCursorMode(seq, termRef.current?.modes.applicationCursorKeysMode ?? false))
     termRef.current?.focus()
   }
 

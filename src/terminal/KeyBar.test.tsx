@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { emittedCssFor } from '../test/emittedCss'
 import { theme } from '../theme'
-import { KeyBar } from './KeyBar'
+import { KeyBar, REPEAT_DELAY_MS, REPEAT_INTERVAL_MS } from './KeyBar'
 
 afterEach(cleanup)
 
@@ -56,4 +56,56 @@ test('pressing a key does not take focus from the terminal', () => {
 test('the bar scrolls sideways', () => {
   const { bar } = mount()
   expect(emittedCssFor(bar)).toContain('overflow-x:auto')
+})
+
+describe('holding an arrow', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  test('repeats while held, stops on release and the release click adds nothing', () => {
+    const { onKey, bar } = mount()
+    const up = within(bar).getByRole('button', { name: 'Up' })
+    fireEvent.pointerDown(up)
+    vi.advanceTimersByTime(REPEAT_DELAY_MS - 1)
+    expect(onKey).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1 + 2 * REPEAT_INTERVAL_MS)
+    expect(onKey.mock.calls.map((c) => c[0])).toEqual(['\x1b[A', '\x1b[A', '\x1b[A'])
+    fireEvent.pointerUp(up)
+    fireEvent.click(up)
+    vi.advanceTimersByTime(10 * REPEAT_INTERVAL_MS)
+    expect(onKey).toHaveBeenCalledTimes(3)
+  })
+
+  test('a short tap sends one key', () => {
+    const { onKey, bar } = mount()
+    const left = within(bar).getByRole('button', { name: 'Left' })
+    fireEvent.pointerDown(left)
+    fireEvent.pointerUp(left)
+    fireEvent.click(left)
+    vi.advanceTimersByTime(10 * REPEAT_DELAY_MS)
+    expect(onKey.mock.calls.map((c) => c[0])).toEqual(['\x1b[D'])
+  })
+
+  test('leaving or cancelling the press stops the repeat', () => {
+    const { onKey, bar } = mount()
+    const down = within(bar).getByRole('button', { name: 'Down' })
+    fireEvent.pointerDown(down)
+    vi.advanceTimersByTime(REPEAT_DELAY_MS)
+    fireEvent.pointerCancel(down)
+    vi.advanceTimersByTime(10 * REPEAT_INTERVAL_MS)
+    expect(onKey).toHaveBeenCalledTimes(1)
+    fireEvent.pointerDown(down)
+    vi.advanceTimersByTime(REPEAT_DELAY_MS)
+    fireEvent.pointerLeave(down)
+    vi.advanceTimersByTime(10 * REPEAT_INTERVAL_MS)
+    expect(onKey).toHaveBeenCalledTimes(2)
+  })
+
+  test('Esc and Tab do not repeat', () => {
+    const { onKey, bar } = mount()
+    const esc = within(bar).getByRole('button', { name: 'Esc' })
+    fireEvent.pointerDown(esc)
+    vi.advanceTimersByTime(10 * REPEAT_DELAY_MS)
+    expect(onKey).not.toHaveBeenCalled()
+  })
 })

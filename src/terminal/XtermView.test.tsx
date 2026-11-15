@@ -10,12 +10,16 @@ const fake = vi.hoisted(() => ({
   typed: null as ((data: string) => void) | null,
   focus: vi.fn(),
   send: vi.fn(),
+  modes: { applicationCursorKeysMode: false },
 }))
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     cols = 80
     rows = 24
+    get modes() {
+      return fake.modes
+    }
     loadAddon() {}
     open() {}
     write() {}
@@ -47,6 +51,7 @@ beforeEach(() => {
   fake.typed = null
   fake.focus.mockReset()
   fake.send.mockReset()
+  fake.modes.applicationCursorKeysMode = false
 })
 afterEach(() => {
   cleanup()
@@ -94,6 +99,41 @@ describe('XtermView on touch', () => {
     expect(ctrl.getAttribute('aria-pressed')).toBe('false')
     type('c')
     expect(fake.send).toHaveBeenLastCalledWith('c')
+  })
+
+  test('arrows send CSI in normal cursor mode', () => {
+    mount()
+    for (const [name, seq] of [['Up', '\x1b[A'], ['Down', '\x1b[B'], ['Right', '\x1b[C'], ['Left', '\x1b[D']]) {
+      fireEvent.click(within(bar()).getByRole('button', { name }))
+      expect(fake.send).toHaveBeenLastCalledWith(seq)
+    }
+  })
+
+  test('arrows send SS3 when the application has set application cursor mode', () => {
+    fake.modes.applicationCursorKeysMode = true
+    mount()
+    for (const [name, seq] of [['Up', '\x1bOA'], ['Down', '\x1bOB'], ['Right', '\x1bOC'], ['Left', '\x1bOD']]) {
+      fireEvent.click(within(bar()).getByRole('button', { name }))
+      expect(fake.send).toHaveBeenLastCalledWith(seq)
+    }
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Esc' }))
+    expect(fake.send).toHaveBeenLastCalledWith('\x1b')
+  })
+
+  test('terminal reports and pastes pass unchanged and leave Ctrl armed for the next typed key', () => {
+    mount()
+    const ctrl = within(bar()).getByRole('button', { name: 'Ctrl' })
+    fireEvent.click(ctrl)
+    type('\x1b[I')
+    expect(fake.send).toHaveBeenLastCalledWith('\x1b[I')
+    type('\x1b[24;80R')
+    expect(fake.send).toHaveBeenLastCalledWith('\x1b[24;80R')
+    type('pasted text')
+    expect(fake.send).toHaveBeenLastCalledWith('pasted text')
+    expect(ctrl.getAttribute('aria-pressed')).toBe('true')
+    type('c')
+    expect(fake.send).toHaveBeenLastCalledWith('\x03')
+    expect(ctrl.getAttribute('aria-pressed')).toBe('false')
   })
 })
 
