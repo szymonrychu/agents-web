@@ -287,6 +287,8 @@ export const theme = createTheme({
       styleOverrides: { root: { borderRadius: TOKENS.radius, borderLeftWidth: 3 } },
     },
     MuiTooltip: {
+      // touch: a short press opens it and it stays readable; the tap-path components add their own popovers
+      defaultProps: { enterTouchDelay: 300, leaveTouchDelay: 4000 },
       styleOverrides: {
         tooltip: { fontSize: xs, backgroundColor: TOKENS.bgRaised, color: TOKENS.textPrimary, border: BORDER },
       },

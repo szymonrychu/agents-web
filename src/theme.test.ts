@@ -229,3 +229,10 @@ describe('44px touch targets on coarse pointers', () => {
     expect(hitArea44['&::after']).toMatchObject({ width: 44, height: 44, position: 'absolute', top: '50%', left: '50%' })
   })
 })
+
+describe('tooltips on touch', () => {
+  it('open after a short press and stay readable for 4 s; the look is unchanged', () => {
+    expect(comp.MuiTooltip.defaultProps).toMatchObject({ enterTouchDelay: 300, leaveTouchDelay: 4000 })
+    expect(comp.MuiTooltip.styleOverrides.tooltip).toMatchObject({ fontSize: 11, backgroundColor: TOKENS.bgRaised })
+  })
+})

@@ -4,7 +4,6 @@ import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, scaleSession, type SessionView } from '../api/client'
 import { TOKENS } from '../theme'
@@ -44,8 +43,11 @@ export function ScaleControl({ session }: { session: SessionView }) {
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography sx={{ fontSize: `${TOKENS.fontSizes.sm / 16}rem`, color: 'text.secondary' }}>{`${replicas} of ${max} agents`}</Typography>
-        {isStatic ? <Tooltip title="Static session: scaling is off">{buttons}</Tooltip> : buttons}
+        {buttons}
       </Box>
+      {isStatic ? (
+        <Typography sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: 'text.secondary' }}>Static session: scaling is off</Typography>
+      ) : null}
       {shownError ? (
         <Typography role="alert" sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: 'error.main' }}>
           {shownError}
