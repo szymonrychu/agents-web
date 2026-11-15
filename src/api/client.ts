@@ -120,6 +120,8 @@ export const createSession = (body: CreateSession) => request<SessionView>('POST
 export const deleteSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}`);
 /** Cancels a pending self-close request; 200 even when none is pending, 409 once the session is being discarded. */
 export const cancelSessionClose = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}/close`);
+/** Resumes a session parked by the runaway guard; 200 even when it is not parked, 409 `session_deleting` once it is being discarded. */
+export const resumeSession = (sessionId: string) => request<SessionView>('DELETE', `/sessions/${id(sessionId)}/park`);
 /** Deletes and recreates every agent pod of the session; 409 `session_deleting` once it is being discarded. */
 export const restartSession = (sessionId: string) => request<SessionRestartAccepted>('POST', `/sessions/${id(sessionId)}/restart`);
 export const getInitScripts = (sessionId: string) => request<InitScriptsView>('GET', `/sessions/${id(sessionId)}/init-scripts`);

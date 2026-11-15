@@ -69,7 +69,12 @@ export interface paths {
         };
         /** Archives Settings */
         get: operations["archives_settings_agent_v1_admin_archives_settings_get"];
-        put?: never;
+        /**
+         * Put Archives Settings
+         * @description Replace the whole cleanup policy (every field required, same bounds as the main port).
+         *     Postgres only: it needs no api S3 key pair. The audit row lists the field names, no values.
+         */
+        put: operations["put_archives_settings_agent_v1_admin_archives_settings_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -489,6 +494,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/projects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Project
+         * @description Rename, describe, archive or unarchive a project, same body, answer and errors as the
+         *     main-port route. An explicit null keeps the stored value and is still listed in the audit
+         *     row, which carries the set field names only.
+         */
+        patch: operations["update_project_agent_v1_admin_projects__slug__patch"];
+        trace?: never;
+    };
     "/agent/v1/admin/proposals": {
         parameters: {
             query?: never;
@@ -827,6 +854,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/sessions/{slug}/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Session Labels
+         * @description Replace the labels of the caller's own session or of a manageable one; labels are
+         *     normalised and limited as on the main port.
+         */
+        put: operations["set_session_labels_agent_v1_admin_sessions__slug__labels_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/sessions/{slug}/leadership/withdraw": {
         parameters: {
             query?: never;
@@ -870,6 +918,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/sessions/{slug}/locks/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reassign Session Lock
+         * @description Give a file lock of a manageable session to one of its agents, or discard it with
+         *     `to: null`. The path is read against the target's workdir; the caller's own session is
+         *     refused (422 `own_session`).
+         */
+        post: operations["reassign_session_lock_agent_v1_admin_sessions__slug__locks_reassign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/sessions/{slug}/messages": {
         parameters: {
             query?: never;
@@ -885,6 +955,27 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/messages/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Session Message
+         * @description Cancel a queued message of a manageable session (the caller's own included). The id is
+         *     matched inside the session: another session's message is 404 and stays queued.
+         */
+        delete: operations["cancel_session_message_agent_v1_admin_sessions__slug__messages__message_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -948,6 +1039,63 @@ export interface paths {
          *     cooldown and gets one note, all in the same transaction as the commands.
          */
         post: operations["restart_session_agent_v1_admin_sessions__slug__restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/sessions/{slug}/scale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scale Session
+         * @description Set spec.replicas of a manageable session in place; the caller's own session is refused
+         *     (422 `own_session`). A scale-up over the usage quota is 409 `usage_quota`: that check reads
+         *     on its own connection and fails open, like the main port's, so it runs between a short
+         *     read of the target and the transaction (never while a connection is held). No kube call.
+         */
+        post: operations["scale_session_agent_v1_admin_sessions__slug__scale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/specs/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a spec through the taskboard, as every project */
+        delete: operations["delete_spec_agent_v1_admin_specs__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/specs/{key}/comments/{comment_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss a spec suggestion through the taskboard, as every project */
+        post: operations["dismiss_suggestion_agent_v1_admin_specs__key__comments__comment_id__dismiss_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1358,8 +1506,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Hand leadership over (leader only)
-         * @description Queue a handover. The checks here fail fast; the dispatcher re-checks at apply time.
+         * Hand leadership over, extend the handoff countdown or hand a solo context off
+         * @description Queue a handover, extend the strong-limit countdown, or (solo agent) hand off its context.
+         *
+         *     The checks here fail fast; the dispatcher re-checks at apply time. A hive member is refused
+         *     in every branch; a solo agent has no leader to change, so its call is the voluntary handoff.
          */
         post: operations["handover_agent_v1_leadership_handover_post"];
         delete?: never;
@@ -1471,6 +1622,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/mindmap/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mindmap maps, nodes, edges, notes, links and directions as the caller's session */
+        get: operations["item_agent_v1_mindmap__path__get"];
+        put?: never;
+        /** Mindmap maps, nodes, edges, notes, links and directions as the caller's session */
+        post: operations["item_agent_v1_mindmap__path__post"];
+        /** Mindmap maps, nodes, edges, notes, links and directions as the caller's session */
+        delete: operations["item_agent_v1_mindmap__path__delete"];
+        options?: never;
+        head?: never;
+        /** Mindmap maps, nodes, edges, notes, links and directions as the caller's session */
+        patch: operations["item_agent_v1_mindmap__path__patch"];
         trace?: never;
     };
     "/agent/v1/project/messages": {
@@ -2496,6 +2667,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/park": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Resume Parked Session
+         * @description Resume a session parked by the runaway guard: its queue flows again and the guard windows
+         *     restart; 200 even when it is not parked, 409 once the session is flipped to deleting.
+         */
+        delete: operations["resume_parked_session_api_v1_sessions__session_id__park_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/permission-mode": {
         parameters: {
             query?: never;
@@ -2660,6 +2852,15 @@ export interface components {
              * Format: date-time
              */
             ts: string;
+        };
+        /** AdminLockReassigned */
+        AdminLockReassigned: {
+            /** Agent */
+            agent: string | null;
+            /** Path */
+            path: string;
+            /** Previous */
+            previous: string | null;
         };
         /**
          * AgentAttention
@@ -3294,11 +3495,16 @@ export interface components {
         /** HandoverIn */
         HandoverIn: {
             /** Epoch */
-            epoch: number;
+            epoch?: number | null;
+            /**
+             * Extend
+             * @default false
+             */
+            extend: boolean;
             /** Handled */
             handled?: number[];
             /** Reason */
-            reason: string;
+            reason?: string | null;
             /** To */
             to?: string | null;
         };
@@ -3368,13 +3574,15 @@ export interface components {
              * @default when your turn has ended and your background agents have reported
              */
             applies: string;
+            /** Deadline At */
+            deadline_at?: string | null;
             /**
              * Handled
              * @default []
              */
             handled: number[];
             /** Request Id */
-            request_id: number;
+            request_id?: number | null;
             /**
              * Status
              * @default pending
@@ -3608,7 +3816,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant" | "handoff_notice" | "handoff_request" | "handoff_return") | null;
             /**
              * Session Id
              * Format: uuid
@@ -3649,6 +3857,8 @@ export interface components {
             inactivity: components["schemas"]["MetaInactivity"];
             kube_cluster_access: components["schemas"]["MetaKubeClusterAccess"];
             kube_namespace_access: components["schemas"]["MetaKubeNamespaceAccess"];
+            /** Mindmap */
+            mindmap: boolean;
             /** Models */
             models: string[];
             /** Permission Modes */
@@ -3910,6 +4120,8 @@ export interface components {
             spec?: {
                 [key: string]: unknown;
             } | null;
+            /** Superleader Manageable */
+            superleader_manageable?: false | null;
         };
         /** PresetView */
         PresetView: {
@@ -4262,6 +4474,27 @@ export interface components {
             /** Path */
             path: string;
         };
+        /**
+         * RunawayLimits
+         * @description Per-preset runaway-guard limits overriding the `ORCH_RUNAWAY_*` settings: unset uses the
+         *     setting, 0 turns the limit off (for the two subagent caps, 0 means the Claude default).
+         */
+        RunawayLimits: {
+            /** Max Agent Spawns */
+            max_agent_spawns?: number | null;
+            /** Max Concurrent Subagents */
+            max_concurrent_subagents?: number | null;
+            /** Max Stop Continuations */
+            max_stop_continuations?: number | null;
+            /** Max Subagent Spawn Depth */
+            max_subagent_spawn_depth?: number | null;
+            /** Max Tokens Per Task */
+            max_tokens_per_task?: number | null;
+            /** Max Turns Per Task */
+            max_turns_per_task?: number | null;
+            /** Tool Failure Repeats */
+            tool_failure_repeats?: number | null;
+        };
         /** ScaleRequest */
         ScaleRequest: {
             /** Replicas */
@@ -4428,6 +4661,7 @@ export interface components {
             resources?: components["schemas"]["Resources"] | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
+            runaway?: components["schemas"]["RunawayLimits"] | null;
             /** Session Messaging */
             session_messaging?: boolean | null;
             /** Start Prompt */
@@ -4515,6 +4749,7 @@ export interface components {
             resources?: components["schemas"]["Resources"] | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
+            runaway?: components["schemas"]["RunawayLimits"] | null;
             /** Session Messaging */
             session_messaging?: boolean | null;
             /** Start Prompt */
@@ -4564,6 +4799,8 @@ export interface components {
             queued: number;
             /** Ready */
             ready: number;
+            /** Ready With Session */
+            ready_with_session: number;
             /** Replicas */
             replicas: number;
             /**
@@ -4645,6 +4882,14 @@ export interface components {
             max_replicas: number;
             /** Observed Generation */
             observed_generation: number;
+            /** Parked At */
+            parked_at?: string | null;
+            /** Parked Detail */
+            parked_detail?: {
+                [key: string]: unknown;
+            } | null;
+            /** Parked Reason */
+            parked_reason?: ("turns" | "tokens" | "stop_loop") | null;
             /** Preset Id */
             preset_id: string | null;
             /** Preset Name */
@@ -4977,6 +5222,10 @@ export interface components {
             hooks?: {
                 [key: string]: (components["schemas"]["CommandHook"] | components["schemas"]["WebhookHook"])[];
             } | null;
+            /** Managed Settings */
+            managed_settings?: {
+                [key: string]: unknown;
+            } | null;
             /** Max Restarts */
             max_restarts?: number | null;
             /** Mcp Servers */
@@ -5198,6 +5447,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    put_archives_settings_agent_v1_admin_archives_settings_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SweepPolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -5911,6 +6203,27 @@ export interface operations {
                     "application/json": components["schemas"]["PresetView"];
                 };
             };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no preset has that name or id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description conflict: changed meanwhile; open_proposals: the preset has active change proposals (extra.proposals lists their ids) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6133,6 +6446,65 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProjectView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project_agent_v1_admin_projects__slug__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no project has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description default_project: the default project cannot be archived */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7009,6 +7381,58 @@ export interface operations {
             };
         };
     };
+    set_session_labels_agent_v1_admin_sessions__slug__labels_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionLabelsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnLabelsView"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     withdraw_handover_agent_v1_admin_sessions__slug__leadership_withdraw_post: {
         parameters: {
             query?: never;
@@ -7095,6 +7519,63 @@ export interface operations {
             };
         };
     };
+    reassign_session_lock_agent_v1_admin_sessions__slug__locks_reassign_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LockReassignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLockReassigned"];
+                };
+            };
+            /** @description invalid_path: empty or outside the target session workdir */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug, or `to` is not a live agent of it */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description own_session: the target is the caller's own session (use the leader-only agent route) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     session_messages_agent_v1_admin_sessions__slug__messages_get: {
         parameters: {
             query?: {
@@ -7130,6 +7611,60 @@ export interface operations {
             };
             /** @description not_found: no session has that slug */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_session_message_agent_v1_admin_sessions__slug__messages__message_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+                message_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug, or no message with that id in it */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_queued: only a queued message can be cancelled */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7250,6 +7785,200 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    scale_session_agent_v1_admin_sessions__slug__scale_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScaleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScaleResult"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no session has that slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description usage_quota, static_session, leader_would_leave or session_deleting */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description out_of_range: replicas outside 1..max_replicas; own_session: the caller's own session */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_spec_agent_v1_admin_specs__key__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader; or the taskboard's forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dismiss_suggestion_agent_v1_admin_specs__key__comments__comment_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                key: string;
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The taskboard upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader; or the taskboard's forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the path is not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description taskboard_unconfigured or taskboard_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7769,12 +8498,17 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /**
+                     * Files
+                     * @default []
+                     */
+                    files?: string[];
                     /** Reply To */
                     reply_to?: string | null;
                     /** Room */
                     room?: string | null;
                     /** Text */
-                    text: string;
+                    text?: string | null;
                 };
             };
         };
@@ -7809,6 +8543,13 @@ export interface operations {
             };
             /** @description forbidden (not a live agent pod) or not_leader */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description room_bound or another upstream conflict, or files_not_relayable: the room is held by another session and the body has files */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8715,6 +9456,310 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    item_agent_v1_mindmap__path__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mindmap upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No content (edge and link delete), passed through */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the method and path are not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description mindmap_unconfigured or mindmap_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_mindmap__path__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mindmap upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No content (edge and link delete), passed through */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the method and path are not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description mindmap_unconfigured or mindmap_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_mindmap__path__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mindmap upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No content (edge and link delete), passed through */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the method and path are not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description mindmap_unconfigured or mindmap_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    item_agent_v1_mindmap__path__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mindmap upstream's status and JSON body, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description No content (edge and link delete), passed through */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized: missing or invalid agent credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden (not a live agent pod) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: the method and path are not one the relay forwards */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description payload_too_large: the body exceeds 256 KiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description mindmap_unconfigured or mindmap_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -11958,6 +13003,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_parked_session_api_v1_sessions__session_id__park_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
             /** @description Validation Error */

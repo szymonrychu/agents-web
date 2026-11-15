@@ -27,7 +27,7 @@ interface Base {
 export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
   /** An orchestrator notice (inactivity reminder, close warning or leadership handover): a system line, not a user bubble. */
-  | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' | 'handover' })
+  | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' | 'handover' | 'runaway_parked' })
   | (Base & { kind: 'session'; text: string; from: string; messageId: number; room?: { project: string; postId: number } })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
@@ -94,14 +94,15 @@ const SESSION_FRAME = /^<session-message from="([a-z0-9-]+)" id="(\d+)">\n([\s\S
 // Contract with agents-orchestrator dispatcher/session_frame.py:project_post; matched only on the text after the real closing tag, so an escaped body cannot forge it.
 const ROOM_TRAILER = /^Project room ([a-z0-9][a-z0-9-]*), post p(\d+)/;
 
-// Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX) and handover_transcript.py (HANDOVER_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
+// Contract with agents-orchestrator inactivity.py (REMINDER_PREFIX, CLOSE_PREFIX) handover_transcript.py (HANDOVER_PREFIX) and runaway.py (PARKED_PREFIX). The chat log is built from wrapper events, which carry no `notice` field, so notices are matched by text prefix.
 const NOTICE_PREFIXES = [
   ['Orchestrator notice (inactivity reminder):', 'inactivity_reminder'],
   ['Orchestrator notice (inactivity limit):', 'inactivity_close'],
   ['Orchestrator notice (leadership handover):', 'handover'],
+  ['Orchestrator notice (runaway guard):', 'runaway_parked'],
 ] as const;
 
-const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | 'handover' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
+const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | 'handover' | 'runaway_parked' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
 
 const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 

@@ -6,6 +6,7 @@ import {
   getAgentDialog,
   requestAt,
   cancelSessionClose,
+  resumeSession,
   restartSession,
   copyPreset,
   createPreset,
@@ -182,6 +183,16 @@ describe('labels', () => {
     await cancelSessionClose('s 1');
     const calls = f.mock.calls as unknown as [string, RequestInit][];
     expect(calls[0][0]).toBe('/api/v1/sessions/s%201/close');
+    expect(calls[0][1].method).toBe('DELETE');
+    expect(calls[0][1].body).toBeUndefined();
+  });
+
+  it('resumeSession sends DELETE to the park route', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await resumeSession('s 1');
+    const calls = f.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe('/api/v1/sessions/s%201/park');
     expect(calls[0][1].method).toBe('DELETE');
     expect(calls[0][1].body).toBeUndefined();
   });

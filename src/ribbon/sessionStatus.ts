@@ -25,7 +25,7 @@ function runningGate(status: Dict): string | null {
 }
 
 export interface Issue {
-  kind: 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
+  kind: 'parked' | 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
   text: string
   /** Set on an attention issue of one agent: the agent whose dialog can be opened. */
   agentId?: string
@@ -40,6 +40,18 @@ export function utcClock(iso: string | null | undefined): string | null {
   if (!Number.isFinite(t)) return null
   const d = new Date(t)
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}Z`
+}
+
+/** Why the runaway guard parked a session, as text; null when it is not parked. */
+export function parkedText(session: SessionView): string | null {
+  if (!session.parked_at) return null
+  const d = session.parked_detail
+  const reason = session.parked_reason ?? 'parked'
+  if (!d) return reason
+  if (reason === 'turns') return `turn ceiling (${d.value} of ${d.limit} turns)`
+  if (reason === 'tokens') return `token ceiling (${d.value} of ${d.limit} tokens)`
+  if (reason === 'stop_loop') return `Stop hook loop (${d.limit} continuations)`
+  return reason
 }
 
 /** The pending close of a session as text: `closing for inactivity when idle, not before 14:05Z`, `lifetime reached, closing when idle` or `closing when idle: reason`. */
@@ -73,6 +85,8 @@ export function agentIssue(a: AgentView): Issue | null {
 
 /** The most urgent issue of a session: a pending self-close first (the session is about to go), then a bootstrap failure, then an unavailable permission mode, then attention, then the quiet line after an inactivity reminder; agent detail first, summary counts as fallback. */
 export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
+  const parked = session.desired === 'active' ? parkedText(session) : null
+  if (parked !== null) return { kind: 'parked', text: `parked: ${parked}` }
   if (session.desired === 'active' && session.close_requested_at) return { kind: 'closing', text: closingText(session) }
   const issues = live(agents).map(agentIssue)
   const failure = issues.find((i) => i?.kind === 'bootstrap_failure')

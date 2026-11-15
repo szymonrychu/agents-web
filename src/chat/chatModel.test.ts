@@ -289,6 +289,12 @@ describe('subagents', () => {
     expect(s.items[0]).toMatchObject({ kind: 'notice', text, notice: 'handover' });
   });
 
+  it('runaway notice prefix maps to runaway_parked', () => {
+    const text = 'Orchestrator notice (runaway guard): this session was parked on pod-1 by the turn ceiling.'
+    const s = applyEvents(fresh(), [row(1, 'user_message', { text, origin: 'user' })]);
+    expect(s.items[0]).toMatchObject({ kind: 'notice', text, notice: 'runaway_parked' });
+  });
+
   it('classifies orchestrator notices', () => {
     const reminder = 'Orchestrator notice (inactivity reminder): this session has been quiet for 1 h.'
     const limit = 'Orchestrator notice (inactivity limit): this session closes at 14:05Z.'
