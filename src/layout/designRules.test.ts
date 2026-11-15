@@ -120,12 +120,17 @@ describe('designViolations rule fixtures', () => {
     expect(rulesOf("'&:hover': { bgcolor: 'action.hover' }")).toEqual([])
   })
 
-  it('(m) every Table sits in a TableContainer scroll box', () => {
+  it('(m) a raw Table outside ResponsiveTable is a violation', () => {
+    expect(rulesOf('<TableContainer><Table>', 'tabs/Example.tsx')).toContain('table')
     expect(rulesOf('<Table size="small">')).toEqual(['table'])
-    expect(rulesOf('<TableContainer sx={TABLE_SCROLL_SX}><Table size="small">')).toEqual([])
     expect(rulesOf('<TableRow>')).toEqual([])
     expect(rulesOf('<TableCell>x</TableCell>')).toEqual([])
-    expect(rulesOf('<Table size="small">', 'markdown/Markdown.tsx')).toEqual([])
+  })
+
+  it('(m) ResponsiveTable and Markdown may render Table', () => {
+    expect(rulesOf('<TableContainer sx={TABLE_SCROLL_SX}><Table>', 'layout/ResponsiveTable.tsx')).not.toContain('table')
+    expect(rulesOf('<Table size="small">', 'markdown/Markdown.tsx')).not.toContain('table')
+    expect(rulesOf('<Table>', 'layout/ResponsiveTable.tsx')).toContain('table')
   })
 
   it('names the line of the violation', () => {

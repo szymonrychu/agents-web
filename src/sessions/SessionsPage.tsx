@@ -4,9 +4,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { listSessions } from '../api/client'
 import type { SessionView } from '../api/client'
@@ -15,7 +12,9 @@ import { LabelChips } from '../labels/LabelChips'
 import { LabelEditor } from '../labels/LabelEditor'
 import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
-import { TOKENS } from '../theme'
+import { DateTime } from '../common/DateTime'
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 import { DiscardSessionDialog } from './DiscardSessionDialog'
 import { MoveProjectDialog } from './MoveProjectDialog'
 import { NewSessionDialog } from './NewSessionDialog'
@@ -38,6 +37,30 @@ export function timeLeft(closesAt: string | null, now = Date.now()): string {
   const m = minutes % 60
   return `${d > 0 ? `${d}d ` : ''}${d > 0 || h > 0 ? `${h}h ` : ''}${m}m left`
 }
+
+const COLUMNS: Column<SessionView>[] = [
+  { key: 'slug', label: 'Session', role: 'primary', render: (c) => c.slug },
+  { key: 'preset', label: 'Preset', role: 'meta', render: (c) => c.preset_name ?? 'none' },
+  { key: 'project', label: 'Project', role: 'meta', render: (c) => <Chip size="small" variant="outlined" label={c.project} /> },
+  {
+    key: 'state',
+    label: 'State',
+    role: 'meta',
+    render: (c) => {
+      const issue = sessionIssue(c, [])?.text
+      return (
+        <>
+          {markLabel(sessionMarkState(c, []))}
+          {issue ? <Typography component="span" color="error" sx={{ ml: 1 }}>{issue}</Typography> : null}
+        </>
+      )
+    },
+  },
+  { key: 'ready', label: 'Ready', role: 'meta', render: (c) => `${c.summary.ready}/${c.summary.replicas}` },
+  { key: 'created', label: 'Created', role: 'meta', render: (c) => <DateTime iso={c.created_at} /> },
+  { key: 'closes', label: 'Closes', role: 'meta', render: (c) => timeLeft(c.closes_at) },
+  { key: 'labels', label: 'Labels', role: 'meta', render: (c) => <LabelChips labels={c.labels ?? []} /> },
+]
 
 export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
   const [sessions, setSessions] = useState<SessionView[]>([])
@@ -73,41 +96,26 @@ export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Sessions</Typography>
+      <PageHeader title="Sessions" onBack={onBack}>
         <Button variant="outlined" onClick={() => setCreating(true)}>New session</Button>
+      </PageHeader>
+      <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+        <LabelEditor label="Filter by label" value={filter} onChange={setFilter} />
       </Box>
-      <LabelEditor label="Filter by label" value={filter} onChange={setFilter} />
       {error && <Alert severity="error" variant="outlined">{error}</Alert>}
       {loaded && !error && sessions.length === 0 && <Typography color="text.secondary">No sessions yet</Typography>}
-      <List disablePadding>
-        {sessions.map((c) => (
-          <ListItem
-            key={c.id}
-            divider
-            secondaryAction={
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button size="small" aria-label={`Open ${c.slug}`} onClick={() => onOpen(c.id)}>Open</Button>
-                <Button size="small" aria-label={`Move ${c.slug} to project`} onClick={() => setMoving(c)}>Move to project</Button>
-                <Button size="small" color="error" aria-label={`Discard ${c.slug}`} onClick={() => setDiscarding(c)}>Discard</Button>
-              </Box>
-            }
-          >
-            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'baseline', pr: 20 }}>
-              <ListItemText primary={c.slug} sx={{ minWidth: 120 }} />
-              <Typography component="span">{c.preset_name ?? 'none'}</Typography>
-              <Chip size="small" variant="outlined" label={c.project} />
-              <Typography component="span">{markLabel(sessionMarkState(c, []))}</Typography>
-              {sessionIssue(c, [])?.text ? <Typography component="span" color="error">{sessionIssue(c, [])?.text}</Typography> : null}
-              <Typography component="span">{`${c.summary.ready}/${c.summary.replicas}`}</Typography>
-              <Typography component="span">{new Date(c.created_at).toLocaleString()}</Typography>
-              <Typography component="span">{timeLeft(c.closes_at)}</Typography>
-              <LabelChips labels={c.labels ?? []} />
-            </Box>
-          </ListItem>
-        ))}
-      </List>
+      <ResponsiveTable
+        rows={sessions}
+        columns={COLUMNS}
+        rowKey={(c) => c.id}
+        ariaLabel="Sessions"
+        cardLabel={(c) => `Session ${c.slug}`}
+        actions={(c) => [
+          { label: 'Open', ariaLabel: `Open ${c.slug}`, onClick: () => onOpen(c.id) },
+          { label: 'Move to project', ariaLabel: `Move ${c.slug} to project`, onClick: () => setMoving(c) },
+          { label: 'Discard', ariaLabel: `Discard ${c.slug}`, color: 'error', onClick: () => setDiscarding(c) },
+        ]}
+      />
       <NewSessionDialog
         open={creating}
         onClose={() => setCreating(false)}

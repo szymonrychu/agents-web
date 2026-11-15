@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SessionView } from '../api/client'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { SessionsPage } from './SessionsPage'
 
@@ -32,9 +33,10 @@ const NOW = new Date('2026-01-01T12:00:00Z').getTime()
 const LIST = [session('c1', 'alpha', '2026-01-01T14:30:00Z'), session('c2', 'beta', null, null)]
 
 const wrap = (onBack = vi.fn(), onOpen = vi.fn()) => ({ onBack, onOpen, ...render(<ThemeProvider theme={theme}><SessionsPage onBack={onBack} onOpen={onOpen} /></ThemeProvider>) })
-const row = (slug: string) => screen.getAllByRole('listitem').find((r) => within(r).queryByRole('button', { name: `Open ${slug}` }))!
+const row = (slug: string) => screen.getAllByRole('row').find((r) => within(r).queryByRole('button', { name: `Open ${slug}` }))!
 
 beforeEach(() => {
+  setViewport(1440)
   vi.spyOn(Date, 'now').mockReturnValue(NOW)
   Object.values(api).forEach((f) => f.mockReset())
   api.listSessions.mockResolvedValue(LIST)
@@ -78,7 +80,7 @@ describe('SessionsPage', () => {
     await screen.findByText('alpha')
     const a = row('alpha')
     for (const t of ['alpha', 'Default', 'working', '2/3', '2h 30m left']) expect(within(a).getByText(t)).toBeTruthy()
-    expect(within(a).getByText(new Date('2026-01-01T10:00:00Z').toLocaleString())).toBeTruthy()
+    expect(a.querySelector('time')?.getAttribute('datetime')).toBe('2026-01-01T10:00:00Z')
     const b = row('beta')
     expect(within(b).getByText('never')).toBeTruthy()
     expect(within(b).getByText('none')).toBeTruthy()
@@ -120,10 +122,37 @@ describe('SessionsPage', () => {
   test('rows show label chips and the label filter reloads with label params', async () => {
     api.listSessions.mockResolvedValue([{ ...LIST[0], labels: ['mine'] }, LIST[1]])
     wrap()
-    const r = await screen.findAllByRole('listitem')
-    expect(within(r[0]).getByText('mine')).toBeTruthy()
+    await screen.findByText('alpha')
+    expect(within(row('alpha')).getByText('mine')).toBeTruthy()
     expect(api.listSessions).toHaveBeenLastCalledWith([], null)
     await userEvent.type(screen.getByRole('combobox', { name: 'Filter by label' }), 'Mine{Enter}')
     await waitFor(() => expect(api.listSessions).toHaveBeenLastCalledWith(['mine'], null))
+  })
+
+  test('on phones: one card per session with state and one actions menu', async () => {
+    setViewport(375, { coarse: true })
+    const user = userEvent.setup()
+    const { onOpen } = wrap()
+    const card = await screen.findByRole('article', { name: 'Session alpha' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByText('State', { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('Created', { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('working')).toBeTruthy()
+    expect(card.querySelector('time')).toBeTruthy()
+    await user.click(c.getByRole('button', { name: 'Actions for Session alpha' }))
+    expect(screen.getByRole('menuitem', { name: 'Move alpha to project' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Discard alpha' })).toBeTruthy()
+    await user.click(screen.getByRole('menuitem', { name: 'Open alpha' }))
+    expect(onOpen).toHaveBeenCalledWith('c1')
+  })
+
+  test('on wide screens: a sessions table with inline actions', async () => {
+    wrap()
+    const table = await screen.findByRole('table', { name: 'Sessions' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Session', 'Preset', 'Project', 'State', 'Ready', 'Created', 'Closes', 'Labels', ''])
+    expect(within(table).getByRole('button', { name: 'Open alpha' })).toBeTruthy()
+    expect(screen.queryByRole('article')).toBeNull()
   })
 })

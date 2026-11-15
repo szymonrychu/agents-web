@@ -3,23 +3,17 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { DateTime } from '../common/DateTime'
 import { ApiError } from '../api/client'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
-import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { listDevices, pairDevice, regenerateCode, revokeDevice } from './api'
 import type { DeviceView, NewCode } from './api'
 import { PairingCode } from './PairingCode'
-import { TABLE_SCROLL_SX } from '../layout/tables'
-
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 const POLL_MS = 15_000
 const CODE_POLL_MS = 3_000
@@ -42,7 +36,17 @@ export function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const COLUMNS: Column<DeviceView>[] = [
+  { key: 'name', label: 'Name', role: 'primary', render: (d) => d.name },
+  { key: 'plugin', label: 'Plugin', role: 'meta', render: (d) => d.plugin || '-' },
+  { key: 'created', label: 'Created', role: 'meta', render: (d) => <DateTime iso={d.created_at} /> },
+  {
+    key: 'state',
+    label: 'State',
+    role: 'meta',
+    render: (d) => (d.revoked_at ? <>Revoked <DateTime iso={d.revoked_at} /></> : STATE_LABEL[d.state as keyof typeof STATE_LABEL] ?? d.state),
+  },
+]
 
 export interface DevicesPageProps {
   onBack: () => void
@@ -113,10 +117,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Devices</Typography>
-      </Box>
+      <PageHeader title="Devices" onBack={onBack} />
       <Box
         component="form"
         onSubmit={(e) => {
@@ -152,26 +153,14 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
           {pairedName} is paired.
         </Alert>
       )}
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>{['Name', 'Plugin', 'Created', 'State', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
-        </TableHead>
-        <TableBody>
-          {(data ?? []).map((d) => (
-            <TableRow key={d.device_id}>
-              <TableCell>{d.name}</TableCell>
-              <TableCell>{d.plugin}</TableCell>
-              <TableCell>{when(d.created_at)}</TableCell>
-              <TableCell>{d.revoked_at ? `Revoked ${when(d.revoked_at)}` : STATE_LABEL[d.state as keyof typeof STATE_LABEL] ?? d.state}</TableCell>
-              <TableCell>
-                {!d.revoked_at && <Button size="small" color="error" onClick={() => setRevoking(d)}>Revoke</Button>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable
+        rows={data ?? []}
+        columns={COLUMNS}
+        rowKey={(d) => d.device_id}
+        ariaLabel="Devices"
+        cardLabel={(d) => `Device ${d.name}`}
+        actions={(d) => (d.revoked_at ? [] : [{ label: 'Revoke', color: 'error', onClick: () => setRevoking(d) }])}
+      />
       {data && data.length === 0 && <Typography color="text.secondary">No devices paired yet.</Typography>}
       <ConfirmDialog
         open={revoking !== null}
