@@ -1,4 +1,4 @@
-/** One line naming what needs a person on a session: a pending self-close (info), a bootstrap failure (error), an unavailable permission mode (warning) or an agent waiting for input. */
+/** One line naming what needs a person on a session: a pending self-close (info), a failed Claude login or bootstrap failure (error), an unavailable permission mode (warning) or an agent waiting for input. */
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -12,8 +12,9 @@ export function SessionIssue({ session, agents }: { session: SessionView; agents
   const issue = sessionIssue(session, agents)
   if (issue === null || session.desired === 'deleting') return null
   const failed = issue.kind === 'bootstrap_failure'
+  const alert = failed || issue.kind === 'auth_failed'
   return (
-    <Box role={failed ? 'alert' : 'status'} sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: failed ? 'error.main' : issue.kind === 'closing' || issue.kind === 'quiet' ? 'info.main' : issue.kind === 'permission_unavailable' || issue.kind === 'parked' ? 'warning.main' : TOKENS.attention, pt: 0.5, overflowWrap: 'anywhere' }}>
+    <Box role={alert ? 'alert' : 'status'} sx={{ fontSize: `${TOKENS.fontSizes.xs / 16}rem`, color: alert ? 'error.main' : issue.kind === 'closing' || issue.kind === 'quiet' ? 'info.main' : issue.kind === 'permission_unavailable' || issue.kind === 'parked' ? 'warning.main' : TOKENS.attention, pt: 0.5, overflowWrap: 'anywhere' }}>
       {failed ? `Bootstrap failed: ${issue.text}` : issue.text}
       {issue.agentId !== undefined && (
         <>

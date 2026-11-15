@@ -187,3 +187,23 @@ describe('parked session', () => {
     expect(sessionIssue(session({ ...parked, desired: 'deleting' }), [])).toBeNull()
   })
 })
+
+describe('auth_failed issue', () => {
+  const failedAgent = (o: Record<string, unknown> = {}): AgentView => ({ id: 'a', gone: false, auth_state: 'failed', auth_reason: 'revoked', ...o }) as unknown as AgentView
+  test('agentIssue names the reason, or nothing when it is null', () => {
+    expect(agentIssue(failedAgent())).toEqual({ kind: 'auth_failed', text: 'Claude login failed: revoked' })
+    expect(agentIssue(failedAgent({ auth_reason: null }))).toEqual({ kind: 'auth_failed', text: 'Claude login failed' })
+  })
+  test('sessionIssue puts auth_failed above a bootstrap failure', () => {
+    const bootstrap = { id: 'b', gone: false, bootstrap_failure: { step: 'init', message: 'x' } } as unknown as AgentView
+    expect(sessionIssue(session(), [bootstrap, failedAgent()])).toEqual({ kind: 'auth_failed', text: 'Claude login failed: revoked' })
+  })
+  test('summary-only count gives the plural text', () => {
+    expect(sessionIssue(session({}, { auth_failed_agents: 2 }), [])).toEqual({ kind: 'auth_failed', text: 'Claude login failed on 2 agents' })
+    expect(sessionIssue(session({}, { auth_failed_agents: 1 }), [])?.text).toBe('Claude login failed on 1 agent')
+  })
+  test('a pending close still wins', () => {
+    const s = session({ close_requested_at: '2026-11-02T10:00:00Z', close_reason: 'done' }, { auth_failed_agents: 2 })
+    expect(sessionIssue(s, [failedAgent()])?.kind).toBe('closing')
+  })
+})

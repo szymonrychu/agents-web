@@ -6,6 +6,8 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import { Suspense, lazy } from 'react'
 import { formatAge, useNow } from '../chat/agentAge'
+import { timeLeft, useCredential, utc } from '../credential/credential'
+import type { MetaCredential } from '../credential/credential'
 import { PageHeader } from '../layout/PageHeader'
 import { TOKENS } from '../theme'
 import { usePoll } from '../triggers'
@@ -31,7 +33,6 @@ const SOURCES: Record<WindowView['source'], string> = { statusline: 'agents', pr
 
 const barColor = (percent: number) => (percent >= ERROR_PCT ? 'error' : percent >= WARN_PCT ? 'warning' : 'primary')
 const formatPercent = (percent: number) => `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`
-const utc = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace('T', ' ')} UTC`
 
 function metricOrder(metrics: string[]): string[] {
   const known = KNOWN_METRICS.filter((m) => metrics.includes(m))
@@ -63,6 +64,26 @@ function WindowCard({ metric, window, now }: { metric: string; window: WindowVie
   )
 }
 
+const PHASE_COLORS: Record<MetaCredential['phase'], 'default' | 'success' | 'warning' | 'error'> = { unknown: 'default', ok: 'success', warn: 'warning', refuse: 'warning', expired: 'error' }
+
+function CredentialCard({ credential, now }: { credential: MetaCredential; now: number }) {
+  const { expires_at: end, phase } = credential
+  return (
+    <Box
+      data-testid="credential-card"
+      sx={{ flex: '1 1 280px', minWidth: 0, p: 2, border: `${TOKENS.borderWidth}px solid ${TOKENS.border}`, borderRadius: `${TOKENS.radius}px`, display: 'flex', flexDirection: 'column', gap: 1 }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
+        <Typography component="h2" sx={{ fontSize: TOKENS.fontSizes.lg }}>Claude credential</Typography>
+        <Chip size="small" variant="outlined" color={PHASE_COLORS[phase]} label={phase} />
+      </Box>
+      <Typography sx={{ fontSize: TOKENS.fontSizes.sm }}>{end ? `Ends ${utc(end)}` : 'No credential end date configured'}</Typography>
+      {end && <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm }}>{phase === 'expired' ? 'ended' : `in ${timeLeft(end, now)}`}</Typography>}
+      <Typography color="text.secondary" sx={{ fontSize: TOKENS.fontSizes.sm }}>{`warn ${credential.warn_days} days, refuse ${credential.refuse_hours} h before`}</Typography>
+    </Box>
+  )
+}
+
 /** Shown in place of the 5-hour card when the plan reports no such window (the statusline may never carry it). */
 function MissingWindowCard({ metric }: { metric: string }) {
   return (
@@ -83,7 +104,9 @@ export function UsagePage({ onBack }: UsagePageProps) {
   const metrics = metricOrder(Object.keys(windows))
   const anyStale = metrics.some((m) => windows[m].stale)
   const anyMissing = KNOWN_METRICS.some((m) => !(m in windows))
+  const credential = useCredential()
   const probe = data?.last_probe
+  const authFailed = probe?.error === 'auth_error'
   const probeFailed = probe !== undefined && probe !== null && !probe.ok && (anyStale || anyMissing)
 
   return (
@@ -91,7 +114,9 @@ export function UsagePage({ onBack }: UsagePageProps) {
       <PageHeader title="Usage" onBack={onBack} />
       {error && <Alert severity="warning">Usage service unavailable</Alert>}
       {anyStale && <Alert severity="warning">Usage data is stale</Alert>}
-      {probeFailed && <Alert severity="warning">{`Last probe failed: ${probe.error ?? 'unknown error'}`}</Alert>}
+      {authFailed && <Alert severity="error">{`Claude login failed on the last usage probe (${utc(probe.at)})`}</Alert>}
+      {probeFailed && !authFailed && <Alert severity="warning">{`Last probe failed: ${probe.error ?? 'unknown error'}`}</Alert>}
+      {credential && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}><CredentialCard credential={credential} now={now} /></Box>}
       {data && metrics.length === 0 && <Typography color="text.secondary">No usage data yet</Typography>}
       {metrics.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>

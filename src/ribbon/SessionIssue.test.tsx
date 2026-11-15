@@ -55,3 +55,10 @@ describe('SessionIssue dialog panel', () => {
     expect(screen.queryByRole('button', { name: 'open dialog' })).toBeNull()
   })
 })
+
+describe('SessionIssue auth failure', () => {
+  test('auth_failed is an alert', () => {
+    wrap(session(), [agent({ auth_state: 'failed', auth_reason: 'revoked' })])
+    expect(screen.getByRole('alert').textContent).toBe('Claude login failed: revoked')
+  })
+})
