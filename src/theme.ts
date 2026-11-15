@@ -139,7 +139,15 @@ export const diffPalette: Record<
 
 const { regular, medium } = TOKENS.fontWeights
 const { xs, sm, md, lg, xl } = TOKENS.fontSizes
-const COARSE = '@media (pointer: coarse)'
+export const COARSE = '@media (pointer: coarse)'
+/** iOS Safari zooms the page on focus of any text surface under 16 px; this is the floor on touch and small viewports. */
+export const NO_ZOOM_INPUT_PX = 16
+/** Touch devices (also an iPad in landscape) and any window under 900 px; a mouse at >= 900 px keeps the dense 13 px UI. */
+export const TOUCH_OR_SMALL_QUERY = '(pointer: coarse), (hover: none), (max-width: 899.95px)'
+export const TOUCH_OR_SMALL = `@media ${TOUCH_OR_SMALL_QUERY}` as const
+/** Every focusable text surface, incl. CodeMirror and the xterm helper textarea whose own styles would undercut the floor. */
+export const NO_ZOOM_SELECTOR =
+  'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea, select, [contenteditable]:not([contenteditable=false]), .cm-editor, .cm-content, .xterm .xterm-helper-textarea'
 const sized = (px: number, fontWeight: number) => ({ fontSize: `${px / 16}rem`, fontWeight, letterSpacing: 0 })
 const BORDER = `${TOKENS.borderWidth}px solid ${TOKENS.border}`
 const touchSized = {
@@ -186,7 +194,16 @@ export const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: { WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' },
         body: { fontVariantNumeric: 'tabular-nums', backgroundColor: TOKENS.bgCanvas },
+        // safety net: per-field sx, CodeMirror theme classes and xterm inline styles cannot undercut the floor
+        [TOUCH_OR_SMALL]: { [NO_ZOOM_SELECTOR]: { fontSize: `${NO_ZOOM_INPUT_PX}px !important` } },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
+        input: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
       },
     },
     MuiButton: {

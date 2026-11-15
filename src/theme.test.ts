@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { CANVAS_BG, CONTROL_PX, MONO_FONT, PANEL_BG, TOKENS, TOUCH_TARGET_PX, terminalTheme, theme } from './theme'
+import { editorChromeSpec } from './editor/highlight'
+import {
+  CANVAS_BG,
+  CONTROL_PX,
+  MONO_FONT,
+  NO_ZOOM_INPUT_PX,
+  NO_ZOOM_SELECTOR,
+  PANEL_BG,
+  TOKENS,
+  TOUCH_OR_SMALL,
+  TOUCH_TARGET_PX,
+  terminalTheme,
+  theme,
+} from './theme'
 
 const channels = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,7 +71,8 @@ describe('MUI palette', () => {
 })
 
 describe('typography', () => {
-  it('is compact, system font, weights 400/500', () => {
+  // Inputs are no longer 13 px on touch and small viewports (spec 4.1, decision Q1); 13 px still holds for typography.fontSize and body1.
+  it('keeps compact 13 px for non-input text, system font, weights 400/500', () => {
     const t = theme.typography
     expect(t.fontSize).toBe(13)
     expect(t.fontFamily).not.toMatch(/https?:|@font-face/)
@@ -107,6 +121,28 @@ describe('component overrides', () => {
     expect(css.body.fontVariantNumeric).toBe('tabular-nums')
     expect(css.body.backgroundColor).toBe(TOKENS.bgCanvas)
   })
+
+  it('CssBaseline pins text size adjust explicitly', () => {
+    expect(comp.MuiCssBaseline.styleOverrides.html).toMatchObject({ WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' })
+  })
+
+  it('CssBaseline forces 16 px on every focusable text surface on touch and small viewports', () => {
+    expect(comp.MuiCssBaseline.styleOverrides[TOUCH_OR_SMALL][NO_ZOOM_SELECTOR].fontSize).toBe('16px !important')
+    for (const part of [
+      'textarea', 'select', '[contenteditable]', '.cm-editor', '.cm-content', '.xterm-helper-textarea',
+      'input:not([type=checkbox])', ':not([type=radio])', ':not([type=range])', ':not([type=file])', ':not([type=hidden])',
+    ]) {
+      expect(NO_ZOOM_SELECTOR).toContain(part)
+    }
+  })
+
+  it('InputBase is 1rem on touch and small viewports and keeps body1 13 px elsewhere', () => {
+    const { root, input } = comp.MuiInputBase.styleOverrides
+    expect(root[TOUCH_OR_SMALL]).toEqual({ fontSize: '1rem' })
+    expect(input[TOUCH_OR_SMALL]).toEqual({ fontSize: '1rem' })
+    expect(root).not.toHaveProperty('fontSize')
+    expect(input).not.toHaveProperty('fontSize')
+  })
 })
 
 describe('exported constants', () => {
@@ -115,6 +151,16 @@ describe('exported constants', () => {
     expect(PANEL_BG).toBe(TOKENS.bgPanel)
     expect(TOUCH_TARGET_PX).toBe(44)
     expect(CONTROL_PX).toBe(32)
+  })
+
+  it('define the no-zoom floor and its media gate', () => {
+    expect(NO_ZOOM_INPUT_PX).toBe(16)
+    expect(TOUCH_OR_SMALL).toBe('@media (pointer: coarse), (hover: none), (max-width: 899.95px)')
+  })
+
+  it('the editor chrome carries the same floor', () => {
+    expect(editorChromeSpec[TOUCH_OR_SMALL]).toEqual({ '&': { fontSize: '1rem' } })
+    expect(editorChromeSpec['&'].fontSize).toBe('0.8125rem')
   })
 })
 
