@@ -7,7 +7,7 @@ import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router'
+import { Link as RouterLink, useSearchParams } from 'react-router'
 import { LabelChips } from '../labels/LabelChips'
 import { LabelEditor } from '../labels/LabelEditor'
 import { useProject } from '../projects/ProjectContext'
@@ -42,7 +42,6 @@ function asStatus(raw: string | null): Filter {
 }
 
 export function SpecsPage() {
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const status = asStatus(params.get('status'))
   const name = params.get('name') ?? ''
@@ -81,7 +80,7 @@ export function SpecsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto', p: 2 }}>
-      <PageHeader title="Specs" onBack={() => void navigate('/')} />
+      <PageHeader title="Specs" backTo="/" />
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <ToggleButtonGroup
           exclusive

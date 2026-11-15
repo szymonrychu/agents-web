@@ -48,6 +48,12 @@ describe('specs list', () => {
     expect(lastCall()).toMatchObject({ project: 'infra' })
   })
 
+  test('Back is a link to the home page', async () => {
+    mountSpecs('/specs')
+    await screen.findByText('Task plans')
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/')
+  })
+
   test('status, name and label filters write the URL and the query', async () => {
     mountSpecs('/specs')
     await screen.findByText('Task plans')

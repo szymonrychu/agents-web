@@ -96,7 +96,7 @@ export function TasksPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto', p: 2 }}>
-      <PageHeader title="Tasks" onBack={() => navigate('/')}>
+      <PageHeader title="Tasks" backTo="/">
         <Button variant="contained" onClick={() => setCreating(true)}>New</Button>
       </PageHeader>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>

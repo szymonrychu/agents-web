@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Button } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
+import { MemoryRouter } from 'react-router'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { emittedCssFor } from '../test/emittedCss'
@@ -24,5 +25,13 @@ test('renders the title as h1, Back and the children, and wraps', () => {
 test('no Back button without onBack', () => {
   mount(<PageHeader title="Tasks" />)
   expect(screen.getByRole('heading', { level: 1, name: 'Tasks' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+})
+
+test('backTo renders Back as a link and wins over onBack', () => {
+  const onBack = vi.fn()
+  mount(<MemoryRouter><PageHeader title="Tasks" backTo="/" onBack={onBack} /></MemoryRouter>)
+  const back = screen.getByRole('link', { name: 'Back' })
+  expect(back.getAttribute('href')).toBe('/')
   expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
 })

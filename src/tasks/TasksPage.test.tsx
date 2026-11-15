@@ -37,6 +37,12 @@ describe('tasks list', () => {
     expect(loc()).toBe('/tasks')
   })
 
+  test('Back is a link to the home page', async () => {
+    mountTasks('/tasks')
+    await screen.findByText('First task')
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/')
+  })
+
   test('list is filtered by the selected project and shows it', async () => {
     ctx.project = 'infra'
     api.listTasks.mockResolvedValue({ items: [task({ project: 'infra' })], next_cursor: null })
