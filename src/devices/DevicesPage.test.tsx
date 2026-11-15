@@ -33,10 +33,10 @@ describe('DevicesPage', () => {
     mount()
     const active = (await screen.findByText('Tab d1')).closest('tr')!
     expect(within(active).getByText('Active')).toBeTruthy()
-    expect(within(active).getByRole('button', { name: 'Revoke' })).toBeTruthy()
+    expect(within(active).getByRole('button', { name: 'Revoke Tab d1' })).toBeTruthy()
     const revoked = screen.getByText('Tab d2').closest('tr')!
     expect(within(revoked).getByText(/Revoked/)).toBeTruthy()
-    expect(within(revoked).queryByRole('button', { name: 'Revoke' })).toBeNull()
+    expect(within(revoked).queryByRole('button', { name: 'Revoke Tab d2' })).toBeNull()
   })
 
   const created = (over = {}) => ({ device_id: 'd3', name: 'Boox', plugin: 'sketch', code: '123456', expires_at: '2026-11-04T10:10:00Z', expires_in: 600, ...over })
@@ -171,7 +171,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockResolvedValue(undefined)
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     expect(api.revokeDevice).not.toHaveBeenCalled()
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Revoke' }))
@@ -183,7 +183,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockRejectedValue(new ApiError(404, 'http_error', 'not found'))
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     const before = api.listDevices.mock.calls.length
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
     expect(await screen.findByText(/already revoked or no longer exists/i)).toBeTruthy()
@@ -195,7 +195,7 @@ describe('DevicesPage', () => {
     api.revokeDevice.mockRejectedValue(new ApiError(500, 'http_error', 'boom'))
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     const before = api.listDevices.mock.calls.length
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }))
     expect(await screen.findByText('boom')).toBeTruthy()
@@ -206,7 +206,7 @@ describe('DevicesPage', () => {
     const user = userEvent.setup()
     mount()
     const row = (await screen.findByText('Tab d1')).closest('tr')!
-    await user.click(within(row).getByRole('button', { name: 'Revoke' }))
+    await user.click(within(row).getByRole('button', { name: 'Revoke Tab d1' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(api.revokeDevice).not.toHaveBeenCalled()
   })
@@ -269,7 +269,7 @@ describe('DevicesPage layouts', () => {
     const user = userEvent.setup()
     mount()
     await user.click(await screen.findByRole('button', { name: 'Actions for Device Tab d1' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Revoke Device Tab d1' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Revoke Tab d1' }))
     expect(screen.getByRole('dialog', { name: /Revoke Tab d1/ })).toBeTruthy()
   })
 

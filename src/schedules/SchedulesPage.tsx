@@ -86,7 +86,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
     const open = expanded.has(s.id)
     return [
       { label: open ? 'Hide runs' : 'Show runs', ariaLabel: `${open ? 'Hide' : 'Show'} runs of ${s.name}`, expanded: open, onClick: () => toggleRuns(s.id) },
-      { label: 'Run now', onClick: () => void runNow(s) },
+      { label: 'Run now', ariaLabel: `Run ${s.name} now`, onClick: () => void runNow(s) },
       { label: 'Edit', ariaLabel: `Edit ${s.name}`, onClick: () => setForm(s) },
       { label: 'Delete', ariaLabel: `Delete ${s.name}`, color: 'error', onClick: () => setDeleting(s) },
     ]

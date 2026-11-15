@@ -159,7 +159,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
         rowKey={(d) => d.device_id}
         ariaLabel="Devices"
         cardLabel={(d) => `Device ${d.name}`}
-        actions={(d) => (d.revoked_at ? [] : [{ label: 'Revoke', color: 'error', onClick: () => setRevoking(d) }])}
+        actions={(d) => (d.revoked_at ? [] : [{ label: 'Revoke', ariaLabel: `Revoke ${d.name}`, color: 'error', onClick: () => setRevoking(d) }])}
       />
       {data && data.length === 0 && <Typography color="text.secondary">No devices paired yet.</Typography>}
       <ConfirmDialog
