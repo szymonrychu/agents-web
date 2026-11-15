@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { Switch } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { emittedCssFor } from '../test/emittedCss'
 import { setViewport } from '../test/viewport'
@@ -139,4 +141,115 @@ test('the container does not shrink in a flex column', () => {
   phone()
   mount()
   expect(emittedCssFor(screen.getByRole('list', { name: 'Things' }))).toContain('flex-shrink:0')
+})
+
+test('inline actions and controls in a clickable row do not open the row', () => {
+  desktop()
+  const onRowClick = vi.fn()
+  const edit = vi.fn()
+  mount({ onRowClick, actions: (r) => [{ label: 'Edit', ariaLabel: `Edit ${r.name}`, onClick: edit }] })
+  fireEvent.click(screen.getByRole('button', { name: 'Edit alpha' }))
+  expect(edit).toHaveBeenCalledTimes(1)
+  fireEvent.click(screen.getByRole('switch', { name: 'Enabled alpha' }))
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Edit alpha' }), { key: 'Enter' })
+  expect(onRowClick).not.toHaveBeenCalled()
+})
+
+test('a clickable table row is reachable and opened by the keyboard', () => {
+  desktop()
+  const onRowClick = vi.fn()
+  mount({ onRowClick })
+  const row = screen.getByText('beta').closest('tr')!
+  expect(row.tabIndex).toBe(0)
+  fireEvent.keyDown(row, { key: 'Enter' })
+  expect(onRowClick).toHaveBeenLastCalledWith(ROWS[1])
+  fireEvent.keyDown(row, { key: ' ' })
+  expect(onRowClick).toHaveBeenCalledTimes(2)
+  fireEvent.keyDown(row, { key: 'a' })
+  expect(onRowClick).toHaveBeenCalledTimes(2)
+})
+
+test('rowProps sx and handlers survive onRowClick', () => {
+  desktop()
+  const onRowClick = vi.fn()
+  const onKeyDown = vi.fn()
+  mount({ onRowClick, rowProps: () => ({ sx: { opacity: 0.5 }, onKeyDown }) })
+  const row = screen.getByText('alpha').closest('tr')!
+  const css = emittedCssFor(row)
+  expect(css).toContain('opacity:0.5')
+  expect(css).toContain('cursor:pointer')
+  fireEvent.keyDown(row, { key: 'Enter' })
+  expect(onKeyDown).toHaveBeenCalledTimes(1)
+  expect(onRowClick).toHaveBeenCalledTimes(1)
+})
+
+function Page() {
+  const [open, setOpen] = useState<string[]>([])
+  return (
+    <ThemeProvider theme={theme}>
+      <ResponsiveTable<Row>
+        rows={ROWS}
+        columns={COLUMNS}
+        rowKey={(r) => r.id}
+        ariaLabel="Things"
+        cardLabel={(r) => `Thing ${r.name}`}
+        actions={(r) => [{ label: 'Runs', expanded: open.includes(r.id), onClick: () => setOpen((o) => [...o, r.id]) }]}
+        below={(r) => (open.includes(r.id) ? <span>runs of {r.name}</span> : null)}
+      />
+    </ThemeProvider>
+  )
+}
+
+test('crossing 600px with an open menu keeps page state and leaves no orphaned menu', async () => {
+  phone()
+  const { rerender } = render(<Page />)
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Thing alpha' }))
+  fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Runs Thing alpha' }))
+  expect(within(screen.getByRole('article', { name: 'Thing alpha' })).getByText('runs of alpha')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Thing beta' }))
+  expect(screen.getByRole('menu')).toBeTruthy()
+  desktop()
+  rerender(<Page />)
+  expect(screen.getByRole('table', { name: 'Things' })).toBeTruthy()
+  expect(screen.queryByRole('article')).toBeNull()
+  expect(screen.getByText('runs of alpha').closest('td')).toBeTruthy()
+  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  expect(document.querySelector('.MuiPopover-root, .MuiMenu-root')).toBeNull()
+  phone()
+  rerender(<Page />)
+  expect(within(screen.getByRole('article', { name: 'Thing alpha' })).getByText('runs of alpha')).toBeTruthy()
+  expect(screen.queryByRole('menu')).toBeNull()
+})
+
+test('a long unbroken value wraps inside the card', () => {
+  phone()
+  const long = 'x'.repeat(300)
+  mount({ rows: [{ id: 'r1', name: long, status: long, note: long }] })
+  const card = screen.getByRole('article', { name: `Thing ${long}` })
+  expect(emittedCssFor(card)).toContain('min-width:0')
+  const [primary, secondary] = within(card).getAllByText(long).map((el) => el.closest('.MuiBox-root, .MuiTypography-root')!)
+  const dd = card.querySelector('dd')!
+  const dt = card.querySelector('dt')!
+  for (const el of [primary.parentElement!, secondary, dd, dt]) expect(emittedCssFor(el)).toContain('overflow-wrap:anywhere')
+  expect(emittedCssFor(dd)).toContain('min-width:0')
+  expect(emittedCssFor(card.querySelector('dl')!)).toContain('grid-template-columns:fit-content(40%) minmax(0, 1fr)')
+})
+
+test('the Open button holds only phrasing content', () => {
+  phone()
+  mount({ onRowClick: () => {} })
+  const open = screen.getByRole('button', { name: 'Open Thing alpha' })
+  expect(open.querySelector('div')).toBeNull()
+})
+
+test('Tab reaches the open button, the control and the kebab of a card', async () => {
+  phone()
+  mount({ onRowClick: () => {} })
+  const user = userEvent.setup()
+  await user.tab()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open Thing alpha' }))
+  await user.tab()
+  expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Enabled alpha' }))
+  await user.tab()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Actions for Thing alpha' }))
 })

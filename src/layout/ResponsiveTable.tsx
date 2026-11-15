@@ -1,6 +1,6 @@
 import { Box, ButtonBase, List, ListItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, type TableRowProps } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
-import { Fragment, type JSX, type ReactNode } from 'react'
+import { Fragment, type JSX, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { RowActions, type RowAction } from './RowActions'
 import { TABLE_SCROLL_SX } from './tables'
 import { useLayout } from './useLayout'
@@ -13,6 +13,7 @@ export interface Column<T> {
   /** Header text; the visible field name of a 'meta' value on a card. */
   label: string
   role: ColumnRole
+  /** The cell value; for a 'primary' column of a clickable card it sits inside a button, so phrasing content only. */
   render: (row: T) => ReactNode
   align?: 'left' | 'right'
   /** Header and body cell, table mode only. */
@@ -31,6 +32,10 @@ export interface ResponsiveTableProps<T> {
   actions?: (row: T) => RowAction[]
   /** Expansion: a full-width row under the table row, the bottom of the card; nullish renders nothing. */
   below?: (row: T) => ReactNode
+  /**
+   * Opens a row: the whole table row (also Enter or Space when the row has focus) and the card's Open button.
+   * Clicks on controls inside the row (buttons, links, inputs, switches) and in portals they open do not count.
+   */
   onRowClick?: (row: T) => void
   /** DOM id on the `<tr>` and on the `<article>` (scroll targets like run-<id>). */
   rowId?: (row: T) => string
@@ -42,6 +47,16 @@ export interface ResponsiveTableProps<T> {
 }
 
 const present = (node: ReactNode): boolean => node !== null && node !== undefined && node !== false
+
+const INTERACTIVE = 'a, button, input, select, textarea, label, [role="button"], [role="switch"], [role="checkbox"], [role="menuitem"], [tabindex]'
+
+/** True when a click on a row comes from a control inside it or from a portal (menu, dialog) one of its cells opened. */
+function fromControl(e: MouseEvent<HTMLElement>): boolean {
+  const target = e.target as Element
+  if (!e.currentTarget.contains(target)) return true
+  const hit = target.closest(INTERACTIVE)
+  return hit !== null && hit !== e.currentTarget && e.currentTarget.contains(hit)
+}
 
 /** A table above the phone breakpoint and one card per row on phones: one DOM tree, chosen in JS. */
 export function ResponsiveTable<T>(props: ResponsiveTableProps<T>): JSX.Element {
@@ -66,13 +81,25 @@ function RowsTable<T>({ rows, columns, rowKey, ariaLabel, cardLabel, actions, be
         <TableBody>
           {rows.map((row) => {
             const extra = below?.(row)
+            const own = rowProps?.(row) ?? {}
+            const clickable = onRowClick && {
+              hover: true,
+              tabIndex: 0,
+              onClick: (e: MouseEvent<HTMLTableRowElement>) => {
+                own.onClick?.(e)
+                if (!fromControl(e)) onRowClick(row)
+              },
+              onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
+                own.onKeyDown?.(e)
+                if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
+                e.preventDefault()
+                onRowClick(row)
+              },
+              sx: [{ cursor: 'pointer' }, ...(own.sx === undefined ? [] : Array.isArray(own.sx) ? own.sx : [own.sx])],
+            }
             return (
               <Fragment key={rowKey(row)}>
-                <TableRow
-                  id={rowId?.(row)}
-                  {...rowProps?.(row)}
-                  {...(onRowClick && { hover: true, onClick: () => onRowClick(row), sx: { cursor: 'pointer' } })}
-                >
+                <TableRow id={rowId?.(row)} {...own} {...clickable}>
                   {columns.map((c) => (
                     <TableCell key={c.key} align={c.align} sx={c.sx}>{c.render(row)}</TableCell>
                   ))}
@@ -109,7 +136,7 @@ function Cards<T>({ rows, columns, rowKey, ariaLabel, cardLabel, actions, below,
       {rows.map((row) => {
         const label = cardLabel(row)
         const extra = below?.(row)
-        const title = primary.map((c) => <Box key={c.key}>{c.render(row)}</Box>)
+        const title = primary.map((c) => <Box key={c.key} component="span" sx={{ display: 'block' }}>{c.render(row)}</Box>)
         return (
           <ListItem key={rowKey(row)} disableGutters disablePadding>
             <Paper component="article" variant="outlined" aria-label={label} id={rowId?.(row)} sx={{ p: 2, width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -132,10 +159,10 @@ function Cards<T>({ rows, columns, rowKey, ariaLabel, cardLabel, actions, below,
                 </Typography>
               ))}
               {meta.length > 0 && (
-                <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', rowGap: 0.5, columnGap: 1, m: 0 }}>
+                <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'fit-content(40%) minmax(0, 1fr)', rowGap: 0.5, columnGap: 1, m: 0 }}>
                   {meta.map((c) => (
                     <Fragment key={c.key}>
-                      <Typography component="dt" variant="body2" color="text.secondary">{c.label}</Typography>
+                      <Typography component="dt" variant="body2" color="text.secondary" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>{c.label}</Typography>
                       <Typography component="dd" variant="body2" sx={{ m: 0, minWidth: 0, overflowWrap: 'anywhere' }}>{c.render(row)}</Typography>
                     </Fragment>
                   ))}

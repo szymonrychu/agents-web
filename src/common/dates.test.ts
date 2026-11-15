@@ -14,3 +14,9 @@ test('an unparsable value is returned unchanged', () => {
 test('the full form names the weekday', () => {
   expect(formatDateTimeFull('2026-11-15T10:05:00Z', { timeZone: 'UTC', locale: 'en-GB' })).toContain('Sunday')
 })
+
+test('an invalid time zone falls back to the viewer zone instead of throwing', () => {
+  const iso = '2026-11-15T10:05:00Z'
+  expect(formatDateTime(iso, { timeZone: 'Not/AZone', locale: 'en-GB' })).toBe(formatDateTime(iso, { locale: 'en-GB' }))
+  expect(formatDateTimeFull(iso, { timeZone: 'Not/AZone', locale: 'en-GB' })).toBe(formatDateTimeFull(iso, { locale: 'en-GB' }))
+})

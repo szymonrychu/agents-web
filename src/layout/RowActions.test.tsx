@@ -54,8 +54,8 @@ test('disabled and expanded carry over', () => {
   cleanup()
   mount([{ label: 'Delete', disabled: true, onClick: () => {} }, { label: 'Runs', expanded: false, onClick: () => {} }], true)
   fireEvent.click(screen.getByRole('button', { name: 'Actions for a' }))
-  expect(screen.getByRole('menuitem', { name: 'Delete' }).getAttribute('aria-disabled')).toBe('true')
-  expect(screen.getByRole('menuitem', { name: 'Runs' }).getAttribute('aria-expanded')).toBe('false')
+  expect(screen.getByRole('menuitem', { name: 'Delete a' }).getAttribute('aria-disabled')).toBe('true')
+  expect(screen.getByRole('menuitem', { name: 'Runs a' }).getAttribute('aria-expanded')).toBe('false')
 })
 
 test('no actions renders nothing', () => {
@@ -66,4 +66,28 @@ test('no actions renders nothing', () => {
   setViewport(375, { coarse: true })
   const phone = mount([])
   expect(phone.container.innerHTML).toBe('')
+})
+
+test('menu items carry the row name by default', () => {
+  setViewport(375, { coarse: true })
+  mount([{ label: 'Delete', onClick: () => {} }, { label: 'Edit', ariaLabel: 'Change a', onClick: () => {} }])
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for a' }))
+  expect(screen.getByRole('menuitem', { name: 'Delete a' })).toBeTruthy()
+  expect(screen.getByRole('menuitem', { name: 'Change a' })).toBeTruthy()
+})
+
+test('duplicate labels render every action without a key clash', () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    setViewport(1440)
+    mount([{ label: 'Run', onClick: () => {} }, { label: 'Run', onClick: () => {} }])
+    expect(screen.getAllByRole('button', { name: 'Run' })).toHaveLength(2)
+    cleanup()
+    mount([{ label: 'Run', onClick: () => {} }, { label: 'Run', onClick: () => {} }], true)
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for a' }))
+    expect(screen.getAllByRole('menuitem', { name: 'Run a' })).toHaveLength(2)
+    expect(error.mock.calls.flat().join(' ')).not.toMatch(/same key/)
+  } finally {
+    error.mockRestore()
+  }
 })

@@ -7,7 +7,7 @@ export interface RowAction {
   /** Visible text: the button text, the menu item text. */
   label: string
   onClick: () => void
-  /** Accessible name, e.g. `Edit ${name}`; default label. */
+  /** Accessible name, e.g. `Edit ${name}`; default the label inline and `${label} ${name}` in the menu. */
   ariaLabel?: string
   color?: 'primary' | 'error'
   disabled?: boolean
@@ -17,7 +17,7 @@ export interface RowAction {
 
 export interface RowActionsProps {
   actions: readonly RowAction[]
-  /** The row's name, for the menu button's accessible name. */
+  /** The row's name, for the accessible names of the menu button and its items. */
   name: string
   /** One kebab menu instead of inline buttons; default on phones. */
   menu?: boolean
@@ -33,8 +33,8 @@ export function RowActions({ actions, name, menu }: RowActionsProps): JSX.Elemen
   if (!asMenu) {
     return (
       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-        {actions.map((a) => (
-          <Button key={a.label} size="small" color={a.color} disabled={a.disabled} aria-label={a.ariaLabel ?? a.label} aria-expanded={a.expanded} onClick={a.onClick}>
+        {actions.map((a, i) => (
+          <Button key={i} size="small" color={a.color} disabled={a.disabled} aria-label={a.ariaLabel ?? a.label} aria-expanded={a.expanded} onClick={a.onClick}>
             {a.label}
           </Button>
         ))}
@@ -55,11 +55,11 @@ export function RowActions({ actions, name, menu }: RowActionsProps): JSX.Elemen
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu anchorEl={anchor} open={open} onClose={() => setAnchor(null)} slotProps={{ list: { id: menuId } }}>
-        {actions.map((a) => (
+        {actions.map((a, i) => (
           <MenuItem
-            key={a.label}
+            key={i}
             disabled={a.disabled}
-            aria-label={a.ariaLabel ?? a.label}
+            aria-label={a.ariaLabel ?? `${a.label} ${name}`}
             aria-expanded={a.expanded}
             sx={a.color === 'error' ? { color: 'error.main' } : undefined}
             onClick={() => {
