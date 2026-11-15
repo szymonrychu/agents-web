@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { emittedCssFor } from '../test/emittedCss'
 import { theme } from '../theme'
 import { ApiError } from '../api/client'
 import type { EntryView } from './api'
@@ -471,5 +472,16 @@ describe('detail', () => {
     await u.click(card('github').getByRole('button', { name: 'Details' }))
     const panel = within(await screen.findByRole('region', { name: 'Entry detail' }))
     expect(await panel.findByText(/entry.updated by user:alice@example.com/)).toBeTruthy()
+  })
+})
+
+describe('filter row', () => {
+  test('the text filter is full width on a phone and 240px from sm up', async () => {
+    mount()
+    await screen.findByText('registry')
+    const css = emittedCssFor(screen.getByRole('textbox', { name: 'Filter' }).closest('.MuiTextField-root')!)
+    expect(css).toContain('width:100%')
+    expect(css).toContain('width:240px')
+    expect(css).not.toContain('min-width:240px')
   })
 })

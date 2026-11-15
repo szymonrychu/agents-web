@@ -122,7 +122,7 @@ describe('ValueDiff', () => {
     expect(getComputedStyle(host).overflow).toBe('auto')
     // jsdom resolves vh to pixels in computed styles, so check the emitted rule
     const css = Array.from(document.querySelectorAll('style'), (el) => el.textContent ?? '').join('')
-    expect(css).toMatch(/max-height:60vh/)
+    expect(css).toMatch(/max-height:60dvh/)
     expect(css).not.toMatch(/height:360px/)
   })
 

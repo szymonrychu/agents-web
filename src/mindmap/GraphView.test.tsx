@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
+import { emittedCss } from '../test/emittedCss'
 import { GraphView } from './GraphView'
 import { nodeView, subgraph } from './testUtils'
 
@@ -105,4 +106,9 @@ describe('GraphView', () => {
     await waitFor(() => expect(api.createEdge).toHaveBeenCalledWith({ src: 'N-2', dst: 'N-3', kind: 'relates_to', note: '' }))
     expect(props.onChanged).toHaveBeenCalled()
   })
+})
+
+test('connection handles grow to a 20px touch size on a coarse pointer', () => {
+  mount()
+  expect(emittedCss()).toMatch(/@media \(pointer: coarse\) ?\{[^{}]*react-flow__handle ?\{width:20px;height:20px;\}/)
 })
