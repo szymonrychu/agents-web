@@ -12,6 +12,7 @@ import {
   TOUCH_OR_SMALL,
   TOUCH_TARGET_PX,
   hitArea44,
+  hitBox44,
   terminalTheme,
   theme,
 } from './theme'
@@ -223,7 +224,10 @@ describe('44px touch targets on coarse pointers', () => {
   it('checkbox, radio and switch get a 44px hit box', () => {
     expect(so('MuiCheckbox').root[COARSE]).toMatchObject({ minWidth: 44, minHeight: 44 })
     expect(so('MuiRadio').root[COARSE]).toMatchObject({ minWidth: 44, minHeight: 44 })
-    expect(so('MuiSwitch').switchBase[COARSE]).toMatchObject(hitArea44)
+    // the Switch base is absolutely positioned by MUI: a position here would break the thumb
+    expect(so('MuiSwitch').switchBase[COARSE]).not.toHaveProperty('position')
+    expect(so('MuiSwitch').switchBase[COARSE]['&::after']).toEqual(hitArea44['&::after'])
+    expect(hitArea44).toEqual({ position: 'relative', ...hitBox44 })
   })
 
   it('clickable chips get the invisible hit area, the root stays', () => {
