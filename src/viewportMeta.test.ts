@@ -25,4 +25,11 @@ describe('index.html and index.css', () => {
     expect(css).toMatch(/html\s*\{[^}]*touch-action:\s*manipulation/)
     expect(css).toMatch(/html,\s*body\s*\{[^}]*overscroll-behavior:\s*none/)
   })
+
+  test('#root follows the visual viewport; html and body keep the 100vh then 100dvh fallback', () => {
+    const root = /#root\s*\{([^}]*)\}/.exec(css.replace(/html,\s*body,\s*#root/, ''))?.[1] ?? ''
+    expect(root).toContain('height: var(--app-height, 100dvh)')
+    expect(root).toContain('translateY(var(--app-top, 0px))')
+    expect(css).toMatch(/html,\s*body,\s*#root\s*\{[^}]*height:\s*100vh;\s*height:\s*100dvh/)
+  })
 })

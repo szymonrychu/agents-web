@@ -39,7 +39,7 @@ function NotFound() {
 export function SpecsRoute() {
   return (
     <Routes>
-      <Route index element={<Box data-testid="specs-list-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', ...safeArea(['top', 'right', 'bottom', 'left']) }}><SpecsPage /></Box>} />
+      <Route index element={<Box data-testid="specs-list-route" sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, ...safeArea(['top', 'right', 'bottom', 'left']) }}><SpecsPage /></Box>} />
       <Route path=":key" element={<SpecRoute />} />
       <Route path=":key/doc/*" element={<DocRoute />} />
       <Route path="*" element={<NotFound />} />

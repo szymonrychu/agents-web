@@ -26,6 +26,7 @@ import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
 import { safeArea } from './layout/safeArea'
+import { useVisualViewport } from './layout/useVisualViewport'
 import { useAttention } from './attention/useAttention'
 import { DecisionsPreviewDialog } from './attention/DecisionsPreviewDialog'
 
@@ -83,7 +84,7 @@ function SessionsShell() {
     select(id)
   }
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
       <TopBar
         sessions={sessions}
         selectedId={selectedId}
@@ -141,6 +142,7 @@ function SessionsShell() {
 }
 
 export default function App() {
+  useVisualViewport()
   return (
     <>
       <SessionExpiredBanner />

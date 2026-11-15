@@ -40,6 +40,14 @@ describe('specs routes', () => {
     expect(screen.getByTestId('specs-list-route')).toBeTruthy()
   })
 
+  test('the list root follows #root instead of pinning 100dvh', () => {
+    at('/specs')
+    const css = emittedCssFor(screen.getByTestId('specs-list-route'))
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
+  })
+
   test('/specs/S-5 renders the spec route with the key', () => {
     at('/specs/S-5')
     expect(screen.getByTestId('spec-route').getAttribute('data-key')).toBe('S-5')

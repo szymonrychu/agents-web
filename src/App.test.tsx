@@ -107,6 +107,15 @@ describe('App', () => {
     for (const side of ['left', 'right', 'bottom']) expect(css).toContain(`env(safe-area-inset-${side})`)
   })
 
+  test('the shell follows #root instead of pinning 100dvh', async () => {
+    mount()
+    const shell = (await screen.findByRole('main')).parentElement!
+    const css = emittedCssFor(shell)
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
+  })
+
   test('proposals_auto_open_shows_the_dialog_and_the_chip_reopens_it', async () => {
     proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
     mount()

@@ -31,6 +31,14 @@ describe('tasks routes', () => {
     expect(screen.getByTestId('tasks-list-route')).toBeTruthy()
   })
 
+  test('the list root follows #root instead of pinning 100dvh', () => {
+    at('/tasks')
+    const css = emittedCssFor(screen.getByTestId('tasks-list-route'))
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
+  })
+
   test('/tasks/T-5 renders the detail route with the key', () => {
     at('/tasks/T-5')
     expect(screen.getByTestId('task-route').getAttribute('data-key')).toBe('T-5')

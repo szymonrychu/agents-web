@@ -8,7 +8,7 @@ export { mapPath }
 
 function Page() {
   return (
-    <Box data-testid="mindmaps-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', p: 2, boxSizing: 'border-box', ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
+    <Box data-testid="mindmaps-route" sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, p: 2, boxSizing: 'border-box', ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
       <MindmapsPage />
     </Box>
   )

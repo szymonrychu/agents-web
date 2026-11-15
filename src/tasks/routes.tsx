@@ -29,7 +29,7 @@ function NotFound() {
 export function TasksRoute() {
   return (
     <Routes>
-      <Route index element={<Box data-testid="tasks-list-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', ...safeArea(['top', 'right', 'bottom', 'left']) }}><TasksPage /></Box>} />
+      <Route index element={<Box data-testid="tasks-list-route" sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, ...safeArea(['top', 'right', 'bottom', 'left']) }}><TasksPage /></Box>} />
       <Route path=":key" element={<TaskRoute />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
