@@ -1,5 +1,5 @@
 /** Projects: list with preset, session, task and decision counts; create, edit and archive. */
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -9,17 +9,13 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { isConfigured } from '../config/backends'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
+import type { RowAction } from '../layout/RowActions'
 import { FormError, usePoll } from '../triggers'
 import { useProject } from './ProjectContext'
 import { ProjectRoom } from './ProjectRoom'
@@ -28,7 +24,6 @@ import type { ProjectQueue } from './autostartApi'
 import { SpecQueuePanel } from './SpecQueuePanel'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
-import { TABLE_SCROLL_SX } from '../layout/tables'
 
 
 const POLL_MS = 15_000
@@ -122,68 +117,52 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
     if (p) void setArchived(p, true)
   }
 
+  const actions = (p: Project): RowAction[] => [
+    ...(autostart ? [{ label: 'Autostart', expanded: expanded === p.slug, onClick: () => setExpanded(expanded === p.slug ? null : p.slug) }] : []),
+    { label: 'Room', onClick: () => setRoom(p.slug) },
+    { label: 'Edit', onClick: () => setEditing({ mode: 'edit', project: p }) },
+    p.archived
+      ? { label: 'Restore', onClick: () => void setArchived(p, false) }
+      : { label: 'Archive', color: 'error' as const, disabled: p.slug === 'default', onClick: () => setArchiving(p) },
+  ]
+  const columns: Column<Project>[] = [
+    {
+      key: 'project', label: 'Project', role: 'primary',
+      render: (p) => {
+        const queued = queuedOf(p.slug)
+        return (
+          <>
+            {p.name} <Typography component="span" color="text.secondary">({p.slug})</Typography>
+            {p.archived && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}
+            {queued > 0 && <Chip size="small" color="info" label={`${queued} queued`} sx={{ ml: 1 }} />}
+          </>
+        )
+      },
+    },
+    { key: 'description', label: 'Description', role: 'secondary', render: (p) => p.description },
+    { key: 'presets', label: 'Presets', role: 'meta', align: 'right', render: (p) => count(p.presets) },
+    { key: 'sessions', label: 'Sessions', role: 'meta', align: 'right', render: (p) => count(p.sessions) },
+    { key: 'open', label: 'Open tasks', role: 'meta', align: 'right', render: (p) => count(summaryOf(p.slug)?.open_tasks) },
+    { key: 'waiting', label: 'Waiting decisions', role: 'meta', align: 'right', render: (p) => count(summaryOf(p.slug)?.waiting_decisions) },
+  ]
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Projects</Typography>
+      <PageHeader title="Projects" onBack={onBack}>
         <FormControlLabel control={<Switch checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />} label="Archived only" />
         <Button variant="contained" onClick={() => setEditing({ mode: 'create' })}>New project</Button>
-      </Box>
+      </PageHeader>
       <FormError error={actionError} />
       <FormError error={error} />
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Project</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell align="right">Presets</TableCell>
-            <TableCell align="right">Sessions</TableCell>
-            <TableCell align="right">Open tasks</TableCell>
-            <TableCell align="right">Waiting decisions</TableCell>
-            <TableCell />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(data ?? []).map((p) => {
-            const s = summaryOf(p.slug)
-            const queued = queuedOf(p.slug)
-            return (
-              <Fragment key={p.slug}>
-              <TableRow>
-                <TableCell>
-                  {p.name} <Typography component="span" color="text.secondary">({p.slug})</Typography>
-                  {p.archived && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}
-                  {queued > 0 && <Chip size="small" color="info" label={`${queued} queued`} sx={{ ml: 1 }} />}
-                </TableCell>
-                <TableCell>{p.description}</TableCell>
-                <TableCell align="right">{count(p.presets)}</TableCell>
-                <TableCell align="right">{count(p.sessions)}</TableCell>
-                <TableCell align="right">{count(s?.open_tasks)}</TableCell>
-                <TableCell align="right">{count(s?.waiting_decisions)}</TableCell>
-                <TableCell align="right">
-                  {autostart && <Button size="small" aria-expanded={expanded === p.slug} onClick={() => setExpanded(expanded === p.slug ? null : p.slug)}>Autostart</Button>}
-                  <Button size="small" onClick={() => setRoom(p.slug)}>Room</Button>
-                  <Button size="small" onClick={() => setEditing({ mode: 'edit', project: p })}>Edit</Button>
-                  {p.archived ? (
-                    <Button size="small" onClick={() => void setArchived(p, false)}>Restore</Button>
-                  ) : (
-                    <Button size="small" color="error" disabled={p.slug === 'default'} onClick={() => setArchiving(p)}>Archive</Button>
-                  )}
-                </TableCell>
-              </TableRow>
-              {autostart && expanded === p.slug && (
-                <TableRow>
-                  <TableCell colSpan={7}><SpecQueuePanel project={p.slug} /></TableCell>
-                </TableRow>
-              )}
-              </Fragment>
-            )
-          })}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable
+        rows={data ?? []}
+        columns={columns}
+        rowKey={(p) => p.slug}
+        ariaLabel="Projects"
+        cardLabel={(p) => `Project ${p.name}`}
+        actions={actions}
+        below={(p) => (autostart && expanded === p.slug ? <SpecQueuePanel project={p.slug} /> : null)}
+      />
       {editing && (
         <ProjectDialog
           editing={editing}

@@ -8,7 +8,7 @@ import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { ProjectQueue, QueueItem } from './autostartApi'
 import { SpecQueuePanel } from './SpecQueuePanel'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listSpecQueue: vi.fn(), moveQueued: vi.fn(), removeQueued: vi.fn(), putAutostart: vi.fn() }))
 vi.mock('./autostartApi', async (orig) => ({ ...(await orig<typeof import('./autostartApi')>()), ...api }))
@@ -23,6 +23,7 @@ const mount = () => render(<MemoryRouter><ThemeProvider theme={theme}><SpecQueue
 const rows = () => within(screen.getByRole('table', { name: 'Spec queue' })).getAllByRole('row').slice(1)
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of Object.values(api)) f.mockReset()
   api.listSpecQueue.mockResolvedValue([queue()])
   api.moveQueued.mockResolvedValue(queue())
@@ -136,10 +137,43 @@ describe('SpecQueuePanel', () => {
   })
 })
 
-describe('SpecQueuePanel phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('SpecQueuePanel on phones', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('one card per queued spec with its title, age and a move menu', async () => {
+    mount()
+    const card = await screen.findByRole('article', { name: 'Queued S-12' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(3)
+    const c = within(card)
+    expect(c.getByRole('link', { name: 'S-12' }).getAttribute('href')).toBe('/specs/S-12')
+    expect(c.getByText('Title 12')).toBeTruthy()
+    for (const label of ['#', 'Queued']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('3h ago')).toBeTruthy()
+    await userEvent.click(c.getByRole('button', { name: 'Actions for Queued S-12' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Move S-12 up' }))
+    await waitFor(() => expect(api.moveQueued).toHaveBeenCalledWith(12, { position: 1 }))
+  })
+
+  test('there is no drop-at-end target on phones', async () => {
+    mount()
+    await screen.findByRole('article', { name: 'Queued S-11' })
+    expect(screen.queryByText('Drop here to move to the end')).toBeNull()
+  })
+
+  test('an empty queue says so', async () => {
+    api.listSpecQueue.mockResolvedValue([queue({ items: [] })])
+    mount()
+    expect(await screen.findByText('Queue is empty')).toBeTruthy()
+  })
+})
+
+describe('SpecQueuePanel on a wide screen', () => {
+  test('is a table with every column and the actions inline', async () => {
     mount()
     await screen.findByText('Title 11')
-    expect(phoneColumnProblems(screen.getByRole('table', { name: 'Spec queue' }), [], ['#', 'Spec', 'Title', 'Queued'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Spec queue' })
+    for (const h of ['#', 'Spec', 'Title', 'Queued']) expect(within(table).getByRole('columnheader', { name: h })).toBeTruthy()
+    expect(within(table).getByRole('button', { name: 'Move S-11 down' })).toBeTruthy()
   })
 })

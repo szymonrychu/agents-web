@@ -1,16 +1,7 @@
 /** Autostart limits and the reorderable start queue of one project. */
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
@@ -18,10 +9,12 @@ import { Link as RouterLink } from 'react-router'
 import { ApiError } from '../api/client'
 import { formatAge, useNow } from '../chat/agentAge'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
+import type { RowAction } from '../layout/RowActions'
+import { useLayout } from '../layout/useLayout'
 import { FormError, usePoll } from '../triggers'
 import { moveQueued, listSpecQueue, putAutostart, removeQueued, STATE_TEXT } from './autostartApi'
 import type { ProjectQueue, QueueItem } from './autostartApi'
-import { TABLE_SCROLL_SX } from '../layout/tables'
 
 
 const POLL_MS = 10_000
@@ -41,6 +34,7 @@ function parseLimit(text: string, max: number): number | null | undefined {
 export function SpecQueuePanel({ project }: { project: string }) {
   const { data, error, refresh } = usePoll(async () => (await listSpecQueue(project)).find((q) => q.project === project) ?? OFF(project), POLL_MS, [project])
   const now = useNow()
+  const phone = useLayout() === 'phone'
   const [sessions, setSessions] = useState<string | null>(null)
   const [usage, setUsage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -96,6 +90,18 @@ export function SpecQueuePanel({ project }: { project: string }) {
     if (item) void move(item, { position: items.length })
   }
 
+  const actions = (item: QueueItem): RowAction[] => [
+    { label: 'Move up', ariaLabel: `Move ${item.spec} up`, disabled: busy || item.id === items[0]?.id, onClick: () => void move(item, { position: item.position - 1 }) },
+    { label: 'Move down', ariaLabel: `Move ${item.spec} down`, disabled: busy || item.id === items[items.length - 1]?.id, onClick: () => void move(item, { position: item.position + 1 }) },
+    { label: 'Remove', ariaLabel: `Remove ${item.spec}`, color: 'error', disabled: busy, onClick: () => setRemoving(item) },
+  ]
+  const columns: Column<QueueItem>[] = [
+    { key: 'position', label: '#', role: 'meta', render: (item) => item.position },
+    { key: 'spec', label: 'Spec', role: 'primary', render: (item) => <RouterLink to={`/specs/${encodeURIComponent(item.spec)}`}>{item.spec}</RouterLink> },
+    { key: 'title', label: 'Title', role: 'secondary', render: (item) => item.title },
+    { key: 'queued', label: 'Queued', role: 'meta', render: (item) => `${formatAge(now - Date.parse(item.created_at))} ago` },
+  ]
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -125,54 +131,32 @@ export function SpecQueuePanel({ project }: { project: string }) {
       <FormError error={error} />
       <FormError error={actionError} />
       {notice && <Alert severity="warning">{notice}</Alert>}
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small" aria-label="Spec queue">
-        <TableHead>
-          <TableRow>
-            <TableCell>#</TableCell>
-            <TableCell>Spec</TableCell>
-            <TableCell>Title</TableCell>
-            <TableCell>Queued</TableCell>
-            <TableCell />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((item, i) => (
-            <TableRow
-              key={item.id}
-              hover
-              draggable={!busy}
-              onDragStart={() => setDragged(item.id)}
-              onDragEnd={() => setDragged(null)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault()
-                dropOn(item)
-              }}
-              sx={{ cursor: busy ? 'default' : 'grab' }}
-            >
-              <TableCell>{item.position}</TableCell>
-              <TableCell><RouterLink to={`/specs/${encodeURIComponent(item.spec)}`}>{item.spec}</RouterLink></TableCell>
-              <TableCell>{item.title}</TableCell>
-              <TableCell>{`${formatAge(now - Date.parse(item.created_at))} ago`}</TableCell>
-              <TableCell align="right">
-                <IconButton size="small" aria-label={`Move ${item.spec} up`} disabled={busy || i === 0} onClick={() => void move(item, { position: item.position - 1 })}><ArrowUpwardIcon fontSize="inherit" /></IconButton>
-                <IconButton size="small" aria-label={`Move ${item.spec} down`} disabled={busy || i === items.length - 1} onClick={() => void move(item, { position: item.position + 1 })}><ArrowDownwardIcon fontSize="inherit" /></IconButton>
-                <Button size="small" color="error" aria-label={`Remove ${item.spec}`} disabled={busy} onClick={() => setRemoving(item)}>Remove</Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {items.length === 0 && (
-            <TableRow><TableCell colSpan={5}><Typography color="text.secondary">Queue is empty</Typography></TableCell></TableRow>
-          )}
-          {items.length > 0 && dragged !== null && (
-            <TableRow onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); dropAtEnd() }}>
-              <TableCell colSpan={5}><Typography color="text.secondary">Drop here to move to the end</Typography></TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable
+        rows={items}
+        columns={columns}
+        rowKey={(item) => String(item.id)}
+        ariaLabel="Spec queue"
+        cardLabel={(item) => `Queued ${item.spec}`}
+        actions={actions}
+        empty={<Typography color="text.secondary">Queue is empty</Typography>}
+        rowProps={(item) => ({
+          hover: true,
+          draggable: !busy,
+          onDragStart: () => setDragged(item.id),
+          onDragEnd: () => setDragged(null),
+          onDragOver: (e) => e.preventDefault(),
+          onDrop: (e) => {
+            e.preventDefault()
+            dropOn(item)
+          },
+          sx: { cursor: busy ? 'default' : 'grab' },
+        })}
+      />
+      {items.length > 0 && !phone && dragged !== null && (
+        <Box onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); dropAtEnd() }}>
+          <Typography color="text.secondary">Drop here to move to the end</Typography>
+        </Box>
+      )}
       <ConfirmDialog
         open={removing !== null}
         title={`Remove ${removing?.spec ?? ''} from the queue?`}

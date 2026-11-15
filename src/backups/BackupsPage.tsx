@@ -3,12 +3,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { useCallback, useEffect, useState } from 'react'
 import { archiveDownloadUrl, deleteArchives, listArchives } from '../api/archives'
@@ -16,13 +10,13 @@ import type { ArchiveView } from '../api/archives'
 import { ApiError } from '../api/client'
 import { formatAge, useNow } from '../chat/agentAge'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
-import { TOKENS } from '../theme'
+import { PageHeader } from '../layout/PageHeader'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 import { FormError } from '../triggers'
 import type { FormErrorValue } from '../triggers'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
 import { CleanupSettingsCard } from './CleanupSettingsCard'
 import { formatBytes } from './format'
-import { TABLE_SCROLL_SX } from '../layout/tables'
 
 
 export interface BackupsPageProps {
@@ -85,13 +79,32 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
     }
   }
 
+  const columns: Column<ArchiveView>[] = [
+    {
+      key: 'name', label: 'Name', role: 'primary', sx: { wordBreak: 'normal' },
+      render: (a) => (
+        <>
+          <Box component="span" sx={{ fontFamily: 'monospace' }}>{a.name}</Box>
+          {a.protected && <Chip size="small" color="warning" label="protected" sx={{ ml: 1 }} />}
+        </>
+      ),
+    },
+    { key: 'size', label: 'Size', role: 'meta', align: 'right', render: (a) => formatBytes(a.size) },
+    { key: 'age', label: 'Age', role: 'meta', render: (a) => `${formatAge(now - Date.parse(a.last_modified))} ago` },
+    { key: 'referenced', label: 'Referenced by', role: 'meta', render: (a) => a.referenced_by.join(', ') },
+    {
+      key: 'download', label: 'Download', role: 'control',
+      render: (a) => (
+        <Link href={archiveDownloadUrl(a.key)} download aria-label={`Download ${a.name}`} sx={{ display: 'inline-flex', alignItems: 'center', '@media (pointer: coarse)': { minHeight: 44 } }}>Download</Link>
+      ),
+    },
+  ]
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button onClick={onBack}>Back</Button>
-        <Typography component="h1" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Backups</Typography>
+      <PageHeader title="Backups" onBack={onBack}>
         {!notConfigured && <Button variant="outlined" onClick={() => setPreviewing(true)}>Cleanup preview</Button>}
-      </Box>
+      </PageHeader>
       <FormError error={error} />
       {!notConfigured && <CleanupSettingsCard />}
       {notConfigured ? (
@@ -100,32 +113,14 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
         <Typography color="text.secondary">No archives yet</Typography>
       ) : (
         items && (
-          <TableContainer sx={TABLE_SCROLL_SX}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                {['Name', 'Size', 'Age', 'Referenced by', ''].map((h, i) => <TableCell key={i} align={h === 'Size' ? 'right' : undefined}>{h}</TableCell>)}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((a) => (
-                <TableRow key={a.key}>
-                  <TableCell sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
-                    {a.name}
-                    {a.protected && <Chip size="small" color="warning" label="protected" sx={{ ml: 1 }} />}
-                  </TableCell>
-                  <TableCell align="right">{formatBytes(a.size)}</TableCell>
-                  <TableCell>{`${formatAge(now - Date.parse(a.last_modified))} ago`}</TableCell>
-                  <TableCell>{a.referenced_by.join(', ')}</TableCell>
-                  <TableCell align="right">
-                    <Link href={archiveDownloadUrl(a.key)} download aria-label={`Download ${a.name}`} sx={{ mr: 1 }}>Download</Link>
-                    <Button size="small" color="error" disabled={a.protected} aria-label={`Delete ${a.name}`} onClick={() => setDeleting(a)}>Delete</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </TableContainer>
+          <ResponsiveTable
+            rows={items}
+            columns={columns}
+            rowKey={(a) => a.key}
+            ariaLabel="Backups"
+            cardLabel={(a) => `Backup ${a.name}`}
+            actions={(a) => [{ label: 'Delete', ariaLabel: `Delete ${a.name}`, color: 'error', disabled: a.protected, onClick: () => setDeleting(a) }]}
+          />
         )
       )}
       {cursor !== null && <Button onClick={() => void loadMore()}>Load more</Button>}

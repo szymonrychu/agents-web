@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { CleanupSettingsView } from '../api/archives'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
+import { emittedInMedia } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { CleanupSettingsCard, FIELDS, RUN_POLL_MS } from './CleanupSettingsCard'
 
 const api = vi.hoisted(() => ({ getCleanupSettings: vi.fn(), putCleanupSettings: vi.fn(), runCleanupNow: vi.fn() }))
@@ -44,14 +46,33 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+describe('CleanupSettingsCard on phones', () => {
+  test('number fields stack one per row on phones with short labels and units', async () => {
+    setViewport(375, { coarse: true })
+    api.getCleanupSettings.mockResolvedValue(VIEW)
+    mount()
+    for (const label of ['Retention', 'Keep newest', 'Interval', 'Grace']) {
+      expect((await screen.findByRole('spinbutton', { name: label })) as HTMLInputElement).toBeTruthy()
+    }
+    const box = screen.getByRole('spinbutton', { name: 'Retention' }).closest('.MuiTextField-root')!.parentElement as HTMLElement
+    expect(emittedInMedia(box, '(min-width:0px)')).toContain('grid-template-columns:1fr')
+    expect(emittedInMedia(box, '(min-width:600px)')).toContain('grid-template-columns:repeat(2,minmax(0,1fr))')
+    expect(screen.getByText('days')).toBeTruthy()
+    expect(screen.getAllByText('s')).toHaveLength(2)
+    expect(screen.getByText('per name')).toBeTruthy()
+    await setNumber('Retention', '0')
+    expect(await screen.findByText('Must be 1 to 3650')).toBeTruthy()
+  })
+})
+
 describe('CleanupSettingsCard', () => {
   test('shows the deployment defaults when nothing is saved', async () => {
     mount()
     expect(await screen.findByText('Using deployment defaults (not saved)')).toBeTruthy()
-    expect((await input('Retention (days)')).value).toBe('30')
-    expect((await input('Keep newest per name')).value).toBe('3')
-    expect((await input('Interval (seconds)')).value).toBe('21600')
-    expect((await input('Grace (seconds)')).value).toBe('2400')
+    expect((await input('Retention')).value).toBe('30')
+    expect((await input('Keep newest')).value).toBe('3')
+    expect((await input('Interval')).value).toBe('21600')
+    expect((await input('Grace')).value).toBe('2400')
     expect((await input('Sweep enabled')).checked).toBe(true)
     expect((await input('Dry run')).checked).toBe(true)
     expect(screen.getByRole('region', { name: 'Cleanup settings' })).toBeTruthy()
@@ -65,19 +86,19 @@ describe('CleanupSettingsCard', () => {
 
   test('Save is disabled until something changes', async () => {
     mount()
-    await input('Retention (days)')
+    await input('Retention')
     expect(save().disabled).toBe(true)
-    await setNumber('Retention (days)', '14')
+    await setNumber('Retention', '14')
     expect(save().disabled).toBe(false)
-    await setNumber('Retention (days)', '30')
+    await setNumber('Retention', '30')
     expect(save().disabled).toBe(true)
   })
 
   test.each([
-    ['Retention (days)', '0', '1 to 3650'],
-    ['Keep newest per name', '1001', '1 to 1000'],
-    ['Interval (seconds)', '59', '60 to 2592000'],
-    ['Grace (seconds)', '-1', '0 to 604800'],
+    ['Retention', '0', '1 to 3650'],
+    ['Keep newest', '1001', '1 to 1000'],
+    ['Interval', '59', '60 to 2592000'],
+    ['Grace', '-1', '0 to 604800'],
   ])('an out-of-range value disables Save and explains the range: %s = %s', async (label, value, range) => {
     mount()
     await setNumber(label, value)
@@ -87,7 +108,7 @@ describe('CleanupSettingsCard', () => {
 
   test('an empty field disables Save', async () => {
     mount()
-    const el = await input('Retention (days)')
+    const el = await input('Retention')
     await userEvent.clear(el)
     expect(save().disabled).toBe(true)
   })
@@ -95,11 +116,11 @@ describe('CleanupSettingsCard', () => {
   test('Save sends all six fields as numbers and shows the stored result', async () => {
     api.putCleanupSettings.mockResolvedValue({ ...SAVED, policy: { ...POLICY, retention_days: 14 }, updated_at: '2026-11-02T12:00:00Z' })
     mount()
-    await setNumber('Retention (days)', '14')
+    await setNumber('Retention', '14')
     await userEvent.click(save())
     await waitFor(() => expect(api.putCleanupSettings).toHaveBeenCalledWith({ enabled: true, dry_run: true, retention_days: 14, keep_newest: 3, interval_seconds: 21600, grace_seconds: 2400 }))
     expect(await screen.findByText('Saved 0s ago')).toBeTruthy()
-    expect((await input('Retention (days)')).value).toBe('14')
+    expect((await input('Retention')).value).toBe('14')
     expect(save().disabled).toBe(true)
   })
 
@@ -122,7 +143,7 @@ describe('CleanupSettingsCard', () => {
     api.getCleanupSettings.mockResolvedValue({ ...SAVED, policy: live })
     api.putCleanupSettings.mockResolvedValue({ ...SAVED, policy: { ...live, retention_days: 7 } })
     mount()
-    await setNumber('Retention (days)', '7')
+    await setNumber('Retention', '7')
     await userEvent.click(save())
     await waitFor(() => expect(api.putCleanupSettings).toHaveBeenCalled())
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -131,11 +152,11 @@ describe('CleanupSettingsCard', () => {
   test('a refused save shows the error and does not pretend it saved', async () => {
     api.putCleanupSettings.mockRejectedValue(new ApiError(422, 'invalid_request', 'body.retention_days: must be at least 1'))
     mount()
-    await setNumber('Retention (days)', '14')
+    await setNumber('Retention', '14')
     await userEvent.click(save())
     expect(await screen.findByText(/body\.retention_days: must be at least 1/)).toBeTruthy()
     expect(screen.getByText('Using deployment defaults (not saved)')).toBeTruthy()
-    expect((await input('Retention (days)')).value).toBe('14')
+    expect((await input('Retention')).value).toBe('14')
     expect(save().disabled).toBe(false)
   })
 
@@ -271,9 +292,9 @@ describe('CleanupSettingsCard run polling', () => {
   test('keeps unsaved edits while polling', async () => {
     api.getCleanupSettings.mockResolvedValue(PENDING)
     await mountAndLoad()
-    await act(async () => { fireEvent.change(screen.getByLabelText('Retention (days)'), { target: { value: '14' } }) })
+    await act(async () => { fireEvent.change(screen.getByLabelText('Retention'), { target: { value: '14' } }) })
     await flush(RUN_POLL_MS)
-    expect((screen.getByLabelText('Retention (days)') as HTMLInputElement).value).toBe('14')
+    expect((screen.getByLabelText('Retention') as HTMLInputElement).value).toBe('14')
   })
 
   test('stops polling when unmounted', async () => {
