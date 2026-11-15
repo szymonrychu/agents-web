@@ -3,6 +3,7 @@
  *
  * Fonts come from the system stacks (no web-font download: the UI must work offline and under CSP).
  */
+import type {} from '@mui/x-tree-view/themeAugmentation'
 import { createTheme } from '@mui/material/styles'
 import { safeInset } from './layout/safeArea'
 
@@ -159,6 +160,20 @@ const touchSized = {
   [COARSE]: { minHeight: TOUCH_TARGET_PX, minWidth: TOUCH_TARGET_PX },
 }
 
+/** An invisible 44px hit box centred on a small visible control (checkbox thumb, chip); the layout box does not change. */
+export const hitArea44 = {
+  position: 'relative',
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: TOUCH_TARGET_PX,
+    height: TOUCH_TARGET_PX,
+    transform: 'translate(-50%, -50%)',
+  },
+} as const
+
 export const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -241,7 +256,31 @@ export const theme = createTheme({
     },
     MuiChip: {
       defaultProps: { variant: 'outlined', size: 'small' },
-      styleOverrides: { root: { borderRadius: TOKENS.radius, fontSize: xs } },
+      styleOverrides: {
+        root: { borderRadius: TOKENS.radius, fontSize: xs },
+        clickable: { [COARSE]: hitArea44 },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: { root: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiListItemButton: {
+      styleOverrides: { root: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiCheckbox: {
+      styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiRadio: {
+      styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiSwitch: {
+      styleOverrides: { switchBase: { [COARSE]: hitArea44 } },
+    },
+    MuiTreeItem: {
+      styleOverrides: { content: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiTableRow: {
+      styleOverrides: { hover: { [COARSE]: { height: TOUCH_TARGET_PX } } },
     },
     MuiAlert: {
       defaultProps: { variant: 'outlined' },
@@ -256,7 +295,7 @@ export const theme = createTheme({
       styleOverrides: { indicator: { backgroundColor: TOKENS.accent } },
     },
     MuiTab: {
-      styleOverrides: { root: { minHeight: 40, textTransform: 'none', fontWeight: medium } },
+      styleOverrides: { root: { minHeight: 40, textTransform: 'none', fontWeight: medium, [COARSE]: { minHeight: 48 } } },
     },
     MuiLinearProgress: {
       styleOverrides: { root: { height: 2, borderRadius: 0 } },

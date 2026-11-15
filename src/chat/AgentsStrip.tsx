@@ -8,7 +8,7 @@ import { makeLeader } from '../api/client'
 import { ContextGauge } from '../ribbon/ContextGauge'
 import { agentIssue } from '../ribbon/sessionStatus'
 import { StateMark, agentMark } from '../ribbon/stateMark'
-import { TOKENS } from '../theme'
+import { COARSE, TOKENS, TOUCH_TARGET_PX } from '../theme'
 import { formatAge, useNow } from './agentAge'
 import { DialogPanel } from './DialogPanel'
 
@@ -79,6 +79,7 @@ export function AgentsStrip({ agents, selected, onToggle, autoCompactPct, hive, 
               py: 0.5,
               border: `${TOKENS.borderWidth}px solid ${on ? TOKENS.accent : TOKENS.border}`,
               bgcolor: on ? 'action.selected' : 'transparent',
+              [COARSE]: { minHeight: TOUCH_TARGET_PX },
               color: 'text.primary',
             }}
           >

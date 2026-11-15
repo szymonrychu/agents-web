@@ -11,6 +11,7 @@ import {
   TOKENS,
   TOUCH_OR_SMALL,
   TOUCH_TARGET_PX,
+  hitArea44,
   terminalTheme,
   theme,
 } from './theme'
@@ -194,5 +195,37 @@ describe('terminalTheme', () => {
     const ansi = Object.entries(terminalTheme).filter(([k]) => !['background', 'foreground', 'cursor', 'cursorAccent', 'selectionBackground'].includes(k))
     expect(ansi).toHaveLength(16)
     for (const [, v] of ansi) expect(v).toMatch(/^#[0-9a-f]{6}$/)
+  })
+})
+
+describe('44px touch targets on coarse pointers', () => {
+  const so = (name: string) => comp[name].styleOverrides
+
+  it('toggle buttons, tabs and list buttons grow only under COARSE', () => {
+    expect(so('MuiToggleButton').root[COARSE]).toMatchObject({ minHeight: 44 })
+    expect(so('MuiTab').root.minHeight).toBe(40)
+    expect(so('MuiTab').root[COARSE].minHeight).toBe(48)
+    expect(so('MuiListItemButton').root[COARSE].minHeight).toBe(44)
+  })
+
+  it('checkbox, radio and switch get a 44px hit box', () => {
+    expect(so('MuiCheckbox').root[COARSE]).toMatchObject({ minWidth: 44, minHeight: 44 })
+    expect(so('MuiRadio').root[COARSE]).toMatchObject({ minWidth: 44, minHeight: 44 })
+    expect(so('MuiSwitch').switchBase[COARSE]).toMatchObject(hitArea44)
+  })
+
+  it('clickable chips get the invisible hit area, the root stays', () => {
+    expect(so('MuiChip').clickable[COARSE]).toMatchObject(hitArea44)
+    expect(so('MuiChip').root).toMatchObject({ borderRadius: TOKENS.radius })
+    expect(so('MuiChip').root).not.toHaveProperty('minHeight')
+  })
+
+  it('tree items and hover table rows reach 44px', () => {
+    expect(so('MuiTreeItem').content[COARSE].minHeight).toBe(44)
+    expect(so('MuiTableRow').hover[COARSE].height).toBe(44)
+  })
+
+  it('hitArea44 is a centred 44px pseudo-element', () => {
+    expect(hitArea44['&::after']).toMatchObject({ width: 44, height: 44, position: 'absolute', top: '50%', left: '50%' })
   })
 })

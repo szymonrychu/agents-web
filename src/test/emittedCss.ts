@@ -19,3 +19,15 @@ export function emittedCssFor(el: Element): string {
   }
   return rules.join('\n')
 }
+
+/** The declarations emitted for `el` inside `@media <media>{...}` (stylis form: no spaces after colons), joined; '' when none. */
+export function emittedInMedia(el: Element, media: string): string {
+  const css = emittedCss().replace(/\s*([:;{},])\s*/g, '$1')
+  const gate = `@media ${media.replace(/^@media\s+/, '').replace(/\s*([:;{},])\s*/g, '$1')}{`
+  const out: string[] = []
+  for (const cls of Array.from(el.classList).filter((c) => c.startsWith('css-'))) {
+    const re = new RegExp(`${gate.replace(/[()]/g, '\\$&')}[^@]*?\\.${cls}[^{}]*\\{([^}]*)\\}`, 'g')
+    for (const m of css.matchAll(re)) out.push(m[1])
+  }
+  return out.join(';')
+}

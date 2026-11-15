@@ -11,7 +11,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Group, type GroupImperativeHandle, type Layout, Panel, type PanelImperativeHandle, Separator } from 'react-resizable-panels'
-import { TOKENS } from '../theme'
+import { COARSE, TOKENS } from '../theme'
 import {
   PANELS, type PanelLayout, type PanelName, maximize, minimize, normalisedSizes, parseLayout, reset, resize, restore, restoreMaximized, serialiseLayout,
 } from './panelLayout'
@@ -33,10 +33,14 @@ const layoutKey = (sessionId: string) => `layout:${sessionId}`
 
 /** The library's inline `flex-basis: auto` beats a stylesheet flex shorthand, so the size is also passed as an inline style. */
 export const DIVIDER_WIDTH = 2
+const DIVIDER_HIT_PX = 16
 
 export const Divider = styled(Separator)(({ theme }) => ({
   flex: `0 0 ${DIVIDER_WIDTH}px`,
   backgroundColor: TOKENS.borderStrong,
+  position: 'relative',
+  // a 16px grab area around the 2px line on touch, without changing the visible line or the layout
+  [COARSE]: { '&::after': { content: '""', position: 'absolute', top: 0, bottom: 0, left: '50%', width: DIVIDER_HIT_PX, transform: 'translateX(-50%)' } },
   '&[data-separator="hover"], &[data-separator="active"], &:focus-visible': { backgroundColor: theme.palette.primary.main, outline: 'none' },
 }))
 

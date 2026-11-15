@@ -5,9 +5,10 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, SessionView } from '../api/client'
 import { statusEventFromFrame } from '../api/stream'
 import { sessionsReducer, initialState } from '../ribbon/useSessions'
-import { theme } from '../theme'
+import { COARSE, theme } from '../theme'
 import { AgentsStrip } from './AgentsStrip'
 import { formatAge } from './agentAge'
+import { emittedInMedia } from '../test/emittedCss'
 
 const makeLeader = vi.hoisted(() => vi.fn())
 const getAgentDialog = vi.hoisted(() => vi.fn())
@@ -231,4 +232,10 @@ describe('AgentsStrip', () => {
     fireEvent.click(screen.getByRole('button', { name: 'answer agent 1' }))
     expect(onToggle).not.toHaveBeenCalled()
   })
+})
+
+test('agent chip buttons keep a 44px target on coarse pointers', () => {
+  mount([agent('a1', 0)])
+  const btn = screen.getByRole('button', { name: 'agent 0' })
+  expect(emittedInMedia(btn, COARSE)).toContain('min-height:44px')
 })

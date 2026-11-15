@@ -3,10 +3,11 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { theme } from '../theme'
+import { COARSE, theme } from '../theme'
 import { DEFAULT_SIZES, maximize, minimize, parseLayout, reset, resize, restore, restoreMaximized, serialiseLayout, startLayout } from './panelLayout'
 import { Workspace } from './Workspace'
 import { setViewport } from '../test/viewport'
+import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 
 const unmounted = vi.hoisted(() => vi.fn())
 
@@ -91,6 +92,14 @@ describe('Workspace', () => {
     expect(grow('files')).toBe(25)
     expect(grow('chat')).toBe(45)
     expect(grow('terminal')).toBe(30)
+  })
+
+  test('divider keeps a 2px line but a 16px hit area on coarse pointers', () => {
+    mount()
+    const sep = screen.getAllByRole('separator')[0]
+    expect(emittedInMedia(sep, COARSE)).toContain('width:16px')
+    const css = emittedCssFor(sep).replace(/\s*([:;{},])\s*/g, '$1')
+    expect(css).toContain('flex:0 0 2px')
   })
 
   test('divider has a pixel flex-basis, not auto', () => {
