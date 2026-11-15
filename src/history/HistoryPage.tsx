@@ -22,6 +22,7 @@ export interface HistoryPageProps {
 const PAGE = 50
 const MIN_Q = 3
 const DATE_FIELD = { slotProps: { inputLabel: { shrink: true } } } as const
+const FILTER_SX = { width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } } as const
 
 /** Start of the picked local day, as ISO 8601. */
 const dayStart = (day: string) => new Date(`${day}T00:00:00`).toISOString()
@@ -110,10 +111,10 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
           <FormControlLabel control={<Switch checked={regex} onChange={(e) => setRegex(e.target.checked)} />} label="Regex" />
         </Box>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
-          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
-          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
-          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }} />
+          <TextField size="small" type="date" label="From" value={from} onChange={(e) => setFrom(e.target.value)} {...DATE_FIELD} sx={FILTER_SX} />
+          <TextField size="small" type="date" label="To" value={to} onChange={(e) => setTo(e.target.value)} {...DATE_FIELD} sx={FILTER_SX} />
+          <TextField size="small" label="Preset" value={preset} onChange={(e) => setPreset(e.target.value)} sx={FILTER_SX} />
+          <TextField size="small" label="Session" value={session} onChange={(e) => setSession(e.target.value)} sx={FILTER_SX} />
           <Button type="submit" variant="contained" disabled={qTooShort || loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>Search</Button>
         </Box>
       </Box>
