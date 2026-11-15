@@ -212,7 +212,7 @@ export const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         // a short confirmation (no fullWidth) stays centred with a gutter
-        paper: { [PHONE]: { margin: '16px', maxWidth: 'calc(100% - 32px)' } },
+        paper: { [PHONE]: { margin: '16px' } },
         // every form dialog sets fullWidth: on a phone it is a full-screen sheet clear of the notch and Home Indicator
         paperFullWidth: {
           [PHONE]: {
@@ -228,6 +228,8 @@ export const theme = createTheme({
             paddingRight: safeInset('right'),
           },
         },
+        // fullScreen without fullWidth must not inherit the gutter of the paper rule above
+        paperFullScreen: { [PHONE]: { margin: 0, maxWidth: '100%' } },
       },
     },
     MuiButton: {

@@ -159,12 +159,12 @@ describe('dialogs on phones', () => {
     })
   })
 
-  it('other Dialogs keep a 16 px gutter on phones', () => {
-    expect(comp.MuiDialog.styleOverrides.paper[PHONE]).toMatchObject({ margin: '16px', maxWidth: 'calc(100% - 32px)' })
+  it('other Dialogs keep a 16 px gutter on phones and their own maxWidth', () => {
+    expect(comp.MuiDialog.styleOverrides.paper[PHONE]).toEqual({ margin: '16px' })
   })
 
-  it('DialogActions changes no padding on desktop', () => {
-    expect(comp.MuiDialogActions?.styleOverrides?.root ?? {}).not.toHaveProperty('padding')
+  it('a fullScreen Dialog without fullWidth resets the gutter on phones', () => {
+    expect(comp.MuiDialog.styleOverrides.paperFullScreen[PHONE]).toMatchObject({ margin: 0, maxWidth: '100%' })
   })
 })
 

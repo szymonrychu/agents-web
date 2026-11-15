@@ -8,7 +8,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { editorChrome } from './editor/highlight'
-import { emittedCss } from './test/emittedCss'
+import { emittedCss, emittedCssFor } from './test/emittedCss'
 import { theme } from './theme'
 
 // emotion's stylis drops the spaces after colons and commas
@@ -29,9 +29,7 @@ describe('no-zoom floor in emitted CSS', () => {
       </ThemeProvider>,
     )
     const css = compact(emittedCss())
-    expect(css).toContain(GATE)
-    expect(css).toContain('font-size:16px!important')
-    expect(css).toContain('.xterm .xterm-helper-textarea')
+    expect(css).toMatch(/@media \(pointer:coarse\),\(hover:none\),\(max-width:899\.95px\)\{[^}]*\.xterm \.xterm-helper-textarea\{font-size:16px!important/)
     expect(css).toContain('.cm-content')
     expect(css).toMatch(/max-width:899\.95px\)\{\.css-[\w-]*InputBase-root[\w-]*\{font-size:1rem;/)
   })
@@ -57,16 +55,37 @@ describe('dialogs on phones in emitted CSS', () => {
       </ThemeProvider>,
     )
     const css = compact(emittedCss())
-    const phone = '@media (max-width:599.95px){'
-    expect(css).toContain(phone)
-    expect(css).toMatch(/@media \(max-width:599\.95px\)\{[^}]*max-height:100%/)
+    expect(css).toContain('@media (max-width:599.95px){')
     expect(css).toContain('env(safe-area-inset-bottom)')
     const paper = document.querySelectorAll('.MuiDialog-paper')
     expect(paper).toHaveLength(2)
-    // the full-screen rule is emitted in the same class as paperFullWidth and after its base max-height rule
-    const full = paper[0].className.split(' ').find((c) => c.startsWith('css-'))!
-    const block = css.slice(css.indexOf(`.${full}`))
-    expect(block.indexOf('max-height:calc(100% - 64px)')).toBeGreaterThanOrEqual(0)
-    expect(block.indexOf('max-height:calc(100% - 64px)')).toBeLessThan(block.indexOf('max-height:100%'))
+    const block = compact(emittedCssFor(paper[0]))
+    // in one class the phone full-screen declarations come after each base rule they override
+    for (const [base, win] of [
+      ['max-height:calc(100% - 64px)', 'max-height:100%'],
+      ['max-width:600px', 'max-width:100%'],
+      ['margin:32px', 'margin:16px'],
+      ['margin:16px', 'margin:0'],
+    ]) {
+      expect(block.indexOf(base), base).toBeGreaterThanOrEqual(0)
+      expect(block.lastIndexOf(win), win).toBeGreaterThan(block.indexOf(base))
+    }
+    // the plain dialog keeps its own maxWidth: no 100% override
+    const plain = compact(emittedCssFor(paper[1]))
+    expect(plain).not.toMatch(/max-width:100%/)
+  })
+
+  it('a fullScreen Dialog without fullWidth resets margin and maxWidth after the gutter rule', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <Dialog open fullScreen>
+          <div>c</div>
+        </Dialog>
+      </ThemeProvider>,
+    )
+    const el = document.querySelector('.MuiDialog-paper')!
+    const block = compact(emittedCssFor(el))
+    expect(block.lastIndexOf('margin:0')).toBeGreaterThan(block.indexOf('margin:16px'))
+    expect(block).toMatch(/max-width:100%/)
   })
 })
