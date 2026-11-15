@@ -188,7 +188,7 @@ const room = (id: string, name: string, state: 'allowed' | 'denied'): Matrix['sc
 const rooms = [room('!a:example.org', 'Alice', 'allowed'), room('!b:example.org', 'a-very-long-room-name-without-spaces-0123456789', 'denied')]
 const matrixMeta: Matrix['schemas']['MetaView'] = {
   default_policy: 'deny', group_trigger: 'mention', homeserver_url: 'https://matrix.example.org', rule_kinds: {},
-  sync: { healthy: true, last_sync_at: T1 }, user_id: '@hermes:example.org',
+  sync: { healthy: true, last_sync_at: T1 }, user_id: '@agents-orchestrator-bot:matrix.example.org',
 }
 const matrixSettings: Matrix['schemas']['SettingsView'] = { default_preamble: 'You are a helpful agent.', default_preset_id: 'p1', preamble: null }
 

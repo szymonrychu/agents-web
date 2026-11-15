@@ -60,7 +60,8 @@ interface Layout {
   scrollerOverflow: number | null
   tables: number
   switches: { insideRoot: boolean; trackVisible: boolean; checked: boolean }[]
-  article: { belowHeader: boolean; inScroller: boolean } | null
+  article: { hasHeader: boolean; belowHeader: boolean; inScroller: boolean } | null
+  coarse: boolean
 }
 
 /** Everything measured in one page.evaluate so the numbers belong to the same frame. */
@@ -92,16 +93,16 @@ function measure(): Layout {
   })
   let article: Layout['article'] = null
   if (first && scroller) {
-    const header = (main?.querySelector('h1') ?? document.querySelector('h1'))?.parentElement ?? null
+    const h1 = main?.querySelector('h1') ?? document.querySelector('h1')
+    const header = h1?.parentElement ?? null
     const a = box(first)
-    const belowHeader = header === null || a.top >= box(header).bottom - 1
-    first.scrollIntoView({ block: 'nearest' })
-    const after = box(first)
+    const belowHeader = header !== null && a.top >= box(header).bottom - 1
     const c = box(scroller)
+    // Measured at the initial scroll position, without scrolling the card into view.
     // A card taller than its scroller cannot fit; only its top edge must then be in view.
-    const fits = after.height <= c.height
-    const inScroller = after.top >= c.top - 1 && (!fits || after.bottom <= c.bottom + 1) && after.left >= -1 && after.right <= window.innerWidth + 1
-    article = { belowHeader, inScroller }
+    const fits = a.height <= c.height
+    const inScroller = a.top >= c.top - 1 && (!fits || a.bottom <= c.bottom + 1) && a.left >= -1 && a.right <= window.innerWidth + 1
+    article = { hasHeader: header !== null, belowHeader, inScroller }
   }
   return {
     documentScrollWidth: document.documentElement.scrollWidth,
@@ -110,6 +111,7 @@ function measure(): Layout {
     tables: document.querySelectorAll('table').length,
     switches,
     article,
+    coarse: matchMedia('(pointer: coarse)').matches,
   }
 }
 
@@ -122,6 +124,7 @@ for (const screen of SCREENS) {
     if (m.mainOverflow !== null) expect(m.mainOverflow).toBeLessThanOrEqual(0)
     if (m.scrollerOverflow !== null) expect(m.scrollerOverflow).toBeLessThanOrEqual(0)
     expect(m.tables).toBe(0)
+    expect(m.coarse, 'WebKit emulates a coarse pointer (hasTouch), else Switch checks are vacuous').toBe(true)
 
     for (const s of m.switches) {
       expect(s.insideRoot, 'switch thumb inside its root').toBe(true)
@@ -133,6 +136,7 @@ for (const screen of SCREENS) {
     }
 
     if (m.article) {
+      expect(m.article.hasHeader, 'screen has an h1 page header').toBe(true)
       expect(m.article.belowHeader, 'first card starts below the page header').toBe(true)
       expect(m.article.inScroller, 'first card is not clipped by its scroll container').toBe(true)
     }
