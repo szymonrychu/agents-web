@@ -1,5 +1,15 @@
 /* Base reset and colours come from MUI CssBaseline + theme.ts; this file only pins the viewport. */
 
+/* No double-tap zoom delay; no rubber-band scroll of the page behind the shell (pinch zoom stays). */
+html {
+  touch-action: manipulation;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
 /* The shell fills the viewport exactly: 100vh fallback, then 100dvh (excludes mobile browser chrome). */
 html,
 body,

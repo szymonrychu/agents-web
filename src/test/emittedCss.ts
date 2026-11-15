@@ -8,3 +8,14 @@ export function emittedCss(): string {
   }
   return parts.join('\n').replace(/\s+/g, ' ')
 }
+
+/** Only the rules whose selector names a class of `el`: what styles that one element, not the whole page. */
+export function emittedCssFor(el: Element): string {
+  const css = emittedCss()
+  const rules: string[] = []
+  for (const cls of Array.from(el.classList).filter((c) => c.startsWith('css-'))) {
+    const re = new RegExp(`[^{}]*\\.${cls}[^{}]*\\{[^}]*\\}`, 'g')
+    rules.push(...(css.match(re) ?? []))
+  }
+  return rules.join('\n')
+}

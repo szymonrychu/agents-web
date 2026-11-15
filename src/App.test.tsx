@@ -8,6 +8,7 @@ import type { StreamOptions } from './api/stream'
 import App from './App'
 import { BACKEND_MENUS } from './backends/registry'
 import { loadConfig, resetConfig } from './config/backends'
+import { emittedCssFor } from './test/emittedCss'
 import { theme } from './theme'
 import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
@@ -108,6 +109,12 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  test('the main area clears the side and bottom insets', async () => {
+    mount()
+    const css = emittedCssFor(await screen.findByRole('main'))
+    for (const side of ['left', 'right', 'bottom']) expect(css).toContain(`env(safe-area-inset-${side})`)
+  })
+
   test('proposals_auto_open_shows_the_dialog_and_the_chip_reopens_it', async () => {
     proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
     mount()

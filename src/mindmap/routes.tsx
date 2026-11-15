@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box'
+import { safeArea } from '../layout/safeArea'
 import { Route, Routes } from 'react-router'
 import { MindmapsPage } from './MindmapsPage'
 import { mapPath } from './paths'
@@ -7,7 +8,7 @@ export { mapPath }
 
 function Page() {
   return (
-    <Box data-testid="mindmaps-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', p: 2, boxSizing: 'border-box' }}>
+    <Box data-testid="mindmaps-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', p: 2, boxSizing: 'border-box', ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
       <MindmapsPage />
     </Box>
   )

@@ -14,6 +14,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import { safeArea } from '../layout/safeArea'
 import { FormError, PresetSelect } from '../triggers'
 import { addRule, deleteRule, getRoom, listRules, setRoomSettings } from './api'
 import type { RoomDetail, RuleView } from './api'
@@ -31,7 +32,7 @@ export interface RoomDrawerProps {
 
 export function RoomDrawer({ roomId, onClose, onChanged }: RoomDrawerProps) {
   return (
-    <Drawer anchor="right" open={roomId !== null} onClose={onClose} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Room details', sx: { width: { xs: '100%', md: 640 }, p: 2 } } }}>
+    <Drawer anchor="right" open={roomId !== null} onClose={onClose} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Room details', sx: { width: { xs: '100%', md: 640 }, p: 2, ...safeArea(['top', 'bottom', 'right'], 16) } } }}>
       {roomId && <RoomPanel key={roomId} roomId={roomId} onChanged={onChanged} />}
     </Drawer>
   )
