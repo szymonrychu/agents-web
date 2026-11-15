@@ -95,13 +95,19 @@ function measure(): Layout {
   if (first && scroller) {
     const h1 = main?.querySelector('h1') ?? document.querySelector('h1')
     const header = h1?.parentElement ?? null
-    const a = box(first)
-    const belowHeader = header !== null && a.top >= box(header).bottom - 1
     const c = box(scroller)
-    // Measured at the initial scroll position, without scrolling the card into view.
-    // A card taller than its scroller cannot fit; only its top edge must then be in view.
+    const side = (r: DOMRect) => r.left >= -1 && r.right <= window.innerWidth + 1
+    // Top and sides are checked at the initial scroll position: a card cut at the top by the header or the sides by
+    // the scroller is clipped whatever the scroll offset. Content above the card (settings, filters) may legitimately
+    // push it below the fold, so the bottom is checked after scrolling the card's top to the scroller's top, which
+    // also catches a scroller whose padding or height leaves the end of the card unreachable.
+    const before = box(first)
+    const topOk = before.top >= c.top - 1 && side(before)
+    scroller.scrollTop += before.top - c.top
+    const a = box(first)
     const fits = a.height <= c.height
-    const inScroller = a.top >= c.top - 1 && (!fits || a.bottom <= c.bottom + 1) && a.left >= -1 && a.right <= window.innerWidth + 1
+    const inScroller = topOk && a.top >= c.top - 1 && (!fits || a.bottom <= c.bottom + 1) && side(a)
+    const belowHeader = header !== null && before.top >= box(header).bottom - 1
     article = { hasHeader: header !== null, belowHeader, inScroller }
   }
   return {
