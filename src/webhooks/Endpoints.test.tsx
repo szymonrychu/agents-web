@@ -11,6 +11,7 @@ import type { EndpointCreated, EndpointView } from './api'
 import { EndpointFormDialog } from './EndpointFormDialog'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointsList } from './EndpointsList'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({
   createEndpoint: vi.fn(),
@@ -551,5 +552,13 @@ describe('filters', () => {
     expect(screen.queryByRole('button', { name: 'Add deny rule' })).toBeNull()
     resolve(META)
     expect(await screen.findByRole('button', { name: 'Add deny rule' })).toBeTruthy()
+  })
+})
+
+describe('EndpointsList phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
+    const table = await screen.findByRole('table')
+    expect(phoneColumnProblems(table, ['Auth', 'Preset', 'Project', 'Username'], ['URL', 'Type', 'Created', 'Rotated'])).toEqual([])
   })
 })

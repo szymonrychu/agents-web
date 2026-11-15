@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
+import { phoneColumnProblems } from '../test/emittedCss'
 import type { MatrixMeta, UserView } from './api'
 import { DefaultPreset } from './DefaultPreset'
 import { RulesPanel } from './RulesPanel'
@@ -135,5 +136,22 @@ describe('Access', () => {
     await u.click(screen.getByRole('option', { name: 'Preset Two' }))
     await u.click(screen.getByRole('button', { name: 'Save' }))
     expect(api.setSettings).toHaveBeenCalledWith({ default_preset_id: 'p2' })
+  })
+})
+
+describe('Access tables on phones', () => {
+  test('the users table scrolls in a TableContainer and hides Rooms', async () => {
+    wrap(<UsersTable />)
+    await flush()
+    const table = screen.getByText('Alice').closest('table')!
+    expect(phoneColumnProblems(table, [], ['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'])).toEqual([])
+  })
+
+  test('the rules tables scroll in a TableContainer and hide Created', async () => {
+    wrap(<RulesPanel meta={meta} />)
+    await flush()
+    for (const name of ['allow rules', 'deny rules']) {
+      expect(phoneColumnProblems(screen.getByRole('table', { name }), [], ['Kind', 'Value', 'Note', 'Preamble', 'Created'])).toEqual([])
+    }
   })
 })

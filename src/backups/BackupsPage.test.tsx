@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import { ApiError } from '../api/client'
 import { loadConfig, resetConfig } from '../config/backends'
 import { theme } from '../theme'
@@ -121,5 +122,13 @@ describe('BackupsPage', () => {
     mount()
     expect(await screen.findByText('Archive storage is not configured on this orchestrator')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Cleanup settings' })).toBeNull()
+  })
+})
+
+describe('BackupsPage table on phones', () => {
+  test('sits in a scroll container and hides low-priority columns', async () => {
+    mount()
+    await rowOf('team-a')
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Name', 'Size', 'Age', 'Referenced by'])).toEqual([])
   })
 })

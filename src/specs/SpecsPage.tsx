@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,9 @@ import { FormError, usePoll } from '../triggers'
 import { listSpecs, type SpecSummary, type SpecPage, type SpecStatus } from './api'
 import { specPath } from './paths'
 import { useSpecStream } from './useSpecStream'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Name', 'Project'])
 
 const POLL_MS = 10000
 type Filter = SpecStatus | 'all'
@@ -97,14 +101,15 @@ export function SpecsPage() {
         </Box>
       </Box>
       <FormError error={error} />
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label="Specs">
         <TableHead>
           <TableRow>
             <TableCell>Key</TableCell>
-            <TableCell>Name</TableCell>
+            <TableCell sx={col('Name')}>Name</TableCell>
             <TableCell>Title</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Project</TableCell>
+            <TableCell sx={col('Project')}>Project</TableCell>
             <TableCell>Labels</TableCell>
           </TableRow>
         </TableHead>
@@ -112,15 +117,16 @@ export function SpecsPage() {
           {items.map((s) => (
             <TableRow key={s.key} hover>
               <TableCell><Link component={RouterLink} to={specPath(s.key)}>{s.key}</Link></TableCell>
-              <TableCell>{s.name}</TableCell>
+              <TableCell sx={col('Name')}>{s.name}</TableCell>
               <TableCell>{s.title}</TableCell>
               <TableCell><Chip size="small" label={s.status} /></TableCell>
-              <TableCell><Chip size="small" variant="outlined" label={s.project} /></TableCell>
+              <TableCell sx={col('Project')}><Chip size="small" variant="outlined" label={s.project} /></TableCell>
               <TableCell><LabelChips labels={s.labels} onClick={addLabel} /></TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {!loading && items.length === 0 && !error && <Typography color="text.secondary">No specs</Typography>}
       {next !== null && <Box><Button onClick={() => void loadMore()}>Load more</Button></Box>}
     </Box>

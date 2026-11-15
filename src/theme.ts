@@ -3,7 +3,9 @@
  *
  * Fonts come from the system stacks (no web-font download: the UI must work offline and under CSP).
  */
+import type {} from '@mui/x-tree-view/themeAugmentation'
 import { createTheme } from '@mui/material/styles'
+import { safeInset } from './layout/safeArea'
 
 export const TOKENS = {
   // surfaces
@@ -139,7 +141,24 @@ export const diffPalette: Record<
 
 const { regular, medium } = TOKENS.fontWeights
 const { xs, sm, md, lg, xl } = TOKENS.fontSizes
-const COARSE = '@media (pointer: coarse)'
+export const COARSE = '@media (pointer: coarse)'
+/** Phones: width below the `sm` breakpoint (600); createTheme cannot read its own breakpoints, so a test pins this literal to theme.breakpoints.down('sm'). */
+export const PHONE = '@media (max-width:599.95px)'
+/** iOS Safari zooms the page on focus of any text surface under 16 px; this is the floor on touch and small viewports. */
+export const NO_ZOOM_INPUT_PX = 16
+/** Touch devices (also an iPad in landscape) and any window under 900 px; a mouse at >= 900 px keeps the dense 13 px UI. */
+export const TOUCH_OR_SMALL_QUERY = '(pointer: coarse), (hover: none), (max-width: 899.95px)'
+export const TOUCH_OR_SMALL = `@media ${TOUCH_OR_SMALL_QUERY}` as const
+/** Every focusable text surface, incl. CodeMirror and the xterm helper textarea whose own styles would undercut the floor. */
+export const NO_ZOOM_SELECTOR =
+  'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), textarea, select, [contenteditable]:not([contenteditable=false]), .cm-editor, .cm-content, .xterm .xterm-helper-textarea'
+/**
+ * MUI modal roots render to body as position:fixed against the layout viewport, which iOS does not shrink for the
+ * on-screen keyboard; on touch or small viewports they take the visible area that useVisualViewport writes (unset: the
+ * full viewport). Popover and Menu roots are left alone: their paper is placed from the anchor rect, measured in the
+ * same layout-viewport coordinates as their fixed root.
+ */
+const VISIBLE_AREA = { [TOUCH_OR_SMALL]: { top: 'var(--app-top, 0px)', bottom: 'auto', height: 'var(--app-height, 100%)' } }
 const sized = (px: number, fontWeight: number) => ({ fontSize: `${px / 16}rem`, fontWeight, letterSpacing: 0 })
 const BORDER = `${TOKENS.borderWidth}px solid ${TOKENS.border}`
 const touchSized = {
@@ -147,6 +166,20 @@ const touchSized = {
   minWidth: CONTROL_PX,
   [COARSE]: { minHeight: TOUCH_TARGET_PX, minWidth: TOUCH_TARGET_PX },
 }
+
+/** An invisible 44px hit box centred on a small visible control (checkbox thumb, chip); the layout box does not change. */
+export const hitArea44 = {
+  position: 'relative',
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: TOUCH_TARGET_PX,
+    height: TOUCH_TARGET_PX,
+    transform: 'translate(-50%, -50%)',
+  },
+} as const
 
 export const theme = createTheme({
   palette: {
@@ -186,7 +219,46 @@ export const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: { WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' },
         body: { fontVariantNumeric: 'tabular-nums', backgroundColor: TOKENS.bgCanvas },
+        // safety net: per-field sx, CodeMirror theme classes and xterm inline styles cannot undercut the floor
+        [TOUCH_OR_SMALL]: { [NO_ZOOM_SELECTOR]: { fontSize: `${NO_ZOOM_INPUT_PX}px !important` } },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
+        input: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        root: VISIBLE_AREA,
+        // a short confirmation (no fullWidth) stays centred with a gutter
+        paper: { [PHONE]: { margin: '16px' } },
+        // every form dialog sets fullWidth: on a phone it is a full-screen sheet clear of the notch and Home Indicator
+        paperFullWidth: {
+          [PHONE]: {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '100%',
+            maxHeight: '100%',
+            borderRadius: 0,
+            paddingTop: safeInset('top'),
+            paddingBottom: safeInset('bottom'),
+            paddingLeft: safeInset('left'),
+            paddingRight: safeInset('right'),
+          },
+        },
+        // fullScreen without fullWidth must not inherit the gutter of the paper rule above
+        paperFullScreen: { [PHONE]: { margin: 0, maxWidth: '100%' } },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        // the transform makes the temporary drawer's root the containing block of its position:fixed paper
+        modal: { [TOUCH_OR_SMALL]: { ...VISIBLE_AREA[TOUCH_OR_SMALL], transform: 'translateZ(0)' } },
       },
     },
     MuiButton: {
@@ -198,13 +270,39 @@ export const theme = createTheme({
     },
     MuiChip: {
       defaultProps: { variant: 'outlined', size: 'small' },
-      styleOverrides: { root: { borderRadius: TOKENS.radius, fontSize: xs } },
+      styleOverrides: {
+        root: { borderRadius: TOKENS.radius, fontSize: xs },
+        clickable: { [COARSE]: hitArea44 },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: { root: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiListItemButton: {
+      styleOverrides: { root: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiCheckbox: {
+      styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiRadio: {
+      styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiSwitch: {
+      styleOverrides: { switchBase: { [COARSE]: hitArea44 } },
+    },
+    MuiTreeItem: {
+      styleOverrides: { content: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
+    },
+    MuiTableRow: {
+      styleOverrides: { hover: { [COARSE]: { height: TOUCH_TARGET_PX } } },
     },
     MuiAlert: {
       defaultProps: { variant: 'outlined' },
       styleOverrides: { root: { borderRadius: TOKENS.radius, borderLeftWidth: 3 } },
     },
     MuiTooltip: {
+      // touch: a short press opens it and it stays readable; the tap-path components add their own popovers
+      defaultProps: { enterTouchDelay: 300, leaveTouchDelay: 4000 },
       styleOverrides: {
         tooltip: { fontSize: xs, backgroundColor: TOKENS.bgRaised, color: TOKENS.textPrimary, border: BORDER },
       },
@@ -213,7 +311,7 @@ export const theme = createTheme({
       styleOverrides: { indicator: { backgroundColor: TOKENS.accent } },
     },
     MuiTab: {
-      styleOverrides: { root: { minHeight: 40, textTransform: 'none', fontWeight: medium } },
+      styleOverrides: { root: { minHeight: 40, textTransform: 'none', fontWeight: medium, [COARSE]: { minHeight: 48 } } },
     },
     MuiLinearProgress: {
       styleOverrides: { root: { height: 2, borderRadius: 0 } },

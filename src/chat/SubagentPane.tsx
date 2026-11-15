@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
-import { TOKENS } from '../theme'
+import { COARSE, TOKENS, TOUCH_TARGET_PX } from '../theme'
 import type { ChatItem, SubagentPaneData, SubagentSplit } from './chatModel'
 
 /** What ChatEntry needs to place panes: the split without its main list. */
@@ -16,7 +16,7 @@ export function SubagentPane({ pane, renderItem }: { pane: SubagentPaneData; ren
   const name = `subagent ${pane.agentType ?? pane.claudeAgentId}`
   return (
     <Box role="group" aria-label={name} sx={{ mt: 0.5, borderLeft: `${TOKENS.borderWidth * 2}px solid ${TOKENS.border}`, pl: 1 }}>
-      <ButtonBase aria-expanded={open} onClick={() => setOpen((o) => !o)} sx={{ gap: 1, textAlign: 'left', color: 'text.secondary', fontSize: `${TOKENS.fontSizes.sm / 16}rem` }}>
+      <ButtonBase aria-expanded={open} onClick={() => setOpen((o) => !o)} sx={{ gap: 1, textAlign: 'left', color: 'text.secondary', fontSize: `${TOKENS.fontSizes.sm / 16}rem`, [COARSE]: { minHeight: TOUCH_TARGET_PX } }}>
         <span>{name}</span>
         <span>{`${pane.status}, ${operations(pane.items.length)}`}</span>
       </ButtonBase>

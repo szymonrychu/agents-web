@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { theme } from '../theme'
 import type { EventView } from './api'
 import { EventsTable } from './EventsTable'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const ev = (id: number, over: Partial<EventView> = {}): EventView =>
   ({
@@ -23,5 +24,12 @@ describe('chain column', () => {
     expect(within(rows[0]).getByLabelText('chain fired')).toBeTruthy()
     expect(within(rows[1]).queryByLabelText(/^chain /)).toBeNull()
     expect(within(rows[2]).getByLabelText('chain pending')).toBeTruthy()
+  })
+})
+
+describe('phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', () => {
+    render(<ThemeProvider theme={theme}><EventsTable events={[ev(1)]} /></ThemeProvider>)
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Endpoint'], ['Received', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'])).toEqual([])
   })
 })

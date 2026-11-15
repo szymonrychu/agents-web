@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { AgentView, SessionView } from '../api/client'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { ChatView } from './ChatView'
 
@@ -11,8 +13,8 @@ vi.mock('./useSessionChat', () => ({ useSessionChat: () => ({ items: [], loading
 vi.mock('./ChatLog', () => ({ ChatLog: () => null }))
 vi.mock('./Composer', () => ({ Composer: () => null }))
 vi.mock('./QueueStrip', () => ({ QueueStrip: () => null }))
-vi.mock('./ScaleControl', () => ({ ScaleControl: () => null }))
-vi.mock('./AgentsStrip', () => ({ AgentsStrip: () => null }))
+vi.mock('./ScaleControl', () => ({ ScaleControl: () => <span data-testid="scale-control" /> }))
+vi.mock('./AgentsStrip', () => ({ AgentsStrip: () => <span data-testid="agents-strip" /> }))
 
 afterEach(cleanup)
 
@@ -83,5 +85,27 @@ describe('ChatView', () => {
     cleanup()
     mount(session(0), [agent('idle', true)])
     expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+})
+
+describe('ChatView header on a phone', () => {
+  test('keeps slug and state in one row and scrolls the controls sideways', () => {
+    setViewport(375, { coarse: true })
+    mount(session(0), [agent('idle', true)])
+    const title = screen.getByTestId('chat-header-title')
+    expect(within(title).getByRole('heading', { name: 'alpha' })).toBeTruthy()
+    const controls = screen.getByTestId('chat-header-controls')
+    expect(within(controls).getByTestId('scale-control')).toBeTruthy()
+    expect(within(controls).getByTestId('agents-strip')).toBeTruthy()
+    const css = emittedCssFor(controls)
+    expect(css).toContain('overflow-x:auto')
+    expect(css).toContain('flex-wrap:nowrap')
+  })
+
+  test('a desktop keeps the one wrapping header row', () => {
+    setViewport(1440)
+    mount(session(0), [agent('idle', true)])
+    expect(screen.queryByTestId('chat-header-controls')).toBeNull()
+    expect(screen.getByTestId('scale-control')).toBeTruthy()
   })
 })

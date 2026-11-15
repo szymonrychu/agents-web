@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Link, MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { emittedCssFor } from '../test/emittedCss'
 import { SpecsRoute, specPath } from './routes'
 
 // The pages need the taskboard backend config and have their own tests; here only the routing is under test.
@@ -37,6 +38,14 @@ describe('specs routes', () => {
   test('/specs renders the list route', () => {
     at('/specs')
     expect(screen.getByTestId('specs-list-route')).toBeTruthy()
+  })
+
+  test('the list root follows #root instead of pinning 100dvh', () => {
+    at('/specs')
+    const css = emittedCssFor(screen.getByTestId('specs-list-route'))
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
   })
 
   test('/specs/S-5 renders the spec route with the key', () => {
@@ -75,5 +84,13 @@ describe('specs routes', () => {
     const a = mount('doc-page')
     fireEvent.click(screen.getByText('doc2'))
     expect(mount('doc-page')).not.toBe(a)
+  })
+})
+
+describe('specs routes safe areas', () => {
+  test.each([['/specs', 'specs-list-route'], ['/specs/S-5', 'spec-route'], ['/specs/S-5/doc/plan.md', 'doc-route']])('%s root pads every edge by the device inset', (path, id) => {
+    at(path)
+    const css = emittedCssFor(screen.getByTestId(id))
+    for (const side of ['top', 'right', 'bottom', 'left']) expect(css).toContain(`env(safe-area-inset-${side})`)
   })
 })

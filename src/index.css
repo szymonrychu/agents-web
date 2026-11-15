@@ -1,6 +1,16 @@
 /* Base reset and colours come from MUI CssBaseline + theme.ts; this file only pins the viewport. */
 
-/* The shell fills the viewport exactly: 100vh fallback, then 100dvh (excludes mobile browser chrome). */
+/* No double-tap zoom delay; no rubber-band scroll of the page behind the shell (pinch zoom stays). */
+html {
+  touch-action: manipulation;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* The page fills the viewport exactly: 100vh fallback, then 100dvh (excludes mobile browser chrome). */
 html,
 body,
 #root {
@@ -9,7 +19,14 @@ body,
   overflow: hidden;
 }
 
+/*
+ * The shell follows the visual viewport (useVisualViewport sets the variables on touch or small viewports), so the
+ * composer stays above the on-screen keyboard. Only then is #root transformed (and the containing block of fixed
+ * descendants); without the hook it has no transform. MUI modal roots follow through theme.ts.
+ */
 #root {
   display: flex;
   flex-direction: column;
+  height: var(--app-height, 100dvh);
+  transform: var(--app-shift, none);
 }

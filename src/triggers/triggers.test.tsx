@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { markSessionExpired, resetSessionExpired } from '../api/session'
 import { FormError, PresetSelect, RunStatusChip, usePoll } from './index'
@@ -51,6 +52,33 @@ describe('RunStatusChip', () => {
     const chip = screen.getByLabelText('failed: boom')
     await userEvent.hover(chip)
     expect((await screen.findByRole('tooltip')).textContent).toContain('boom')
+  })
+
+  describe('on touch', () => {
+    beforeEach(() => setViewport(375, { coarse: true }))
+    afterEach(() => setViewport(1440))
+
+    test('a chip with a reason is a button whose tap opens a popover; Escape closes it', async () => {
+      wrap(<RunStatusChip status="failed" reason="boom" />)
+      await userEvent.click(screen.getByRole('button', { name: 'failed: boom' }))
+      expect((await screen.findByTestId('run-reason')).textContent).toBe('boom')
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByTestId('run-reason')).toBeNull())
+    })
+
+    test('clicking away closes the popover', async () => {
+      wrap(<RunStatusChip status="failed" reason="boom" />)
+      await userEvent.click(screen.getByRole('button', { name: 'failed: boom' }))
+      await screen.findByTestId('run-reason')
+      await userEvent.click(document.querySelector('.MuiBackdrop-root') as HTMLElement)
+      await waitFor(() => expect(screen.queryByTestId('run-reason')).toBeNull())
+    })
+
+    test('without a reason there is no button and no popover', () => {
+      wrap(<RunStatusChip status="failed" />)
+      expect(screen.queryByRole('button')).toBeNull()
+      expect(screen.queryByTestId('run-reason')).toBeNull()
+    })
   })
 })
 

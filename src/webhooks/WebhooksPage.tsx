@@ -84,12 +84,12 @@ export function WebhooksPage({ onBack }: WebhooksPageProps) {
         onDone={(created) => { setCreating(false); setCredentials(created); refresh() }}
       />
       <CredentialsDialog endpoint={credentials} onClose={() => setCredentials(null)} />
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <TextField select size="small" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); resetPaging() }} sx={{ minWidth: 160 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <TextField select size="small" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); resetPaging() }} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}>
           <MenuItem value={ALL}>all</MenuItem>
           {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
-        <TextField select size="small" label="Endpoint" value={endpointId} onChange={(e) => { setEndpointId(e.target.value); resetPaging() }} sx={{ minWidth: 200 }}>
+        <TextField select size="small" label="Endpoint" value={endpointId} onChange={(e) => { setEndpointId(e.target.value); resetPaging() }} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>
           <MenuItem value={ALL}>all</MenuItem>
           {endpoints.map((ep) => <MenuItem key={ep.id} value={String(ep.id)}>{ep.suffix}</MenuItem>)}
         </TextField>

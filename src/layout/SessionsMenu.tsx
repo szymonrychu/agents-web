@@ -1,4 +1,5 @@
 /** Hamburger drawer: every session from the top, a settings section pinned to the bottom. */
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import List from '@mui/material/List'
@@ -10,6 +11,7 @@ import { sessionIssue, sessionMarkState } from '../ribbon/sessionStatus'
 import { StateMark } from '../ribbon/stateMark'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { TOKENS } from '../theme'
+import { safeArea } from './safeArea'
 
 /** One entry of the Settings section, rendered as a list item that calls onOpen. */
 export interface SettingsCategory {
@@ -25,24 +27,31 @@ export interface SessionsMenuProps {
   selectedId: string | null
   onSelect: (id: string) => void
   settingsCategories: SettingsCategory[]
+  /** Shown above the sessions (the project selector on a phone, where the header row has no room for it). */
+  header?: ReactNode
 }
 
 const DRAWER_WIDTH_PX = 280
 
-export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, settingsCategories }: SessionsMenuProps) {
+export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, settingsCategories, header }: SessionsMenuProps) {
   return (
-    <Drawer anchor="left" variant="temporary" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: DRAWER_WIDTH_PX, display: 'flex', flexDirection: 'column' } } }}>
+    <Drawer anchor="left" variant="temporary" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: DRAWER_WIDTH_PX, display: 'flex', flexDirection: 'column', ...safeArea(['top', 'bottom', 'left']) } } }}>
+      {header ? <Box sx={{ px: 2, pt: 1, display: 'flex' }}>{header}</Box> : null}
       <Typography component="h2" sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>Sessions</Typography>
       <List aria-label="Sessions" dense disablePadding>
         {sessions.length === 0 && <Typography sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>No sessions yet</Typography>}
-        {sessions.map(({ session, agents, discarded }) => (
+        {sessions.map(({ session, agents, discarded }) => {
+          const pct = session.summary.context_pct_max
+          const details = discarded ? null : [`${session.summary.ready}/${session.summary.replicas}`, pct == null ? null : `ctx ${Math.round(pct)}%`, sessionIssue(session, Object.values(agents))?.text].filter(Boolean).join(' - ')
+          return (
           <ListItem key={session.id} disablePadding>
             <ListItemButton selected={session.id === selectedId} aria-current={session.id === selectedId ? 'true' : undefined} onClick={() => { onSelect(session.id); onClose() }} sx={{ gap: 1 }}>
               <StateMark state={sessionMarkState(session, Object.values(agents), discarded === true)} />
-              <ListItemText primary={session.slug} secondary={discarded ? null : sessionIssue(session, Object.values(agents))?.text} slotProps={{ secondary: { noWrap: true } }} />
+              <ListItemText primary={session.slug} secondary={details} slotProps={{ secondary: { noWrap: true } }} />
             </ListItemButton>
           </ListItem>
-        ))}
+          )
+        })}
       </List>
       <Box component="section" aria-label="Settings" sx={{ mt: 'auto', borderTop: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
         <Typography component="h2" sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>Settings</Typography>

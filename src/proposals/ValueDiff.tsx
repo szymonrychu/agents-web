@@ -115,7 +115,7 @@ export default function ValueDiff({ before, after, text, labels = DEFAULT_LABELS
         ref={host}
         data-testid={narrow ? 'value-diff-unified' : 'value-diff-merge'}
         sx={{
-          maxHeight: '60vh',
+          maxHeight: '60dvh',
           overflow: 'auto',
           // editors size to their content (highlight.ts gives them height:100%); the host scrolls past the max
           '& .cm-editor': { height: 'auto' },

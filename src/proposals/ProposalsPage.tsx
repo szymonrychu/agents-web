@@ -2,6 +2,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -14,6 +15,9 @@ import { formatAge, useNow } from '../chat/agentAge'
 import { FormError, usePoll } from '../triggers'
 import { listProposals, type ProposalView } from './api'
 import { ProposalReviewDialog } from './ProposalReviewDialog'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Kind', 'Proposer', 'Revision'])
 
 const POLL_MS = 20000
 
@@ -42,25 +46,27 @@ export function ProposalsPage({ onBack }: ProposalsPageProps): JSX.Element {
       {error && <FormError error={error} />}
       {!loading && !error && rows.length === 0 && <Typography color="text.secondary">{`No ${tab} proposals`}</Typography>}
       {rows.length > 0 && (
+        <TableContainer sx={TABLE_SCROLL_SX}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['Kind', 'Target', 'Proposer', 'Status', 'Revision', 'Age'].map((h) => <TableCell key={h}>{h}</TableCell>)}
+              {['Kind', 'Target', 'Proposer', 'Status', 'Revision', 'Age'].map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((p) => (
               <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpened(p)}>
-                <TableCell>{p.kind}</TableCell>
+                <TableCell sx={col('Kind')}>{p.kind}</TableCell>
                 <TableCell>{p.target_name}</TableCell>
-                <TableCell>{p.proposer_slug}</TableCell>
+                <TableCell sx={col('Proposer')}>{p.proposer_slug}</TableCell>
                 <TableCell>{p.status}</TableCell>
-                <TableCell>{`r${p.revision}`}</TableCell>
+                <TableCell sx={col('Revision')}>{`r${p.revision}`}</TableCell>
                 <TableCell>{formatAge(now - Date.parse(p.created_at))}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        </TableContainer>
       )}
       {opened && (
         <ProposalReviewDialog

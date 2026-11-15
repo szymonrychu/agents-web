@@ -3,20 +3,13 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { theme } from '../theme'
+import { COARSE, theme } from '../theme'
 import { DEFAULT_SIZES, maximize, minimize, parseLayout, reset, resize, restore, restoreMaximized, serialiseLayout, startLayout } from './panelLayout'
 import { Workspace } from './Workspace'
+import { setViewport } from '../test/viewport'
+import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 
 const unmounted = vi.hoisted(() => vi.fn())
-
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
-}
 
 /** jsdom has no layout: give every element a 1000 x 500 box so react-resizable-panels computes real sizes. */
 function stubGeometry() {
@@ -101,6 +94,14 @@ describe('Workspace', () => {
     expect(grow('terminal')).toBe(30)
   })
 
+  test('divider keeps a 2px line but a 16px hit area on coarse pointers', () => {
+    mount()
+    const sep = screen.getAllByRole('separator')[0]
+    expect(emittedInMedia(sep, COARSE)).toContain('width:16px')
+    const css = emittedCssFor(sep).replace(/\s*([:;{},])\s*/g, '$1')
+    expect(css).toContain('flex:0 0 2px')
+  })
+
   test('divider has a pixel flex-basis, not auto', () => {
     mount()
     const seps = screen.getAllByRole('separator')
@@ -180,6 +181,13 @@ describe('Workspace', () => {
     mount('c4')
     expect(strip('files')).toBeNull()
     expect([grow('files'), grow('chat'), grow('terminal')]).toEqual([25, 45, 30])
+  })
+
+  test('iPhone landscape shows one panel at a time', () => {
+    setViewport(844, { coarse: true, height: 390 })
+    mount()
+    expect(screen.queryAllByRole('separator')).toHaveLength(0)
+    expect(screen.getByRole('group', { name: 'Panel' })).toBeTruthy()
   })
 
   test('phone_three_way_switch', () => {

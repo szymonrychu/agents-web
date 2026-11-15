@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,8 @@ import { CHANGED_MEANWHILE, PlanHeaderEditor } from './PlanHeaderEditor'
 import { StepEditor, type StepEditorTarget } from './StepEditor'
 import { stepsGraph } from './StepsGraph'
 import { useSpecStream } from './useSpecStream'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 10000
 
@@ -128,6 +131,7 @@ export function PlanTab({ specKey }: { specKey: string }) {
       {steps.length === 0 && <Typography color="text.secondary">No steps</Typography>}
       {steps.length > 0 && (
         <>
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small" aria-label="Steps">
             <TableHead>
               <TableRow>
@@ -168,6 +172,7 @@ export function PlanTab({ specKey }: { specKey: string }) {
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
           <MermaidBlock source={stepsGraph(steps)} />
         </>
       )}

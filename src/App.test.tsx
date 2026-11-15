@@ -8,10 +8,12 @@ import type { StreamOptions } from './api/stream'
 import App from './App'
 import { BACKEND_MENUS } from './backends/registry'
 import { loadConfig, resetConfig } from './config/backends'
+import { emittedCssFor } from './test/emittedCss'
 import { theme } from './theme'
 import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 import { decision, task } from './tasks/testUtils'
+import { setViewport } from './test/viewport'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn(), restartSession: vi.fn() }))
 const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
@@ -37,15 +39,6 @@ class NoopObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-}
-
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
@@ -108,6 +101,21 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  test('the main area clears the side and bottom insets', async () => {
+    mount()
+    const css = emittedCssFor(await screen.findByRole('main'))
+    for (const side of ['left', 'right', 'bottom']) expect(css).toContain(`env(safe-area-inset-${side})`)
+  })
+
+  test('the shell follows #root instead of pinning 100dvh', async () => {
+    mount()
+    const shell = (await screen.findByRole('main')).parentElement!
+    const css = emittedCssFor(shell)
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
+  })
+
   test('proposals_auto_open_shows_the_dialog_and_the_chip_reopens_it', async () => {
     proposals.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [proposal()] : []))
     mount()
@@ -280,7 +288,9 @@ describe('App', () => {
   test('top_bar_on_phone_layout', async () => {
     setViewport(400)
     mount()
-    await waitFor(() => expect(tabs()).toHaveLength(2))
+    // On a phone the session tabs give way to one current-session button (S-55 step 6).
+    expect(await screen.findByRole('button', { name: 'Switch session, current alpha' })).toBeTruthy()
+    expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.getByRole('button', { name: 'Open menu' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
     expect(screen.queryByRole('complementary')).toBeNull()
@@ -340,7 +350,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
-    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
+    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha2/3 - ctx 40%', 'beta1/1 - ctx 10%'])
     expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))

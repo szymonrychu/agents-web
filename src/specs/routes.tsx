@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box'
+import { safeArea } from '../layout/safeArea'
 import Typography from '@mui/material/Typography'
 import { Route, Routes, useParams } from 'react-router'
 import { DocumentPage } from './DocumentPage'
@@ -11,7 +12,7 @@ export { docPath, specPath }
 function SpecRoute() {
   const { key = '' } = useParams()
   return (
-    <Box data-testid="spec-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
+    <Box data-testid="spec-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
       <SpecPage key={key} specKey={key} />
     </Box>
   )
@@ -20,7 +21,7 @@ function SpecRoute() {
 function DocRoute() {
   const { key = '', '*': path = '' } = useParams()
   return (
-    <Box data-testid="doc-route" data-key={key} data-path={path} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
+    <Box data-testid="doc-route" data-key={key} data-path={path} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
       <DocumentPage key={`${key}/${path}`} specKey={key} path={path} />
     </Box>
   )
@@ -38,7 +39,7 @@ function NotFound() {
 export function SpecsRoute() {
   return (
     <Routes>
-      <Route index element={<Box data-testid="specs-list-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}><SpecsPage /></Box>} />
+      <Route index element={<Box data-testid="specs-list-route" sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, ...safeArea(['top', 'right', 'bottom', 'left']) }}><SpecsPage /></Box>} />
       <Route path=":key" element={<SpecRoute />} />
       <Route path=":key/doc/*" element={<DocRoute />} />
       <Route path="*" element={<NotFound />} />

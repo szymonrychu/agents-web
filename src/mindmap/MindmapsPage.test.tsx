@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { loadConfig, resetConfig } from '../config/backends'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { MindmapsRoute } from './routes'
 import { direction, mapView, subgraph } from './testUtils'
@@ -48,6 +50,7 @@ const configure = (...extra: string[]) =>
   loadConfig((async () => new Response(JSON.stringify({ backends: [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, ...extra.map((id) => ({ id, label: id, basePath: `/${id}/api/v1` }))] }))) as unknown as typeof fetch)
 
 beforeEach(async () => {
+  setViewport(1440)
   await configure('mindmap')
   api.listProjects.mockResolvedValue([{ project: 'default', maps: 1, nodes: 3 }])
   api.listMaps.mockResolvedValue([mapView()])
@@ -161,5 +164,75 @@ describe('MindmapsPage', () => {
     mount('/mindmaps')
     await u.click(await screen.findByRole('button', { name: 'search hit' }))
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1?node=N-3'))
+  })
+})
+
+const TOOLBAR_ACTIONS = ['Add node', 'Edit map', 'Link', 'Send direction', 'Archive', 'Delete']
+
+describe('MindmapsPage on a desktop', () => {
+  test('shows the node aside and the six toolbar buttons', async () => {
+    mount('/mindmaps/M-1?node=N-2')
+    expect(within(await screen.findByRole('complementary', { name: 'Node' })).getByTestId('node-panel')).toBeTruthy()
+    for (const name of TOOLBAR_ACTIONS) expect(screen.getByRole('button', { name })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'More map actions' })).toBeNull()
+  })
+})
+
+describe('MindmapsPage on a phone', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('the body scrolls and the graph has a fixed share of the screen', async () => {
+    mount('/mindmaps/M-1')
+    await screen.findByRole('button', { name: 'graph N-1' })
+    expect(emittedCssFor(screen.getByTestId('mindmaps-body'))).toContain('overflow:auto')
+    expect(emittedCssFor(screen.getByRole('region', { name: 'Graph' }))).toContain('height:70dvh')
+  })
+
+  test('the maps list collapses behind a button named after the open map', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1')
+    const toggle = await screen.findByRole('button', { name: /Maps: Research map/ })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('navigation', { name: 'Maps' })).toBeNull()
+    await u.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(emittedCssFor(screen.getByRole('navigation', { name: 'Maps' }))).toContain('max-height:40dvh')
+  })
+
+  test('the node panel opens in a bottom drawer that closes to the map', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1?node=N-2')
+    const panel = await screen.findByTestId('node-panel')
+    expect(screen.getAllByTestId('node-panel')).toHaveLength(1)
+    expect(screen.queryByRole('complementary', { name: 'Node' })).toBeNull()
+    expect(panel.closest('.MuiDrawer-root')).toBeTruthy()
+    // a share of the drawer root, which follows the visible area above the keyboard (dvh does not)
+    expect(emittedCssFor(panel.closest('.MuiDrawer-paper')!)).toContain('max-height:85%')
+    await u.click(screen.getByRole('button', { name: 'Close node' }))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1'))
+  })
+
+  test('the closing drawer keeps the node until its exit transition ends', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1?node=N-2')
+    await screen.findByTestId('node-panel')
+    await u.click(screen.getByRole('button', { name: 'Close node' }))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1'))
+    expect(screen.getByTestId('node-panel')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByTestId('node-panel')).toBeNull())
+  })
+
+  test('the toolbar keeps title, status and direction and moves the actions into a menu', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1')
+    await screen.findByRole('button', { name: 'graph N-1' })
+    const graph = screen.getByRole('region', { name: 'Graph' })
+    expect(within(graph).getByText('Research map')).toBeTruthy()
+    expect(within(graph).getByRole('group', { name: 'Layout direction' })).toBeTruthy()
+    for (const name of TOOLBAR_ACTIONS) expect(screen.queryByRole('button', { name })).toBeNull()
+    await u.click(screen.getByRole('button', { name: 'More map actions' }))
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(TOOLBAR_ACTIONS)
+    await u.click(screen.getByRole('menuitem', { name: 'Edit map' }))
+    expect(await screen.findByRole('dialog', { name: 'Edit Research map' })).toBeTruthy()
   })
 })

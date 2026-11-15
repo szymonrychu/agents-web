@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box'
+import { safeArea } from '../layout/safeArea'
 import Typography from '@mui/material/Typography'
 import { Route, Routes, useParams } from 'react-router'
 import { TaskDetail } from './TaskDetail'
@@ -10,7 +11,7 @@ export { taskPath }
 function TaskRoute() {
   const { key = '' } = useParams()
   return (
-    <Box data-testid="task-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2 }}>
+    <Box data-testid="task-route" data-key={key} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, ...safeArea(['top', 'right', 'bottom', 'left'], 16) }}>
       <TaskDetail taskKey={key} />
     </Box>
   )
@@ -28,7 +29,7 @@ function NotFound() {
 export function TasksRoute() {
   return (
     <Routes>
-      <Route index element={<Box data-testid="tasks-list-route" sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}><TasksPage /></Box>} />
+      <Route index element={<Box data-testid="tasks-list-route" sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, ...safeArea(['top', 'right', 'bottom', 'left']) }}><TasksPage /></Box>} />
       <Route path=":key" element={<TaskRoute />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -9,6 +9,7 @@ import { initScriptsDoc } from './diffText'
 import { item } from './proposalFixture'
 import { viewedKey } from './viewed'
 import type { EntryView } from '../vault/api'
+import { setViewport } from '../test/viewport'
 
 interface MockDiffProps { before: unknown; after: unknown; text?: boolean; expanded?: boolean; onCounts?: (c: DiffCounts) => void }
 function MockDiff({ before, after, text, expanded, onCounts }: MockDiffProps) {
@@ -22,16 +23,6 @@ afterEach(() => {
   vi.restoreAllMocks()
   localStorage.clear()
 })
-
-/** Installs a matchMedia that evaluates min-width / max-width queries against `width`. */
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
-}
 
 const base = { choice: undefined, note: '', readOnly: false, stale: false, changed: false, onChoice: vi.fn(), onNote: vi.fn() }
 

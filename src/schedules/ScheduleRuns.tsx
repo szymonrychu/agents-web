@@ -1,6 +1,7 @@
 /** The last runs of one schedule, newest first: fire time in the schedule's zone, trigger, status and session. */
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -11,6 +12,8 @@ import { ChainStatusChip, RunStatusChip, usePoll } from '../triggers'
 import type { RunStatus } from '../triggers'
 import { listScheduleRuns } from './api'
 import type { RunView } from './api'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const LIMIT = 20
 const POLL_MS = 10_000
@@ -51,6 +54,7 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
   if (data.length === 0) return <Typography color="text.secondary">No runs yet</Typography>
   const runs = [...data].sort((a, b) => Date.parse(b.fire_time) - Date.parse(a.fire_time))
   return (
+    <TableContainer sx={TABLE_SCROLL_SX}>
     <Table size="small" aria-label="Runs">
       <TableHead>
         <TableRow>
@@ -79,5 +83,6 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
         ))}
       </TableBody>
     </Table>
+    </TableContainer>
   )
 }

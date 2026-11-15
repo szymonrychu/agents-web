@@ -4,6 +4,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
+import { phoneColumnProblems } from '../test/emittedCss'
 import type { RunView } from './api'
 import { ScheduleRuns } from './ScheduleRuns'
 
@@ -132,5 +133,14 @@ describe('chains', () => {
     mount()
     for (const s of ['pending', 'fired', 'skipped', 'expired']) expect(await screen.findByLabelText(`chain ${s}`)).toBeTruthy()
     expect(screen.getAllByLabelText(/^chain /)).toHaveLength(4)
+  })
+})
+
+describe('table on phones', () => {
+  test('scrolls inside a TableContainer and hides Trigger and Chain', async () => {
+    api.listScheduleRuns.mockResolvedValue([run()])
+    mount()
+    await screen.findAllByRole('row')
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Fire time', 'Trigger', 'Status', 'Chain', 'Session'])).toEqual([])
   })
 })

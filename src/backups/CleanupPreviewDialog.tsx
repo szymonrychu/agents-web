@@ -6,6 +6,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -15,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { cleanupPreview } from '../api/archives'
 import type { CleanupPreview } from '../api/archives'
 import { formatBytes } from './format'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
 export interface CleanupPreviewDialogProps {
   open: boolean
@@ -62,6 +64,7 @@ export function CleanupPreviewDialog({ open, onClose }: CleanupPreviewDialogProp
             ) : (
               <>
                 <Typography>{`${preview.count} archives, ${formatBytes(preview.total_bytes)} would be deleted`}</Typography>
+                <TableContainer sx={TABLE_SCROLL_SX}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -80,6 +83,7 @@ export function CleanupPreviewDialog({ open, onClose }: CleanupPreviewDialogProp
                     ))}
                   </TableBody>
                 </Table>
+                </TableContainer>
               </>
             )}
           </>

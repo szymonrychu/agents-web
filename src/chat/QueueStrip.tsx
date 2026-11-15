@@ -1,18 +1,47 @@
-/** Queued, verifying and failed messages of a session, with Cancel and Retry; hidden when empty. */
+/** Queued, verifying and failed messages of a session, with Cancel and Retry (icon buttons on a phone); hidden when empty. */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import CloseIcon from '@mui/icons-material/Close'
+import ReplayIcon from '@mui/icons-material/Replay'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { cancelMessage, listMessages, retryMessage, statusStreamUrl } from '../api/client'
 import type { MessageView } from '../api/client'
 import { openStream } from '../api/stream'
+import { useLayout } from '../layout/useLayout'
 import { TOKENS } from '../theme'
 
 export const QUEUE_STATUSES = 'queued,verifying,failed'
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 const isAmbiguous = (m: MessageView): boolean => /ambiguous/i.test(m.error ?? '')
+
+interface ActionProps {
+  phone: boolean
+  label: string
+  icon: ReactNode
+  color?: 'warning'
+  onClick: () => void
+}
+
+/** A row action: a text button, or on a phone an icon button with the same accessible name. */
+function Action({ phone, label, icon, color, onClick }: ActionProps) {
+  return phone ? (
+    <Tooltip title={label}>
+      <IconButton aria-label={label} color={color} onClick={onClick}>
+        {icon}
+      </IconButton>
+    </Tooltip>
+  ) : (
+    <Button size="small" color={color} onClick={onClick}>
+      {label}
+    </Button>
+  )
+}
 
 function detail(m: MessageView): string | null {
   if (m.status === 'verifying') return 'checking delivery'
@@ -25,6 +54,7 @@ export function QueueStrip({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<number | null>(null)
   const latest = useRef(0)
+  const phone = useLayout() === 'phone'
 
   const refresh = useCallback(() => {
     const mine = ++latest.current
@@ -68,7 +98,7 @@ export function QueueStrip({ sessionId }: { sessionId: string }) {
         </Alert>
       ) : null}
       {messages.map((m) => (
-        <Box key={m.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+        <Box key={m.id} sx={{ display: 'flex', alignItems: 'center', flexWrap: phone ? 'wrap' : undefined, gap: 1, py: 0.5 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', minWidth: 64 }}>
             {m.status}
           </Typography>
@@ -96,19 +126,13 @@ export function QueueStrip({ sessionId }: { sessionId: string }) {
             ) : null}
           </Box>
           {m.status === 'queued' ? (
-            <Button size="small" onClick={() => act(() => cancelMessage(String(m.id)))}>
-              Cancel
-            </Button>
+            <Action phone={phone} label="Cancel" icon={<CloseIcon fontSize="small" />} onClick={() => act(() => cancelMessage(String(m.id)))} />
           ) : null}
           {m.status === 'failed' ? (
             confirming === m.id ? (
-              <Button size="small" color="warning" onClick={() => act(() => retryMessage(String(m.id)))}>
-                Retry anyway
-              </Button>
+              <Action phone={phone} label="Retry anyway" color="warning" icon={<ReplayIcon fontSize="small" />} onClick={() => act(() => retryMessage(String(m.id)))} />
             ) : (
-              <Button size="small" onClick={() => (isAmbiguous(m) ? setConfirming(m.id) : act(() => retryMessage(String(m.id))))}>
-                Retry
-              </Button>
+              <Action phone={phone} label="Retry" icon={<ReplayIcon fontSize="small" />} onClick={() => (isAmbiguous(m) ? setConfirming(m.id) : act(() => retryMessage(String(m.id))))} />
             )
           ) : null}
         </Box>

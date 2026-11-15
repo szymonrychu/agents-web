@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -20,6 +21,8 @@ import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { FormError, usePoll } from '../triggers'
 import { moveQueued, listSpecQueue, putAutostart, removeQueued, STATE_TEXT } from './autostartApi'
 import type { ProjectQueue, QueueItem } from './autostartApi'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 10_000
 const CHANGED = 'changed meanwhile, reloaded'
@@ -122,6 +125,7 @@ export function SpecQueuePanel({ project }: { project: string }) {
       <FormError error={error} />
       <FormError error={actionError} />
       {notice && <Alert severity="warning">{notice}</Alert>}
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label="Spec queue">
         <TableHead>
           <TableRow>
@@ -168,6 +172,7 @@ export function SpecQueuePanel({ project }: { project: string }) {
           )}
         </TableBody>
       </Table>
+      </TableContainer>
       <ConfirmDialog
         open={removing !== null}
         title={`Remove ${removing?.spec ?? ''} from the queue?`}

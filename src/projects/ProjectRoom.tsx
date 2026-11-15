@@ -7,6 +7,7 @@ import Chip from '@mui/material/Chip'
 import Drawer from '@mui/material/Drawer'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
+import { safeArea } from '../layout/safeArea'
 import { TOKENS } from '../theme'
 import { FormError, usePoll } from '../triggers'
 import { listProjectMessages } from './api'
@@ -58,8 +59,8 @@ export function ProjectRoom({ slug, onClose }: { slug: string; onClose: () => vo
   }
 
   return (
-    <Drawer anchor="right" open onClose={onClose}>
-      <Box sx={{ width: { xs: '100vw', sm: 520 }, display: 'flex', flexDirection: 'column', gap: 1, p: 2, minHeight: 0 }}>
+    <Drawer anchor="right" open onClose={onClose} slotProps={{ paper: { sx: safeArea(['top', 'bottom', 'right']) } }}>
+      <Box sx={{ width: { xs: '100%', sm: 520 }, display: 'flex', flexDirection: 'column', gap: 1, p: 2, minHeight: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography component="h2" sx={{ flexGrow: 1, fontSize: TOKENS.fontSizes.lg }}>Room: {slug}</Typography>
           <Button onClick={onClose}>Close</Button>

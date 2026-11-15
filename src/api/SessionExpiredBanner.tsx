@@ -1,5 +1,6 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import { safeArea, safeInset } from '../layout/safeArea'
 import { useSessionExpired } from './session'
 
 /** Shown once any API call answered 401: polls and streams have stopped; a reload signs in again. */
@@ -9,7 +10,7 @@ export function SessionExpiredBanner() {
   return (
     <Alert
       severity="warning"
-      sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.snackbar, borderRadius: 0 }}
+      sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.snackbar, borderRadius: 0, ...safeArea(['left', 'right'], 16), paddingTop: safeInset('top', 6) }}
       action={
         <Button color="inherit" size="small" onClick={() => window.location.reload()}>
           Reload

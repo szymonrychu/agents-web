@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { theme } from '../theme'
 import ValueDiff from './ValueDiff'
 import { toDoc } from './diffText'
+import { setViewport } from '../test/viewport'
 
 // records the config and instance of every MergeView the component builds
 const built = vi.hoisted(() => ({ configs: [] as Record<string, unknown>[], views: [] as unknown[] }))
@@ -32,16 +33,6 @@ afterAll(() => {
   Range.prototype.getClientRects = original.rects
   Range.prototype.getBoundingClientRect = original.box
 })
-/** Installs a matchMedia that evaluates min-width / max-width queries against `width`. */
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
-}
-
 beforeEach(() => setViewport(1200))
 afterEach(() => {
   built.configs.length = 0
@@ -131,7 +122,7 @@ describe('ValueDiff', () => {
     expect(getComputedStyle(host).overflow).toBe('auto')
     // jsdom resolves vh to pixels in computed styles, so check the emitted rule
     const css = Array.from(document.querySelectorAll('style'), (el) => el.textContent ?? '').join('')
-    expect(css).toMatch(/max-height:60vh/)
+    expect(css).toMatch(/max-height:60dvh/)
     expect(css).not.toMatch(/height:360px/)
   })
 

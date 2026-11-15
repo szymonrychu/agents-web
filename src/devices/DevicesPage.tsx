@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -17,6 +18,8 @@ import { FormError, usePoll } from '../triggers'
 import { listDevices, pairDevice, regenerateCode, revokeDevice } from './api'
 import type { DeviceView, NewCode } from './api'
 import { PairingCode } from './PairingCode'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 15_000
 const CODE_POLL_MS = 3_000
@@ -149,6 +152,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
           {pairedName} is paired.
         </Alert>
       )}
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
           <TableRow>{['Name', 'Plugin', 'Created', 'State', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
@@ -167,6 +171,7 @@ export function DevicesPage({ onBack }: DevicesPageProps) {
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
       {data && data.length === 0 && <Typography color="text.secondary">No devices paired yet.</Typography>}
       <ConfirmDialog
         open={revoking !== null}

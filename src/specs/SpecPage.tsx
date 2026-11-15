@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -26,6 +27,8 @@ import { docPath } from './paths'
 import { PlanTab } from './PlanTab'
 import { StartState } from './StartState'
 import { useSpecStream } from './useSpecStream'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 10000
 
@@ -139,6 +142,7 @@ export function SpecPage({ specKey }: { specKey: string }) {
         <>
         <Section title="Documents">
           {(spec.documents ?? []).length === 0 && <Typography color="text.secondary">No documents</Typography>}
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small" aria-label="Documents">
             <TableHead>
               <TableRow>
@@ -159,6 +163,7 @@ export function SpecPage({ specKey }: { specKey: string }) {
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         </Section>
         <Section title="Tasks">
           {tasks.length === 0 && <Typography color="text.secondary">No linked tasks</Typography>}

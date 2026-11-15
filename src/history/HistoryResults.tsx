@@ -2,6 +2,7 @@
 import { Fragment } from 'react'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -9,6 +10,9 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { SessionSummary } from './api'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Preset', 'Created', 'Records', 'Size'])
 
 export interface HistoryResultsProps {
   sessions: SessionSummary[]
@@ -36,10 +40,11 @@ const formatHits = (hits: number) => `${hits} ${hits === 1 ? 'hit' : 'hits'}`
 
 export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
   return (
+    <TableContainer sx={TABLE_SCROLL_SX}>
     <Table size="small">
       <TableHead>
         <TableRow>
-          {COLUMNS.map((h) => <TableCell key={h}>{h}</TableCell>)}
+          {COLUMNS.map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -47,11 +52,11 @@ export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
           <Fragment key={s.id}>
             <TableRow hover onClick={() => onOpen(s)} sx={{ cursor: 'pointer', '& > td': s.matches.length > 0 ? { borderBottom: 0 } : undefined }}>
               <TableCell><Link component="button" type="button" underline="hover">{s.slug}</Link></TableCell>
-              <TableCell>{s.preset_name}</TableCell>
-              <TableCell>{new Date(s.created_at).toLocaleString()}</TableCell>
+              <TableCell sx={col('Preset')}>{s.preset_name}</TableCell>
+              <TableCell sx={col('Created')}>{new Date(s.created_at).toLocaleString()}</TableCell>
               <TableCell>{new Date(s.discarded_at).toLocaleString()}</TableCell>
-              <TableCell>{formatCounts(s.record_counts)}</TableCell>
-              <TableCell>{formatSize(s.bytes)}</TableCell>
+              <TableCell sx={col('Records')}>{formatCounts(s.record_counts)}</TableCell>
+              <TableCell sx={col('Size')}>{formatSize(s.bytes)}</TableCell>
               <TableCell>{s.hits == null ? '' : formatHits(s.hits)}</TableCell>
             </TableRow>
             {s.matches.length > 0 && (
@@ -69,5 +74,6 @@ export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
         ))}
       </TableBody>
     </Table>
+    </TableContainer>
   )
 }

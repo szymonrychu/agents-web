@@ -6,7 +6,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import type { Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { tags as t } from '@lezer/highlight'
-import { MONO_FONT, TOKENS, syntaxPalette as p } from '../theme'
+import { MONO_FONT, TOKENS, TOUCH_OR_SMALL, syntaxPalette as p } from '../theme'
 
 export const editorHighlight: HighlightStyle = HighlightStyle.define([
   { tag: [t.keyword, t.modifier, t.self], color: p.keyword },
@@ -33,6 +33,7 @@ const marker = (colour: string) => ({ content: 'none', backgroundColor: colour, 
 /** The `EditorView.theme` spec, exported so its colours can be checked against the theme. */
 export const editorChromeSpec = {
   '&': { backgroundColor: TOKENS.bgCanvas, color: TOKENS.textPrimary, fontSize: `${TOKENS.fontSizes.md / 16}rem`, height: '100%' },
+  [TOUCH_OR_SMALL]: { '&': { fontSize: '1rem' } },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: MONO_FONT, lineHeight: 1.5 },
   '.cm-content': { caretColor: TOKENS.accent },

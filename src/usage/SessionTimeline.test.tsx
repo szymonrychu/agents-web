@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test } from 'vitest'
 import { theme } from '../theme'
@@ -68,6 +68,24 @@ describe('SessionTimeline', () => {
     await userEvent.hover(bar('a'))
     const tip = await screen.findByRole('tooltip')
     expect(tip.textContent).toContain('2026-11-01 06:00 UTC - 2026-11-01 12:00 UTC')
+  })
+
+  test('tapping a bar opens a popover with its title; another bar switches it; bars are keyboard buttons', async () => {
+    mount([mark({ session_id: 'a', slug: 'alpha' }), mark({ session_id: 'b', slug: 'bravo', started_at: '2026-11-01T08:00:00Z' })])
+    expect(bar('a').getAttribute('role')).toBe('button')
+    expect(bar('a').getAttribute('tabindex')).toBe('0')
+    expect(bar('a').getAttribute('aria-label')).toContain('alpha')
+    await userEvent.click(bar('a'))
+    expect((await screen.findByTestId('session-bar-popover')).textContent).toContain('alpha')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTestId('session-bar-popover')).toBeNull())
+    await userEvent.click(bar('b'))
+    expect((await screen.findByTestId('session-bar-popover')).textContent).toContain('bravo')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTestId('session-bar-popover')).toBeNull())
+    bar('a').focus()
+    await userEvent.keyboard('{Enter}')
+    expect((await screen.findByTestId('session-bar-popover')).textContent).toContain('alpha')
   })
 
   test('the legend has one entry per origin present, in the origin colour', () => {

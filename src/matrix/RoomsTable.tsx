@@ -4,6 +4,7 @@ import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -13,6 +14,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { ProjectCell } from '../triggers'
 import type { PresetInfo } from '../triggers'
 import type { RoomView } from './api'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Members', 'Preset', 'Project', 'Trigger'])
 
 export const KINDS: Record<string, string> = { dm: 'DM', group: 'Group', matrix: 'Matrix', infrastructure: 'Infrastructure' }
 export const ACCESS_STATES = ['allowed', 'denied', 'default']
@@ -55,10 +59,11 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
           {ACCESS_STATES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
       </Box>
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
           <TableRow>
-            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h}>{h}</TableCell>)}
+            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -70,11 +75,11 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
                 {r.message_request && <Chip size="small" variant="outlined" label="Message request" sx={{ mr: 0.5 }} />}
                 {r.encrypted && <Chip size="small" variant="outlined" label="Encrypted" />}
               </TableCell>
-              <TableCell>{r.member_count}</TableCell>
+              <TableCell sx={col('Members')}>{r.member_count}</TableCell>
               <TableCell><AccessChip access={r.access} /></TableCell>
-              <TableCell>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
-              <TableCell>{r.effective_trigger}</TableCell>
+              <TableCell sx={col('Preset')}>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
+              <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
+              <TableCell sx={col('Trigger')}>{r.effective_trigger}</TableCell>
               <TableCell>
                 {r.session?.id ? (
                   <Link component="button" onClick={(e) => { e.stopPropagation(); onOpenSession(r.session!.id!) }}>
@@ -92,6 +97,7 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
           ))}
         </TableBody>
       </Table>
+      </TableContainer>
     </Box>
   )
 }

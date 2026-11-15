@@ -1,6 +1,18 @@
 # agents-web
 
-The web UI of the agents system and its only TypeScript component: a React single-page app served by nginx. It talks to backends (agents-orchestrator, later the webhook and schedule services) only through relative paths listed in `config.json`, never through a hard-coded host. Sections below: `## Development`, `## Runtime config`, `## Backends and menu`, `## URL layout`, then `## API types`, `## Image` and `## Release`.
+The web UI of the agents system and its only TypeScript component: a React single-page app served by nginx. It talks to backends (agents-orchestrator, later the webhook and schedule services) only through relative paths listed in `config.json`, never through a hard-coded host. Sections below: `## Development`, `## Mobile and iOS
+
+The UI is usable on iPhone Safari (portrait, landscape, Home Screen) and iPad; a mouse window of 900 px or more keeps the dense 13 px desktop UI.
+
+- **One gate.** `TOUCH_OR_SMALL` (src/theme.ts) is `(pointer: coarse), (hover: none), (max-width: 899.95px)`. iOS Safari zooms the page when a text field below 16 px gets focus, so under this gate the theme sets MuiInputBase to 1rem and a CssBaseline safety net forces `font-size: 16px !important` on inputs, textareas, selects, contenteditable, `.cm-editor`, `.cm-content` and the xterm helper textarea, so per-field `sx`, CodeMirror classes and xterm inline styles cannot undercut it. Other touch sizing (44 px targets, 48 px tabs) lives under `(pointer: coarse)` only.
+- **Guards.** `src/layout/designRules.ts` (run by designRules.test.ts) has the rules `input-font` (no fontSize on input components), `dialog` (every Dialog fullWidth or fullScreen unless allow-listed), `media-query` (no raw `useMediaQuery` outside the allow-list), `hover-reveal` (no opacity or visibility under `:hover`) and `table` (every Table in a TableContainer). Emitted-CSS jsdom tests (src/test/emittedCss.ts) check the media-gated rules.
+- **Safe areas.** `index.html` sets `viewport-fit=cover` (never maximum-scale); every screen edge pads through `src/layout/safeArea.ts` (`max(base, env(safe-area-inset-*))`).
+- **Layout switches.** `useLayout()` (phone, tablet, desktop; a coarse landscape phone counts as phone) and `useTouchOrSmall()` in src/layout/useLayout.ts are the only layout switches.
+- **Keyboard.** `useVisualViewport` (mounted once in App) writes `--app-height` and `--app-top` so `#root` follows the visible area above the on-screen keyboard. The terminal shows a key bar (Esc, Tab, sticky Ctrl, arrows) on touch.
+- **Tables.** Tables scroll inside a TableContainer; `phoneColumns` (src/layout/tables.ts) hides low-priority columns on xs only when their data is reachable elsewhere.
+- **No real-browser suite.** jsdom cannot evaluate media queries or layout, so the zoom and keyboard behaviour is checked by hand with the device checklist in the pull request that introduced it, on a real iPhone after each deploy.
+
+## Runtime config`, `## Backends and menu`, `## URL layout`, then `## API types`, `## Image` and `## Release`.
 
 ## Development
 

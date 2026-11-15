@@ -4,6 +4,7 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { emittedCssFor } from '../test/emittedCss'
 import { theme } from '../theme'
 import type { ProjectPost } from './api'
 import { ProjectRoom } from './ProjectRoom'
@@ -75,5 +76,16 @@ describe('ProjectRoom', () => {
     api.listProjectMessages.mockResolvedValue({ posts: [], next_before_id: null })
     mount()
     await waitFor(() => expect(screen.getByText('No posts in this room yet.')).toBeTruthy())
+  })
+})
+
+describe('safe areas', () => {
+  test('the drawer paper clears the notch, the Home Indicator and the right edge, and the content is never wider than the screen', async () => {
+    api.listProjectMessages.mockResolvedValue({ posts: [], next_before_id: null })
+    mount()
+    const paper = document.querySelector('.MuiDrawer-paper')!
+    const css = emittedCssFor(paper)
+    for (const side of ['top', 'bottom', 'right']) expect(css).toContain(`env(safe-area-inset-${side})`)
+    expect(emittedCssFor(paper.firstElementChild!)).not.toContain('100vw')
   })
 })

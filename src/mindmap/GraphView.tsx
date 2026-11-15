@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography'
 import { Background, Controls, Handle, Position, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { TOKENS } from '../theme'
+import { COARSE, TOKENS } from '../theme'
 import { FormError } from '../triggers'
 import { createEdge, EDGE_KINDS, getNode, patchNode } from './api'
 import type { EdgeKind, NodeStub, Subgraph } from './api'
@@ -56,6 +56,15 @@ export interface GraphViewProps {
   /** Called after a graph change so the page refetches. */
   onChanged: () => void
 }
+
+/** The graph host: fills its parent; on a touch screen the connection handles grow to a finger-sized 20px. */
+export const GRAPH_SX = {
+  position: 'relative',
+  width: '100%',
+  height: '100%',
+  minHeight: 320,
+  '& .react-flow__handle': { [COARSE]: { width: 20, height: 20 } },
+} as const
 
 export function GraphView({ graph, dir, selected, onSelect, onChanged }: GraphViewProps) {
   const layout = useMemo(() => toFlow(graph, dir), [graph, dir])
@@ -116,7 +125,7 @@ export function GraphView({ graph, dir, selected, onSelect, onChanged }: GraphVi
   }
 
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100%', minHeight: 320 }}>
+    <Box sx={GRAPH_SX}>
       <ReactFlow
         nodes={nodes.map((n) => ({ ...n, selected: n.id === selected }))}
         edges={edges}

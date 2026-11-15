@@ -88,6 +88,46 @@ describe('designViolations rule fixtures', () => {
     expect(rulesOf('<Tooltip title="Go"><IconButton aria-label="Go" /></Tooltip>')).toEqual([])
   })
 
+  it('(i) no font size on input components', () => {
+    for (const bad of [
+      '<TextField sx={{ fontSize: 12 }} />',
+      '<TextField slotProps={{ htmlInput: { style: { fontSize: 12 } } }} />',
+      "<Select\n  sx={{ '& .MuiSelect-select': { fontSize: 11 } }}\n/>",
+      "<input style={{ fontSize: '12px' }} />",
+      '<Autocomplete sx={{ fontSize: 12 }} renderInput={(p) => <TextField {...p} />} />',
+    ]) expect(rulesOf(bad)).toEqual(['input-font'])
+    for (const ok of ['<TextField size="small" sx={{ minWidth: 0 }} />', '<Typography sx={{ fontSize: 12 }} />', '<InputLabel sx={{ fontSize: 12 }} />']) expect(rulesOf(ok)).toEqual([])
+  })
+
+  it('(j) every Dialog is fullWidth or fullScreen unless it is a short confirmation', () => {
+    expect(rulesOf('<Dialog open onClose={c}>')).toEqual(['dialog'])
+    expect(rulesOf('<Dialog open fullWidth maxWidth="sm">')).toEqual([])
+    expect(rulesOf('<Dialog\n  open\n  fullScreen={fs}\n>')).toEqual([])
+    expect(rulesOf('const [d, setD] = useState<Dialog>()')).toEqual([])
+    expect(rulesOf('<DialogTitle>x</DialogTitle>')).toEqual([])
+    expect(rulesOf('<Dialog open onClose={c}>', 'layout/ConfirmDialog.tsx')).toEqual([])
+    expect(rulesOf('<Dialog open onClose={c}>', 'vault/DeleteDialog.tsx')).toEqual([])
+  })
+
+  it('(k) useMediaQuery only in the allow-listed files', () => {
+    expect(rulesOf('const m = useMediaQuery(q)', 'tabs/Example.tsx')).toEqual(['media-query'])
+    expect(rulesOf('const m = useMediaQuery(q)', 'layout/useLayout.ts')).toEqual([])
+  })
+
+  it('(l) nothing is revealed only on hover', () => {
+    expect(rulesOf("sx={{ '&:hover .actions': { opacity: 1 } }}")).toEqual(['hover-reveal'])
+    expect(rulesOf("'&:hover': { visibility: 'visible' }")).toEqual(['hover-reveal'])
+    expect(rulesOf("'&:hover': { bgcolor: 'action.hover' }")).toEqual([])
+  })
+
+  it('(m) every Table sits in a TableContainer scroll box', () => {
+    expect(rulesOf('<Table size="small">')).toEqual(['table'])
+    expect(rulesOf('<TableContainer sx={TABLE_SCROLL_SX}><Table size="small">')).toEqual([])
+    expect(rulesOf('<TableRow>')).toEqual([])
+    expect(rulesOf('<TableCell>x</TableCell>')).toEqual([])
+    expect(rulesOf('<Table size="small">', 'markdown/Markdown.tsx')).toEqual([])
+  })
+
   it('names the line of the violation', () => {
     const [msg] = designViolations(PATH, "a\nb\nconst c = '#fff'")
     expect(msg).toContain('line 3')

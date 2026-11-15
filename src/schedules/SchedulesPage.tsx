@@ -7,6 +7,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -22,6 +23,9 @@ import { deleteSchedule, listSchedules, runScheduleNow, updateSchedule } from '.
 import type { ScheduleView } from './api'
 import { ScheduleForm } from './ScheduleForm'
 import { ScheduleRuns } from './ScheduleRuns'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Cron', 'Timezone', 'Preset', 'Project', 'Last run'])
 
 export interface SchedulesPageProps {
   onBack: () => void
@@ -101,10 +105,11 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
           No schedules yet. A schedule starts an agent session from a preset on a cron timetable, sending it a prompt each time it fires.
         </Typography>
       ) : (
+        <TableContainer sx={TABLE_SCROLL_SX}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['', 'Enabled', 'Name', 'Cron', 'Timezone', 'Preset', 'Project', 'Next fire', 'Last run', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}
+              {['', 'Enabled', 'Name', 'Cron', 'Timezone', 'Preset', 'Project', 'Next fire', 'Last run', ''].map((h, i) => <TableCell key={i} sx={col(h)}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -120,12 +125,12 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
                     <Switch size="small" checked={s.enabled} onChange={() => void toggle(s)} slotProps={{ input: { 'aria-label': `Enable ${s.name}` } }} />
                   </TableCell>
                   <TableCell>{s.name}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>{s.cron}</TableCell>
-                  <TableCell>{s.timezone}</TableCell>
-                  <TableCell>{presets[s.preset_id]?.name ?? s.preset_id}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}><ProjectCell presetId={s.preset_id} index={presets} /></TableCell>
+                  <TableCell sx={col('Cron', { fontFamily: 'monospace' })}>{s.cron}</TableCell>
+                  <TableCell sx={col('Timezone')}>{s.timezone}</TableCell>
+                  <TableCell sx={col('Preset')}>{presets[s.preset_id]?.name ?? s.preset_id}</TableCell>
+                  <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={s.preset_id} index={presets} /></TableCell>
                   <TableCell>{s.enabled && s.next_fires[0] ? fireTime(s.next_fires[0], s.timezone) : '-'}</TableCell>
-                  <TableCell>
+                  <TableCell sx={col('Last run')}>
                     {s.last_run ? <RunStatusChip status={s.last_run.status as RunStatus} reason={s.last_run.reason ?? undefined} /> : '-'}
                   </TableCell>
                   <TableCell align="right">
@@ -145,6 +150,7 @@ export function SchedulesPage({ onBack, onOpenSession }: SchedulesPageProps) {
             ))}
           </TableBody>
         </Table>
+        </TableContainer>
       )}
       <Dialog open={form !== null} onClose={() => setForm(null)} fullWidth maxWidth="sm">
         <DialogTitle>{form === 'new' || form === null ? 'New schedule' : 'Edit schedule'}</DialogTitle>

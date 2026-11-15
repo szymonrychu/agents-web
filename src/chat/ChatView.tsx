@@ -1,4 +1,4 @@
-/** Header (slug, state, agents strip) and the log of one session. */
+/** Header (slug, state, agents strip) and the log of one session. On a phone the header controls scroll sideways in their own row. */
 import { useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -17,6 +17,7 @@ import { SessionIssue } from '../ribbon/SessionIssue'
 import { SessionProgress } from '../ribbon/SessionProgress'
 import { sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
+import { useLayout } from '../layout/useLayout'
 import { TOKENS } from '../theme'
 
 /** status is a free-form dict: read status.drain.waiting defensively (absent when no drain). */
@@ -39,27 +40,51 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
   const chat = useSessionChat(session.id, ordinals, maxItems)
   // The main log shows only the main agent; each subagent's operations go to its read-only pane.
   const view = useMemo(() => splitSubagents(filterByAgents(chat.items, selected), chat.subagents), [chat.items, chat.subagents, selected])
+  const phone = useLayout() === 'phone'
   const toggle = (id: string) => setFilter({ sessionId: session.id, ids: selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id] })
+  const title = (
+    <Typography variant="h5" component="h2" noWrap={phone} sx={{ minWidth: 0 }}>
+      {session.slug}
+    </Typography>
+  )
+  const stateLabel = (
+    <Typography variant="caption" sx={{ color: 'text.secondary', flexShrink: 0 }}>
+      {markLabel(sessionMarkState(session, agents))}
+    </Typography>
+  )
+  const controls = (
+    <>
+      <ScaleControl session={session} />
+      <AgentsStrip
+        agents={agents}
+        replicas={session.spec.replicas}
+        drainWaiting={drainWaiting(session)}
+        selected={selected}
+        onToggle={toggle}
+        autoCompactPct={session.summary.auto_compact_pct}
+        hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch, leaderReason: session.leader_reason } : undefined}
+      />
+    </>
+  )
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, pb: 1, borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
-        <Typography variant="h5" component="h2">
-          {session.slug}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          {markLabel(sessionMarkState(session, agents))}
-        </Typography>
-        <ScaleControl session={session} />
-        <AgentsStrip
-          agents={agents}
-          replicas={session.spec.replicas}
-          drainWaiting={drainWaiting(session)}
-          selected={selected}
-          onToggle={toggle}
-          autoCompactPct={session.summary.auto_compact_pct}
-          hive={session.hive ? { sessionId: session.id, leaderEpoch: session.leader_epoch, leaderReason: session.leader_reason } : undefined}
-        />
-      </Box>
+      {phone ? (
+        <Box sx={{ pb: 1, borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
+          <Box data-testid="chat-header-title" sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0 }}>
+            {title}
+            {stateLabel}
+          </Box>
+          <Box data-testid="chat-header-controls" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', gap: 2, pt: 1 }}>
+            {controls}
+          </Box>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, pb: 1, borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
+          {title}
+          {stateLabel}
+          {controls}
+        </Box>
+      )}
       <SessionProgress session={session} agents={agents} showLabel />
       <SessionIssue session={session} agents={agents} />
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}

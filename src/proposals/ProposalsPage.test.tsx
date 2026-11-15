@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { phoneColumnProblems } from '..//test/emittedCss'
 import { theme } from '../theme'
 import { item, proposal } from './proposalFixture'
 import { ProposalsPage } from './ProposalsPage'
@@ -84,5 +85,13 @@ describe('ProposalsPage', () => {
     const { container } = mount()
     await screen.findByText('worker')
     expect(container.textContent).not.toMatch(/hunter2/)
+  })
+})
+
+describe('ProposalsPage table on phones', () => {
+  test('sits in a scroll container and hides low-priority columns', async () => {
+    mount()
+    await screen.findByText('worker')
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Kind', 'Proposer', 'Revision'], ['Target', 'Status', 'Age'])).toEqual([])
   })
 })

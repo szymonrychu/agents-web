@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
-import { MONO_FONT, TOKENS } from '../theme'
+import { COARSE, MONO_FONT, TOKENS, TOUCH_TARGET_PX } from '../theme'
 import type { ChatItem } from './chatModel'
 import { Markdown } from '../markdown/Markdown'
 import { SubagentPane } from './SubagentPane'
@@ -52,7 +52,7 @@ function Expandable({ summary, children }: { summary: ReactNode; children: React
   const [open, setOpen] = useState(false)
   return (
     <Box>
-      <ButtonBase aria-expanded={open} onClick={() => setOpen((o) => !o)} sx={{ gap: 1, textAlign: 'left', color: 'text.secondary', fontSize: `${TOKENS.fontSizes.sm / 16}rem` }}>
+      <ButtonBase aria-expanded={open} onClick={() => setOpen((o) => !o)} sx={{ gap: 1, textAlign: 'left', color: 'text.secondary', fontSize: `${TOKENS.fontSizes.sm / 16}rem`, [COARSE]: { minHeight: TOUCH_TARGET_PX } }}>
         {summary}
       </ButtonBase>
       {open ? <Box sx={{ mt: 0.5 }}>{children}</Box> : null}

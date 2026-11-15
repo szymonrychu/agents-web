@@ -1,15 +1,23 @@
-/** Message input of one session: Enter sends, Shift+Enter is a newline, target is any free agent or one ordinal. */
+/**
+ * Message input of one session; target is any free agent or one ordinal. With a mouse on a wide window: one row, Enter
+ * sends, Shift+Enter is a newline. On touch or a small window (useTouchOrSmall): two rows (message and an icon Send, then
+ * lane and target), Return is a newline and only the Send button sends, the lane hints move into the lane menu.
+ */
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import ListItemText from '@mui/material/ListItemText'
 import FormHelperText from '@mui/material/FormHelperText'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
+import SendIcon from '@mui/icons-material/Send'
 import { postMessage } from '../api/client'
 import type { AgentView, PostMessage } from '../api/client'
+import { useTouchOrSmall } from '../layout/useLayout'
 import { TOKENS } from '../theme'
 
 export interface ComposerProps {
@@ -33,6 +41,7 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
   const [lane, setLane] = useState<Lane>('regular')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const compact = useTouchOrSmall()
   const canSend = text.trim() !== '' && !deleting && !sending
   // A chosen agent that left the list falls back to any free agent.
   const chosen = agents.some((a) => a.id === target) ? target : ANY
@@ -47,10 +56,45 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
       .finally(() => setSending(false))
   }
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Enter' || e.shiftKey) return
+    // On touch the on-screen Return key is the only way to type a newline, so only the Send button sends.
+    if (compact || e.key !== 'Enter' || e.shiftKey) return
     e.preventDefault()
     send()
   }
+
+  const message = (
+    <TextField
+      multiline
+      maxRows={8}
+      fullWidth
+      size="small"
+      placeholder="Message the session"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onKeyDown={onKeyDown}
+      sx={{ minWidth: 0 }}
+      slotProps={{ htmlInput: { 'aria-label': 'Message', enterKeyHint: compact ? 'enter' : 'send' } }}
+    />
+  )
+  const laneSelect = (
+    <Select size="small" value={lane} onChange={(e) => setLane(e.target.value as Lane)} inputProps={{ 'aria-label': 'Lane' }} renderValue={(v) => LANES.find((l) => l.value === v)?.label} sx={compact ? { flex: 1, minWidth: 0 } : { minWidth: 120 }}>
+      {LANES.map((l) => (
+        <MenuItem key={l.value} value={l.value}>
+          {compact ? <ListItemText primary={l.label} secondary={l.hint} /> : l.label}
+        </MenuItem>
+      ))}
+    </Select>
+  )
+  const targetSelect = (
+    <Select size="small" value={chosen} onChange={(e) => setTarget(e.target.value)} inputProps={{ 'aria-label': 'Target agent' }} sx={compact ? { flex: 1, minWidth: 0 } : { minWidth: 160 }}>
+      <MenuItem value={ANY}>Any free agent</MenuItem>
+      {agents.map((a) => (
+        <MenuItem key={a.id} value={a.id}>
+          Agent {a.ordinal}
+        </MenuItem>
+      ))}
+    </Select>
+  )
 
   return (
     <Box sx={{ pt: 1, borderTop: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
@@ -59,38 +103,37 @@ export function Composer({ sessionId, agents, deleting }: ComposerProps) {
           {error}
         </Alert>
       ) : null}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-        <TextField
-          multiline
-          maxRows={8}
-          fullWidth
-          size="small"
-          placeholder="Message the session"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKeyDown}
-          slotProps={{ htmlInput: { 'aria-label': 'Message' } }}
-        />
-        <Select size="small" value={lane} onChange={(e) => setLane(e.target.value as Lane)} inputProps={{ 'aria-label': 'Lane' }} sx={{ minWidth: 120 }}>
-          {LANES.map((l) => (
-            <MenuItem key={l.value} value={l.value}>
-              {l.label}
-            </MenuItem>
-          ))}
-        </Select>
-        <Select size="small" value={chosen} onChange={(e) => setTarget(e.target.value)} inputProps={{ 'aria-label': 'Target agent' }} sx={{ minWidth: 160 }}>
-          <MenuItem value={ANY}>Any free agent</MenuItem>
-          {agents.map((a) => (
-            <MenuItem key={a.id} value={a.id}>
-              Agent {a.ordinal}
-            </MenuItem>
-          ))}
-        </Select>
-        <Button variant="contained" onClick={send} disabled={!canSend}>
-          Send
-        </Button>
-      </Box>
-      <FormHelperText>{LANES.find((l) => l.value === lane)?.hint}</FormHelperText>
+      {compact ? (
+        <>
+          <Box data-testid="composer-row-main" sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+            {message}
+            <IconButton
+              aria-label="Send"
+              onClick={send}
+              disabled={!canSend}
+              sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' }, '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' } }}
+            >
+              <SendIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Box data-testid="composer-row-options" sx={{ display: 'flex', gap: 1, pt: 1 }}>
+            {laneSelect}
+            {targetSelect}
+          </Box>
+        </>
+      ) : (
+        <>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            {message}
+            {laneSelect}
+            {targetSelect}
+            <Button variant="contained" onClick={send} disabled={!canSend}>
+              Send
+            </Button>
+          </Box>
+          <FormHelperText>{LANES.find((l) => l.value === lane)?.hint}</FormHelperText>
+        </>
+      )}
     </Box>
   )
 }

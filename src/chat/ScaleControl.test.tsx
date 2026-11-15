@@ -64,7 +64,8 @@ describe('ScaleControl', () => {
     expect(screen.getByText('2 of 4 agents')).toBeTruthy()
     expect((add() as HTMLButtonElement).disabled).toBe(true)
     expect((remove() as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText('Static session: scaling is off')).toBeTruthy()
+    expect(screen.getByText('Static session: scaling is off')).toBeTruthy()
+    expect(screen.queryByLabelText('Static session: scaling is off')).toBeNull()
   })
 
   test('shows errors inline', async () => {

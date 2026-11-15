@@ -7,6 +7,7 @@ import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { SessionSummary } from './api'
 import { HistoryPage } from './HistoryPage'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn(), getRetention: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -243,5 +244,16 @@ describe('HistoryPage results', () => {
     mount(onBack)
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(onBack).toHaveBeenCalled()
+  })
+})
+
+describe('HistoryResults phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    const user = userEvent.setup()
+    api.listSessions.mockResolvedValue([row(1, { hits: 2 })])
+    mount()
+    await search(user)
+    const table = await screen.findByRole('table')
+    expect(phoneColumnProblems(table, ['Preset', 'Created', 'Records', 'Size'], ['Session', 'Discarded', 'Hits'])).toEqual([])
   })
 })

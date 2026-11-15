@@ -10,6 +10,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -27,6 +28,8 @@ import type { ProjectQueue } from './autostartApi'
 import { SpecQueuePanel } from './SpecQueuePanel'
 import { createProject, listProjects, patchProject, projectsSummary } from './api'
 import type { Project, ProjectSummary } from './api'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 15_000
 const NAME_MAX = 80
@@ -129,6 +132,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
       </Box>
       <FormError error={actionError} />
       <FormError error={error} />
+      <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -179,6 +183,7 @@ export function ProjectsPage({ onBack }: { onBack: () => void }) {
           })}
         </TableBody>
       </Table>
+      </TableContainer>
       {editing && (
         <ProjectDialog
           editing={editing}

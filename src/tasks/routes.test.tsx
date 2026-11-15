@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { emittedCssFor } from '../test/emittedCss'
 import { TasksRoute, taskPath } from './routes'
 
 // The pages need the taskboard backend config and have their own tests; here only the routing is under test.
@@ -30,6 +31,14 @@ describe('tasks routes', () => {
     expect(screen.getByTestId('tasks-list-route')).toBeTruthy()
   })
 
+  test('the list root follows #root instead of pinning 100dvh', () => {
+    at('/tasks')
+    const css = emittedCssFor(screen.getByTestId('tasks-list-route'))
+    expect(css).toContain('flex-grow:1')
+    expect(css).toContain('min-height:0')
+    expect(css).not.toContain('100dvh')
+  })
+
   test('/tasks/T-5 renders the detail route with the key', () => {
     at('/tasks/T-5')
     expect(screen.getByTestId('task-route').getAttribute('data-key')).toBe('T-5')
@@ -39,5 +48,13 @@ describe('tasks routes', () => {
     at('/tasks/x/y')
     expect(screen.getByTestId('tasks-not-found')).toBeTruthy()
     expect(screen.queryByTestId('task-route')).toBeNull()
+  })
+})
+
+describe('tasks routes safe areas', () => {
+  test.each([['/tasks', 'tasks-list-route'], ['/tasks/T-5', 'task-route']])('%s root pads every edge by the device inset', (path, id) => {
+    at(path)
+    const css = emittedCssFor(screen.getByTestId(id))
+    for (const side of ['top', 'right', 'bottom', 'left']) expect(css).toContain(`env(safe-area-inset-${side})`)
   })
 })

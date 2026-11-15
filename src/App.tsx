@@ -25,6 +25,8 @@ import { ProposalReviewDialog } from './proposals/ProposalReviewDialog'
 import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
+import { safeArea } from './layout/safeArea'
+import { useVisualViewport } from './layout/useVisualViewport'
 import { useAttention } from './attention/useAttention'
 import { DecisionsPreviewDialog } from './attention/DecisionsPreviewDialog'
 
@@ -82,7 +84,7 @@ function SessionsShell() {
     select(id)
   }
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
       <TopBar
         sessions={sessions}
         selectedId={selectedId}
@@ -100,7 +102,7 @@ function SessionsShell() {
         onOpenDecisions={(s) => setPreviewId(s.id)}
         settingsCategories={entries.map((e) => ({ id: e.id, label: e.label, onOpen: () => setView(e.id) }))}
       />
-      <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2 }}>
+      <Box component="main" aria-label={APP_NAME} sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', p: 2, ...safeArea(['left', 'right', 'bottom'], 16) }}>
         {state.error && (
           <Box role="alert" sx={{ fontSize: TOKENS.fontSizes.sm, color: 'error.main' }}>
             {state.error}
@@ -140,6 +142,7 @@ function SessionsShell() {
 }
 
 export default function App() {
+  useVisualViewport()
   return (
     <>
       <SessionExpiredBanner />

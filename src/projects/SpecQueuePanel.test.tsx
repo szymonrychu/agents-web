@@ -8,6 +8,7 @@ import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { ProjectQueue, QueueItem } from './autostartApi'
 import { SpecQueuePanel } from './SpecQueuePanel'
+import { phoneColumnProblems } from '../test/emittedCss'
 
 const api = vi.hoisted(() => ({ listSpecQueue: vi.fn(), moveQueued: vi.fn(), removeQueued: vi.fn(), putAutostart: vi.fn() }))
 vi.mock('./autostartApi', async (orig) => ({ ...(await orig<typeof import('./autostartApi')>()), ...api }))
@@ -132,5 +133,13 @@ describe('SpecQueuePanel', () => {
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(api.removeQueued).toHaveBeenCalledWith(12))
+  })
+})
+
+describe('SpecQueuePanel phone columns', () => {
+  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+    mount()
+    await screen.findByText('Title 11')
+    expect(phoneColumnProblems(screen.getByRole('table', { name: 'Spec queue' }), [], ['#', 'Spec', 'Title', 'Queued'])).toEqual([])
   })
 })

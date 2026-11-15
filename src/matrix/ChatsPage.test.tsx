@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
+import { phoneColumnProblems } from '../test/emittedCss'
 import type { MessageView, RoomDetail, RoomView } from './api'
 import { ChatsPage } from './ChatsPage'
 
@@ -383,5 +384,28 @@ describe('ChatsPage', () => {
     await flush()
     expect(screen.getByText('@bot:hs')).toBeTruthy()
     expect(screen.getByText(/sync is unhealthy/i)).toBeTruthy()
+  })
+})
+
+describe('ChatsPage tables on phones', () => {
+  test('the rooms table scrolls in a TableContainer and hides low-priority columns', async () => {
+    mount()
+    await flush()
+    const table = screen.getByText('Alice DM').closest('table')!
+    expect(phoneColumnProblems(table, ['Members', 'Preset', 'Project', 'Trigger'], ['Name', 'Kind', 'Flags', 'Access', 'Session', 'Last activity', 'Queued'])).toEqual([])
+  })
+
+  test('the room drawer members and messages tables scroll in a TableContainer', async () => {
+    api.listRoomMessages.mockResolvedValue([msg('m1')])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mount()
+    await flush()
+    await user.click(screen.getByText('Alice DM'))
+    await flush()
+    const drawer = screen.getByRole('dialog')
+    const members = within(drawer).getByText('@fb_1:hs').closest('table')!
+    expect(phoneColumnProblems(members, [], ['Name', 'Matrix id', 'Facebook id', 'Access'])).toEqual([])
+    const messages = within(drawer).getByText('body m1').closest('table')!
+    expect(phoneColumnProblems(messages, [], ['Dir', 'Time', 'Sender', 'Body', 'Status'])).toEqual([])
   })
 })

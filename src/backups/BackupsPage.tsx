@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -21,6 +22,8 @@ import type { FormErrorValue } from '../triggers'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
 import { CleanupSettingsCard } from './CleanupSettingsCard'
 import { formatBytes } from './format'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 export interface BackupsPageProps {
   onBack: () => void
@@ -97,6 +100,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
         <Typography color="text.secondary">No archives yet</Typography>
       ) : (
         items && (
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -121,6 +125,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         )
       )}
       {cursor !== null && <Button onClick={() => void loadMore()}>Load more</Button>}

@@ -1,6 +1,7 @@
 /** The recent webhook events: one row per event with its status, reason and routing. */
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -9,6 +10,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { ChainStatusChip, RunStatusChip } from '../triggers'
 import type { RunStatus } from '../triggers'
 import type { EventView } from './api'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Endpoint'])
 
 export interface EventsTableProps {
   events: EventView[]
@@ -30,11 +34,12 @@ function Routing({ event }: { event: EventView }) {
 
 export function EventsTable({ events }: EventsTableProps) {
   return (
+    <TableContainer sx={TABLE_SCROLL_SX}>
     <Table size="small">
       <TableHead>
         <TableRow>
           {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'].map((h) => (
-            <TableCell key={h}>{h}</TableCell>
+            <TableCell key={h} sx={col(h)}>{h}</TableCell>
           ))}
         </TableRow>
       </TableHead>
@@ -48,7 +53,7 @@ export function EventsTable({ events }: EventsTableProps) {
                   <span>{relative(e.received_at)}</span>
                 </Tooltip>
               </TableCell>
-              <TableCell>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
+              <TableCell sx={col('Endpoint')}>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
               <TableCell>{e.kind}</TableCell>
               <TableCell>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
               <TableCell>{e.title}</TableCell>
@@ -63,5 +68,6 @@ export function EventsTable({ events }: EventsTableProps) {
         })}
       </TableBody>
     </Table>
+    </TableContainer>
   )
 }

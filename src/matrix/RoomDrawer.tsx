@@ -7,6 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
+import TableContainer from '@mui/material/TableContainer'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
@@ -14,12 +15,14 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
+import { safeArea } from '../layout/safeArea'
 import { FormError, PresetSelect } from '../triggers'
 import { addRule, deleteRule, getRoom, listRules, setRoomSettings } from './api'
 import type { RoomDetail, RuleView } from './api'
 import { formatAliases, parseAliases } from './aliases'
 import { RoomMessages } from './RoomMessages'
 import { AccessChip } from './RoomsTable'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
 type Pending = 'allow' | 'deny' | 'remove'
 
@@ -31,7 +34,7 @@ export interface RoomDrawerProps {
 
 export function RoomDrawer({ roomId, onClose, onChanged }: RoomDrawerProps) {
   return (
-    <Drawer anchor="right" open={roomId !== null} onClose={onClose} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Room details', sx: { width: { xs: '100%', md: 640 }, p: 2 } } }}>
+    <Drawer anchor="right" open={roomId !== null} onClose={onClose} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Room details', sx: { width: { xs: '100%', md: 640 }, p: 2, ...safeArea(['top', 'bottom', 'right'], 16) } } }}>
       {roomId && <RoomPanel key={roomId} roomId={roomId} onChanged={onChanged} />}
     </Drawer>
   )
@@ -161,6 +164,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
           </Box>
           <Typography component="h3" variant="subtitle1">Members</Typography>
+          <TableContainer sx={TABLE_SCROLL_SX}>
           <Table size="small">
             <TableHead>
               <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Access'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
@@ -176,6 +180,7 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
           <RoomMessages roomId={room.room_id} />
         </Box>
       )}
