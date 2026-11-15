@@ -279,7 +279,9 @@ describe('App', () => {
   test('top_bar_on_phone_layout', async () => {
     setViewport(400)
     mount()
-    await waitFor(() => expect(tabs()).toHaveLength(2))
+    // On a phone the session tabs give way to one current-session button (S-55 step 6).
+    expect(await screen.findByRole('button', { name: 'Switch session, current alpha' })).toBeTruthy()
+    expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.getByRole('button', { name: 'Open menu' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
     expect(screen.queryByRole('complementary')).toBeNull()
@@ -339,7 +341,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
-    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha', 'beta'])
+    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha2/3 - ctx 40%', 'beta1/1 - ctx 10%'])
     expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))

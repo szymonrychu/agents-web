@@ -1,13 +1,18 @@
-/** Top bar: hamburger menu, one tab per session (state mark, slug with its preset name, context gauge) and a New session button. */
+/**
+ * Top bar: hamburger menu, one tab per session (state mark, slug with its preset name, context gauge) and a New session button.
+ * On a phone the tabs give way to one current-session button that opens the sessions drawer, and the buttons become icons.
+ */
 import { useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import MenuIcon from '@mui/icons-material/Menu'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import ReviewsIcon from '@mui/icons-material/RateReviewOutlined'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -30,8 +35,10 @@ import { useActiveProposals } from '../proposals/useActiveProposals'
 import { ProjectSelect } from '../projects/ProjectSelect'
 import { AttentionBubble } from '../attention/AttentionBubble'
 import type { SessionAttention } from '../attention/attention'
+import { safeArea } from './safeArea'
 import { SessionsMenu } from './SessionsMenu'
 import type { SettingsCategory } from './SessionsMenu'
+import { useLayout } from './useLayout'
 
 export interface TopBarProps {
   /** Sessions in display order, already derived by the caller (pins over the alphabetical list); never re-sorted here. */
@@ -76,13 +83,52 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
   const value = sessions.some((e) => e.session.id === selectedId) ? selectedId : false
   const labelled = sessions.find((e) => e.session.id === selectedId && !e.discarded)
   const openDecisions = actions ? (attention.get(actions.session.id)?.decisions ?? 0) : 0
+  const phone = useLayout() === 'phone'
+  const current = sessions.find((e) => e.session.id === selectedId)
+  const currentNeeds = current ? attention.get(current.session.id) : undefined
+  const openProposals = () => (waiting.length === 1 ? onOpenProposals?.(waiting[0]) : onOpenProposals?.())
   return (
-    <Box component="header" sx={{ borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}` }}>
+    <Box component="header" sx={{ borderBottom: `${TOKENS.borderWidth}px solid ${TOKENS.border}`, ...safeArea(['top', 'left', 'right']) }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
       <IconButton aria-label="Open menu" onClick={() => setMenuOpen(true)}>
         <MenuIcon />
       </IconButton>
       <ProjectSelect />
+      {phone ? (
+        <>
+          <ButtonBase
+            aria-label={current ? `Switch session, current ${current.session.slug}` : 'Choose session'}
+            onClick={() => setMenuOpen(true)}
+            sx={{ flexGrow: 1, minWidth: 0, justifyContent: 'flex-start', gap: 1, px: 1, alignSelf: 'stretch' }}
+          >
+            {current ? <StateMark state={sessionMarkState(current.session, Object.values(current.agents), current.discarded === true)} /> : null}
+            <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: TOKENS.fontWeights.medium }}>
+              {current ? current.session.slug : 'Choose session'}
+            </Box>
+          </ButtonBase>
+          {current && currentNeeds ? (
+            <AttentionBubble slug={current.session.slug} attention={currentNeeds} onOpen={() => (currentNeeds.decisions > 0 ? onOpenDecisions(current.session) : onSelect(current.session.id))} />
+          ) : null}
+          {current && current.discarded ? (
+            <IconButton aria-label={`Dismiss ${current.session.slug}`} onClick={() => onDismiss(current.session.id)}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          ) : current ? (
+            <IconButton aria-haspopup="menu" aria-label="Session actions" onClick={(e) => setActions({ anchor: e.currentTarget, session: current.session })}>
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+          {proposalCount > 0 && (
+            <IconButton color="warning" aria-label={`Proposals, ${proposalCount} waiting`} onClick={openProposals}>
+              <Badge badgeContent={proposalCount} color="warning"><ReviewsIcon fontSize="small" /></Badge>
+            </IconButton>
+          )}
+          <IconButton aria-label="New session" onClick={onNew}>
+            <AddIcon />
+          </IconButton>
+        </>
+      ) : (
+      <>
       <Tabs value={value} variant="scrollable" scrollButtons="auto" aria-label="Sessions" sx={{ flexGrow: 1, minWidth: 0 }}>
         {sessions.map(({ session, agents, discarded }) => {
           const mark = sessionMarkState(session, Object.values(agents), discarded === true)
@@ -139,11 +185,13 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         })}
       </Tabs>
       {proposalCount > 0 && (
-        <Button size="small" color="warning" variant="outlined" aria-label={`Proposals, ${proposalCount} waiting`} onClick={() => (waiting.length === 1 ? onOpenProposals?.(waiting[0]) : onOpenProposals?.())} sx={{ flexShrink: 0 }}>
+        <Button size="small" color="warning" variant="outlined" aria-label={`Proposals, ${proposalCount} waiting`} onClick={openProposals} sx={{ flexShrink: 0 }}>
           <Badge badgeContent={proposalCount} color="warning" sx={{ pr: 1 }}>Proposals</Badge>
         </Button>
       )}
       <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={onNew} sx={{ flexShrink: 0 }}>New session</Button>
+      </>
+      )}
       <Menu anchorEl={actions?.anchor ?? null} open={actions !== null} onClose={() => setActions(null)}>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onInitScripts(target) }}>Init scripts</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onPermissions(target) }}>Permissions</MenuItem>

@@ -8,6 +8,8 @@ import type { SessionView } from '../api/client'
 import type { SessionEntry } from '../ribbon/useSessions'
 import { theme } from '../theme'
 import { ProjectProvider } from '../projects/ProjectContext'
+import { emittedCssFor } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { TopBar } from './TopBar'
 
 const api = vi.hoisted(() => ({ setSessionLabels: vi.fn() }))
@@ -18,6 +20,7 @@ const proposals = vi.hoisted(() => ({ listProposals: vi.fn() }))
 vi.mock('../proposals/api', () => proposals)
 
 beforeEach(() => {
+  setViewport(1440)
   localStorage.clear()
   projects.listProjects.mockReset()
   projects.listProjects.mockResolvedValue([])
@@ -196,7 +199,7 @@ describe('TopBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     const items = within(list).getAllByRole('button')
-    expect(items.map((i) => i.textContent)).toEqual(['alpha', 'bravo'])
+    expect(items.map((i) => i.textContent)).toEqual(['alpha1/1 - ctx 40%', 'bravo1/1 - ctx 90%'])
     expect(items[1].getAttribute('aria-current')).toBe('true')
     expect(items[0].getAttribute('aria-current')).toBeNull()
     fireEvent.click(items[0])
@@ -207,7 +210,7 @@ describe('TopBar', () => {
     setup({ sessions: [SESSIONS[1], SESSIONS[0]] })
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const items = within(screen.getByRole('list', { name: 'Sessions' })).getAllByRole('button')
-    expect(items.map((i) => i.textContent)).toEqual(['bravo', 'alpha'])
+    expect(items.map((i) => i.textContent)).toEqual(['bravo1/1 - ctx 90%', 'alpha1/1 - ctx 40%'])
   })
 
   test('hamburger_choosing_session_closes_drawer', async () => {
@@ -297,4 +300,68 @@ describe('TopBar', () => {
     await waitFor(() => expect(proposals.listProposals).toHaveBeenCalled())
     expect(screen.queryByRole('button', { name: /Proposals/ })).toBeNull()
   })
+})
+
+describe('TopBar on a desktop with a mouse', () => {
+  test('keeps session tabs and text buttons', async () => {
+    proposals.listProposals.mockResolvedValue([{ id: 1, revision: 1, status: 'open' }, { id: 2, revision: 1, status: 'open' }])
+    setup()
+    expect(screen.getByRole('tablist', { name: 'Sessions' })).toBeTruthy()
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'New session' }).textContent).toBe('New session')
+    expect((await screen.findByRole('button', { name: 'Proposals, 2 waiting' })).textContent).toContain('Proposals')
+    expect(screen.queryByRole('button', { name: /Switch session/ })).toBeNull()
+  })
+})
+
+describe.each([
+  ['portrait', 375, 800],
+  ['landscape', 844, 390],
+])('TopBar on a phone (%s)', (_name, width, height) => {
+  beforeEach(() => setViewport(width, { coarse: true, height }))
+
+  test('replaces the tabs with a current-session button that opens the sessions drawer', () => {
+    setup()
+    expect(screen.queryByRole('tablist', { name: 'Sessions' })).toBeNull()
+    const current = screen.getByRole('button', { name: /Switch session, current bravo/ })
+    expect(current.textContent).toContain('bravo')
+    fireEvent.click(current)
+    const list = screen.getByRole('list', { name: 'Sessions' })
+    expect(within(list).getByText('alpha')).toBeTruthy()
+    expect(within(list).getByText('bravo')).toBeTruthy()
+  })
+
+  test('without a selection the button asks to choose a session', () => {
+    setup({ selectedId: null })
+    expect(screen.getByRole('button', { name: 'Choose session' })).toBeTruthy()
+  })
+
+  test('New session and Proposals are icon buttons', async () => {
+    proposals.listProposals.mockResolvedValue([{ id: 1, revision: 1, status: 'open' }, { id: 2, revision: 1, status: 'open' }])
+    const { onNew } = setup()
+    const add = screen.getByRole('button', { name: 'New session' })
+    expect(add.textContent).not.toContain('New session')
+    fireEvent.click(add)
+    expect(onNew).toHaveBeenCalledTimes(1)
+    const chip = await screen.findByRole('button', { name: 'Proposals, 2 waiting' })
+    expect(chip.textContent).not.toContain('Proposals')
+    expect(chip.textContent).toContain('2')
+  })
+
+  test('the current session keeps its actions and attention bubble; the drawer selects', () => {
+    const { onSelect, onDiscard } = setup({ attention: new Map([['c2', { decisions: 1, tasks: [], prompt: false }]]) })
+    expect(screen.getByRole('button', { name: '1 open decision for bravo' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Session actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Discard' }))
+    expect(onDiscard).toHaveBeenCalledWith(SESSIONS[1].session)
+    fireEvent.click(screen.getByRole('button', { name: /Switch session/ }))
+    fireEvent.click(within(screen.getByRole('list', { name: 'Sessions' })).getAllByRole('button')[0])
+    expect(onSelect).toHaveBeenCalledWith('c1')
+  })
+})
+
+test('the header clears the notch and the side insets', () => {
+  setup()
+  const css = emittedCssFor(screen.getByRole('banner'))
+  for (const side of ['top', 'left', 'right']) expect(css).toContain(`env(safe-area-inset-${side})`)
 })
