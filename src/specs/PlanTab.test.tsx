@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { PlanTab } from './PlanTab'
 import { plan, step } from './testUtils'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ getPlan: vi.fn(), listSteps: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api, specStreamUrl: () => '/tb/stream' }))
@@ -18,6 +19,7 @@ const steps = () => [
 ]
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of Object.values(api)) f.mockReset()
   api.getPlan.mockResolvedValue(plan({ goal: 'Plans on the server', constraints: ['No em dashes'], version: 4 }))
   api.listSteps.mockResolvedValue({ items: steps(), steps_version: 6 })
@@ -61,10 +63,32 @@ describe('plan tab', () => {
   })
 })
 
-describe('plan tab phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('plan tab layouts', () => {
+  test('on a wide screen it is a table with the columns in order', async () => {
     render(<MemoryRouter><PlanTab specKey="S-1" /></MemoryRouter>)
     await screen.findByText('Write schema')
-    expect(phoneColumnProblems(screen.getByRole('table'), [], ['#', 'Step', 'Status', 'Assignee', 'Model', 'Refs', 'Actions'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Plan steps' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['#', 'Step', 'Status', 'Assignee', 'Model', 'Refs', ''])
+    expect(within(table).getByRole('button', { name: 'Edit step 1' })).toBeTruthy()
+  })
+
+  test('on a phone it is one card per step with every field and one actions menu', async () => {
+    setViewport(375, { coarse: true })
+    const user = userEvent.setup()
+    render(<MemoryRouter><PlanTab specKey="S-1" /></MemoryRouter>)
+    const card = await screen.findByRole('article', { name: 'Step 1' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(3)
+    const c = within(card)
+    expect(c.getByText('Write schema', { exact: false })).toBeTruthy()
+    for (const label of ['#', 'Status', 'Assignee', 'Model', 'Refs']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('sess-a')).toBeTruthy()
+    expect(c.getByText('sonnet')).toBeTruthy()
+    expect(c.getByRole('link', { name: /pr.*pull\/3/ })).toBeTruthy()
+    expect(c.queryByRole('button', { name: 'Edit step 1' })).toBeNull()
+    expect(within(screen.getByRole('article', { name: 'Step 2' })).getAllByText('-').length).toBeGreaterThan(0)
+    await user.click(c.getByRole('button', { name: 'Actions for Step 1' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit step 1' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Move step 1 up' }).getAttribute('aria-disabled')).toBe('true')
   })
 })

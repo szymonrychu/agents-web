@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { phoneColumnProblems } from '..//test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
 import { item, proposal } from './proposalFixture'
 import { ProposalsPage } from './ProposalsPage'
@@ -15,6 +15,7 @@ const NOW = Date.parse('2026-11-08T12:00:00Z')
 const mount = (onBack = () => {}) => render(<ThemeProvider theme={theme}><ProposalsPage onBack={onBack} /></ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   Object.values(api).forEach((m) => m.mockReset())
@@ -88,10 +89,24 @@ describe('ProposalsPage', () => {
   })
 })
 
-describe('ProposalsPage table on phones', () => {
-  test('sits in a scroll container and hides low-priority columns', async () => {
+describe('ProposalsPage layouts', () => {
+  test('on a wide screen it is a table with the columns in order', async () => {
     mount()
     await screen.findByText('worker')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Kind', 'Proposer', 'Revision'], ['Target', 'Status', 'Age'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Proposals' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Kind', 'Target', 'Proposer', 'Status', 'Revision', 'Age'])
+  })
+
+  test('on a phone each proposal is a card and Open opens the review dialog', async () => {
+    setViewport(375, { coarse: true })
+    mount()
+    const card = await screen.findByRole('article', { name: 'Proposal worker' })
+    expect(screen.queryByRole('table')).toBeNull()
+    const c = within(card)
+    for (const label of ['Kind', 'Proposer', 'Status', 'Revision', 'Age']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('lead-1')).toBeTruthy()
+    expect(c.getByText('r2')).toBeTruthy()
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(c.getByRole('button', { name: 'Open Proposal worker' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
   })
 })

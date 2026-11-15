@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mountSpecs, spec } from './testUtils'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null }))
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, projects: [], setProject: () => {} }) }))
@@ -21,6 +21,7 @@ const loc = () => screen.getByTestId('loc').textContent ?? ''
 const lastCall = () => api.listSpecs.mock.calls.at(-1)?.[0]
 
 beforeEach(() => {
+  setViewport(1440)
   api.listSpecs.mockReset()
   api.listSpecs.mockResolvedValue({ items: [spec({ key: 'S-2', name: 'other', title: 'Other spec', status: 'review', labels: ['infra'] }), spec()], next_cursor: null })
 })
@@ -91,10 +92,25 @@ describe('specs list', () => {
   })
 })
 
-describe('specs list phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('specs list layouts', () => {
+  test('on a wide screen it is a table with the columns in order', async () => {
     mountSpecs('/specs')
     await screen.findByText('Other spec')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Name', 'Project'], ['Key', 'Title', 'Status', 'Labels'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Specs' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Key', 'Name', 'Title', 'Status', 'Project', 'Labels'])
+  })
+
+  test('on a phone it is one card per spec with every field named', async () => {
+    setViewport(375, { coarse: true })
+    mountSpecs('/specs')
+    const card = await screen.findByRole('article', { name: 'Spec S-2' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    expect(c.getByRole('link', { name: 'S-2' }).getAttribute('href')).toBe('/specs/S-2')
+    expect(c.getByText('Other spec')).toBeTruthy()
+    for (const label of ['Name', 'Status', 'Project', 'Labels']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('review')).toBeTruthy()
+    expect(c.getByText('infra')).toBeTruthy()
   })
 })

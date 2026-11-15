@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import type { CodeEditorProps } from '../editor/CodeEditor'
+import { setViewport } from '../test/viewport'
 import { task } from '../tasks/testUtils'
 import { PlanTab } from './PlanTab'
 import { plan, step } from './testUtils'
@@ -37,6 +38,7 @@ const steps = () => [
 ]
 
 beforeEach(() => {
+  setViewport(1440)
   for (const f of Object.values(api)) f.mockReset()
   api.getPlan.mockResolvedValue(plan({ version: 1 }))
   api.listSteps.mockResolvedValue({ items: steps(), steps_version: 9 })

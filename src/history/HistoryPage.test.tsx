@@ -7,7 +7,8 @@ import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import type { SessionSummary } from './api'
 import { HistoryPage } from './HistoryPage'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { formatDateTime } from '../common/dates'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), getSession: vi.fn(), listRecords: vi.fn(), deleteSession: vi.fn(), getRetention: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -35,6 +36,7 @@ const mount = (onBack = () => {}) => render(<ThemeProvider theme={theme}><Histor
 const search = async (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Search' }))
 
 beforeEach(() => {
+  setViewport(1440)
   api.listSessions.mockReset()
   api.listSessions.mockResolvedValue([])
   api.getSession.mockReset()
@@ -112,8 +114,8 @@ describe('HistoryPage results', () => {
     await search(user)
     const r = (await screen.findByText('slug-7')).closest('tr')!
     expect(within(r).getByText('preset-7')).toBeTruthy()
-    expect(within(r).getByText(new Date('2026-10-25T10:00:00Z').toLocaleString())).toBeTruthy()
-    expect(within(r).getByText(new Date('2026-10-25T12:00:00Z').toLocaleString())).toBeTruthy()
+    expect(within(r).getByText(formatDateTime('2026-10-25T10:00:00Z'))).toBeTruthy()
+    expect(within(r).getByText(formatDateTime('2026-10-25T12:00:00Z'))).toBeTruthy()
     expect(within(r).getByText('assistant 3, user 2')).toBeTruthy()
     expect(within(r).getByText('3.0 MB')).toBeTruthy()
   })
@@ -247,13 +249,37 @@ describe('HistoryPage results', () => {
   })
 })
 
-describe('HistoryResults phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('HistoryResults layouts', () => {
+  const matched = () => row(1, { hits: 2, matches: [{ record_id: 5, kind: 'assistant', snippet: 'a needle here' }] as SessionSummary['matches'] })
+
+  test('on a wide screen it is a table with the columns in order', async () => {
     const user = userEvent.setup()
-    api.listSessions.mockResolvedValue([row(1, { hits: 2 })])
+    api.listSessions.mockResolvedValue([matched()])
     mount()
     await search(user)
-    const table = await screen.findByRole('table')
-    expect(phoneColumnProblems(table, ['Preset', 'Created', 'Records', 'Size'], ['Session', 'Discarded', 'Hits'])).toEqual([])
+    const table = await screen.findByRole('table', { name: 'History results' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Session', 'Preset', 'Created', 'Discarded', 'Records', 'Size', 'Hits'])
+    expect(within(table).getByText('a needle here')).toBeTruthy()
+  })
+
+  test('on a phone each session is a card with its fields, matches inside and an Open button', async () => {
+    setViewport(375, { coarse: true })
+    const user = userEvent.setup()
+    api.listSessions.mockResolvedValue([matched(), row(2)])
+    mount()
+    await search(user)
+    const card = await screen.findByRole('article', { name: 'Session slug-1' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    for (const label of ['Preset', 'Created', 'Discarded', 'Records', 'Size', 'Hits']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
+    expect(c.getByText('preset-1')).toBeTruthy()
+    expect(c.getByText('2 hits')).toBeTruthy()
+    expect(c.getByText('a needle here')).toBeTruthy()
+    expect(within(screen.getByRole('article', { name: 'Session slug-2' })).queryByText('a needle here')).toBeNull()
+    expect(within(screen.getByRole('article', { name: 'Session slug-2' })).getByText('-')).toBeTruthy()
+    api.getSession.mockResolvedValue(detailOf(row(1)))
+    await user.click(c.getByRole('button', { name: 'Open Session slug-1' }))
+    await waitFor(() => expect(api.getSession).toHaveBeenCalled())
   })
 })
