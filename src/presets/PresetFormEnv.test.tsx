@@ -6,6 +6,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import type { Meta, PresetView } from '../api/client'
 import { editorView, stubRangeRects } from '../editor/testEditor'
 import { theme } from '../theme'
+import { emittedInMedia } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 import { ApiError } from '../api/client'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
@@ -175,6 +177,15 @@ describe('vault ref rows', () => {
     await userEvent.click(screen.getByRole('option', { name: 'GITHUB_TOKEN' }))
     expect(document.body.textContent).not.toContain(SECRET)
     expect(container.innerHTML).not.toContain(SECRET)
+  })
+
+  test('the Entry env select is full width on phones', async () => {
+    setViewport(375, { coarse: true })
+    vaultOn([ENTRY])
+    wrap(<PresetForm open preset={preset({ env: { G: GREF } })} {...noop} />)
+    await ready()
+    const field = (await screen.findByRole('combobox', { name: 'Entry env 1' })).closest('.MuiFormControl-root')!
+    expect(emittedInMedia(field, '(min-width:0px)')).toContain('width:100%')
   })
 
   test('test_ref_env_switch', async () => {
