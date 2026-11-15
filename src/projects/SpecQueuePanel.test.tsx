@@ -157,7 +157,8 @@ describe('SpecQueuePanel on phones', () => {
 
   test('there is no drop-at-end target on phones', async () => {
     mount()
-    await screen.findByRole('article', { name: 'Queued S-11' })
+    const card = await screen.findByRole('article', { name: 'Queued S-11' })
+    fireEvent.dragStart(card)
     expect(screen.queryByText('Drop here to move to the end')).toBeNull()
   })
 

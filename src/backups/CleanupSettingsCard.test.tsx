@@ -38,6 +38,7 @@ const setNumber = async (label: string, value: string) => {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
+  setViewport(1440)
   Object.values(api).forEach((m) => m.mockReset())
   api.getCleanupSettings.mockResolvedValue(VIEW)
 })
