@@ -25,7 +25,7 @@ function runningGate(status: Dict): string | null {
 }
 
 export interface Issue {
-  kind: 'parked' | 'closing' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
+  kind: 'parked' | 'closing' | 'auth_failed' | 'bootstrap_failure' | 'permission_unavailable' | 'attention' | 'quiet'
   text: string
   /** Set on an attention issue of one agent: the agent whose dialog can be opened. */
   agentId?: string
@@ -76,6 +76,7 @@ function quietReminded(session: SessionView): string | null {
 
 /** What needs a person on one agent: a failed bootstrap step ("install_plugins failed: ..."), an unavailable permission mode or the attention reason. */
 export function agentIssue(a: AgentView): Issue | null {
+  if (a.auth_state === 'failed') return { kind: 'auth_failed', text: a.auth_reason ? `Claude login failed: ${a.auth_reason}` : 'Claude login failed' }
   const f = a.bootstrap_failure
   if (f) return { kind: 'bootstrap_failure', text: f.message ? `${f.step} failed: ${f.message}` : `${f.step} failed` }
   if (a.permission_mode_state === 'unavailable') return { kind: 'permission_unavailable', text: a.permission_mode_reason ? `Auto mode unavailable: ${a.permission_mode_reason}` : 'Auto mode unavailable' }
@@ -83,12 +84,16 @@ export function agentIssue(a: AgentView): Issue | null {
   return null
 }
 
-/** The most urgent issue of a session: a pending self-close first (the session is about to go), then a bootstrap failure, then an unavailable permission mode, then attention, then the quiet line after an inactivity reminder; agent detail first, summary counts as fallback. */
+/** The most urgent issue of a session: a pending self-close first (the session is about to go), then a failed Claude login, then a bootstrap failure, then an unavailable permission mode, then attention, then the quiet line after an inactivity reminder; agent detail first, summary counts as fallback. */
 export function sessionIssue(session: SessionView, agents: readonly AgentView[]): Issue | null {
   const parked = session.desired === 'active' ? parkedText(session) : null
   if (parked !== null) return { kind: 'parked', text: `parked: ${parked}` }
   if (session.desired === 'active' && session.close_requested_at) return { kind: 'closing', text: closingText(session) }
   const issues = live(agents).map(agentIssue)
+  const auth = issues.find((i) => i?.kind === 'auth_failed')
+  if (auth) return auth
+  const authFailed = session.summary.auth_failed_agents ?? 0
+  if (authFailed > 0) return { kind: 'auth_failed', text: `Claude login failed on ${plural(authFailed, 'agent', 'agents')}` }
   const failure = issues.find((i) => i?.kind === 'bootstrap_failure')
   if (failure) return failure
   const failed = session.summary.bootstrap_failed_agents ?? 0

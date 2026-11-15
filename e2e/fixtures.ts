@@ -71,6 +71,7 @@ const session = (id: string, slug: string): O['SessionView'] => ({
   status: {},
   summary: {
     attention_agents: 0,
+    auth_failed_agents: 0,
     auto_compact_pct: 80,
     bootstrap_failed_agents: 0,
     bootstrap_failures: [],

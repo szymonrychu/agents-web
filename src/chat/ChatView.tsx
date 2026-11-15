@@ -14,6 +14,7 @@ import { QueueStrip } from './QueueStrip'
 import { ScaleControl } from './ScaleControl'
 import { filterByAgents, splitSubagents } from './chatModel'
 import { useSessionChat } from './useSessionChat'
+import { CredentialNotice } from '../credential/CredentialNotice'
 import { SessionIssue } from '../ribbon/SessionIssue'
 import { SessionProgress } from '../ribbon/SessionProgress'
 import { sessionMarkState } from '../ribbon/sessionStatus'
@@ -88,6 +89,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
       )}
       <SessionProgress session={session} agents={agents} showLabel />
       <SessionIssue session={session} agents={agents} />
+      <CredentialNotice />
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
       {chat.loading ? (
         <Typography sx={{ color: 'text.secondary', pt: 1 }}>Loading messages</Typography>

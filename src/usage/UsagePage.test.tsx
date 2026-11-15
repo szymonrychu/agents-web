@@ -208,3 +208,27 @@ describe('UsagePage', () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('UsagePage credential', () => {
+  const credMeta = (credential: Record<string, unknown>) => client.getMeta.mockResolvedValue({ usage: { configured: true, quota_default_pct: 100 }, credential })
+  test('the card shows the end date, phase chip and thresholds', async () => {
+    credMeta({ expires_at: '2027-10-23T00:00:00Z', phase: 'warn', warn_days: 10, refuse_hours: 24 })
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    const c = within(await screen.findByTestId('credential-card'))
+    expect(c.getByText('Ends 2027-10-23 00:00 UTC')).toBeTruthy()
+    expect(c.getByText('warn')).toBeTruthy()
+    expect(c.getByText('warn 10 days, refuse 24 h before')).toBeTruthy()
+  })
+  test('no date says so', async () => {
+    credMeta({ expires_at: null, phase: 'unknown', warn_days: 10, refuse_hours: 24 })
+    api.getCurrent.mockResolvedValue(view({ windows: { seven_day: win() } }))
+    mount()
+    expect(await screen.findByText('No credential end date configured')).toBeTruthy()
+  })
+  test('an auth_error probe shows the login alert even with fresh windows', async () => {
+    api.getCurrent.mockResolvedValue(view({ windows: { five_hour: win(), seven_day: win() }, last_probe: { at: '2026-11-01T11:30:00Z', ok: false, error: 'auth_error' } }))
+    mount()
+    expect(await screen.findByText('Claude login failed on the last usage probe (2026-11-01 11:30 UTC)')).toBeTruthy()
+  })
+})

@@ -1057,7 +1057,8 @@ export interface paths {
         /**
          * Scale Session
          * @description Set spec.replicas of a manageable session in place; the caller's own session is refused
-         *     (422 `own_session`). A scale-up over the usage quota is 409 `usage_quota`: that check reads
+         *     (422 `own_session`). A scale-up inside the credential refuse margin is 409
+         *     `credential_expiring`, over the usage quota 409 `usage_quota`: those checks read
          *     on its own connection and fails open, like the main port's, so it runs between a short
          *     read of the target and the transaction (never while a connection is held). No kube call.
          */
@@ -1716,8 +1717,9 @@ export interface paths {
         put?: never;
         /**
          * Scale the caller's session (leader only)
-         * @description A scale-up over the usage quota is refused 409 `usage_quota`, but only for the leader:
-         *     a non-leader is always answered 403 `not_leader`.
+         * @description A scale-up inside the credential refuse margin is refused 409 `credential_expiring`, over
+         *     the usage quota 409 `usage_quota`, but only for the leader: a non-leader is always answered
+         *     403 `not_leader`.
          */
         post: operations["scale_agent_v1_scale_post"];
         delete?: never;
@@ -2922,6 +2924,10 @@ export interface components {
         /** AgentView */
         AgentView: {
             attention: components["schemas"]["AgentAttention"] | null;
+            /** Auth Reason */
+            auth_reason?: string | null;
+            /** Auth State */
+            auth_state?: "failed" | null;
             bootstrap: components["schemas"]["AgentBootstrapStep"] | null;
             bootstrap_failure: components["schemas"]["AgentBootstrapStep"] | null;
             context: components["schemas"]["AgentContext"] | null;
@@ -3843,6 +3849,7 @@ export interface components {
             agent_images: string[];
             cache: components["schemas"]["MetaCache"];
             caps: components["schemas"]["MetaCaps"];
+            credential: components["schemas"]["MetaCredential"];
             defaults: components["schemas"]["MetaDefaults"];
             /**
              * Discard Hook
@@ -3880,6 +3887,20 @@ export interface components {
             max_replicas: number;
             /** Max Sessions */
             max_sessions: number;
+        };
+        /** MetaCredential */
+        MetaCredential: {
+            /** Expires At */
+            expires_at: string | null;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "unknown" | "ok" | "warn" | "refuse" | "expired";
+            /** Refuse Hours */
+            refuse_hours: number;
+            /** Warn Days */
+            warn_days: number;
         };
         /** MetaDefaults */
         MetaDefaults: {
@@ -4781,6 +4802,11 @@ export interface components {
         SessionSummary: {
             /** Attention Agents */
             attention_agents: number;
+            /**
+             * Auth Failed Agents
+             * @default 0
+             */
+            auth_failed_agents: number;
             /** Auto Compact Pct */
             auto_compact_pct: number;
             /** Bootstrap Failed Agents */
@@ -7829,7 +7855,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description usage_quota, static_session, leader_would_leave or session_deleting */
+            /** @description credential_expiring, usage_quota, static_session, leader_would_leave or session_deleting */
             409: {
                 headers: {
                     [name: string]: unknown;
