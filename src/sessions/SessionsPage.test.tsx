@@ -139,6 +139,7 @@ describe('SessionsPage', () => {
     const c = within(card)
     for (const label of ['Preset', 'Project', 'State', 'Ready', 'Created', 'Closes', 'Labels']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
     expect(c.getByText('working')).toBeTruthy()
+    expect(c.getByText('Labels', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
     expect(card.querySelector('time')).toBeTruthy()
     await user.click(c.getByRole('button', { name: 'Actions for Session alpha' }))
     expect(screen.getByRole('menuitem', { name: 'Move alpha to project' })).toBeTruthy()

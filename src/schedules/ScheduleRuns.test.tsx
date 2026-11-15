@@ -156,6 +156,8 @@ describe('runs by layout', () => {
     expect(c.getByRole('link', { name: 'nightly-1' })).toBeTruthy()
     expect(c.getByLabelText('chain fired')).toBeTruthy()
     expect(card.querySelector('time')).toBeTruthy()
+    const bare = within(screen.getByRole('article', { name: 'Run b' }))
+    expect(bare.getByText('Session', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
   })
 
   test('wide screens keep the table with run-<id> rows', async () => {

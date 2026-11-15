@@ -59,7 +59,7 @@ const COLUMNS: Column<SessionView>[] = [
   { key: 'ready', label: 'Ready', role: 'meta', render: (c) => `${c.summary.ready}/${c.summary.replicas}` },
   { key: 'created', label: 'Created', role: 'meta', render: (c) => <DateTime iso={c.created_at} /> },
   { key: 'closes', label: 'Closes', role: 'meta', render: (c) => timeLeft(c.closes_at) },
-  { key: 'labels', label: 'Labels', role: 'meta', render: (c) => <LabelChips labels={c.labels ?? []} /> },
+  { key: 'labels', label: 'Labels', role: 'meta', render: (c) => ((c.labels ?? []).length > 0 ? <LabelChips labels={c.labels ?? []} /> : '-') },
 ]
 
 export function SessionsPage({ onBack, onOpen }: SessionsPageProps) {

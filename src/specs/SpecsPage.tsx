@@ -24,7 +24,7 @@ const COLUMNS = (addLabel: (label: string) => void): Column<SpecSummary>[] => [
   { key: 'title', label: 'Title', role: 'secondary', render: (s) => s.title },
   { key: 'status', label: 'Status', role: 'meta', render: (s) => <Chip size="small" label={s.status} /> },
   { key: 'project', label: 'Project', role: 'meta', render: (s) => <Chip size="small" variant="outlined" label={s.project} /> },
-  { key: 'labels', label: 'Labels', role: 'meta', render: (s) => <LabelChips labels={s.labels} onClick={addLabel} /> },
+  { key: 'labels', label: 'Labels', role: 'meta', render: (s) => (s.labels.length > 0 ? <LabelChips labels={s.labels} onClick={addLabel} /> : '-') },
 ]
 
 const POLL_MS = 10000

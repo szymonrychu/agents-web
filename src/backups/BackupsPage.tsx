@@ -91,7 +91,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
     },
     { key: 'size', label: 'Size', role: 'meta', align: 'right', render: (a) => formatBytes(a.size) },
     { key: 'age', label: 'Age', role: 'meta', render: (a) => `${formatAge(now - Date.parse(a.last_modified))} ago` },
-    { key: 'referenced', label: 'Referenced by', role: 'meta', render: (a) => a.referenced_by.join(', ') },
+    { key: 'referenced', label: 'Referenced by', role: 'meta', render: (a) => a.referenced_by.join(', ') || '-' },
     {
       key: 'download', label: 'Download', role: 'control',
       render: (a) => (

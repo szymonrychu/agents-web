@@ -58,7 +58,7 @@ export function ScheduleRuns({ scheduleId, timezone, refreshKey, onOpenSession, 
         r.session_id && onOpenSession ? (
           <Link component="button" type="button" role="link" onClick={() => onOpenSession(r.session_id!)}>{r.session_slug ?? r.session_id}</Link>
         ) : (
-          (r.session_slug ?? r.session_id)
+          (r.session_slug ?? r.session_id) || '-'
         ),
     },
   ]

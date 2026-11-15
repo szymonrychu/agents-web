@@ -141,6 +141,8 @@ describe('BackupsPage on phones', () => {
     expect(c.getByText('5.0 MiB')).toBeTruthy()
     expect(c.getByRole('link', { name: 'Download team-a' })).toBeTruthy()
     expect(c.getByRole('button', { name: 'Actions for Backup team-a' })).toBeTruthy()
+    const bare = within(screen.getByRole('article', { name: 'Backup team-b' }))
+    expect(bare.getByText('Referenced by', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
   })
 
   test('a wide screen keeps the table with a Name column that does not split words', async () => {

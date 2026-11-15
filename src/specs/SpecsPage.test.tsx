@@ -118,5 +118,7 @@ describe('specs list layouts', () => {
     for (const label of ['Name', 'Status', 'Project', 'Labels']) expect(c.getByText(label, { selector: 'dt' })).toBeTruthy()
     expect(c.getByText('review')).toBeTruthy()
     expect(c.getByText('infra')).toBeTruthy()
+    const bare = within(screen.getByRole('article', { name: 'Spec S-1' }))
+    expect(bare.getByText('Labels', { selector: 'dt' }).nextElementSibling!.textContent).toBe('-')
   })
 })
