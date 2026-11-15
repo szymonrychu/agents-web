@@ -253,3 +253,19 @@ test('Tab reaches the open button, the control and the kebab of a card', async (
   await user.tab()
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Actions for Thing alpha' }))
 })
+
+test('the card Open button shows a visible keyboard focus', () => {
+  phone()
+  mount({ onRowClick: () => {} })
+  const open = screen.getByRole('button', { name: 'Open Thing alpha' })
+  expect(open.className).toContain('MuiButtonBase-root')
+  expect(emittedCssFor(open)).toContain('.Mui-focusVisible')
+  expect(emittedCssFor(open)).toContain('outline:2px solid')
+})
+
+test('a card skips a secondary line with no value', () => {
+  phone()
+  mount({ rows: [{ id: 'r1', name: 'solo', status: 'ok', note: '' }] })
+  const card = screen.getByRole('article', { name: 'Thing solo' })
+  expect(card.children.length).toBe(2)
+})

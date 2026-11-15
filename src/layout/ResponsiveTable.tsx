@@ -142,7 +142,7 @@ function Cards<T>({ rows, columns, rowKey, ariaLabel, cardLabel, actions, below,
             <Paper component="article" variant="outlined" aria-label={label} id={rowId?.(row)} sx={{ p: 2, width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {onRowClick ? (
-                  <ButtonBase aria-label={`Open ${label}`} onClick={() => onRowClick(row)} sx={{ ...PRIMARY_SX, display: 'block', textAlign: 'left' }}>
+                  <ButtonBase aria-label={`Open ${label}`} onClick={() => onRowClick(row)} sx={{ ...PRIMARY_SX, display: 'block', textAlign: 'left', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 } }}>
                     {title}
                   </ButtonBase>
                 ) : (
@@ -153,11 +153,15 @@ function Cards<T>({ rows, columns, rowKey, ariaLabel, cardLabel, actions, below,
                 ))}
                 {actions && <RowActions actions={actions(row)} name={label} menu />}
               </Box>
-              {secondary.map((c) => (
-                <Typography key={c.key} component="div" variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                  {c.render(row)}
-                </Typography>
-              ))}
+              {secondary.map((c) => {
+                const value = c.render(row)
+                if (!present(value) || value === '') return null
+                return (
+                  <Typography key={c.key} component="div" variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                    {value}
+                  </Typography>
+                )
+              })}
               {meta.length > 0 && (
                 <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'fit-content(40%) minmax(0, 1fr)', rowGap: 0.5, columnGap: 1, m: 0 }}>
                   {meta.map((c) => (
