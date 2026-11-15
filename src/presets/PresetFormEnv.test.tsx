@@ -20,7 +20,7 @@ const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [{ slu
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
 
 const meta = (): Meta => ({
-  agent_image: 'img', agent_images: ['img'], cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
