@@ -6,17 +6,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
 import { DEFAULT_SIZES, maximize, minimize, parseLayout, reset, resize, restore, restoreMaximized, serialiseLayout, startLayout } from './panelLayout'
 import { Workspace } from './Workspace'
+import { setViewport } from '../test/viewport'
 
 const unmounted = vi.hoisted(() => vi.fn())
-
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
-}
 
 /** jsdom has no layout: give every element a 1000 x 500 box so react-resizable-panels computes real sizes. */
 function stubGeometry() {
@@ -180,6 +172,13 @@ describe('Workspace', () => {
     mount('c4')
     expect(strip('files')).toBeNull()
     expect([grow('files'), grow('chat'), grow('terminal')]).toEqual([25, 45, 30])
+  })
+
+  test('iPhone landscape shows one panel at a time', () => {
+    setViewport(844, { coarse: true, height: 390 })
+    mount()
+    expect(screen.queryAllByRole('separator')).toHaveLength(0)
+    expect(screen.getByRole('group', { name: 'Panel' })).toBeTruthy()
   })
 
   test('phone_three_way_switch', () => {

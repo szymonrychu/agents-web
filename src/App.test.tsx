@@ -13,6 +13,7 @@ import { theme } from './theme'
 import { proposal } from './proposals/proposalFixture'
 import { HOOK_EVENTS_FIXTURE } from './hooks/testEvents'
 import { decision, task } from './tasks/testUtils'
+import { setViewport } from './test/viewport'
 
 const api = vi.hoisted(() => ({ listSessions: vi.fn(), listAgents: vi.fn(), getMeta: vi.fn(), listPresets: vi.fn(), createSession: vi.fn(), deleteSession: vi.fn(), restartSession: vi.fn() }))
 const proposals = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
@@ -38,15 +39,6 @@ class NoopObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-}
-
-function setViewport(width: number) {
-  window.matchMedia = ((query: string) => {
-    const min = /min-width:\s*([\d.]+)px/.exec(query)
-    const max = /max-width:\s*([\d.]+)px/.exec(query)
-    const matches = (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]))
-    return { matches, media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }
-  }) as typeof window.matchMedia
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
