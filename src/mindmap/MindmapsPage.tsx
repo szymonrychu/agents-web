@@ -67,6 +67,9 @@ export function MindmapsPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const nodeKey = params.get('node')
+  // The phone drawer keeps the last node through its exit transition instead of sliding out empty.
+  const [drawerKey, setDrawerKey] = useState(nodeKey)
+  if (nodeKey !== null && nodeKey !== drawerKey) setDrawerKey(nodeKey)
   const directionKey = params.get('direction')
   const globalProject = useProject().project
   const [projects, setProjects] = useState<ProjectCount[]>([])
@@ -129,17 +132,17 @@ export function MindmapsPage() {
   const closeNode = () => navigate(mapPath(mapKey, { direction: directionKey ?? undefined }))
   const selectedNode = nodeKey !== null && graph?.nodes.some((n) => n.key === nodeKey) ? nodeKey : null
 
-  const nodePanel = nodeKey && (
+  const panelFor = (key: string) => (
     <NodePanel
-      key={nodeKey}
-      nodeKey={nodeKey}
+      key={key}
+      nodeKey={key}
       mapKey={mapKey}
       onOpenMap={(m, k) => navigate(mapPath(m, { node: k }))}
       refreshKey={refresh}
       onChanged={reload}
       onDeleted={() => { navigate(mapPath(mapKey)); reload() }}
       onOpenNode={openNode}
-      descendants={graph?.nodes.some((n) => n.key === nodeKey) ? countDescendants(graph.nodes, nodeKey) : undefined}
+      descendants={graph?.nodes.some((n) => n.key === key) ? countDescendants(graph.nodes, key) : undefined}
     />
   )
 
@@ -227,7 +230,7 @@ export function MindmapsPage() {
 
         {nodeKey && !phone && (
           <Paper variant="outlined" component="aside" aria-label="Node" sx={{ width: { md: 380 }, flexShrink: 0, p: 2, overflow: 'auto' }}>
-            {nodePanel}
+            {panelFor(nodeKey)}
           </Paper>
         )}
       </Box>
@@ -239,7 +242,7 @@ export function MindmapsPage() {
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
-          {nodePanel}
+          {drawerKey ? panelFor(drawerKey) : null}
         </Drawer>
       )}
 

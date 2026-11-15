@@ -1,4 +1,5 @@
 /** Hamburger drawer: every session from the top, a settings section pinned to the bottom. */
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import List from '@mui/material/List'
@@ -26,13 +27,16 @@ export interface SessionsMenuProps {
   selectedId: string | null
   onSelect: (id: string) => void
   settingsCategories: SettingsCategory[]
+  /** Shown above the sessions (the project selector on a phone, where the header row has no room for it). */
+  header?: ReactNode
 }
 
 const DRAWER_WIDTH_PX = 280
 
-export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, settingsCategories }: SessionsMenuProps) {
+export function SessionsMenu({ open, onClose, sessions, selectedId, onSelect, settingsCategories, header }: SessionsMenuProps) {
   return (
     <Drawer anchor="left" variant="temporary" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: DRAWER_WIDTH_PX, display: 'flex', flexDirection: 'column', ...safeArea(['top', 'bottom', 'left']) } } }}>
+      {header ? <Box sx={{ px: 2, pt: 1, display: 'flex' }}>{header}</Box> : null}
       <Typography component="h2" sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>Sessions</Typography>
       <List aria-label="Sessions" dense disablePadding>
         {sessions.length === 0 && <Typography sx={{ px: 2, py: 1, fontSize: TOKENS.fontSizes.sm, color: 'text.secondary' }}>No sessions yet</Typography>}

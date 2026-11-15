@@ -360,6 +360,30 @@ describe.each([
   })
 })
 
+describe('TopBar at 375px with everything shown', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('a long slug, a long project name, Proposals and a bubble leave the session button a usable width', async () => {
+    const slug = 'platform-observability-migration-rollout'
+    const name = 'Platform infrastructure and observability'
+    projects.listProjects.mockResolvedValue([{ slug: 'platform', name, description: '', archived: false, created_at: '', updated_at: '', presets: null, sessions: null }])
+    localStorage.setItem('orch:project', JSON.stringify('platform'))
+    proposals.listProposals.mockResolvedValue([{ id: 1, revision: 1, status: 'open' }, { id: 2, revision: 1, status: 'open' }])
+    setup({ sessions: [session('c2', slug, 'waiting', 90)], attention: new Map([['c2', { decisions: 3, tasks: [], prompt: false }]]) })
+    await screen.findByRole('button', { name: 'Proposals, 2 waiting' })
+    expect(screen.getByRole('button', { name: `3 open decisions for ${slug}` })).toBeTruthy()
+    // The project selector leaves the header row: the five 44px icon buttons and their gaps fit 375px with a 96px session button.
+    expect(within(screen.getByRole('banner')).queryByRole('combobox', { name: 'Project' })).toBeNull()
+    const current = screen.getByRole('button', { name: `Switch session, current ${slug}` })
+    expect(emittedCssFor(current)).toContain('min-width:96px')
+    const label = within(current).getByText(slug)
+    expect(emittedCssFor(label)).toContain('text-overflow:ellipsis')
+    fireEvent.click(current)
+    const drawerSelect = await screen.findByRole('combobox', { name: 'Project' })
+    await waitFor(() => expect(drawerSelect.textContent).toBe(name))
+  })
+})
+
 test('the header clears the notch and the side insets', () => {
   setup()
   const css = emittedCssFor(screen.getByRole('banner'))

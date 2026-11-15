@@ -20,10 +20,10 @@ function rootCss(): string {
   return emittedCssFor(screen.getByRole('combobox', { name: 'Project' }).closest('.MuiInputBase-root')!)
 }
 
-test('on a phone the selector shrinks to at most 40% of the bar', () => {
+test('on a phone the selector fills the sessions drawer row and can shrink', () => {
   setViewport(375, { coarse: true })
   const css = rootCss()
-  expect(css).toContain('max-width:40%')
+  expect(css).toContain('flex-grow:1')
   expect(css).toContain('min-width:0')
 })
 

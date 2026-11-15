@@ -210,6 +210,16 @@ describe('MindmapsPage on a phone', () => {
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1'))
   })
 
+  test('the closing drawer keeps the node until its exit transition ends', async () => {
+    const u = userEvent.setup()
+    mount('/mindmaps/M-1?node=N-2')
+    await screen.findByTestId('node-panel')
+    await u.click(screen.getByRole('button', { name: 'Close node' }))
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/mindmaps/M-1'))
+    expect(screen.getByTestId('node-panel')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByTestId('node-panel')).toBeNull())
+  })
+
   test('the toolbar keeps title, status and direction and moves the actions into a menu', async () => {
     const u = userEvent.setup()
     mount('/mindmaps/M-1')

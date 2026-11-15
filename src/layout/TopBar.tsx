@@ -93,13 +93,14 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
       <IconButton aria-label="Open menu" onClick={() => setMenuOpen(true)}>
         <MenuIcon />
       </IconButton>
-      <ProjectSelect />
+      {phone ? null : <ProjectSelect />}
       {phone ? (
         <>
           <ButtonBase
             aria-label={current ? `Switch session, current ${current.session.slug}` : 'Choose session'}
             onClick={() => setMenuOpen(true)}
-            sx={{ flexGrow: 1, minWidth: 0, justifyContent: 'flex-start', gap: 1, px: 1, alignSelf: 'stretch' }}
+            // 96px stays after five 44px icon buttons, their gaps and the padding at 375px; the project selector lives in the drawer.
+            sx={{ flexGrow: 1, minWidth: 96, justifyContent: 'flex-start', gap: 1, px: 1, alignSelf: 'stretch' }}
           >
             {current ? <StateMark state={sessionMarkState(current.session, Object.values(current.agents), current.discarded === true)} /> : null}
             <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: TOKENS.fontWeights.medium }}>
@@ -200,7 +201,7 @@ export function TopBar({ sessions, selectedId, onSelect, onNew, onInitScripts, o
         <MenuItem disabled={actions?.session.desired === 'deleting'} onClick={() => { const target = actions?.session; setActions(null); if (target) onRestart(target) }}>Restart</MenuItem>
         <MenuItem onClick={() => { const target = actions?.session; setActions(null); if (target) onDiscard(target) }}>Discard</MenuItem>
       </Menu>
-      <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} />
+      <SessionsMenu open={menuOpen} onClose={() => setMenuOpen(false)} sessions={sessions} selectedId={selectedId} onSelect={onSelect} settingsCategories={settingsCategories} header={phone ? <ProjectSelect /> : undefined} />
     </Box>
     {labelled && (
       <Box sx={{ px: 1, pb: 1 }}>

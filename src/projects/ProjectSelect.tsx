@@ -18,8 +18,8 @@ export function ProjectSelect() {
       value={project ?? ALL}
       onChange={(e) => setProject(e.target.value === ALL ? null : e.target.value)}
       inputProps={{ 'aria-label': 'Project' }}
-      // On a phone the selector yields room to the session switcher; MUI already ellipsizes the shown value.
-      sx={phone ? { minWidth: 0, maxWidth: '40%', flexShrink: 1 } : { flexShrink: 0, minWidth: 140 }}
+      // On a phone it sits in the sessions drawer and takes its width; MUI already ellipsizes the shown value.
+      sx={phone ? { flexGrow: 1, minWidth: 0 } : { flexShrink: 0, minWidth: 140 }}
     >
       <MenuItem value={ALL}>All projects</MenuItem>
       {known ? null : <MenuItem value={project}>{project}</MenuItem>}

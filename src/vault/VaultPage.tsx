@@ -71,7 +71,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
         <Button variant="contained" onClick={() => setDialog({ kind: 'create' })}>New entry</Button>
       </Box>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField size="small" label="Filter" value={text} onChange={(e) => setText(e.target.value)} sx={{ flexGrow: 1, width: { xs: '100%', sm: 240 } }} />
+        <TextField size="small" label="Filter" value={text} onChange={(e) => setText(e.target.value)} sx={{ flexGrow: 1, width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 240 } }} />
         <TextField
           size="small"
           select

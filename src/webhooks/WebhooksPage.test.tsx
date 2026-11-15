@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { emittedCssFor } from '../test/emittedCss'
+import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 import { theme } from '../theme'
 import type { EndpointView, EventView } from './api'
 import { WebhooksPage } from './WebhooksPage'
@@ -126,16 +126,18 @@ describe('WebhooksPage state', () => {
 })
 
 describe('WebhooksPage filters', () => {
-  test('the filter row wraps and each field is full width on a phone', async () => {
+  test('the filter row wraps, each field is full width on a phone and keeps its old minimum from sm up', async () => {
     api.listEvents.mockResolvedValue([])
     mount()
     await flush()
     const status = screen.getByRole('combobox', { name: 'Status' }).closest('.MuiTextField-root')!
     const endpointField = screen.getByRole('combobox', { name: 'Endpoint' }).closest('.MuiTextField-root')!
     expect(emittedCssFor(status.parentElement!)).toContain('flex-wrap:wrap')
-    expect(emittedCssFor(status)).toContain('width:100%')
-    expect(emittedCssFor(status)).toContain('width:160px')
-    expect(emittedCssFor(endpointField)).toContain('width:100%')
-    expect(emittedCssFor(endpointField)).toContain('width:200px')
+    for (const [field, min] of [[status, 160], [endpointField, 200]] as const) {
+      expect(emittedInMedia(field, '(min-width:0px)')).toContain('width:100%')
+      const sm = emittedInMedia(field, '(min-width:600px)')
+      expect(sm).toContain('width:auto')
+      expect(sm).toContain(`min-width:${min}px`)
+    }
   })
 })
