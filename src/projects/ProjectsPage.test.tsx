@@ -185,6 +185,6 @@ describe('ProjectsPage phone columns', () => {
     mount()
     await screen.findByText('Name alpha')
     const table = screen.getByText('Name alpha').closest('table')!
-    expect(phoneColumnProblems(table, ['Description', 'Presets', 'Sessions', 'Open tasks'], ['Project', 'Waiting decisions'])).toEqual([])
+    expect(phoneColumnProblems(table, [], ['Project', 'Description', 'Presets', 'Sessions', 'Open tasks', 'Waiting decisions'])).toEqual([])
   })
 })

@@ -142,6 +142,6 @@ describe('spec page documents table', () => {
     mountSpecs('/specs/S-1')
     await screen.findByText('Task plans')
     const table = (await screen.findByRole('link', { name: 'research/topic.md' })).closest('table') as HTMLElement
-    expect(phoneColumnProblems(table, ['Size', 'Updated'], ['Path', 'Version'])).toEqual([])
+    expect(phoneColumnProblems(table, [], ['Path', 'Version', 'Size', 'Updated'])).toEqual([])
   })
 })

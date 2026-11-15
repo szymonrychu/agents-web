@@ -15,9 +15,8 @@ import type { RunStatus } from '../triggers'
 import { listRoomMessages } from './api'
 import type { MessageView } from './api'
 import { mediaChipText } from './media'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Dir'])
 
 const PAGE = 50
 
@@ -55,13 +54,13 @@ export function RoomMessages({ roomId }: { roomId: string }) {
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['Dir', 'Time', 'Sender', 'Body', 'Status'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}
+              {['Dir', 'Time', 'Sender', 'Body', 'Status'].map((h) => <TableCell key={h}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
             {messages.map((m) => (
               <TableRow key={m.id}>
-                <TableCell sx={hideOnPhone}>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
+                <TableCell>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
                 <TableCell>{new Date(m.at).toLocaleString()}</TableCell>
                 <TableCell>{m.sender_name ?? m.sender}</TableCell>
                 <TableCell><MessageBody m={m} /></TableCell>

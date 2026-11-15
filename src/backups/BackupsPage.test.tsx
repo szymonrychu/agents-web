@@ -129,6 +129,6 @@ describe('BackupsPage table on phones', () => {
   test('sits in a scroll container and hides low-priority columns', async () => {
     mount()
     await rowOf('team-a')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Size'], ['Name', 'Age', 'Referenced by'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Name', 'Size', 'Age', 'Referenced by'])).toEqual([])
   })
 })

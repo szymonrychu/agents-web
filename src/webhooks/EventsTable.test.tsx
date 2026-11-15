@@ -30,6 +30,6 @@ describe('chain column', () => {
 describe('phone columns', () => {
   test('sits in a scroll box and hides the low-priority columns on phones', () => {
     render(<ThemeProvider theme={theme}><EventsTable events={[ev(1)]} /></ThemeProvider>)
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Endpoint', 'Kind', 'Item', 'Chain', 'Session'], ['Received', 'Title', 'Status'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Endpoint'], ['Received', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'])).toEqual([])
   })
 })

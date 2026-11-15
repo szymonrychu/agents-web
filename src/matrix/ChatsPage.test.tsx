@@ -392,7 +392,7 @@ describe('ChatsPage tables on phones', () => {
     mount()
     await flush()
     const table = screen.getByText('Alice DM').closest('table')!
-    expect(phoneColumnProblems(table, ['Kind', 'Flags', 'Members', 'Preset', 'Project', 'Trigger', 'Queued'], ['Name', 'Access', 'Session', 'Last activity'])).toEqual([])
+    expect(phoneColumnProblems(table, ['Members', 'Preset', 'Project', 'Trigger'], ['Name', 'Kind', 'Flags', 'Access', 'Session', 'Last activity', 'Queued'])).toEqual([])
   })
 
   test('the room drawer members and messages tables scroll in a TableContainer', async () => {
@@ -406,6 +406,6 @@ describe('ChatsPage tables on phones', () => {
     const members = within(drawer).getByText('@fb_1:hs').closest('table')!
     expect(phoneColumnProblems(members, [], ['Name', 'Matrix id', 'Facebook id', 'Access'])).toEqual([])
     const messages = within(drawer).getByText('body m1').closest('table')!
-    expect(phoneColumnProblems(messages, ['Dir'], ['Time', 'Sender', 'Body', 'Status'])).toEqual([])
+    expect(phoneColumnProblems(messages, [], ['Dir', 'Time', 'Sender', 'Body', 'Status'])).toEqual([])
   })
 })

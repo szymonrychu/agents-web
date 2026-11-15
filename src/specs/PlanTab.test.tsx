@@ -65,6 +65,6 @@ describe('plan tab phone columns', () => {
   test('sits in a scroll box and hides the low-priority columns on phones', async () => {
     render(<MemoryRouter><PlanTab specKey="S-1" /></MemoryRouter>)
     await screen.findByText('Write schema')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Assignee', 'Model', 'Refs'], ['#', 'Step', 'Status', 'Actions'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['#', 'Step', 'Status', 'Assignee', 'Model', 'Refs', 'Actions'])).toEqual([])
   })
 })

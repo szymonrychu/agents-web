@@ -27,7 +27,8 @@ import { docPath } from './paths'
 import { PlanTab } from './PlanTab'
 import { StartState } from './StartState'
 import { useSpecStream } from './useSpecStream'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { TABLE_SCROLL_SX } from '../layout/tables'
+
 
 const POLL_MS = 10000
 
@@ -147,8 +148,8 @@ export function SpecPage({ specKey }: { specKey: string }) {
               <TableRow>
                 <TableCell>Path</TableCell>
                 <TableCell>Version</TableCell>
-                <TableCell sx={hideOnPhone}>Size</TableCell>
-                <TableCell sx={hideOnPhone}>Updated</TableCell>
+                <TableCell>Size</TableCell>
+                <TableCell>Updated</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -156,8 +157,8 @@ export function SpecPage({ specKey }: { specKey: string }) {
                 <TableRow key={d.path} hover>
                   <TableCell><Link component={RouterLink} to={docPath(spec.key, d.path)}>{d.path}</Link></TableCell>
                   <TableCell>{`v${d.version}`}</TableCell>
-                  <TableCell sx={hideOnPhone}>{`${d.size} B`}</TableCell>
-                  <TableCell sx={hideOnPhone}>{new Date(d.updated_at).toLocaleString()}</TableCell>
+                  <TableCell>{`${d.size} B`}</TableCell>
+                  <TableCell>{new Date(d.updated_at).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

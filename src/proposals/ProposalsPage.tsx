@@ -15,9 +15,9 @@ import { formatAge, useNow } from '../chat/agentAge'
 import { FormError, usePoll } from '../triggers'
 import { listProposals, type ProposalView } from './api'
 import { ProposalReviewDialog } from './ProposalReviewDialog'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Kind', 'Proposer', 'Revision'])
+const col = phoneColumns(['Kind', 'Proposer', 'Revision'])
 
 const POLL_MS = 20000
 
@@ -50,17 +50,17 @@ export function ProposalsPage({ onBack }: ProposalsPageProps): JSX.Element {
         <Table size="small">
           <TableHead>
             <TableRow>
-              {['Kind', 'Target', 'Proposer', 'Status', 'Revision', 'Age'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}
+              {['Kind', 'Target', 'Proposer', 'Status', 'Revision', 'Age'].map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((p) => (
               <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpened(p)}>
-                <TableCell sx={hideOnPhone}>{p.kind}</TableCell>
+                <TableCell sx={col('Kind')}>{p.kind}</TableCell>
                 <TableCell>{p.target_name}</TableCell>
-                <TableCell sx={hideOnPhone}>{p.proposer_slug}</TableCell>
+                <TableCell sx={col('Proposer')}>{p.proposer_slug}</TableCell>
                 <TableCell>{p.status}</TableCell>
-                <TableCell sx={hideOnPhone}>{`r${p.revision}`}</TableCell>
+                <TableCell sx={col('Revision')}>{`r${p.revision}`}</TableCell>
                 <TableCell>{formatAge(now - Date.parse(p.created_at))}</TableCell>
               </TableRow>
             ))}

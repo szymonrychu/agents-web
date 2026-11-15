@@ -10,9 +10,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { ChainStatusChip, RunStatusChip } from '../triggers'
 import type { RunStatus } from '../triggers'
 import type { EventView } from './api'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Endpoint', 'Kind', 'Item', 'Chain', 'Session'])
+const col = phoneColumns(['Endpoint'])
 
 export interface EventsTableProps {
   events: EventView[]
@@ -39,7 +39,7 @@ export function EventsTable({ events }: EventsTableProps) {
       <TableHead>
         <TableRow>
           {['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'].map((h) => (
-            <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>
+            <TableCell key={h} sx={col(h)}>{h}</TableCell>
           ))}
         </TableRow>
       </TableHead>
@@ -53,16 +53,16 @@ export function EventsTable({ events }: EventsTableProps) {
                   <span>{relative(e.received_at)}</span>
                 </Tooltip>
               </TableCell>
-              <TableCell sx={hideOnPhone}>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
-              <TableCell sx={hideOnPhone}>{e.kind}</TableCell>
-              <TableCell sx={hideOnPhone}>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
+              <TableCell sx={col('Endpoint')}>{`${e.endpoint_suffix} (${e.type})`}</TableCell>
+              <TableCell>{e.kind}</TableCell>
+              <TableCell>{e.url ? <Link href={e.url} target="_blank" rel="noreferrer">{ref}</Link> : ref}</TableCell>
               <TableCell>{e.title}</TableCell>
               <TableCell>
                 <RunStatusChip status={e.status as RunStatus} reason={e.reason ?? undefined} />
                 <Routing event={e} />
               </TableCell>
-              <TableCell sx={hideOnPhone}><ChainStatusChip status={e.chain_status} /></TableCell>
-              <TableCell sx={hideOnPhone}>{e.session_slug ?? e.session_id}</TableCell>
+              <TableCell><ChainStatusChip status={e.chain_status} /></TableCell>
+              <TableCell>{e.session_slug ?? e.session_id}</TableCell>
             </TableRow>
           )
         })}

@@ -141,6 +141,6 @@ describe('table on phones', () => {
     api.listScheduleRuns.mockResolvedValue([run()])
     mount()
     await screen.findAllByRole('row')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Trigger', 'Chain'], ['Fire time', 'Status', 'Session'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Fire time', 'Trigger', 'Status', 'Chain', 'Session'])).toEqual([])
   })
 })

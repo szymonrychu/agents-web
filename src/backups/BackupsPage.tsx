@@ -22,9 +22,8 @@ import type { FormErrorValue } from '../triggers'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
 import { CleanupSettingsCard } from './CleanupSettingsCard'
 import { formatBytes } from './format'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Size'])
 
 export interface BackupsPageProps {
   onBack: () => void
@@ -105,7 +104,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
           <Table size="small">
             <TableHead>
               <TableRow>
-                {['Name', 'Size', 'Age', 'Referenced by', ''].map((h, i) => <TableCell key={i} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined} align={h === 'Size' ? 'right' : undefined}>{h}</TableCell>)}
+                {['Name', 'Size', 'Age', 'Referenced by', ''].map((h, i) => <TableCell key={i} align={h === 'Size' ? 'right' : undefined}>{h}</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -115,7 +114,7 @@ export function BackupsPage({ onBack }: BackupsPageProps) {
                     {a.name}
                     {a.protected && <Chip size="small" color="warning" label="protected" sx={{ ml: 1 }} />}
                   </TableCell>
-                  <TableCell sx={hideOnPhone} align="right">{formatBytes(a.size)}</TableCell>
+                  <TableCell align="right">{formatBytes(a.size)}</TableCell>
                   <TableCell>{`${formatAge(now - Date.parse(a.last_modified))} ago`}</TableCell>
                   <TableCell>{a.referenced_by.join(', ')}</TableCell>
                   <TableCell align="right">

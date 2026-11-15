@@ -23,7 +23,9 @@ import { listTasks, type ListStatus, type Task, type TaskPage } from './api'
 import { CreateTaskDialog } from './CreateTaskDialog'
 import { taskPath } from './paths'
 import { useTaskStream } from './useTaskStream'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Project', 'Assignee'])
 
 const POLL_MS = 10000
 const STATUSES: { value: ListStatus; label: string }[] = [
@@ -109,9 +111,9 @@ export function TasksPage() {
             <TableCell>Key</TableCell>
             <TableCell>Title</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell sx={hideOnPhone}>Project</TableCell>
-            <TableCell sx={hideOnPhone}>Labels</TableCell>
-            <TableCell sx={hideOnPhone}>Assignee</TableCell>
+            <TableCell sx={col('Project')}>Project</TableCell>
+            <TableCell>Labels</TableCell>
+            <TableCell sx={col('Assignee')}>Assignee</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -125,9 +127,9 @@ export function TasksPage() {
                 </Box>
               </TableCell>
               <TableCell><Chip size="small" label={t.status.replace('_', ' ')} /></TableCell>
-              <TableCell sx={hideOnPhone}><Chip size="small" variant="outlined" label={t.project} /></TableCell>
-              <TableCell sx={hideOnPhone}><LabelChips labels={t.labels} onClick={addLabel} /></TableCell>
-              <TableCell sx={hideOnPhone}>
+              <TableCell sx={col('Project')}><Chip size="small" variant="outlined" label={t.project} /></TableCell>
+              <TableCell><LabelChips labels={t.labels} onClick={addLabel} /></TableCell>
+              <TableCell sx={col('Assignee')}>
                 {t.assignee_session && <Link component={RouterLink} to={`/tasks?session=${encodeURIComponent(t.assignee_session)}`}>{t.assignee_session}</Link>}
               </TableCell>
             </TableRow>

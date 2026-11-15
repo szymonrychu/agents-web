@@ -10,9 +10,9 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { MONO_FONT, TOKENS } from '../theme'
 import type { SessionSummary } from './api'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Preset', 'Created', 'Records', 'Size'])
+const col = phoneColumns(['Preset', 'Created', 'Records', 'Size'])
 
 export interface HistoryResultsProps {
   sessions: SessionSummary[]
@@ -44,7 +44,7 @@ export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
     <Table size="small">
       <TableHead>
         <TableRow>
-          {COLUMNS.map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}
+          {COLUMNS.map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -52,11 +52,11 @@ export function HistoryResults({ sessions, onOpen }: HistoryResultsProps) {
           <Fragment key={s.id}>
             <TableRow hover onClick={() => onOpen(s)} sx={{ cursor: 'pointer', '& > td': s.matches.length > 0 ? { borderBottom: 0 } : undefined }}>
               <TableCell><Link component="button" type="button" underline="hover">{s.slug}</Link></TableCell>
-              <TableCell sx={hideOnPhone}>{s.preset_name}</TableCell>
-              <TableCell sx={hideOnPhone}>{new Date(s.created_at).toLocaleString()}</TableCell>
+              <TableCell sx={col('Preset')}>{s.preset_name}</TableCell>
+              <TableCell sx={col('Created')}>{new Date(s.created_at).toLocaleString()}</TableCell>
               <TableCell>{new Date(s.discarded_at).toLocaleString()}</TableCell>
-              <TableCell sx={hideOnPhone}>{formatCounts(s.record_counts)}</TableCell>
-              <TableCell sx={hideOnPhone}>{formatSize(s.bytes)}</TableCell>
+              <TableCell sx={col('Records')}>{formatCounts(s.record_counts)}</TableCell>
+              <TableCell sx={col('Size')}>{formatSize(s.bytes)}</TableCell>
               <TableCell>{s.hits == null ? '' : formatHits(s.hits)}</TableCell>
             </TableRow>
             {s.matches.length > 0 && (

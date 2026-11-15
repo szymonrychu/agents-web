@@ -559,6 +559,6 @@ describe('EndpointsList phone columns', () => {
   test('sits in a scroll box and hides the low-priority columns on phones', async () => {
     render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
     const table = await screen.findByRole('table')
-    expect(phoneColumnProblems(table, ['Auth', 'Preset', 'Project', 'Username', 'Created', 'Rotated'], ['URL', 'Type'])).toEqual([])
+    expect(phoneColumnProblems(table, ['Auth', 'Preset', 'Project', 'Username'], ['URL', 'Type', 'Created', 'Rotated'])).toEqual([])
   })
 })

@@ -15,9 +15,8 @@ import { FormError, usePoll } from '../triggers'
 import { addRule, listUsers } from './api'
 import type { UserView } from './api'
 import { AccessChip } from './RoomsTable'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Rooms'])
 
 interface Pending {
   user: UserView
@@ -57,7 +56,7 @@ export function UsersTable() {
       <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small">
         <TableHead>
-          <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {(users ?? []).map((u) => (
@@ -65,7 +64,7 @@ export function UsersTable() {
               <TableCell>{u.display_name}</TableCell>
               <TableCell>{u.user_id}</TableCell>
               <TableCell>{u.facebook_id}</TableCell>
-              <TableCell sx={hideOnPhone}>{u.rooms.length}</TableCell>
+              <TableCell>{u.rooms.length}</TableCell>
               <TableCell><AccessChip access={u.access} /></TableCell>
               <TableCell>
                 <Button size="small" disabled={disabled} onClick={() => setPending({ user: u, list: 'allow' })}>Allow</Button>

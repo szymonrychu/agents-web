@@ -144,6 +144,6 @@ describe('tasks table on phones', () => {
   test('sits in a scroll container and hides low-priority columns', async () => {
     mountTasks('/tasks')
     await screen.findByText('Blocked one')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Project', 'Labels', 'Assignee'], ['Key', 'Title', 'Status'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Project', 'Assignee'], ['Key', 'Title', 'Status', 'Labels'])).toEqual([])
   })
 })

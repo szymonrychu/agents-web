@@ -247,6 +247,6 @@ describe('DevicesPage table on phones', () => {
   test('sits in a scroll container and hides low-priority columns', async () => {
     mount()
     await screen.findByText('Tab d1')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Plugin', 'Created'], ['Name', 'State', 'Actions'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), [], ['Name', 'Plugin', 'Created', 'State', 'Actions'])).toEqual([])
   })
 })

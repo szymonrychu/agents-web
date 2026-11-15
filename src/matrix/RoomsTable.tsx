@@ -14,9 +14,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { ProjectCell } from '../triggers'
 import type { PresetInfo } from '../triggers'
 import type { RoomView } from './api'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Kind', 'Flags', 'Members', 'Preset', 'Project', 'Trigger', 'Queued'])
+const col = phoneColumns(['Members', 'Preset', 'Project', 'Trigger'])
 
 export const KINDS: Record<string, string> = { dm: 'DM', group: 'Group', matrix: 'Matrix', infrastructure: 'Infrastructure' }
 export const ACCESS_STATES = ['allowed', 'denied', 'default']
@@ -63,23 +63,23 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
       <Table size="small">
         <TableHead>
           <TableRow>
-            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}
+            {['Name', 'Kind', 'Flags', 'Members', 'Access', 'Preset', 'Project', 'Trigger', 'Session', 'Last activity', 'Queued'].map((h) => <TableCell key={h} sx={col(h)}>{h}</TableCell>)}
           </TableRow>
         </TableHead>
         <TableBody>
           {rooms.map((r) => (
             <TableRow key={r.room_id} hover sx={{ cursor: 'pointer' }} onClick={() => onSelect(r)}>
               <TableCell>{r.name ?? r.alias ?? r.room_id}</TableCell>
-              <TableCell sx={hideOnPhone}>{r.kind ? (KINDS[r.kind] ?? r.kind) : ''}</TableCell>
-              <TableCell sx={hideOnPhone}>
+              <TableCell>{r.kind ? (KINDS[r.kind] ?? r.kind) : ''}</TableCell>
+              <TableCell>
                 {r.message_request && <Chip size="small" variant="outlined" label="Message request" sx={{ mr: 0.5 }} />}
                 {r.encrypted && <Chip size="small" variant="outlined" label="Encrypted" />}
               </TableCell>
-              <TableCell sx={hideOnPhone}>{r.member_count}</TableCell>
+              <TableCell sx={col('Members')}>{r.member_count}</TableCell>
               <TableCell><AccessChip access={r.access} /></TableCell>
-              <TableCell sx={hideOnPhone}>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
-              <TableCell sx={{ ...hideOnPhone, whiteSpace: 'nowrap' }}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
-              <TableCell sx={hideOnPhone}>{r.effective_trigger}</TableCell>
+              <TableCell sx={col('Preset')}>{r.preset_id ? (presets[r.preset_id]?.name ?? r.preset_id) : '-'}</TableCell>
+              <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={r.effective_preset_id ?? r.preset_id} index={presets} /></TableCell>
+              <TableCell sx={col('Trigger')}>{r.effective_trigger}</TableCell>
               <TableCell>
                 {r.session?.id ? (
                   <Link component="button" onClick={(e) => { e.stopPropagation(); onOpenSession(r.session!.id!) }}>
@@ -92,7 +92,7 @@ export function RoomsTable({ rooms, kind, access, presets, onKind, onAccess, onS
                   <Tooltip title={new Date(r.last_event_at).toLocaleString()}><span>{relative(r.last_event_at)}</span></Tooltip>
                 )}
               </TableCell>
-              <TableCell sx={hideOnPhone}>{r.queued}</TableCell>
+              <TableCell>{r.queued}</TableCell>
             </TableRow>
           ))}
         </TableBody>

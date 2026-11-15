@@ -140,6 +140,6 @@ describe('SpecQueuePanel phone columns', () => {
   test('sits in a scroll box and hides the low-priority columns on phones', async () => {
     mount()
     await screen.findByText('Title 11')
-    expect(phoneColumnProblems(screen.getByRole('table', { name: 'Spec queue' }), ['Queued'], ['#', 'Spec', 'Title'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table', { name: 'Spec queue' }), [], ['#', 'Spec', 'Title', 'Queued'])).toEqual([])
   })
 })

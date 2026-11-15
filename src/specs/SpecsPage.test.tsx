@@ -95,6 +95,6 @@ describe('specs list phone columns', () => {
   test('sits in a scroll box and hides the low-priority columns on phones', async () => {
     mountSpecs('/specs')
     await screen.findByText('Other spec')
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Name', 'Project', 'Labels'], ['Key', 'Title', 'Status'])).toEqual([])
+    expect(phoneColumnProblems(screen.getByRole('table'), ['Name', 'Project'], ['Key', 'Title', 'Status', 'Labels'])).toEqual([])
   })
 })

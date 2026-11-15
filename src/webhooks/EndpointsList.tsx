@@ -19,7 +19,9 @@ import { CopyButton } from './copy'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointFormDialog, type EndpointFormMode } from './EndpointFormDialog'
 import { FiltersDialog } from './FiltersDialog'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
+
+const col = phoneColumns(['Auth', 'Preset', 'Project', 'Username'])
 
 export interface EndpointsListProps {
   refreshKey: number
@@ -107,8 +109,8 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell sx={hideOnPhone}>Auth</TableCell><TableCell sx={hideOnPhone}>Preset</TableCell><TableCell sx={hideOnPhone}>Project</TableCell><TableCell sx={hideOnPhone}>Username</TableCell>
-              <TableCell sx={hideOnPhone}>Created</TableCell><TableCell sx={hideOnPhone}>Rotated</TableCell><TableCell />
+              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell sx={col('Auth')}>Auth</TableCell><TableCell sx={col('Preset')}>Preset</TableCell><TableCell sx={col('Project')}>Project</TableCell><TableCell sx={col('Username')}>Username</TableCell>
+              <TableCell>Created</TableCell><TableCell>Rotated</TableCell><TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
@@ -118,12 +120,12 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
                   <span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} />
                 </TableCell>
                 <TableCell>{ep.type}</TableCell>
-                <TableCell sx={hideOnPhone}>{ep.auth_mode}</TableCell>
-                <TableCell sx={hideOnPhone}>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
-                <TableCell sx={{ ...hideOnPhone, whiteSpace: 'nowrap' }}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
-                <TableCell sx={hideOnPhone}>{ep.username}</TableCell>
-                <TableCell sx={hideOnPhone}>{when(ep.created_at)}</TableCell>
-                <TableCell sx={hideOnPhone}>{when(ep.credentials_rotated_at)}</TableCell>
+                <TableCell sx={col('Auth')}>{ep.auth_mode}</TableCell>
+                <TableCell sx={col('Preset')}>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
+                <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
+                <TableCell sx={col('Username')}>{ep.username}</TableCell>
+                <TableCell>{when(ep.created_at)}</TableCell>
+                <TableCell>{when(ep.credentials_rotated_at)}</TableCell>
                 <TableCell align="right">
                   <Button size="small" onClick={() => setForm({ mode: 'edit', endpoint: ep })}>Edit</Button>
                   <Button size="small" onClick={() => setForm({ mode: 'clone', endpoint: ep })}>Clone</Button>

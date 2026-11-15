@@ -21,9 +21,8 @@ import { FormError, usePoll } from '../triggers'
 import { addRule, deleteRule, listRules, patchRule } from './api'
 import { connectorPreview } from './PreamblePanel'
 import type { MatrixMeta, RuleView } from './api'
-import { hideOnPhone, TABLE_SCROLL_SX } from '../layout/tables'
+import { TABLE_SCROLL_SX } from '../layout/tables'
 
-const HIDE_ON_PHONE = new Set(['Created'])
 
 const LISTS = ['allow', 'deny']
 
@@ -100,7 +99,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
       <TableContainer sx={TABLE_SCROLL_SX}>
       <Table size="small" aria-label={`${name} rules`}>
         <TableHead>
-          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i} sx={HIDE_ON_PHONE.has(h) ? hideOnPhone : undefined}>{h}</TableCell>)}</TableRow>
+          <TableRow>{['Kind', 'Value', 'Note', 'Preamble', 'Created', ''].map((h, i) => <TableCell key={i}>{h}</TableCell>)}</TableRow>
         </TableHead>
         <TableBody>
           {items.map((r) => (
@@ -109,7 +108,7 @@ export function RulesPanel({ meta }: { meta: MatrixMeta | undefined }) {
               <TableCell>{r.value}</TableCell>
               <TableCell>{r.note}</TableCell>
               <TableCell>{r.preamble ? 'custom' : 'default'}</TableCell>
-              <TableCell sx={hideOnPhone}>{new Date(r.created_at).toLocaleString()}</TableCell>
+              <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
               <TableCell>
                 <Button size="small" onClick={() => startEdit(r)}>Edit preamble</Button>
                 <Button size="small" color="error" onClick={() => setRemoving(r)}>Delete</Button>
