@@ -16,6 +16,8 @@ const json = (route: Route, status: number, body: unknown) =>
 /** Returns a live array of the requests no fixture answered ("METHOD path"); the caller asserts it stays empty. */
 export async function mockApi(page: Page): Promise<string[]> {
   const unmatched: string[] = []
+  // The open proposal of the fixtures would auto-open its review dialog over every screen: mark it seen (id:revision).
+  await page.addInitScript(() => localStorage.setItem('orch:proposals.seen', JSON.stringify(['1:1'])))
   await page.route(
     (url) => url.pathname === '/config.json' || underBase(url.pathname),
     async (route) => {
