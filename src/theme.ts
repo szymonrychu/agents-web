@@ -290,8 +290,10 @@ export const theme = createTheme({
       styleOverrides: { root: { [COARSE]: { minWidth: TOUCH_TARGET_PX, minHeight: TOUCH_TARGET_PX } } },
     },
     MuiSwitch: {
-      styleOverrides: { // the Switch root clips the ::after (overflow hidden): the effective touch area is the root plus its FormControlLabel
-      switchBase: { [COARSE]: hitBox44 } },
+      styleOverrides: {
+        // the Switch root clips the ::after (overflow hidden): the effective touch area is the root plus its FormControlLabel
+        switchBase: { [COARSE]: hitBox44 },
+      },
     },
     MuiTreeItem: {
       styleOverrides: { content: { [COARSE]: { minHeight: TOUCH_TARGET_PX } } },
