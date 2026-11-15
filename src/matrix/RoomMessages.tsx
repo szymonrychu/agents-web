@@ -3,22 +3,25 @@ import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { FormError, RunStatusChip, usePoll } from '../triggers'
 import type { RunStatus } from '../triggers'
 import { listRoomMessages } from './api'
 import type { MessageView } from './api'
 import { mediaChipText } from './media'
-import { TABLE_SCROLL_SX } from '../layout/tables'
-
+import { DateTime } from '../common/DateTime'
+import { formatDateTime } from '../common/dates'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 const PAGE = 50
+
+const COLUMNS: Column<MessageView>[] = [
+  { key: 'dir', label: 'Dir', role: 'meta', render: (m) => (m.direction === 'in' ? 'in' : 'out') },
+  { key: 'time', label: 'Time', role: 'primary', render: (m) => <DateTime iso={m.at} /> },
+  { key: 'sender', label: 'Sender', role: 'meta', render: (m) => m.sender_name ?? m.sender ?? '-' },
+  { key: 'body', label: 'Body', role: 'secondary', render: (m) => <MessageBody m={m} /> },
+  { key: 'status', label: 'Status', role: 'meta', render: (m) => <RunStatusChip status={m.status as RunStatus} reason={m.reason ?? undefined} /> },
+]
 
 export function RoomMessages({ roomId }: { roomId: string }) {
   const [older, setOlder] = useState<MessageView[]>([])
@@ -50,26 +53,13 @@ export function RoomMessages({ roomId }: { roomId: string }) {
       {data && messages.length === 0 ? (
         <Typography color="text.secondary">No messages yet.</Typography>
       ) : (
-        <TableContainer sx={TABLE_SCROLL_SX}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              {['Dir', 'Time', 'Sender', 'Body', 'Status'].map((h) => <TableCell key={h}>{h}</TableCell>)}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {messages.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell>{m.direction === 'in' ? 'in' : 'out'}</TableCell>
-                <TableCell>{new Date(m.at).toLocaleString()}</TableCell>
-                <TableCell>{m.sender_name ?? m.sender}</TableCell>
-                <TableCell><MessageBody m={m} /></TableCell>
-                <TableCell><RunStatusChip status={m.status as RunStatus} reason={m.reason ?? undefined} /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        </TableContainer>
+        <ResponsiveTable
+          rows={messages}
+          columns={COLUMNS}
+          rowKey={(m) => String(m.id)}
+          ariaLabel="Messages"
+          cardLabel={(m) => `Message ${formatDateTime(m.at)}`}
+        />
       )}
       {canLoadMore && <Button onClick={() => void loadOlder()} sx={{ alignSelf: 'flex-start' }}>Load older</Button>}
     </Box>

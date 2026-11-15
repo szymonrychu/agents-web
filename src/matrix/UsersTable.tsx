@@ -1,13 +1,6 @@
 /** Discovered users with search and allow/deny actions; the API's access view is shown as-is. */
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
@@ -15,8 +8,7 @@ import { FormError, usePoll } from '../triggers'
 import { addRule, listUsers } from './api'
 import type { UserView } from './api'
 import { AccessChip } from './RoomsTable'
-import { TABLE_SCROLL_SX } from '../layout/tables'
-
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 interface Pending {
   user: UserView
@@ -25,6 +17,14 @@ interface Pending {
 
 /** The rule that matches a user: their Facebook id when known, else the Matrix id. */
 const ruleFor = (u: UserView) => (u.facebook_id ? { kind: 'facebook', value: u.facebook_id } : { kind: 'user', value: u.user_id })
+
+const COLUMNS: Column<UserView>[] = [
+  { key: 'name', label: 'Name', role: 'primary', render: (u) => u.display_name || '-' },
+  { key: 'matrix', label: 'Matrix id', role: 'meta', render: (u) => u.user_id },
+  { key: 'facebook', label: 'Facebook id', role: 'meta', render: (u) => u.facebook_id || '-' },
+  { key: 'rooms', label: 'Rooms', role: 'meta', render: (u) => u.rooms.length },
+  { key: 'access', label: 'Access', role: 'meta', render: (u) => <AccessChip access={u.access} /> },
+]
 
 export function UsersTable() {
   const [q, setQ] = useState('')
@@ -53,28 +53,17 @@ export function UsersTable() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <TextField size="small" label="Search" value={q} onChange={(e) => setQ(e.target.value)} sx={{ maxWidth: 320 }} />
       <FormError error={loadError ?? error} />
-      <TableContainer sx={TABLE_SCROLL_SX}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Rooms', 'Access', 'Actions'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
-        </TableHead>
-        <TableBody>
-          {(users ?? []).map((u) => (
-            <TableRow key={u.user_id}>
-              <TableCell>{u.display_name}</TableCell>
-              <TableCell>{u.user_id}</TableCell>
-              <TableCell>{u.facebook_id}</TableCell>
-              <TableCell>{u.rooms.length}</TableCell>
-              <TableCell><AccessChip access={u.access} /></TableCell>
-              <TableCell>
-                <Button size="small" disabled={disabled} onClick={() => setPending({ user: u, list: 'allow' })}>Allow</Button>
-                <Button size="small" color="error" disabled={disabled} onClick={() => setPending({ user: u, list: 'deny' })}>Deny</Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </TableContainer>
+      <ResponsiveTable
+        rows={users ?? []}
+        columns={COLUMNS}
+        rowKey={(u) => u.user_id}
+        ariaLabel="Users"
+        cardLabel={(u) => `User ${u.display_name || u.user_id}`}
+        actions={(u) => [
+          { label: 'Allow', disabled, onClick: () => setPending({ user: u, list: 'allow' }) },
+          { label: 'Deny', color: 'error', disabled, onClick: () => setPending({ user: u, list: 'deny' }) },
+        ]}
+      />
       {users && users.length === 0 && <Typography color="text.secondary">No users found.</Typography>}
       <ConfirmDialog
         open={pending !== null}

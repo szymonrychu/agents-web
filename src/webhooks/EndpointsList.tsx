@@ -2,12 +2,6 @@
 import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import { presetInProject } from '../projects/scope'
 import { useProject } from '../projects/ProjectContext'
@@ -19,9 +13,8 @@ import { CopyButton } from './copy'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointFormDialog, type EndpointFormMode } from './EndpointFormDialog'
 import { FiltersDialog } from './FiltersDialog'
-import { phoneColumns, TABLE_SCROLL_SX } from '../layout/tables'
-
-const col = phoneColumns(['Auth', 'Preset', 'Project', 'Username'])
+import { DateTime } from '../common/DateTime'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 export interface EndpointsListProps {
   refreshKey: number
@@ -29,7 +22,6 @@ export interface EndpointsListProps {
   onCreate?: () => void
 }
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '-')
 const ruleCount = (ep: EndpointView) => ep.filters.allow.length + ep.filters.deny.length
 
 export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsListProps) {
@@ -95,6 +87,20 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
     }
   }
 
+  const columns: Column<EndpointView>[] = [
+    {
+      key: 'url', label: 'URL', role: 'primary', sx: { wordBreak: 'break-all' },
+      render: (ep) => <><span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} /></>,
+    },
+    { key: 'type', label: 'Type', role: 'meta', render: (ep) => ep.type },
+    { key: 'auth', label: 'Auth', role: 'none', render: (ep) => ep.auth_mode },
+    { key: 'preset', label: 'Preset', role: 'none', render: (ep) => presets[ep.preset_id]?.name ?? ep.preset_id },
+    { key: 'project', label: 'Project', role: 'none', sx: { whiteSpace: 'nowrap' }, render: (ep) => <ProjectCell presetId={ep.preset_id} index={presets} /> },
+    { key: 'username', label: 'Username', role: 'none', render: (ep) => ep.username },
+    { key: 'created', label: 'Created', role: 'meta', render: (ep) => <DateTime iso={ep.created_at} /> },
+    { key: 'rotated', label: 'Rotated', role: 'meta', render: (ep) => <DateTime iso={ep.credentials_rotated_at} /> },
+  ]
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <FormError error={error as never} />
@@ -105,39 +111,20 @@ export function EndpointsList({ refreshKey, onChanged, onCreate }: EndpointsList
           {onCreate && <Button variant="outlined" onClick={onCreate}>New endpoint</Button>}
         </Box>
       ) : (
-        <TableContainer sx={TABLE_SCROLL_SX}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>URL</TableCell><TableCell>Type</TableCell><TableCell sx={col('Auth')}>Auth</TableCell><TableCell sx={col('Preset')}>Preset</TableCell><TableCell sx={col('Project')}>Project</TableCell><TableCell sx={col('Username')}>Username</TableCell>
-              <TableCell>Created</TableCell><TableCell>Rotated</TableCell><TableCell />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(endpoints ?? []).filter((ep) => presetInProject(ep.preset_id, presets, project)).map((ep) => (
-              <TableRow key={ep.id}>
-                <TableCell sx={{ wordBreak: 'break-all' }}>
-                  <span>{ep.url}</span> <CopyButton label="Copy URL" value={ep.url} />
-                </TableCell>
-                <TableCell>{ep.type}</TableCell>
-                <TableCell sx={col('Auth')}>{ep.auth_mode}</TableCell>
-                <TableCell sx={col('Preset')}>{presets[ep.preset_id]?.name ?? ep.preset_id}</TableCell>
-                <TableCell sx={col('Project', { whiteSpace: 'nowrap' })}><ProjectCell presetId={ep.preset_id} index={presets} /></TableCell>
-                <TableCell sx={col('Username')}>{ep.username}</TableCell>
-                <TableCell>{when(ep.created_at)}</TableCell>
-                <TableCell>{when(ep.credentials_rotated_at)}</TableCell>
-                <TableCell align="right">
-                  <Button size="small" onClick={() => setForm({ mode: 'edit', endpoint: ep })}>Edit</Button>
-                  <Button size="small" onClick={() => setForm({ mode: 'clone', endpoint: ep })}>Clone</Button>
-                  <Button size="small" onClick={() => setEditing(ep)} disabled={!fieldsOf(ep)}>Filters ({ruleCount(ep)})</Button>
-                  <Button size="small" onClick={() => setRotating(ep)}>Rotate credentials</Button>
-                  <Button size="small" color="error" onClick={() => setDeleting(ep)}>Delete</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        </TableContainer>
+        <ResponsiveTable
+          rows={(endpoints ?? []).filter((ep) => presetInProject(ep.preset_id, presets, project))}
+          columns={columns}
+          rowKey={(ep) => String(ep.id)}
+          ariaLabel="Endpoints"
+          cardLabel={(ep) => `Endpoint ${ep.suffix}`}
+          actions={(ep) => [
+            { label: 'Edit', onClick: () => setForm({ mode: 'edit', endpoint: ep }) },
+            { label: 'Clone', onClick: () => setForm({ mode: 'clone', endpoint: ep }) },
+            { label: `Filters (${ruleCount(ep)})`, disabled: !fieldsOf(ep), onClick: () => setEditing(ep) },
+            { label: 'Rotate credentials', onClick: () => setRotating(ep) },
+            { label: 'Delete', color: 'error', onClick: () => setDeleting(ep) },
+          ]}
+        />
       )}
       <ConfirmDialog
         open={rotating !== null} title="Rotate credentials?" confirmLabel="Rotate"

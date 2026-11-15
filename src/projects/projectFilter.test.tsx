@@ -13,6 +13,7 @@ import { PresetSelect, usePresetIndex } from '../triggers'
 import { EndpointsList } from '../webhooks/EndpointsList'
 import { useSessions } from '../ribbon/useSessions'
 import { sessionVisibleIn } from './scope'
+import { setViewport } from '../test/viewport'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null }))
 vi.mock('./ProjectContext', () => ({ useProject: () => ({ project: ctx.project, projects: [], setProject: () => {}, refreshProjects: () => {} }) }))
@@ -35,6 +36,7 @@ const session = (id: string, project: string, superleader = false) =>
   ({ id, slug: id, project, desired: 'active', status: {}, summary: { state: 'idle', ready: 1, replicas: 1 }, spec: superleader ? { session_messaging: true } : {} }) as unknown as SessionView
 
 beforeEach(() => {
+  setViewport(1440)
   ctx.project = 'alpha'
   for (const f of [...Object.values(client), ...Object.values(sched), ...Object.values(hooks), ...Object.values(matrix)]) f.mockReset()
   client.listPresets.mockImplementation(async (project?: string | null) => PRESETS.filter((p) => !project || p.project === project))

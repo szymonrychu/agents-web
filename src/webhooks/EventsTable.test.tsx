@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, test } from 'vitest'
+import { beforeEach, afterEach, describe, expect, test } from 'vitest'
 import { theme } from '../theme'
 import type { EventView } from './api'
 import { EventsTable } from './EventsTable'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const ev = (id: number, over: Partial<EventView> = {}): EventView =>
   ({
@@ -14,6 +14,7 @@ const ev = (id: number, over: Partial<EventView> = {}): EventView =>
     duplicate_of: null, received_at: '2026-10-25T10:00:00Z', chain_status: null, then_schedule_ids: null, ...over,
   }) as EventView
 
+beforeEach(() => setViewport(1440))
 afterEach(cleanup)
 
 describe('chain column', () => {
@@ -27,9 +28,29 @@ describe('chain column', () => {
   })
 })
 
-describe('phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', () => {
+describe('events on phones', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('one card per event with its meta fields and the scroll target id', () => {
+    render(<ThemeProvider theme={theme}><EventsTable events={[ev(1), ev(2, { chain_status: 'fired', session_slug: 'agent-x' })]} /></ThemeProvider>)
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const card = screen.getByRole('article', { name: 'Event 2' })
+    expect(card.id).toBe('event-2')
+    const c = within(card)
+    expect(c.getByText('Title 2')).toBeTruthy()
+    for (const f of ['Received', 'Kind', 'Item', 'Status', 'Chain', 'Session']) expect(c.getByText(f, { selector: 'dt' })).toBeTruthy()
+    expect(c.queryByText('Endpoint', { selector: 'dt' })).toBeNull()
+    expect(c.getByText('agent-x')).toBeTruthy()
+    expect(within(screen.getByRole('article', { name: 'Event 1' })).getByText('Chain', { selector: 'dt' }).nextElementSibling?.textContent).toBe('-')
+  })
+})
+
+describe('events on wide screens', () => {
+  test('is a table with every column and rows carry the scroll target id', () => {
     render(<ThemeProvider theme={theme}><EventsTable events={[ev(1)]} /></ThemeProvider>)
-    expect(phoneColumnProblems(screen.getByRole('table'), ['Endpoint'], ['Received', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session'])).toEqual([])
+    const table = screen.getByRole('table', { name: 'Events' })
+    for (const h of ['Received', 'Endpoint', 'Kind', 'Item', 'Title', 'Status', 'Chain', 'Session']) expect(within(table).getByRole('columnheader', { name: h })).toBeTruthy()
+    expect(within(table).getByText('gh-main (github)').closest('tr')!.id).toBe('event-1')
   })
 })

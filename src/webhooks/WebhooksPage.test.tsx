@@ -7,6 +7,7 @@ import { emittedCssFor, emittedInMedia } from '../test/emittedCss'
 import { theme } from '../theme'
 import type { EndpointView, EventView } from './api'
 import { WebhooksPage } from './WebhooksPage'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({ listEvents: vi.fn(), listEndpoints: vi.fn(), getMeta: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
@@ -27,6 +28,7 @@ const mount = () => render(<ThemeProvider theme={theme}><WebhooksPage onBack={()
 const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0) })
 
 beforeEach(() => {
+  setViewport(1440)
   vi.useFakeTimers({ shouldAdvanceTime: true })
   api.listEvents.mockReset()
   api.listEndpoints.mockReset()

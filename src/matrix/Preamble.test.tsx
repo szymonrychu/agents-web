@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view'
 import { ThemeProvider } from '@mui/material/styles'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { setViewport } from '../test/viewport'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { theme } from '../theme'
 import type { MatrixMeta } from './api'
@@ -41,6 +42,7 @@ const setText = async (text: string) => {
 const wrap = (el: React.ReactNode) => render(<ThemeProvider theme={theme}>{el}</ThemeProvider>)
 
 beforeEach(() => {
+  setViewport(1440)
   Object.values(api).forEach((m) => m.mockReset())
   api.getSettings.mockResolvedValue({ default_preset_id: 'p1', preamble: null, default_preamble: DEFAULT })
   api.setSettings.mockResolvedValue({ default_preset_id: 'p1', preamble: 'Custom {{ sender }}', default_preamble: DEFAULT })

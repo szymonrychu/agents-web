@@ -11,7 +11,7 @@ import type { EndpointCreated, EndpointView } from './api'
 import { EndpointFormDialog } from './EndpointFormDialog'
 import { CredentialsDialog } from './CredentialsDialog'
 import { EndpointsList } from './EndpointsList'
-import { phoneColumnProblems } from '../test/emittedCss'
+import { setViewport } from '../test/viewport'
 
 const api = vi.hoisted(() => ({
   createEndpoint: vi.fn(),
@@ -49,6 +49,7 @@ const wrap = (ui: React.ReactElement) => <ThemeProvider theme={theme}>{ui}</Them
 const apiError = (status: number, code: string, message: string) => new ApiError(status, code, message)
 
 beforeEach(() => {
+  setViewport(1440)
   Object.values(api).forEach((m) => m.mockReset())
   client.listPresets.mockReset()
   api.getMeta.mockResolvedValue(META)
@@ -555,10 +556,39 @@ describe('filters', () => {
   })
 })
 
-describe('EndpointsList phone columns', () => {
-  test('sits in a scroll box and hides the low-priority columns on phones', async () => {
+describe('EndpointsList on phones', () => {
+  beforeEach(() => setViewport(375, { coarse: true }))
+
+  test('one card per endpoint with its meta fields and an actions menu', async () => {
+    const user = userEvent.setup()
     render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
-    const table = await screen.findByRole('table')
-    expect(phoneColumnProblems(table, ['Auth', 'Preset', 'Project', 'Username'], ['URL', 'Type', 'Created', 'Rotated'])).toEqual([])
+    const card = await screen.findByRole('article', { name: 'Endpoint abc' })
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    const c = within(card)
+    for (const f of ['Type', 'Created', 'Rotated']) expect(c.getByText(f, { selector: 'dt' })).toBeTruthy()
+    for (const f of ['Auth', 'Preset', 'Username']) expect(c.queryByText(f, { selector: 'dt' })).toBeNull()
+    expect(c.getByText('Rotated', { selector: 'dt' }).nextElementSibling?.textContent).toBe('-')
+    expect(c.getByText('https://h.example/webhook/abc')).toBeTruthy()
+    expect(c.queryByRole('button', { name: 'Delete' })).toBeNull()
+    await user.click(c.getByRole('button', { name: 'Actions for Endpoint abc' }))
+    for (const a of ['Edit', 'Clone', 'Filters (0)', 'Rotate credentials', 'Delete']) expect(await screen.findByRole('menuitem', { name: `${a} Endpoint abc` })).toBeTruthy()
+  })
+
+  test('Rotate credentials in the menu opens the confirm', async () => {
+    const user = userEvent.setup()
+    render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
+    await user.click(await screen.findByRole('button', { name: 'Actions for Endpoint abc' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rotate credentials Endpoint abc' }))
+    expect(await screen.findByText('Rotate credentials?')).toBeTruthy()
+  })
+})
+
+describe('EndpointsList on wide screens', () => {
+  test('is a table with every column and inline row buttons', async () => {
+    render(wrap(<EndpointsList refreshKey={0} onChanged={() => {}} />))
+    const table = await screen.findByRole('table', { name: 'Endpoints' })
+    for (const h of ['URL', 'Type', 'Auth', 'Preset', 'Project', 'Username', 'Created', 'Rotated']) expect(within(table).getByRole('columnheader', { name: h })).toBeTruthy()
+    expect(within(table).getAllByRole('button', { name: 'Delete' })).toHaveLength(2)
   })
 })

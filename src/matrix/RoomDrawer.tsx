@@ -6,12 +6,6 @@ import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
-import Table from '@mui/material/Table'
-import TableContainer from '@mui/material/TableContainer'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ConfirmDialog } from '../layout/ConfirmDialog'
@@ -22,9 +16,18 @@ import type { RoomDetail, RuleView } from './api'
 import { formatAliases, parseAliases } from './aliases'
 import { RoomMessages } from './RoomMessages'
 import { AccessChip } from './RoomsTable'
-import { TABLE_SCROLL_SX } from '../layout/tables'
+import { ResponsiveTable, type Column } from '../layout/ResponsiveTable'
 
 type Pending = 'allow' | 'deny' | 'remove'
+
+type Member = RoomDetail['members'][number]
+
+const MEMBER_COLUMNS: Column<Member>[] = [
+  { key: 'name', label: 'Name', role: 'primary', render: (m) => m.display_name || '-' },
+  { key: 'matrix', label: 'Matrix id', role: 'meta', render: (m) => m.user_id },
+  { key: 'facebook', label: 'Facebook id', role: 'meta', render: (m) => m.facebook_id || '-' },
+  { key: 'access', label: 'Access', role: 'meta', render: (m) => <AccessChip access={m.access} /> },
+]
 
 export interface RoomDrawerProps {
   roomId: string | null
@@ -164,23 +167,13 @@ function RoomPanel({ roomId, onChanged }: { roomId: string; onChanged: () => voi
             <Button variant="contained" onClick={() => void save()} sx={{ alignSelf: 'flex-start' }}>Save</Button>
           </Box>
           <Typography component="h3" variant="subtitle1">Members</Typography>
-          <TableContainer sx={TABLE_SCROLL_SX}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>{['Name', 'Matrix id', 'Facebook id', 'Access'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow>
-            </TableHead>
-            <TableBody>
-              {room.members.map((m) => (
-                <TableRow key={m.user_id}>
-                  <TableCell>{m.display_name}</TableCell>
-                  <TableCell>{m.user_id}</TableCell>
-                  <TableCell>{m.facebook_id}</TableCell>
-                  <TableCell><AccessChip access={m.access} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </TableContainer>
+          <ResponsiveTable
+            rows={room.members}
+            columns={MEMBER_COLUMNS}
+            rowKey={(m) => m.user_id}
+            ariaLabel="Members"
+            cardLabel={(m) => `Member ${m.display_name || m.user_id}`}
+          />
           <RoomMessages roomId={room.room_id} />
         </Box>
       )}
