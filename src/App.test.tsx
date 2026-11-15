@@ -42,7 +42,7 @@ class NoopObserver {
 }
 
 const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'] => ({
-  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, bootstrap_failures: [], start_state: 'ready', permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, replicas: 3, state: 'working', ...o,
+  auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, bootstrap_failed_agents: 0, bootstrap_failures: [], start_state: 'ready', permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, ready_with_session: 2, replicas: 3, state: 'working', ...o,
 })
 const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
   ({ backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
@@ -55,7 +55,7 @@ const meta = (): Meta => ({
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
-  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
+  discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, mindmap: false, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'],
 }) as Meta
 
 const preset = (id: string, name: string, is_default = false): PresetView => ({ created_at: '2026-01-01T00:00:00Z', extra_projects: [], id, is_default, labels: [], name, privileged: [], project: 'default', spec: {}, superleader_manageable: false, updated_at: '2026-01-01T00:00:00Z', vault_reattach: [] })

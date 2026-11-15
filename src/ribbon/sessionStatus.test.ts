@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { AgentView, SessionView } from '../api/client'
-import { agentIssue, awaitingPrompt, preparingProgress, sessionIssue, sessionMarkState } from './sessionStatus'
+import { agentIssue, awaitingPrompt, parkedText, preparingProgress, sessionIssue, sessionMarkState } from './sessionStatus'
 import { agentMark } from './stateMark'
 
 const session = (over: Record<string, unknown> = {}, summary: Record<string, unknown> = {}): SessionView =>
@@ -169,5 +169,21 @@ describe('inactivity issues', () => {
   test('the quiet line yields to an attention issue', () => {
     const s = session({ last_update_at: '2026-11-02T10:00:00Z', inactivity_reminded_at: '2026-11-02T12:00:00Z' }, { attention_agents: 1 })
     expect(sessionIssue(s, [])?.kind).toBe('attention')
+  })
+})
+
+describe('parked session', () => {
+  const parked = { parked_at: '2026-11-02T10:00:00Z', parked_reason: 'tokens', parked_detail: { agent_id: 'a', pod: 'p', value: 60000001, limit: 60000000, window_at: null } }
+  test('parked is the first issue', () => {
+    expect(sessionIssue(session({ ...parked, close_requested_at: '2026-11-02T10:00:00Z', close_reason: 'done' }), [])).toEqual({ kind: 'parked', text: 'parked: token ceiling (60000001 of 60000000 tokens)' })
+  })
+  test('parkedText per reason', () => {
+    expect(parkedText(session())).toBeNull()
+    expect(parkedText(session({ parked_at: 'x', parked_reason: 'turns', parked_detail: { value: 201, limit: 200 } }))).toBe('turn ceiling (201 of 200 turns)')
+    expect(parkedText(session({ parked_at: 'x', parked_reason: 'stop_loop', parked_detail: { limit: 3 } }))).toBe('Stop hook loop (3 continuations)')
+    expect(parkedText(session({ parked_at: 'x', parked_reason: 'turns', parked_detail: null }))).toBe('turns')
+  })
+  test('not an issue while deleting', () => {
+    expect(sessionIssue(session({ ...parked, desired: 'deleting' }), [])).toBeNull()
   })
 })
