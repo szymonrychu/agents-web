@@ -3816,7 +3816,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant" | "handoff_notice" | "handoff_request" | "handoff_return") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant" | "handoff_notice" | "handoff_request" | "handoff_return" | "autoclose" | "runaway_parked") | null;
             /**
              * Session Id
              * Format: uuid
