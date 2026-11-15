@@ -4,6 +4,7 @@
  * Fonts come from the system stacks (no web-font download: the UI must work offline and under CSP).
  */
 import { createTheme } from '@mui/material/styles'
+import { safeInset } from './layout/safeArea'
 
 export const TOKENS = {
   // surfaces
@@ -140,6 +141,8 @@ export const diffPalette: Record<
 const { regular, medium } = TOKENS.fontWeights
 const { xs, sm, md, lg, xl } = TOKENS.fontSizes
 export const COARSE = '@media (pointer: coarse)'
+/** Phones: width below the `sm` breakpoint (600); createTheme cannot read its own breakpoints, so a test pins this literal to theme.breakpoints.down('sm'). */
+export const PHONE = '@media (max-width:599.95px)'
 /** iOS Safari zooms the page on focus of any text surface under 16 px; this is the floor on touch and small viewports. */
 export const NO_ZOOM_INPUT_PX = 16
 /** Touch devices (also an iPad in landscape) and any window under 900 px; a mouse at >= 900 px keeps the dense 13 px UI. */
@@ -204,6 +207,27 @@ export const theme = createTheme({
       styleOverrides: {
         root: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
         input: { [TOUCH_OR_SMALL]: { fontSize: '1rem' } },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        // a short confirmation (no fullWidth) stays centred with a gutter
+        paper: { [PHONE]: { margin: '16px', maxWidth: 'calc(100% - 32px)' } },
+        // every form dialog sets fullWidth: on a phone it is a full-screen sheet clear of the notch and Home Indicator
+        paperFullWidth: {
+          [PHONE]: {
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+            height: '100%',
+            maxHeight: '100%',
+            borderRadius: 0,
+            paddingTop: safeInset('top'),
+            paddingBottom: safeInset('bottom'),
+            paddingLeft: safeInset('left'),
+            paddingRight: safeInset('right'),
+          },
+        },
       },
     },
     MuiButton: {

@@ -7,12 +7,14 @@ import {
   NO_ZOOM_INPUT_PX,
   NO_ZOOM_SELECTOR,
   PANEL_BG,
+  PHONE,
   TOKENS,
   TOUCH_OR_SMALL,
   TOUCH_TARGET_PX,
   terminalTheme,
   theme,
 } from './theme'
+import { safeInset } from './layout/safeArea'
 
 const channels = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,6 +144,27 @@ describe('component overrides', () => {
     expect(input[TOUCH_OR_SMALL]).toEqual({ fontSize: '1rem' })
     expect(root).not.toHaveProperty('fontSize')
     expect(input).not.toHaveProperty('fontSize')
+  })
+})
+
+describe('dialogs on phones', () => {
+  it('PHONE is the down(sm) media query', () => {
+    expect(PHONE).toBe(theme.breakpoints.down('sm'))
+  })
+
+  it('a fullWidth Dialog is full screen on phones and clears the safe areas', () => {
+    expect(comp.MuiDialog.styleOverrides.paperFullWidth[PHONE]).toMatchObject({
+      margin: 0, width: '100%', maxWidth: '100%', height: '100%', maxHeight: '100%', borderRadius: 0,
+      paddingTop: safeInset('top'), paddingBottom: safeInset('bottom'), paddingLeft: safeInset('left'), paddingRight: safeInset('right'),
+    })
+  })
+
+  it('other Dialogs keep a 16 px gutter on phones', () => {
+    expect(comp.MuiDialog.styleOverrides.paper[PHONE]).toMatchObject({ margin: '16px', maxWidth: 'calc(100% - 32px)' })
+  })
+
+  it('DialogActions changes no padding on desktop', () => {
+    expect(comp.MuiDialogActions?.styleOverrides?.root ?? {}).not.toHaveProperty('padding')
   })
 })
 
