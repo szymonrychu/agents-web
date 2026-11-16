@@ -320,18 +320,19 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
         ...(!preset || project !== initialProject ? { project } : {}),
       }
       const bodyKey = JSON.stringify(body)
+      // the server refuses the home project in the list
+      const extra = extraProjects.filter((slug) => slug !== project)
+      const extraChanged = extra.join('\n') !== (preset?.extra_projects ?? []).join('\n')
       let result = savedPreset.current?.result
       if (!result) {
         result = preset ? await updatePreset(preset.id, body) : await createPreset(body)
-        onChanged?.()
+        if (extraChanged) onChanged?.() // the dialog may stay open after this save; otherwise onSaved reloads
       } else if (savedPreset.current?.body !== bodyKey) {
         // a retry after a failed extra-projects request: the form changed since, so save it again
         result = await updatePreset(result.id, body)
-        onChanged?.()
+        if (extraChanged) onChanged?.() // the dialog may stay open after this save; otherwise onSaved reloads
       }
-      // the server refuses the home project in the list
-      const extra = extraProjects.filter((slug) => slug !== project)
-      if (extra.join('\n') !== (preset?.extra_projects ?? []).join('\n')) {
+      if (extraChanged) {
         savedPreset.current = { result, body: bodyKey }
         result = await setPresetExtraProjects(result.id, extra)
         savedPreset.current = null

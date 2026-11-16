@@ -1683,6 +1683,18 @@ describe('PresetForm extra projects', () => {
     expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
   })
 
+  test('a normal save does not call onChanged, onSaved alone reloads', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const onChanged = vi.fn()
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} onChanged={onChanged} />)
+    await ready()
+    await replace('Name', 'renamed')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+
   test('a refused list shows the error, keeps the dialog and a retry re-sends only the list', async () => {
     api.updatePreset.mockResolvedValue(preset())
     api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'project "infra" is archived'))
