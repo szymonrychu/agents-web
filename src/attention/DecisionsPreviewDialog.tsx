@@ -37,12 +37,16 @@ export function DecisionsPreviewDialog({ session, tasks, onClose, onChanged }: D
 
   const [notAnswered, setNotAnswered] = useState(0)
   const [goingAll, setGoingAll] = useState(false)
+  const [goAllError, setGoAllError] = useState<string | null>(null)
   const goAll = async () => {
     setGoingAll(true)
+    setGoAllError(null)
     try {
       const { items } = await answerApprovals(approvals.map((d) => ({ id: d.id, verdict: 'go' as const })))
       setNotAnswered(items.filter((i) => i.result !== 'answered').length)
       onChanged()
+    } catch (e) {
+      setGoAllError(e instanceof Error ? e.message : String(e))
     } finally {
       setGoingAll(false)
     }
@@ -77,6 +81,7 @@ export function DecisionsPreviewDialog({ session, tasks, onClose, onChanged }: D
     >
       <DialogTitle id="decisions-preview-title">{`Decisions waiting in ${session.slug}`}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {goAllError !== null && <Alert severity="error">{goAllError}</Alert>}
         {notAnswered > 0 && <Alert severity="warning">{`${notAnswered} not answered (expired, withdrawn or already answered)`}</Alert>}
         {groups.map(({ task, open }) => (
           <Box key={task.key} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

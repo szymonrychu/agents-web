@@ -130,6 +130,15 @@ describe('DecisionsPreviewDialog', () => {
     expect(props.onChanged).toHaveBeenCalled()
   })
 
+  test('a rejected Go all shows the error and does not call onChanged', async () => {
+    approvalsApi.answerApprovals.mockRejectedValue(new Error('boom'))
+    const { props } = setup([T3])
+    fireEvent.click(screen.getByRole('button', { name: 'Go all approvals (1)' }))
+    await screen.findByText('boom')
+    expect(props.onChanged).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Go all approvals (1)' }) as HTMLButtonElement).toHaveProperty('disabled', false)
+  })
+
   test('no Go all button without approvals', () => {
     setup([T1, T2])
     expect(screen.queryByRole('button', { name: /Go all approvals/ })).toBeNull()
