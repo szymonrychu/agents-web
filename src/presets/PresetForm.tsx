@@ -379,7 +379,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <FormControlLabel control={<Switch checked={values.peers} onChange={(e) => set('peers', e.target.checked)} />} label="Peers" />
           {text('workdir', 'Workdir')}
           {text('pvcSize', 'PVC size')}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box role="group" aria-label="Environment variables" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {reattach.length > 0 && (
               <Alert severity="info" data-testid="reattach">{`To re-attach from the vault: ${reattach.join(', ')}`}</Alert>
             )}
