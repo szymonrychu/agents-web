@@ -17,7 +17,7 @@ import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
-const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), getMeta: vi.fn() }))
+const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), setPresetExtraProjects: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
@@ -1521,5 +1521,185 @@ describe('PresetForm', () => {
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
     expect(api.createPreset.mock.calls[0][0]).not.toHaveProperty('labels')
+  })
+})
+
+const RUNAWAY = { max_turns_per_task: 10, max_tokens_per_task: 20, max_stop_continuations: 3, max_agent_spawns: 4, tool_failure_repeats: 5, max_concurrent_subagents: 6, max_subagent_spawn_depth: 2 }
+const FULL_SPEC = {
+  replicas: 2, max_replicas: 3, static: false, model: 'opus', effort: 'high', peers: false, workdir: 'wd', pvc_size: '20Gi',
+  env: { A: { value: '1', expand: true } }, any_mcp_config: { plugins: ['x'] }, any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo hi'], start_prompt: 'go',
+  max_attempts: 3, auto_compact_pct: 70,
+  resources: { requests: { cpu: '1', memory: '2Gi', 'ephemeral-storage': '5Gi' }, limits: { cpu: '2', memory: '4Gi' } },
+  discard_hook_url: 'https://x.test/h', image: 'img', autoclose_after_seconds: 600, inactivity: { reminder_seconds: 600, close_seconds: 1200 },
+  usage_quota: { five_hour_pct: 50, seven_day_pct: 60 }, reuse_running_agent: true, session_messaging: true, kube_cluster_access: true,
+  kube_namespace_access: { media: ['read', 'edit'] }, docker: true, docker_storage: '30Gi', docker_cpu: '2', docker_memory: '4Gi',
+  cache: { restore_key: 'r', save_key: 's', exclude: ['*.tmp'] }, runaway: RUNAWAY,
+  wrapper: {
+    auto_compact: { idle_seconds: 30, instructions: 'i', min_context_tokens: 1000 }, system_append: 'sa', restart_continue_prompt: 'rc', turn_stall_seconds: 60, max_restarts: 2, turn_max_seconds: 900,
+    permission_mode: 'auto', agent_commands: ['compact'], permissions: { allow: ['Bash'], deny: ['Edit'] }, hooks: { onTurn: [{ type: 'command', run: 'true' }] },
+    mcp_servers: { srv: { type: 'http', url: 'https://m.test' } }, plugins: { marketplaces: [] }, managed_settings: { a: { b: 1 } },
+  },
+}
+
+describe('PresetForm lossless save', () => {
+  test('round-trips a fully populated preset unchanged', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const p = preset({ name: 'full', labels: ['l1'], project: 'default', superleader_manageable: true, spec: FULL_SPEC as unknown as PresetView['spec'] })
+    wrap(<PresetForm open preset={p} {...noop} />)
+    await screen.findByText('Empty uses the default (100%)')
+    await editorView('Start prompt')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    const body = api.updatePreset.mock.calls[0][1]
+    expect(body.spec).toEqual(FULL_SPEC)
+    expect(body).toMatchObject({ name: 'full', superleader_manageable: true })
+  })
+
+  test('keeps keys the form does not model and drops a cleared one', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const spec = { model: 'opus', future_key: { x: 1 }, resources: { requests: { cpu: '1', 'ephemeral-storage': '5Gi' }, limits: {} } }
+    wrap(<PresetForm open preset={preset({ spec: spec as unknown as PresetView['spec'] })} {...noop} />)
+    await ready()
+    await replace('CPU request', '')
+    await pick('Model', 'default')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ future_key: { x: 1 }, resources: { requests: { 'ephemeral-storage': '5Gi' }, limits: {} } })
+  })
+
+  test('runaway: editing sends the value, clearing removes the key, a bad value blocks save', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { runaway: { max_turns_per_task: 10, max_agent_spawns: 4 } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Max turns per task').value).toBe('10')
+    await replace('Max turns per task', '50')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec.runaway).toEqual({ max_turns_per_task: 50, max_agent_spawns: 4 })
+    await replace('Max turns per task', '')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(2))
+    expect(api.updatePreset.mock.calls[1][1].spec.runaway).toEqual({ max_agent_spawns: 4 })
+    await replace('Max turns per task', '1.5')
+    expect(screen.getByText('Max turns per task must be a whole number')).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+  })
+
+  test('managed settings: invalid JSON shows an error and blocks save', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { managed_settings: { a: 1 } } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Managed settings').value).toContain('"a": 1')
+    await replace('Managed settings', '{nope')
+    expect(screen.getByText('Must be valid JSON')).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+  })
+
+  test('image: shows the stored image and a change is sent', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { image: 'old' } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Image').value).toBe('old')
+    await replace('Image', 'img')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec.image).toBe('img')
+  })
+})
+
+describe('PresetForm extra projects', () => {
+  beforeEach(() => {
+    ctx.project = null
+    ctx.projects = [{ slug: 'default', name: 'Default' }, { slug: 'infra', name: 'Infra' }, { slug: 'media', name: 'Media' }]
+  })
+  afterEach(() => { ctx.project = null; ctx.projects = [] })
+  const chips = () => Array.from((field('Extra projects').closest('.MuiAutocomplete-root') as HTMLElement).querySelectorAll('.MuiChip-label')).map((c) => c.textContent)
+  const addProject = async (name: string) => {
+    await userEvent.click(field('Extra projects'))
+    await userEvent.click(screen.getByRole('option', { name }))
+  }
+  const withExtra = (extra: string[]) => preset({ extra_projects: extra } as Partial<PresetView>)
+
+  test('an edit shows the stored extra projects and an unchanged list makes no extra call', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={withExtra(['infra'])} {...noop} />)
+    await ready()
+    expect(chips()).toEqual(['Infra'])
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
+  })
+
+  test('adding a project saves the preset then sets the list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockResolvedValue(withExtra(['infra', 'media']))
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra(['infra'])} onClose={vi.fn()} onSaved={onSaved} />)
+    await ready()
+    await addProject('Media')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledWith('p-1', ['infra', 'media']))
+    expect(api.updatePreset.mock.invocationCallOrder[0]).toBeLessThan(api.setPresetExtraProjects.mock.invocationCallOrder[0])
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(withExtra(['infra', 'media'])))
+  })
+
+  test('the home project is not offered', async () => {
+    wrap(<PresetForm open preset={preset({ project: 'default' })} {...noop} />)
+    await ready()
+    await userEvent.click(field('Extra projects'))
+    expect(within(screen.getByRole('listbox', { name: 'Extra projects' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Infra', 'Media'])
+  })
+
+  test('create sets the list after the preset exists', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    api.setPresetExtraProjects.mockResolvedValue(withExtra(['infra']))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await addProject('Infra')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledWith('new-1', ['infra']))
+  })
+
+  test('create without extra projects makes no extra call', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+    expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
+  })
+
+  test('a refused list shows the error, keeps the dialog and a retry re-sends only the list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'project "infra" is archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} />)
+    await ready()
+    await addProject('Infra')
+    await userEvent.click(button('Save'))
+    expect((await screen.findByRole('alert')).textContent).toContain('project "infra" is archived')
+    expect(onSaved).not.toHaveBeenCalled()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset).toHaveBeenCalledTimes(1)
+    expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2)
+  })
+
+  test('a failed create keeps the new preset and a retry does not create it again', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await addProject('Infra')
+    await userEvent.click(button('Create'))
+    await screen.findByRole('alert')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2))
+    expect(api.createPreset).toHaveBeenCalledTimes(1)
   })
 })

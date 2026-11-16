@@ -48,3 +48,16 @@ export const proposal = (o: Partial<ProposalView> = {}): ProposalView => ({
   ],
   ...o,
 })
+
+/** A preset_manageable proposal: one security and grant item flipping superleader_manageable. */
+export const manageableProposal = (o: Partial<ProposalView> = {}): ProposalView => {
+  const manageable = item({ path: 'superleader_manageable', before: false, after: true, grant: true, security: true })
+  return proposal({
+    id: 9,
+    kind: 'preset_manageable',
+    target_name: 'worker',
+    revision: 1,
+    revisions: [revision(1, [manageable])],
+    ...o,
+  })
+}

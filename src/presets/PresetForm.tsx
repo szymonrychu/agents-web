@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -24,7 +25,7 @@ import { parseDotenv } from '../sessions/dotenv'
 import { ProjectField } from '../projects/ProjectField'
 import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
-import { createPreset, getMeta, updatePreset } from '../api/client'
+import { createPreset, getMeta, setPresetExtraProjects, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
 import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
@@ -32,7 +33,7 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, RUNAWAY_FIELDS, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
@@ -52,6 +53,7 @@ export interface PresetFormProps {
 }
 
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
+const MAX_EXTRA_PROJECTS = 9
 const NOT_AVAILABLE = ' (not available)'
 
 const hooksOf = (text: string): Hooks | null => {
@@ -168,9 +170,13 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [initialLabels] = useState(() => (preset ?? copyOf)?.labels ?? [])
   const [labels, setLabels] = useState(initialLabels)
   // an edit opens on the preset's project, a copy on the source's, a new preset on the selected one
-  const { project: selectedProject } = useProject()
+  const { project: selectedProject, projects } = useProject()
   const [initialProject] = useState(() => (preset ?? copyOf)?.project ?? selectedProject ?? 'default')
   const [project, setProject] = useState(initialProject)
+  // extra projects are saved by a second request after the preset; a copy starts from the source's list
+  const [extraProjects, setExtraProjects] = useState(() => (preset ?? copyOf)?.extra_projects ?? [])
+  // the preset saved before a failed extra-projects request, so a retry after a failed extra-projects request does not save or create it again
+  const savedPreset = useRef<PresetView | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -301,16 +307,27 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setServerError(null)
     setRowErrors({})
     try {
-      const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
-      const body: PresetIn = {
-        name: values.name,
-        superleader_manageable: superleaderManageable,
-        spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'],
-        ...(labelsChanged ? { labels } : {}),
-        // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
-        ...(!preset || project !== initialProject ? { project } : {}),
+      let result = savedPreset.current
+      if (!result) {
+        const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
+        const body: PresetIn = {
+          name: values.name,
+          superleader_manageable: superleaderManageable,
+          spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
+          ...(labelsChanged ? { labels } : {}),
+          // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
+          ...(!preset || project !== initialProject ? { project } : {}),
+        }
+        result = preset ? await updatePreset(preset.id, body) : await createPreset(body)
       }
-      onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
+      // the server refuses the home project in the list
+      const extra = extraProjects.filter((slug) => slug !== project)
+      if (extra.join('\n') !== (preset?.extra_projects ?? []).join('\n')) {
+        savedPreset.current = result
+        result = await setPresetExtraProjects(result.id, extra)
+        savedPreset.current = null
+      }
+      onSaved(result)
     } catch (e) {
       setRowErrors(vaultRowErrors(e, env.filter((r) => r.vault !== null).map((r) => r.key)))
       setServerError(e instanceof Error ? e.message : String(e))
@@ -342,6 +359,17 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('name', 'Name', { disabled: preset?.is_default === true })}
           <ProjectField value={project} onChange={setProject} />
           <LabelEditor value={labels} onChange={setLabels} />
+          <Autocomplete
+            multiple
+            size="small"
+            options={projects.map((p) => p.slug).filter((slug) => slug !== project)}
+            value={extraProjects.filter((slug) => slug !== project)}
+            onChange={(_, next) => setExtraProjects(next)}
+            getOptionLabel={(slug) => projects.find((p) => p.slug === slug)?.name ?? slug}
+            filterSelectedOptions
+            getOptionDisabled={() => extraProjects.length >= MAX_EXTRA_PROJECTS}
+            renderInput={(params) => <TextField {...params} label="Extra projects" helperText={`Sessions of this preset also see these projects, at most ${MAX_EXTRA_PROJECTS}`} />}
+          />
           {text('replicas', 'Replicas')}
           {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the session a hive' })}
           <FormControlLabel control={<Switch checked={values.static} onChange={(e) => set('static', e.target.checked)} />} label="Static (scaling disabled)" />
@@ -351,7 +379,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           <FormControlLabel control={<Switch checked={values.peers} onChange={(e) => set('peers', e.target.checked)} />} label="Peers" />
           {text('workdir', 'Workdir')}
           {text('pvcSize', 'PVC size')}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box role="group" aria-label="Environment variables" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {reattach.length > 0 && (
               <Alert severity="info" data-testid="reattach">{`To re-attach from the vault: ${reattach.join(', ')}`}</Alert>
             )}
@@ -471,9 +499,24 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {text('memLimit', 'Memory limit')}
           </Box>
           {text('hookUrl', 'Pre-discard webhook URL')}
+          <TextField
+            size="small"
+            label="Image"
+            value={values.image}
+            onChange={(e) => set('image', e.target.value)}
+            helperText={meta ? `Empty uses the default (${meta.agent_image})` : 'Empty uses the default'}
+            fullWidth
+            slotProps={{ htmlInput: { list: 'preset-agent-images' } }}
+          />
+          <datalist id="preset-agent-images">{(meta?.agent_images ?? []).map((i) => <option key={i} value={i} />)}</datalist>
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
           {text('inactivityReminder', 'Reminder after quiet seconds', { help: inactivityHelp(meta?.inactivity.reminder_seconds) })}
           {text('inactivityClose', 'Close after quiet seconds', { help: inactivityHelp(meta?.inactivity.close_seconds) })}
+          <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <FormLabel component="legend">Runaway guard</FormLabel>
+            {RUNAWAY_FIELDS.map(({ field, label }) => text(field, label))}
+            <FormHelperText>Empty uses the orchestrator setting; 0 turns a limit off (for the two subagent caps, 0 means the Claude default)</FormHelperText>
+          </Box>
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <FormLabel component="legend">Usage quota</FormLabel>
             <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
@@ -596,6 +639,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             </Box>
           )}
           {text('mcpServers', 'MCP servers', { multiline: true })}
+          {text('managedSettings', 'Managed settings', { multiline: true })}
           <PluginsEditor value={pluginsOf(values.plugins)} onChange={(v) => set('plugins', v === null ? '' : JSON.stringify(v, null, 2))} onInvalid={(m) => setPluginsInvalid(m !== null)} />
         </Box>
       </DialogContent>

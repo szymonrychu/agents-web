@@ -29,6 +29,7 @@ import {
   scaleSession,
   setSessionLabels,
   updatePreset,
+  setPresetExtraProjects,
 } from './client';
 import { listFiles, readFile } from './files';
 import { listTerminals, terminalSocketUrl } from './terminals';
@@ -109,6 +110,17 @@ describe('client', () => {
     ]);
     expect(eventStreamUrl('s1')).toBe('/api/v1/sessions/s1/events/stream');
     expect(calls.every(([url]) => !url.includes('/clusters'))).toBe(true);
+  });
+});
+
+describe('preset extra projects client', () => {
+  it('PUTs the whole list to the extra-projects route', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    await setPresetExtraProjects('p 1', ['a', 'b']);
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(`${init.method} ${url}`).toBe('PUT /api/v1/presets/p%201/extra-projects');
+    expect(JSON.parse(init.body as string)).toEqual({ extra_projects: ['a', 'b'] });
   });
 });
 
