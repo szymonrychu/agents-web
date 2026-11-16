@@ -24,6 +24,8 @@ test('expiresIn formats days, hours and minutes', () => {
   expect(expiresIn('2026-11-17T05:00:00Z', now)).toBe('Expires in 2 d 5 h')
   expect(expiresIn('2026-11-15T03:10:00Z', now)).toBe('Expires in 3 h 10 min')
   expect(expiresIn('2026-11-15T00:04:00Z', now)).toBe('Expires in 4 min')
+  expect(expiresIn('2026-11-15T00:00:30Z', now)).toBe('Expires in <1m')
+  expect(expiresIn('2026-11-15T00:00:00Z', now)).toBe('Expired')
   expect(expiresIn('2026-11-14T23:59:00Z', now)).toBe('Expired')
 })
 

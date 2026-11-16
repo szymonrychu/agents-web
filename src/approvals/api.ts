@@ -38,8 +38,10 @@ export const answerApprovals = (items: ApprovalAnswer[]) =>
 
 /** Time left until `expiresAt` as "Expires in 2 d 5 h", or "Expired" once it passed. */
 export function expiresIn(expiresAt: string, now: Date): string {
-  const minutes = Math.floor((new Date(expiresAt).getTime() - now.getTime()) / 60000)
-  if (!(minutes > 0)) return 'Expired'
+  const ms = new Date(expiresAt).getTime() - now.getTime()
+  if (!(ms > 0)) return 'Expired'
+  const minutes = Math.floor(ms / 60000)
+  if (minutes < 1) return 'Expires in <1m'
   const d = Math.floor(minutes / 1440)
   const h = Math.floor((minutes % 1440) / 60)
   const m = minutes % 60
