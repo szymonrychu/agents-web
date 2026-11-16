@@ -46,7 +46,7 @@ const FUTURE = '2030-01-01T09:00:00Z'
 // ---------------------------------------------------------------- orchestrator
 
 const session = (id: string, slug: string): O['SessionView'] => ({
-  backup: { last_transcripts_backup: null, reason: null, transcripts: false, workdir: false },
+  backup: { entries: [], last_transcripts_backup: null, reason: null, transcripts: false, workdir: false },
   closes_at: null,
   created_at: T0,
   desired: 'active',
@@ -123,10 +123,11 @@ const proposals: O['ProposalView'][] = [
   { closed_at: null, created_at: T1, expires_at: FUTURE, id: 2, kind: 'schedule', proposer_slug: 'a-very-long-session-slug-without-spaces-0123456789', proposer_superleader: false, revision: 2, revisions: [], stale: false, status: 'rework', target_id: 'x', target_name: LONG, updated_at: T1 },
 ]
 
-const archives: O['ArchivePage'] = {
+const cur = (id: string, size: number, at: string): O['BackupCurrentView'] => ({ id, origin: 'discard', saved_at: at, session_slug: 'alpha-session', size })
+const backups: O['BackupNamePage'] = {
   items: [
-    { key: 'archives/alpha.tar.zst', last_modified: T0, name: 'alpha.tar.zst', protected: false, referenced_by: ['alpha-session'], size: 123456789 },
-    { key: 'archives/long.tar.zst', last_modified: T1, name: 'a-very-long-archive-name-without-spaces-0123456789.tar.zst', protected: true, referenced_by: [], size: 2048 },
+    { current: cur('00000000-0000-4000-8000-000000000001', 123456789, T0), name: 'alpha', protected: false, referenced_by: ['alpha-session'], version_count: 2 },
+    { current: cur('00000000-0000-4000-8000-000000000002', 2048, T1), name: 'a-very-long-backup-name-without-spaces-0123456789', protected: true, referenced_by: [], version_count: 1 },
   ],
   next_cursor: null,
 }
@@ -275,8 +276,8 @@ export const routes: Fixture[] = [
   get(`${O_}/projects`, projects),
   get(`${O_}/proposals`, proposals),
   get(`${O_}/meta`, meta),
-  get(`${O_}/cache/archives`, archives),
-  get(`${O_}/cache/cleanup/settings`, cleanup),
+  get(`${O_}/backups`, backups),
+  get(`${O_}/backups/cleanup/settings`, cleanup),
 
   get(`${BASES.schedules}/schedules`, schedules),
 
