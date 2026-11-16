@@ -26,6 +26,7 @@ export function mountTasks(path: string) {
 
 export const decision = (over: Partial<Decision> = {}): Decision => ({
   id: 5, asking_session: 's1', asking_slug: 'agent-x', question: 'Which db?', context: '', status: 'open', answer: null, note: null,
+  kind: 'question', subject: null, expires_at: null, answered_via: null, answer_ref: null,
   created_at: '2026-11-01T10:00:00Z', answered_at: null,
   options: [{ label: 'Postgres', recommended: true, description: 'boring' }, { label: 'SQLite' }], ...over,
 })

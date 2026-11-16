@@ -33,7 +33,13 @@ export interface Decision {
   question: string
   context: string
   options: DecisionOption[]
-  status: 'open' | 'answered' | 'withdrawn'
+  status: 'open' | 'answered' | 'withdrawn' | 'expired'
+  kind: 'question' | 'approval'
+  /** What an approval is about (a URL or free text); null for questions. */
+  subject: string | null
+  expires_at: string | null
+  answered_via: string | null
+  answer_ref: string | null
   /** `{choice, label}` or `{text}` once answered. */
   answer: { choice?: number; label?: string; text?: string } | null
   note: string | null
