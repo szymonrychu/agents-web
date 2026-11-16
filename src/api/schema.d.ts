@@ -26,15 +26,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/admin/archives": {
+    "/agent/v1/admin/backups": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Archives */
-        get: operations["list_archives_agent_v1_admin_archives_get"];
+        /** List Backups */
+        get: operations["list_backups_agent_v1_admin_backups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43,15 +43,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/admin/archives/cleanup/preview": {
+    "/agent/v1/admin/backups/cleanup/preview": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Archives Cleanup Preview */
-        get: operations["archives_cleanup_preview_agent_v1_admin_archives_cleanup_preview_get"];
+        /** Backups Cleanup Preview */
+        get: operations["backups_cleanup_preview_agent_v1_admin_backups_cleanup_preview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -60,21 +60,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/admin/archives/settings": {
+    "/agent/v1/admin/backups/cleanup/settings": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Archives Settings */
-        get: operations["archives_settings_agent_v1_admin_archives_settings_get"];
+        /** Backups Cleanup Settings */
+        get: operations["backups_cleanup_settings_agent_v1_admin_backups_cleanup_settings_get"];
         /**
-         * Put Archives Settings
+         * Put Backups Cleanup Settings
          * @description Replace the whole cleanup policy (every field required, same bounds as the main port).
          *     Postgres only: it needs no api S3 key pair. The audit row lists the field names, no values.
          */
-        put: operations["put_archives_settings_agent_v1_admin_archives_settings_put"];
+        put: operations["put_backups_cleanup_settings_agent_v1_admin_backups_cleanup_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/backups/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy Backup
+         * @description Copy a version to a target name; the copy becomes the target's current version (replace
+         *     only, no merge). The audit row names source and target, never content.
+         */
+        post: operations["copy_backup_agent_v1_admin_backups_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/backups/{name}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup Versions */
+        get: operations["backup_versions_agent_v1_admin_backups__name__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/backups/{name}/versions/{version_id}/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup Manifest */
+        get: operations["backup_manifest_agent_v1_admin_backups__name__versions__version_id__manifest_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -204,6 +259,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/chats/rooms/{room_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET connector /rooms/{room_id}/notes */
+        get: operations["admin_connector_get_rooms_room_id_notes"];
+        /** PUT connector /rooms/{room_id}/notes */
+        put: operations["admin_connector_put_rooms_room_id_notes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/chats/rooms/{room_id}/settings": {
         parameters: {
             query?: never;
@@ -285,6 +358,40 @@ export interface paths {
          * @description Any command, whoever issued it; 404 only when unknown.
          */
         get: operations["get_command_agent_v1_admin_commands__command_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/handoffs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Handoffs */
+        get: operations["list_handoffs_agent_v1_admin_handoffs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/handoffs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Handoff */
+        get: operations["get_handoff_agent_v1_admin_handoffs__id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -792,7 +899,7 @@ export interface paths {
         };
         /**
          * Get Session
-         * @description A superleader reads any session; any other leader its own.
+         * @description A superleader or a retrospective session reads any session; any other leader its own.
          */
         get: operations["get_session_agent_v1_admin_sessions__slug__get"];
         put?: never;
@@ -1586,6 +1693,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/handoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit your handoff once your work is safe to hand over
+         * @description Check order: hive leader and epoch, an open row (reused; a voluntary one is opened only
+         *     once the text passes), the quality of the text (422 `handoff_rejected`), then the in-flight
+         *     gate (409 `in_flight`, the handoff stored). A gate-clear submit is accepted 202; the
+         *     dispatcher then moves leadership (hive) or clears the context and returns the handoff (solo)
+         *     once the agent is idle.
+         */
+        post: operations["handoff_submit_agent_v1_handoff_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/init-scripts": {
         parameters: {
             query?: never;
@@ -1614,11 +1745,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Hand leadership over, extend the handoff countdown or hand a solo context off
-         * @description Queue a handover, extend the strong-limit countdown, or (solo agent) hand off its context.
-         *
-         *     The checks here fail fast; the dispatcher re-checks at apply time. A hive member is refused
-         *     in every branch; a solo agent has no leader to change, so its call is the voluntary handoff.
+         * Hand leadership over (hive leader only)
+         * @description Queue a handover. The checks here fail fast; the dispatcher re-checks at apply time. Only
+         *     the leader of a hive may hand leadership over; a solo agent submits a handoff instead.
          */
         post: operations["handover_agent_v1_leadership_handover_post"];
         delete?: never;
@@ -2092,33 +2221,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cache/archives": {
+    "/api/v1/backups": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Archives */
-        get: operations["list_archives_api_v1_cache_archives_get"];
-        put?: never;
-        post?: never;
-        /** Delete Archives */
-        delete: operations["delete_archives_api_v1_cache_archives_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/cache/archives/download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download Archive */
-        get: operations["download_archive_api_v1_cache_archives_download_get"];
+        /** List Names Route */
+        get: operations["list_names_route_api_v1_backups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2127,24 +2238,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cache/cleanup/preview": {
+    "/api/v1/backups/cleanup/preview": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Cleanup Preview */
-        get: operations["cleanup_preview_api_v1_cache_cleanup_preview_get"];
+        /** Cleanup Preview Route */
+        get: operations["cleanup_preview_route_api_v1_backups_cleanup_preview_get"];
         put?: never;
-        post?: never;
+        /**
+         * Cleanup Preview Post Route
+         * @description Same read-only answer as the GET (the plugin reads GET, the web may POST).
+         */
+        post: operations["cleanup_preview_post_route_api_v1_backups_cleanup_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cache/cleanup/run": {
+    "/api/v1/backups/cleanup/run": {
         parameters: {
             query?: never;
             header?: never;
@@ -2154,14 +2269,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Request Cleanup Run */
-        post: operations["request_cleanup_run_api_v1_cache_cleanup_run_post"];
+        post: operations["request_cleanup_run_api_v1_backups_cleanup_run_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/cache/cleanup/settings": {
+    "/api/v1/backups/cleanup/settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -2169,9 +2284,111 @@ export interface paths {
             cookie?: never;
         };
         /** Get Cleanup Settings */
-        get: operations["get_cleanup_settings_api_v1_cache_cleanup_settings_get"];
+        get: operations["get_cleanup_settings_api_v1_backups_cleanup_settings_get"];
         /** Put Cleanup Settings */
-        put: operations["put_cleanup_settings_api_v1_cache_cleanup_settings_put"];
+        put: operations["put_cleanup_settings_api_v1_backups_cleanup_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy Route */
+        post: operations["copy_route_api_v1_backups_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Backup Route */
+        delete: operations["delete_backup_route_api_v1_backups__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{name}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Versions Route */
+        get: operations["versions_route_api_v1_backups__name__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{name}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Version Route */
+        delete: operations["delete_version_route_api_v1_backups__name__versions__version_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{name}/versions/{version_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Route */
+        get: operations["download_route_api_v1_backups__name__versions__version_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{name}/versions/{version_id}/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Manifest Route */
+        get: operations["manifest_route_api_v1_backups__name__versions__version_id__manifest_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2943,6 +3160,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Abandon
+         * @description An in-flight item the agent deliberately drops, with the reason (reported to the
+         *     successor and in the escalation log).
+         */
+        Abandon: {
+            /** Item */
+            item: string;
+            /** Why */
+            why: string;
+        };
         /** Activity */
         Activity: {
             /** Lines */
@@ -3068,56 +3296,6 @@ export interface components {
             /** State */
             state: string;
         };
-        /** ArchiveDeleteError */
-        ArchiveDeleteError: {
-            /** Code */
-            code: string;
-            /** Key */
-            key: string;
-            /** Message */
-            message: string;
-        };
-        /** ArchiveDeleteResult */
-        ArchiveDeleteResult: {
-            /** Deleted */
-            deleted: string[];
-            /** Errors */
-            errors: components["schemas"]["ArchiveDeleteError"][];
-            /** Refused */
-            refused: components["schemas"]["ArchiveRefusal"][];
-        };
-        /** ArchivePage */
-        ArchivePage: {
-            /** Items */
-            items: components["schemas"]["ArchiveView"][];
-            /** Next Cursor */
-            next_cursor: string | null;
-        };
-        /** ArchiveRefusal */
-        ArchiveRefusal: {
-            /** Key */
-            key: string;
-            /** Reason */
-            reason: string;
-        };
-        /** ArchiveView */
-        ArchiveView: {
-            /** Key */
-            key: string;
-            /**
-             * Last Modified
-             * Format: date-time
-             */
-            last_modified: string;
-            /** Name */
-            name: string;
-            /** Protected */
-            protected: boolean;
-            /** Referenced By */
-            referenced_by: string[];
-            /** Size */
-            size: number;
-        };
         /** AutoCompact */
         AutoCompact: {
             /** Idle Seconds */
@@ -3126,6 +3304,106 @@ export interface components {
             instructions?: string | null;
             /** Min Context Tokens */
             min_context_tokens?: number | null;
+        };
+        /** BackupCopyIn */
+        BackupCopyIn: {
+            /** Source */
+            source: string;
+            /** Source Version */
+            source_version?: string | null;
+            /** Target */
+            target: string;
+        };
+        /** BackupCurrentView */
+        BackupCurrentView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Origin */
+            origin: string;
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+            /** Session Slug */
+            session_slug: string | null;
+            /** Size */
+            size: number;
+        };
+        /**
+         * BackupEntry
+         * @description One named directory of a session that is restored at start and or saved at discard.
+         *
+         *     `root` picks the tree (`workspace` is the session workdir, `claude` the session PVC subPath
+         *     shared by all pods); `path` is relative to it (`.` is the whole root). `name` is a Jinja
+         *     template (surface `archive_name`) naming the backup in the object store.
+         */
+        BackupEntry: {
+            /**
+             * After Init
+             * @default false
+             */
+            after_init: boolean;
+            /**
+             * Exclude
+             * @default []
+             */
+            exclude: string[];
+            /**
+             * Live
+             * @default false
+             */
+            live: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "backup" | "restore" | "both";
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /**
+             * Root
+             * @enum {string}
+             */
+            root: "workspace" | "claude";
+        };
+        /** BackupManifestView */
+        BackupManifestView: {
+            /** Files */
+            files: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Name */
+            name: string;
+            /**
+             * Version
+             * Format: uuid
+             */
+            version: string;
+        };
+        /** BackupNamePage */
+        BackupNamePage: {
+            /** Items */
+            items: components["schemas"]["BackupNameView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** BackupNameView */
+        BackupNameView: {
+            current: components["schemas"]["BackupCurrentView"] | null;
+            /** Name */
+            name: string;
+            /** Protected */
+            protected: boolean;
+            /** Referenced By */
+            referenced_by: string[];
+            /** Version Count */
+            version_count: number;
         };
         /**
          * BackupRun
@@ -3139,6 +3417,46 @@ export interface components {
              * Format: date-time
              */
             finished_at: string;
+        };
+        /** BackupVersionPage */
+        BackupVersionPage: {
+            /** Items */
+            items: components["schemas"]["BackupVersionView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** BackupVersionView */
+        BackupVersionView: {
+            /** Created By */
+            created_by: string;
+            /** Current */
+            current: boolean;
+            /** Digest */
+            digest: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Origin */
+            origin: string;
+            /** Protected */
+            protected: boolean;
+            /** Referenced By */
+            referenced_by: string[];
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+            /** Session Slug */
+            session_slug: string | null;
+            /** Size */
+            size: number;
+            /** State */
+            state: string;
         };
         /**
          * BootstrapFailure
@@ -3191,10 +3509,14 @@ export interface components {
         CleanupItem: {
             /** Key */
             key: string;
+            /** Name */
+            name?: string | null;
             /** Reason */
             reason: string;
             /** Size */
             size: number;
+            /** Version */
+            version?: string | null;
         };
         /** CleanupPreview */
         CleanupPreview: {
@@ -3346,11 +3668,6 @@ export interface components {
             /** Rows */
             rows?: number | null;
         };
-        /** DeleteArchives */
-        DeleteArchives: {
-            /** Keys */
-            keys: string[];
-        };
         /**
          * DialogAnswer
          * @description A person's answer to the open dialog; forwarded to the wrapper unchanged.
@@ -3434,6 +3751,25 @@ export interface components {
             since?: string | null;
             /** Tail */
             tail?: string | null;
+        };
+        /**
+         * EntryPlanView
+         * @description What the discard does with one backup entry (`index` -1: the workspace root itself).
+         *
+         *     `action` is `save`, `discard` (the directory goes with the session) or `skip` (with `reason`).
+         */
+        EntryPlanView: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "save" | "discard" | "skip";
+            /** Index */
+            index: number;
+            /** Name Template */
+            name_template: string;
+            /** Reason */
+            reason: string | null;
         };
         /**
          * EnvVar
@@ -3605,19 +3941,127 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HandoffAccepted */
+        HandoffAccepted: {
+            /**
+             * Applies
+             * @default once you are idle: leadership moves (hive) or your context is cleared and the handoff comes back to you (solo)
+             */
+            applies: string;
+            /**
+             * Handled
+             * @default []
+             */
+            handled: number[];
+            /** Handoff Id */
+            handoff_id: number;
+            /**
+             * Phase
+             * @default submitted
+             * @constant
+             */
+            phase: "submitted";
+        };
+        /** HandoffDetail */
+        HandoffDetail: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Handoff Text */
+            handoff_text: string | null;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Session Slug */
+            session_slug: string;
+            /** Size */
+            size: number;
+        };
+        /** HandoffItem */
+        HandoffItem: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Session Slug */
+            session_slug: string;
+            /** Size */
+            size: number;
+        };
+        /** HandoffPage */
+        HandoffPage: {
+            /** Handoffs */
+            handoffs: components["schemas"]["HandoffItem"][];
+            /** Has More */
+            has_more: boolean;
+        };
+        /**
+         * HandoffSubmitIn
+         * @description The handoff an agent submits once its work is safe to hand over (spec 5.3).
+         */
+        HandoffSubmitIn: {
+            /** Abandon */
+            abandon?: components["schemas"]["Abandon"][];
+            /**
+             * Doing
+             * @default
+             */
+            doing: string;
+            /** Done */
+            done?: string[];
+            /** Epoch */
+            epoch?: number | null;
+            /** Gotchas */
+            gotchas?: string[];
+            /** Handled */
+            handled?: number[];
+            /** In Flight */
+            in_flight?: string[];
+            /** Next */
+            next?: string[];
+            /** Open Requests */
+            open_requests?: string[];
+            /** Results */
+            results?: string[];
+            /** To */
+            to?: string | null;
+        };
         /** HandoverIn */
         HandoverIn: {
             /** Epoch */
             epoch?: number | null;
-            /**
-             * Extend
-             * @default false
-             */
-            extend: boolean;
             /** Handled */
             handled?: number[];
             /** Reason */
-            reason?: string | null;
+            reason: string;
             /** To */
             to?: string | null;
         };
@@ -3687,15 +4131,13 @@ export interface components {
              * @default when your turn has ended and your background agents have reported
              */
             applies: string;
-            /** Deadline At */
-            deadline_at?: string | null;
             /**
              * Handled
              * @default []
              */
             handled: number[];
             /** Request Id */
-            request_id?: number | null;
+            request_id: number;
             /**
              * Status
              * @default pending
@@ -3850,6 +4292,7 @@ export interface components {
             ordinal: number;
             /** Pod Name */
             pod_name: string;
+            pressure?: components["schemas"]["PressureView"] | null;
             /** Project */
             project: string;
             /**
@@ -3940,7 +4383,7 @@ export interface components {
             /** Next Attempt At */
             next_attempt_at: string | null;
             /** Notice */
-            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant" | "handoff_notice" | "handoff_request" | "handoff_return" | "autoclose" | "runaway_parked") | null;
+            notice?: ("inactivity_reminder" | "inactivity_close" | "handover" | "proposal" | "project_grant" | "handoff_notice" | "handoff_request" | "handoff_return" | "autoclose" | "runaway_parked" | "handoff_nudge" | "handoff_escalation") | null;
             /**
              * Session Id
              * Format: uuid
@@ -4303,6 +4746,38 @@ export interface components {
             /** Vault Reattach */
             vault_reattach: string[];
         };
+        /**
+         * PressureView
+         * @description The context pressure of a solo agent or a hive leader (spec 5.3).
+         */
+        PressureView: {
+            /** Compact Tokens */
+            compact_tokens: number;
+            /** Context Pct */
+            context_pct: number | null;
+            /** Escalated */
+            escalated: boolean;
+            /** L1 Tokens */
+            l1_tokens: number;
+            /** L2 Tokens */
+            l2_tokens: number;
+            /** L3 Tokens */
+            l3_tokens: number;
+            /** Level */
+            level: number;
+            /** Phase */
+            phase: string | null;
+            /** Profile */
+            profile: string | null;
+            /** Rejects */
+            rejects: number;
+            /** Used Tokens */
+            used_tokens: number | null;
+            /** Waiting On */
+            waiting_on: string[];
+            /** Window Tokens */
+            window_tokens: number | null;
+        };
         /** PreviewError */
         PreviewError: {
             /** Line */
@@ -4657,10 +5132,16 @@ export interface components {
          * SessionBackup
          * @description What a discard would save now; each flag is true only when that save would really run.
          *
-         *     `reason` is null when both run, else `no_session_cache` (no `spec.cache`),
+         *     `reason` is null when both run, else `no_session_cache` (no workspace backup entry),
          *     `cache_not_configured` (no S3 cache configured) or the save's skip reason, the workdir's first.
+         *     `entries` is the per-entry plan the discard dialog shows.
          */
         SessionBackup: {
+            /**
+             * Entries
+             * @default []
+             */
+            entries: components["schemas"]["EntryPlanView"][];
             last_transcripts_backup: components["schemas"]["BackupRun"] | null;
             /** Reason */
             reason: string | null;
@@ -4742,7 +5223,8 @@ export interface components {
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
-            cache?: components["schemas"]["WorkspaceCache"] | null;
+            /** Backup */
+            backup?: components["schemas"]["BackupEntry"][] | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -4762,6 +5244,8 @@ export interface components {
             env: {
                 [key: string]: components["schemas"]["EnvVar-Input"];
             };
+            /** Handoff Profile */
+            handoff_profile?: ("work" | "chat") | null;
             /** Image */
             image?: string | null;
             inactivity?: components["schemas"]["InactivityLimits"] | null;
@@ -4798,6 +5282,8 @@ export interface components {
              */
             replicas: number;
             resources?: components["schemas"]["Resources"] | null;
+            /** Retrospective */
+            retrospective?: boolean | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
             runaway?: components["schemas"]["RunawayLimits"] | null;
@@ -4830,7 +5316,8 @@ export interface components {
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
-            cache?: components["schemas"]["WorkspaceCache"] | null;
+            /** Backup */
+            backup?: components["schemas"]["BackupEntry"][] | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -4850,6 +5337,8 @@ export interface components {
             env: {
                 [key: string]: components["schemas"]["EnvVar-Output"];
             };
+            /** Handoff Profile */
+            handoff_profile?: ("work" | "chat") | null;
             /** Image */
             image?: string | null;
             inactivity?: components["schemas"]["InactivityLimits"] | null;
@@ -4886,6 +5375,8 @@ export interface components {
              */
             replicas: number;
             resources?: components["schemas"]["Resources"] | null;
+            /** Retrospective */
+            retrospective?: boolean | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
             runaway?: components["schemas"]["RunawayLimits"] | null;
@@ -5336,25 +5827,6 @@ export interface components {
             withdrawn: number[];
         };
         /**
-         * WorkspaceCache
-         * @description `restore_key` and `save_key` are Jinja templates (surface `archive_name`).
-         *
-         *     None is unset: a preset-derived session gets `default_cache_key` for both when both are None.
-         *     An empty string is explicit: empty `restore_key` is a fresh start, empty `save_key` is
-         *     restore-only. A restore_key ending in `/` restores the newest archive under that prefix.
-         */
-        WorkspaceCache: {
-            /**
-             * Exclude
-             * @default []
-             */
-            exclude: string[];
-            /** Restore Key */
-            restore_key?: string | null;
-            /** Save Key */
-            save_key?: string | null;
-        };
-        /**
          * WrapperSettings
          * @description Typed claude-code-wrapper settings a session may carry (create-time only).
          */
@@ -5445,10 +5917,10 @@ export interface operations {
             };
         };
     };
-    list_archives_agent_v1_admin_archives_get: {
+    list_backups_agent_v1_admin_backups_get: {
         parameters: {
             query?: {
-                prefix?: string;
+                q?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -5467,10 +5939,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArchivePage"];
+                    "application/json": components["schemas"]["BackupNamePage"];
                 };
             };
-            /** @description bad_request: invalid prefix or cursor */
+            /** @description bad_request: invalid name or cursor */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5493,7 +5965,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description unavailable: the cache archives are not configured for the api */
+            /** @description unavailable: backups are not configured for the api */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5502,7 +5974,7 @@ export interface operations {
             };
         };
     };
-    archives_cleanup_preview_agent_v1_admin_archives_cleanup_preview_get: {
+    backups_cleanup_preview_agent_v1_admin_backups_cleanup_preview_get: {
         parameters: {
             query?: never;
             header?: {
@@ -5539,7 +6011,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description unavailable: the cache archives are not configured for the api */
+            /** @description unavailable: backups are not configured for the api */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5548,7 +6020,7 @@ export interface operations {
             };
         };
     };
-    archives_settings_agent_v1_admin_archives_settings_get: {
+    backups_cleanup_settings_agent_v1_admin_backups_cleanup_settings_get: {
         parameters: {
             query?: never;
             header?: {
@@ -5585,16 +6057,9 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description unavailable: the cache archives are not configured for the api */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    put_archives_settings_agent_v1_admin_archives_settings_put: {
+    put_backups_cleanup_settings_agent_v1_admin_backups_cleanup_settings_put: {
         parameters: {
             query?: never;
             header?: {
@@ -5634,6 +6099,205 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    copy_backup_agent_v1_admin_backups_copy_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupCopyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupVersionView"];
+                };
+            };
+            /** @description bad_request: invalid name or cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description backup_not_found or version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description storage_error: the object store refused the copy */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unavailable: backups are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backup_versions_agent_v1_admin_backups__name__versions_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupVersionPage"];
+                };
+            };
+            /** @description bad_request: invalid name or cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description backup_not_found or version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description unavailable: backups are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backup_manifest_agent_v1_admin_backups__name__versions__version_id__manifest_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupManifestView"];
+                };
+            };
+            /** @description bad_request: invalid name or cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description backup_not_found or version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description unavailable: backups are not configured for the api */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5863,6 +6527,68 @@ export interface operations {
             };
         };
     };
+    admin_connector_get_rooms_room_id_notes: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_connector_put_rooms_room_id_notes: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_connector_put_rooms_room_id_settings: {
         parameters: {
             query?: never;
@@ -6035,6 +6761,104 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CommandView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_handoffs_agent_v1_admin_handoffs_get: {
+        parameters: {
+            query?: {
+                session?: string | null;
+                limit?: number;
+                before_id?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoffPage"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no such session or handoff */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_handoff_agent_v1_admin_handoffs__id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoffDetail"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no such session or handoff */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9626,6 +10450,42 @@ export interface operations {
             };
         };
     };
+    handoff_submit_agent_v1_handoff_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandoffSubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoffAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     init_scripts_get_agent_v1_init_scripts_get: {
         parameters: {
             query?: never;
@@ -11913,10 +12773,10 @@ export interface operations {
             };
         };
     };
-    list_archives_api_v1_cache_archives_get: {
+    list_names_route_api_v1_backups_get: {
         parameters: {
             query?: {
-                prefix?: string;
+                q?: string | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -11932,7 +12792,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArchivePage"];
+                    "application/json": components["schemas"]["BackupNamePage"];
                 };
             };
             /** @description Validation Error */
@@ -11946,7 +12806,87 @@ export interface operations {
             };
         };
     };
-    delete_archives_api_v1_cache_archives_delete: {
+    cleanup_preview_route_api_v1_backups_cleanup_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
+                };
+            };
+        };
+    };
+    cleanup_preview_post_route_api_v1_backups_cleanup_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
+                };
+            };
+        };
+    };
+    request_cleanup_run_api_v1_backups_cleanup_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    get_cleanup_settings_api_v1_backups_cleanup_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupSettingsView"];
+                };
+            };
+        };
+    };
+    put_cleanup_settings_api_v1_backups_cleanup_settings_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -11955,7 +12895,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DeleteArchives"];
+                "application/json": components["schemas"]["SweepPolicyIn"];
             };
         };
         responses: {
@@ -11965,7 +12905,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArchiveDeleteResult"];
+                    "application/json": components["schemas"]["CleanupSettingsView"];
                 };
             };
             /** @description Validation Error */
@@ -11979,13 +12919,140 @@ export interface operations {
             };
         };
     };
-    download_archive_api_v1_cache_archives_download_get: {
+    copy_route_api_v1_backups_copy_post: {
         parameters: {
-            query: {
-                key: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupCopyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupVersionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_backup_route_api_v1_backups__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    versions_route_api_v1_backups__name__versions_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupVersionPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_version_route_api_v1_backups__name__versions__version_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_route_api_v1_backups__name__versions__version_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+                version_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -12008,11 +13075,14 @@ export interface operations {
             };
         };
     };
-    cleanup_preview_api_v1_cache_cleanup_preview_get: {
+    manifest_route_api_v1_backups__name__versions__version_id__manifest_get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                name: string;
+                version_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -12023,71 +13093,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CleanupPreview"];
-                };
-            };
-        };
-    };
-    request_cleanup_run_api_v1_cache_cleanup_run_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CleanupSettingsView"];
-                };
-            };
-        };
-    };
-    get_cleanup_settings_api_v1_cache_cleanup_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CleanupSettingsView"];
-                };
-            };
-        };
-    };
-    put_cleanup_settings_api_v1_cache_cleanup_settings_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SweepPolicyIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CleanupSettingsView"];
+                    "application/json": components["schemas"]["BackupManifestView"];
                 };
             };
             /** @description Validation Error */

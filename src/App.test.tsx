@@ -374,6 +374,14 @@ describe('App', () => {
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
 
+  test('/?view=<entry> opens that settings entry', async () => {
+    BACKEND_MENUS.second = [{ id: 'second', label: 'Second', order: 50, backend: 'second', render: () => <p>second page</p> }]
+    const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
+    await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
+    mount('/?view=second&name=x')
+    expect(await within(screen.getByRole('main')).findByText('second page')).toBeTruthy()
+  })
+
   test('unregistered_backend_warns_once_across_rerenders', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'ghost', label: 'G', basePath: '/ghost' }]

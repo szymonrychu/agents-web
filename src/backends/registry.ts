@@ -14,7 +14,7 @@
  *   42 Proposals (orchestrator, preset change proposals)
  *   43 Vault     (agents-vault, secret env entries)
  *   44 Approvals (agents-taskboard, a routed page: the entry navigates to /approvals)
- *   45 Backups   (orchestrator, S3 workspace archives)
+ *   45 Backups   (orchestrator, named, versioned S3 backups)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
  *   60 Devices (agents-app-connector admin API)

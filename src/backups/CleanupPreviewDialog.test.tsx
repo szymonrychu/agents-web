@@ -4,12 +4,12 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { setViewport } from '../test/viewport'
-import type { CleanupPreview } from '../api/archives'
+import type { CleanupPreview } from '../api/backups'
 import { theme } from '../theme'
 import { CleanupPreviewDialog } from './CleanupPreviewDialog'
 
 const api = vi.hoisted(() => ({ cleanupPreview: vi.fn() }))
-vi.mock('../api/archives', async (orig) => ({ ...(await orig<typeof import('../api/archives')>()), ...api }))
+vi.mock('../api/backups', async (orig) => ({ ...(await orig<typeof import('../api/backups')>()), ...api }))
 
 const preview = (o: Partial<CleanupPreview> = {}): CleanupPreview => ({
   would_delete: [{ key: 'p/old-1.tar.zst', size: 2048, reason: 'older than 30 days' }, { key: 'p/old-2.tar.zst', size: 1048576, reason: 'beyond newest 3' }],

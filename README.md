@@ -50,6 +50,10 @@ mybackend: [{ id: 'things', label: 'Things', order: 20, backend: 'mybackend', re
 
 An entry is listed only when its backend id is in the runtime config; a configured id with no registered entries logs a warning. Entries sort by `order`, then label. Reserved order slots: 10 Sessions, 20 Webhooks, 30 Schedules, 40 Presets (orchestrator). To add a service: add its id and `basePath` to `config.json` (chart `backends`), register its menu entries, and add its OpenAPI document (see `## API types`).
 
+## Backups page
+
+Settings > Backups (order 45) lists the orchestrator's named, versioned backups: one row per name (the name is the primary column), with the current version's size, age and saving session slug, the version count and the sessions referencing it. A row expands to its versions (time, size, session slug, origin, state) with Download, "Copy to..." (replace only, no merge), "Make current" on a superseded version (a copy into the same name) and Delete (the current version cannot be deleted while others exist). `?name=<name>` prefills the name filter. The client is `src/api/backups.ts` (`/backups`, names URL-encoded per segment).
+
 ## Preset env and the vault
 
 A preset env row is plain (`{value, expand}`) or a vault reference (`{vault, env}`); the key `protected` is never sent. "Add env" adds a plain row. "From vault" (hidden when the `vault` backend is not configured) opens a picker over the vault entries: pick an entry, tick the entry envs to use and name the preset env for each (one entry env may back several preset envs). A reference row shows the entry name, an entry env selector and the value when the env is readable; a protected env shows only `protected`, its value is never fetched or typed here. With the vault off, stored references show as `vault <first 8 chars of the id>`.

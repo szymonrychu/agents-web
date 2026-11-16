@@ -80,6 +80,14 @@ function SessionsShell() {
   const config = getConfig()
   const entries = useMemo(() => menuEntries(config), [config])
   const openEntry = entries.find((e) => e.id === view)
+  // `/?view=<settings entry id>` (the backups links add `&name=`) opens that entry once.
+  const wantedView = useSearchParams()[0].get('view')
+  const appliedView = useRef<string | null>(null)
+  useEffect(() => {
+    if (wantedView === null || appliedView.current === wantedView || !entries.some((e) => e.id === wantedView)) return
+    appliedView.current = wantedView
+    setView(wantedView)
+  }, [wantedView, entries])
   const show = (id: string) => {
     setView('session')
     select(id)

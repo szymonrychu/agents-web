@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import type { CleanupSettingsView } from '../api/archives'
+import type { CleanupSettingsView } from '../api/backups'
 import { ApiError } from '../api/client'
 import { theme } from '../theme'
 import { emittedInMedia } from '../test/emittedCss'
@@ -12,7 +12,7 @@ import { setViewport } from '../test/viewport'
 import { CleanupSettingsCard, FIELDS, RUN_POLL_MS } from './CleanupSettingsCard'
 
 const api = vi.hoisted(() => ({ getCleanupSettings: vi.fn(), putCleanupSettings: vi.fn(), runCleanupNow: vi.fn() }))
-vi.mock('../api/archives', async (orig) => ({ ...(await orig<typeof import('../api/archives')>()), ...api }))
+vi.mock('../api/backups', async (orig) => ({ ...(await orig<typeof import('../api/backups')>()), ...api }))
 
 const NOW = Date.parse('2026-11-02T12:00:00Z')
 const POLICY = { enabled: true, dry_run: true, retention_days: 30, keep_newest: 3, interval_seconds: 21600, grace_seconds: 2400 }
