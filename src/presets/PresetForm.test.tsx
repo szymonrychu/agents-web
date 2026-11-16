@@ -1056,6 +1056,18 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('session_messaging')
   })
 
+  test('turning superleader off on an edit drops session_messaging from the saved spec', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { session_messaging: true } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Superleader').checked).toBe(true)
+    await userEvent.click(field('Superleader'))
+    expect(field('Superleader').checked).toBe(false)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).not.toHaveProperty('session_messaging')
+  })
+
   test('new preset starts with superleader switch off and sends false', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
@@ -1671,6 +1683,18 @@ describe('PresetForm extra projects', () => {
     expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
   })
 
+  test('a normal save does not call onChanged, onSaved alone reloads', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const onChanged = vi.fn()
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} onChanged={onChanged} />)
+    await ready()
+    await replace('Name', 'renamed')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+
   test('a refused list shows the error, keeps the dialog and a retry re-sends only the list', async () => {
     api.updatePreset.mockResolvedValue(preset())
     api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'project "infra" is archived'))
@@ -1686,6 +1710,25 @@ describe('PresetForm extra projects', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(api.updatePreset).toHaveBeenCalledTimes(1)
     expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2)
+  })
+
+  test('a retry after a refused list saves edits made since and tells the parent the preset changed', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    const onChanged = vi.fn()
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} onChanged={onChanged} />)
+    await ready()
+    await addProject('Infra')
+    await userEvent.click(button('Save'))
+    await screen.findByRole('alert')
+    expect(onChanged).toHaveBeenCalledTimes(1)
+    await replace('Name', 'renamed')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset).toHaveBeenCalledTimes(2)
+    expect(api.updatePreset.mock.calls[1][1].name).toBe('renamed')
   })
 
   test('a failed create keeps the new preset and a retry does not create it again', async () => {
