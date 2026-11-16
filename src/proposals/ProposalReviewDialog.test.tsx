@@ -3,14 +3,14 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
-import { item, proposal } from './proposalFixture'
+import { item, manageableProposal, proposal } from './proposalFixture'
 import { ProposalReviewDialog } from './ProposalReviewDialog'
 
 const api = vi.hoisted(() => ({ getProposal: vi.fn(), reviewProposal: vi.fn() }))
 const vault = vi.hoisted(() => ({ listEntries: vi.fn() }))
 vi.mock('./api', async (orig) => ({ ...(await orig<typeof import('./api')>()), ...api }))
 vi.mock('../vault/api', async (orig) => ({ ...(await orig<typeof import('../vault/api')>()), vaultEnabled: () => true, listEntries: vault.listEntries }))
-vi.mock('./ValueDiff', () => ({ default: ({ after }: { after: unknown }) => <div data-testid="diff">{JSON.stringify(after)}</div> }))
+vi.mock('./ValueDiff', () => ({ default: ({ before, after }: { before: unknown; after: unknown }) => <div data-testid="diff" data-before={JSON.stringify(before)}>{JSON.stringify(after)}</div> }))
 
 beforeEach(() => {
   api.getProposal.mockReset()
@@ -297,5 +297,18 @@ describe('ProposalReviewDialog', () => {
     mount()
     expect(screen.getAllByTestId('item-card').length).toBe(6)
     await waitFor(() => expect(vault.listEntries).toHaveBeenCalledTimes(1))
+  })
+
+  it('preset_manageable: shows kind, preset, the false/true diff and sends one approval', async () => {
+    api.reviewProposal.mockResolvedValue(manageableProposal({ status: 'applied' }))
+    mount(manageableProposal())
+    expect(screen.getByText(/preset_manageable/)).toBeTruthy()
+    expect(screen.getByText(/worker/)).toBeTruthy()
+    const c = card('superleader_manageable')
+    expect(within(c).getByTestId('diff').textContent).toBe('true')
+    expect(within(c).getByTestId('diff').getAttribute('data-before')).toBe('false')
+    await click('Approve', within(c))
+    await click('Submit review')
+    expect(api.reviewProposal).toHaveBeenCalledWith(9, { revision: 1, items: [{ path: 'superleader_manageable', decision: 'approve' }] })
   })
 })

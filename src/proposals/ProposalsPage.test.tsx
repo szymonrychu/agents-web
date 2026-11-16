@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { setViewport } from '../test/viewport'
 import { theme } from '../theme'
-import { item, proposal } from './proposalFixture'
+import { item, manageableProposal, proposal } from './proposalFixture'
 import { ProposalsPage } from './ProposalsPage'
 
 const api = vi.hoisted(() => ({ listProposals: vi.fn(), getProposal: vi.fn(), reviewProposal: vi.fn() }))
@@ -108,5 +108,12 @@ describe('ProposalsPage layouts', () => {
     expect(c.getByText('r2')).toBeTruthy()
     await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(c.getByRole('button', { name: 'Open Proposal worker' }))
     expect(await screen.findByRole('dialog')).toBeTruthy()
+  })
+
+  test('lists a preset_manageable proposal', async () => {
+    api.listProposals.mockImplementation(async (status: string) => (status === 'active' ? [manageableProposal()] : []))
+    mount()
+    const row = (await screen.findByText('worker')).closest('tr') as HTMLElement
+    expect(within(row).getByText('preset_manageable')).toBeTruthy()
   })
 })

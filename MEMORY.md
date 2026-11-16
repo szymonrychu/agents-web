@@ -1,3 +1,11 @@
+## 2026-11-16 (preset-parity, T-489 / T-503)
+
+- Preset form save merges the edited fields into the original preset spec (unmodelled keys are kept). Why: saving from the form rebuilt the spec from modelled fields only, so `runaway` and `managed_settings` set elsewhere were silently lost on every edit.
+- Parity map rule: `src/presets/presetFormFields.ts` maps every orchestrator preset spec field to the label of the form control that edits it (or `read-only`). `presetFormParity.test.tsx` fails when the synced schema gains a field the map lacks, or the map names a field the schema dropped. The fix is a form control plus a map entry, never an edit of the test.
+- Extra projects editor: the preset form edits `extra_projects` (the preset's additional projects) as a list; it is sent on edit only when changed.
+- The proposal review dialog needed no code change for the `preset_manageable` kind: the heading prints the raw kind, the item `superleader_manageable` renders through the generic card (boolean diff, grant and security chips) and the review body is the same `{revision, items}`. Covered by regression tests with `manageableProposal` in `proposalFixture.ts`.
+- Schema synced from orchestrator v7.30.0 a2ed14b (a detached worktree at that sha, since `sync:api` records the checkout HEAD).
+
 ## 2026-11-14 (session-rotation, T-362)
 
 - Close wording: the UI never claims a close "at the latest" (the orchestrator now waits for idleness after `close_deadline_at`), so inactivity reads "not before HH:MMZ" and the new close kind `autoclose` reads "lifetime reached, closing when idle". The openapi sync was applied by hand for the `close_kind` enum only (`openapi/orchestrator.json`, `src/api/schema.d.ts`, `orchestrator.source` left at its pin): a full `sync:api` from the orchestrator branch pulls unrelated drift that breaks `tsc -b` in test fixtures (`mindmap` meta). Run a full sync once the orchestrator PR is released.
