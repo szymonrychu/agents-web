@@ -19,7 +19,7 @@ const meta = (o: Partial<Meta> = {}): Meta => ({
   },
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, mindmap: false, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
-const NO_BACKUP: SessionView['backup'] = { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
+const NO_BACKUP: SessionView['backup'] = { entries: [], workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
 const existing = (o: Partial<SessionView['spec']> = {}, backup: Partial<SessionView['backup']> = {}): SessionView =>
   ({ backup: { ...NO_BACKUP, ...backup }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id: 'c-1', observed_generation: 1, slug: 'alpha', status: {},
     spec: { env: { A: 'b' }, max_attempts: 5, peers: true, replicas: 2, workdir: 'work', pvc_size: '20Gi', model: 'opus', ...o },
@@ -68,44 +68,34 @@ describe('DiscardSessionDialog', () => {
     expect(screen.queryByText(/exported to/)).toBeNull()
   })
 
-  test('shows the rendered save target from the status, and the template before it is rendered', () => {
-    const backup = { workdir: true, transcripts: false, reason: 'restore_running', last_transcripts_backup: null }
-    const cache = { restore_key: 'team/', save_key: 'team/{{ now }}', exclude: [] }
-    wrap(<DiscardSessionDialog open session={{ ...existing({ cache }, backup), status: { cache: { save_resolved: 'p/team/20261101T120000Z' } } }} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files.*saved to the S3 cache as p\/team\/20261101T120000Z/)).toBeTruthy()
-    cleanup()
-    wrap(<DiscardSessionDialog open session={existing({ cache }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files.*saved to the S3 cache as team\/\{\{ now \}\} \(rendered when it is saved\)/)).toBeTruthy()
-  })
-
-  test('a restore-only cache says nothing is saved and lists the workspace files as deleted', () => {
-    const backup = { workdir: true, transcripts: false, reason: 'restore_running', last_transcripts_backup: null }
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.queryByText('Restore-only cache: nothing is saved to it')).toBeNull()
-    expect(screen.getByText('Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up (the cache restore has not finished).')).toBeTruthy()
-    expect(screen.queryByText(/session has no session cache/)).toBeNull()
-    expect(screen.queryByRole('list', { name: 'Backed up' })).toBeNull()
-    expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/The workspace files/)).toBeTruthy()
-    cleanup()
-    const noReason = { workdir: true, transcripts: false, reason: null, last_transcripts_backup: null }
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, noReason)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up.')).toBeTruthy()
-  })
-
-  test('a restore-only cache that backs up transcripts says only that no workspace files are saved', () => {
-    const backup = { workdir: true, transcripts: true, reason: null, last_transcripts_backup: null }
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'team/', save_key: '', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Restore-only cache: nothing is saved to it')).toBeTruthy()
+  test('discard dialog lists per-entry outcome', () => {
+    const entries = [
+      { index: 0, name_template: 'skills/{{ project }}', action: 'save', reason: null },
+      { index: 1, name_template: 'scratch', action: 'discard', reason: null },
+      { index: 2, name_template: 'rules', action: 'skip', reason: 'restore_failed' },
+      { index: 3, name_template: 'odd', action: 'skip', reason: null },
+    ] as SessionView['backup']['entries']
+    wrap(<DiscardSessionDialog open session={existing({}, { entries, workdir: false, reason: null })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    const list = within(screen.getByRole('list', { name: 'Backup entries' }))
+    expect(list.getByText('Entry 1: saved as skills/{{ project }}')).toBeTruthy()
+    expect(list.getByText('Entry 2 (scratch): discarded')).toBeTruthy()
+    expect(list.getByText('Entry 3 (rules): not saved, the backup restore failed, so the stored copy is not overwritten')).toBeTruthy()
+    expect(list.getByText('Entry 4 (odd): not saved, no reason given')).toBeTruthy()
     expect(screen.queryByText(/Nothing is backed up/)).toBeNull()
   })
 
-  test('states what is backed up when the session cache is configured', () => {
+  test('no entries list when the session has none', () => {
+    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.queryByRole('list', { name: 'Backup entries' })).toBeNull()
+  })
+
+  test('states what is backed up when an entry lists the workspace', () => {
     const backup = { workdir: true, transcripts: true, reason: null, last_transcripts_backup: { finished_at: '2026-10-27T10:00:00Z', bytes: 2048 } }
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'my-key', save_key: 'my-key', exclude: [] } }, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing({}, backup)} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     const deleted = within(screen.getByRole('list', { name: 'Deleted' }))
     const saved = within(screen.getByRole('list', { name: 'Backed up' }))
-    expect(saved.getByText(/Workspace files.*S3 cache as my-key.*restored when a session with the same slug is created/)).toBeTruthy()
-    expect(saved.getByText(/Claude transcripts.*S3 cache.*restored when a session with the same slug is created/)).toBeTruthy()
+    expect(saved.getByText(/Workspace files.*saved by a backup entry.*restored when a session with the same slug is created/)).toBeTruthy()
+    expect(saved.getByText(/Claude transcripts.*S3 backup storage.*restored when a session with the same slug is created/)).toBeTruthy()
     expect(screen.getByText(/last transcripts backup finished/i).textContent).toMatch(/2 KB/)
     expect(deleted.getByText(/The agents/)).toBeTruthy()
     expect(deleted.getByText(/The workspace PVC/)).toBeTruthy()
@@ -115,46 +105,41 @@ describe('DiscardSessionDialog', () => {
     expect(screen.queryByText(/Nothing is backed up/)).toBeNull()
   })
 
-  test('states nothing is backed up without a session cache', () => {
+  test('states nothing is backed up without a backup entry', () => {
     wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Nothing is backed up: the session has no session cache.')).toBeTruthy()
+    expect(screen.getByText('Nothing is backed up: no backup entry lists the workspace.')).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Backed up' })).toBeNull()
     const deleted = within(screen.getByRole('list', { name: 'Deleted' }))
     expect(deleted.getByText(/Claude transcripts/)).toBeTruthy()
     expect(deleted.getByText(/workspace files/i)).toBeTruthy()
     cleanup()
     wrap(<DiscardSessionDialog open session={existing({}, { reason: 'cache_not_configured' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Nothing is backed up: no S3 cache is configured on this orchestrator.')).toBeTruthy()
+    expect(screen.getByText('Nothing is backed up: no S3 backup storage is configured on this orchestrator.')).toBeTruthy()
   })
 
   test('names the reason a backup is skipped', () => {
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'k', save_key: 'k', exclude: [] } }, { reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('Nothing is backed up: the cache restore failed, so the stored copy is not overwritten.')).toBeTruthy()
+    wrap(<DiscardSessionDialog open session={existing({}, { reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('Nothing is backed up: the backup restore failed, so the stored copy is not overwritten.')).toBeTruthy()
     cleanup()
     // Only the transcripts are skipped: the workspace stays listed as backed up, the transcripts as deleted.
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'k', save_key: 'k', exclude: [] } }, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing({}, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(within(screen.getByRole('list', { name: 'Backed up' })).getByText(/Workspace files/)).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Deleted' })).getByText(/Claude transcripts/)).toBeTruthy()
-    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore has not finished.')).toBeTruthy()
+    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the backup restore has not finished.')).toBeTruthy()
     cleanup()
-    wrap(<DiscardSessionDialog open session={existing({ cache: { restore_key: 'k', save_key: 'k', exclude: [] } }, { reason: 'something_new' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    wrap(<DiscardSessionDialog open session={existing({}, { reason: 'something_new' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     expect(screen.getByText('Nothing is backed up: skipped (something_new).')).toBeTruthy()
   })
 
   test('names the chat history when transcripts are not backed up', () => {
-    const cache = { cache: { restore_key: 'k', save_key: 'k', exclude: [] } }
-    wrap(<DiscardSessionDialog open session={existing(cache, { workdir: true, reason: 'restore_skipped' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore was skipped, so the stored copy is not overwritten.')).toBeTruthy()
+    wrap(<DiscardSessionDialog open session={existing({}, { workdir: true, reason: 'restore_skipped' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the backup restore was skipped, so the stored copy is not overwritten.')).toBeTruthy()
     expect(screen.queryByText(/workspace is not saved/)).toBeNull()
-    cleanup()
-    wrap(<DiscardSessionDialog open session={existing(cache, { workdir: true, reason: 'restore_running' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('The chat history (Claude transcripts) is not backed up: the cache restore has not finished.')).toBeTruthy()
   })
 
   test('names the workspace files when the workdir is not backed up', () => {
-    const cache = { cache: { restore_key: 'k', save_key: 'k', exclude: [] } }
-    wrap(<DiscardSessionDialog open session={existing(cache, { transcripts: true, reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.getByText('The workspace files are not backed up: the cache restore failed, so the stored copy is not overwritten.')).toBeTruthy()
+    wrap(<DiscardSessionDialog open session={existing({}, { transcripts: true, reason: 'restore_failed' })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
+    expect(screen.getByText('The workspace files are not backed up: the backup restore failed, so the stored copy is not overwritten.')).toBeTruthy()
     expect(screen.queryByText(/chat history \(Claude transcripts\) is not backed up/)).toBeNull()
   })
 })
