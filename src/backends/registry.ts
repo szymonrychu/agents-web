@@ -13,6 +13,7 @@
  *   41 Mindmaps (agents-mindmap, a routed page: the entry navigates to /mindmaps)
  *   42 Proposals (orchestrator, preset change proposals)
  *   43 Vault     (agents-vault, secret env entries)
+ *   44 Approvals (agents-taskboard, a routed page: the entry navigates to /approvals)
  *   45 Backups   (orchestrator, S3 workspace archives)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
@@ -31,6 +32,7 @@ import { usageMenu } from '../usage/menu'
 import { historyMenu } from '../history/menu'
 import { tasksMenu } from '../tasks/menu'
 import { specsMenu } from '../specs/menu'
+import { approvalsMenu } from '../approvals/menu'
 import { proposalsMenu } from '../proposals/menu'
 import { vaultMenu } from '../vault/menu'
 import { mindmapMenu } from '../mindmap/menu'
@@ -54,7 +56,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     backupsMenu,
     projectsMenu,
   ],
-  taskboard: [tasksMenu, specsMenu],
+  taskboard: [tasksMenu, specsMenu, approvalsMenu],
   webhooks: [webhooksMenu],
   schedules: [schedulesMenu],
   matrix: [chatsMenu],

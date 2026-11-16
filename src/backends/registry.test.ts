@@ -159,7 +159,7 @@ describe('menuEntries', () => {
   })
 
   test('specs entry sits after tasks and only with the taskboard backend', () => {
-    expect(menuEntries(config('taskboard')).map((e) => [e.id, e.order])).toEqual([['tasks', 38], ['specs', 39]])
+    expect(menuEntries(config('taskboard')).map((e) => [e.id, e.order])).toEqual([['tasks', 38], ['specs', 39], ['approvals', 44]])
     expect(menuEntries(config('orchestrator')).map((e) => e.id)).not.toContain('specs')
   })
 })

@@ -25,6 +25,7 @@ import { ProposalReviewDialog } from './proposals/ProposalReviewDialog'
 import type { ProposalView } from './proposals/api'
 import { TasksRoute } from './tasks/routes'
 import { SpecsRoute } from './specs/routes'
+import { ApprovalsRoute } from './approvals/routes'
 import { safeArea } from './layout/safeArea'
 import { useVisualViewport } from './layout/useVisualViewport'
 import { useAttention } from './attention/useAttention'
@@ -58,7 +59,7 @@ function SessionsShell() {
     select(wanted)
   }, [wanted, state.sessions, select])
   const [creating, setCreating] = useState(false)
-  // The main area shows the selected session or a settings page; only /tasks and /specs are routed.
+  // The main area shows the selected session or a settings page; only /tasks, /specs and /approvals are routed.
   const [view, setView] = useState<string>('session')
   const [discarding, setDiscarding] = useState<SessionView | null>(null)
   const [restarting, setRestarting] = useState<SessionView | null>(null)
@@ -149,6 +150,7 @@ export default function App() {
       <Routes>
         <Route path="/tasks/*" element={<TasksRoute />} />
         <Route path="/specs/*" element={<SpecsRoute />} />
+        <Route path="/approvals" element={<ApprovalsRoute />} />
         <Route path="/mindmaps/*" element={<Suspense fallback={null}><MindmapsRoute /></Suspense>} />
         <Route path="*" element={<SessionsShell />} />
       </Routes>

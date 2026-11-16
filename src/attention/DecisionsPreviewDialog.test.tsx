@@ -11,6 +11,8 @@ import { DecisionsPreviewDialog } from './DecisionsPreviewDialog'
 
 const tasksApi = vi.hoisted(() => ({ answerDecision: vi.fn() }))
 vi.mock('../tasks/api', async (orig) => ({ ...(await orig<typeof import('../tasks/api')>()), ...tasksApi }))
+const approvalsApi = vi.hoisted(() => ({ answerApprovals: vi.fn() }))
+vi.mock('../approvals/api', async (orig) => ({ ...(await orig<typeof import('../approvals/api')>()), ...approvalsApi }))
 
 const SESSION = { id: 's1', slug: 'beta', desired: 'active', status: {}, spec: {}, summary: {} } as unknown as SessionView
 const scroll = vi.fn()
@@ -20,6 +22,8 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = scroll
   tasksApi.answerDecision.mockReset()
   tasksApi.answerDecision.mockResolvedValue({})
+  approvalsApi.answerApprovals.mockReset()
+  approvalsApi.answerApprovals.mockResolvedValue({ items: [{ id: 7, result: 'answered', task_key: 'T-3' }] })
 })
 afterEach(cleanup)
 
@@ -106,5 +110,37 @@ describe('DecisionsPreviewDialog', () => {
     const { props } = setup([T2])
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(props.onClose).toHaveBeenCalled()
+  })
+
+  const T3 = task({ key: 'T-3', title: 'Ship it', decisions: [decision({ id: 7, kind: 'approval', question: 'Merge PR 7?', subject: 'the deploy', options: [] }), decision({ id: 8, question: 'Which db?' })] })
+
+  test('Go all approvals answers only the approvals of the session', async () => {
+    const { props } = setup([T3])
+    fireEvent.click(screen.getByRole('button', { name: 'Go all approvals (1)' }))
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalled())
+    expect(approvalsApi.answerApprovals).toHaveBeenCalledWith([{ id: 7, verdict: 'go' }])
+    expect(screen.queryByText(/not answered/)).toBeNull()
+  })
+
+  test('results other than answered show how many were not answered', async () => {
+    approvalsApi.answerApprovals.mockResolvedValue({ items: [{ id: 7, result: 'expired', task_key: 'T-3' }] })
+    const { props } = setup([T3])
+    fireEvent.click(screen.getByRole('button', { name: 'Go all approvals (1)' }))
+    await screen.findByText('1 not answered (expired, withdrawn or already answered)')
+    expect(props.onChanged).toHaveBeenCalled()
+  })
+
+  test('a rejected Go all shows the error and does not call onChanged', async () => {
+    approvalsApi.answerApprovals.mockRejectedValue(new Error('boom'))
+    const { props } = setup([T3])
+    fireEvent.click(screen.getByRole('button', { name: 'Go all approvals (1)' }))
+    await screen.findByText('boom')
+    expect(props.onChanged).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Go all approvals (1)' }) as HTMLButtonElement).toHaveProperty('disabled', false)
+  })
+
+  test('no Go all button without approvals', () => {
+    setup([T1, T2])
+    expect(screen.queryByRole('button', { name: /Go all approvals/ })).toBeNull()
   })
 })

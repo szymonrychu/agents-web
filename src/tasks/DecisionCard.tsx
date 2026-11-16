@@ -14,6 +14,7 @@ import { ApiError } from '../api/client'
 import { Markdown } from '../markdown/Markdown'
 import { Link as RouterLink } from 'react-router'
 import { FormError } from '../triggers'
+import { ApprovalCard } from '../approvals/ApprovalCard'
 import { answerDecision, type AnswerIn, type Decision } from './api'
 
 export interface DecisionCardProps {
@@ -28,7 +29,11 @@ function answerText(d: Decision): string {
   return d.answer.text ?? d.answer.label ?? d.status
 }
 
-export function DecisionCard({ taskKey, decision, onChanged }: DecisionCardProps) {
+export function DecisionCard(props: DecisionCardProps) {
+  return props.decision.kind === 'approval' ? <ApprovalCard {...props} /> : <QuestionCard {...props} />
+}
+
+function QuestionCard({ taskKey, decision, onChanged }: DecisionCardProps) {
   const [choice, setChoice] = useState<number | null>(null)
   const [own, setOwn] = useState('')
   const [note, setNote] = useState('')

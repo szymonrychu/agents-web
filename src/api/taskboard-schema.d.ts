@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taskboard/api/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_taskboard_api_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/taskboard/api/v1/approvals/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Approvals */
+        post: operations["answer_approvals_taskboard_api_v1_approvals_answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/projects/summary": {
         parameters: {
             query?: never;
@@ -462,6 +496,23 @@ export interface paths {
         patch: operations["patch_task_taskboard_api_v1_tasks__key__patch"];
         trace?: never;
     };
+    "/taskboard/api/v1/tasks/{key}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Approval */
+        post: operations["ask_approval_taskboard_api_v1_tasks__key__approvals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taskboard/api/v1/tasks/{key}/comments": {
         parameters: {
             query?: never;
@@ -596,6 +647,43 @@ export interface components {
             session: string | null;
             /** Slug */
             slug: string | null;
+        };
+        /** ApprovalAnswerBatch */
+        ApprovalAnswerBatch: {
+            /** Items */
+            items: components["schemas"]["ApprovalVerdict"][];
+            /** Source */
+            source?: string | null;
+        };
+        /** ApprovalCreate */
+        ApprovalCreate: {
+            /** Client Key */
+            client_key?: string | null;
+            /**
+             * Context
+             * @default
+             */
+            context: string;
+            /** Expires In Seconds */
+            expires_in_seconds?: number | null;
+            /** Subject */
+            subject?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** ApprovalVerdict */
+        ApprovalVerdict: {
+            /** Answer Ref */
+            answer_ref?: string | null;
+            /** Id */
+            id: number;
+            /** Note */
+            note?: string | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "go" | "no_go";
         };
         /**
          * AutostartPut
@@ -1525,6 +1613,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_approvals_taskboard_api_v1_approvals_get: {
+        parameters: {
+            query?: {
+                status?: "open" | "answered" | "withdrawn" | "expired" | "all";
+                session?: string | null;
+                project?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    answer_approvals_taskboard_api_v1_approvals_answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalAnswerBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3379,6 +3556,70 @@ export interface operations {
             };
         };
     };
+    ask_approval_taskboard_api_v1_tasks__key__approvals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description source address is not allowed (forbidden) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description no such task, decision or todo item (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description the decision is not open (already_answered, expired, not_open, client_key_conflict) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid request (invalid_request) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     add_comment_taskboard_api_v1_tasks__key__comments_post: {
         parameters: {
             query?: never;
@@ -3478,6 +3719,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description the decision is not open (already_answered, expired, not_open, client_key_conflict) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description invalid request (invalid_request) */
             422: {
                 headers: {
@@ -3534,7 +3784,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description the decision is not open (already_answered, not_open) */
+            /** @description the decision is not open (already_answered, expired, not_open, client_key_conflict) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3599,7 +3849,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description the decision is not open (already_answered, not_open) */
+            /** @description the decision is not open (already_answered, expired, not_open, client_key_conflict) */
             409: {
                 headers: {
                     [name: string]: unknown;
