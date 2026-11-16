@@ -32,7 +32,7 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { CACHE_KEY_RESERVED_PREFIX, RUNAWAY_FIELDS, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
@@ -305,7 +305,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
       const body: PresetIn = {
         name: values.name,
         superleader_manageable: superleaderManageable,
-        spec: toPresetSpec({ ...values, env }, keys) as PresetIn['spec'],
+        spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
         ...(labelsChanged ? { labels } : {}),
         // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
         ...(!preset || project !== initialProject ? { project } : {}),
@@ -471,9 +471,24 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             {text('memLimit', 'Memory limit')}
           </Box>
           {text('hookUrl', 'Pre-discard webhook URL')}
+          <TextField
+            size="small"
+            label="Image"
+            value={values.image}
+            onChange={(e) => set('image', e.target.value)}
+            helperText={meta ? `Empty uses the default (${meta.agent_image})` : 'Empty uses the default'}
+            fullWidth
+            slotProps={{ htmlInput: { list: 'preset-agent-images' } }}
+          />
+          <datalist id="preset-agent-images">{(meta?.agent_images ?? []).map((i) => <option key={i} value={i} />)}</datalist>
           {text('autocloseAfter', 'Autoclose after seconds', { help: 'Counts from creation, with a 300 s minimum' })}
           {text('inactivityReminder', 'Reminder after quiet seconds', { help: inactivityHelp(meta?.inactivity.reminder_seconds) })}
           {text('inactivityClose', 'Close after quiet seconds', { help: inactivityHelp(meta?.inactivity.close_seconds) })}
+          <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <FormLabel component="legend">Runaway guard</FormLabel>
+            {RUNAWAY_FIELDS.map(({ field, label }) => text(field, label))}
+            <FormHelperText>Empty uses the orchestrator setting; 0 turns a limit off (for the two subagent caps, 0 means the Claude default)</FormHelperText>
+          </Box>
           <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             <FormLabel component="legend">Usage quota</FormLabel>
             <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
@@ -596,6 +611,7 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
             </Box>
           )}
           {text('mcpServers', 'MCP servers', { multiline: true })}
+          {text('managedSettings', 'Managed settings', { multiline: true })}
           <PluginsEditor value={pluginsOf(values.plugins)} onChange={(v) => set('plugins', v === null ? '' : JSON.stringify(v, null, 2))} onInvalid={(m) => setPluginsInvalid(m !== null)} />
         </Box>
       </DialogContent>

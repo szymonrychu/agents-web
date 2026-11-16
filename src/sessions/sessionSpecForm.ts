@@ -111,8 +111,18 @@ export interface FormValues {
   hooks: string
   mcpServers: string
   plugins: string
-  /** Not editable in the form; carried so an edit does not drop a stored image. */
+  /** JSON object text (wrapper.managed_settings), empty means unset. */
+  managedSettings: string
+  /** Agent image; empty means the orchestrator default. */
   image: string
+  /** Runaway guard limits: whole numbers, empty uses the orchestrator setting, 0 turns the limit off. */
+  runawayMaxTurnsPerTask: string
+  runawayMaxTokensPerTask: string
+  runawayMaxStopContinuations: string
+  runawayMaxAgentSpawns: string
+  runawayToolFailureRepeats: string
+  runawayMaxConcurrentSubagents: string
+  runawayMaxSubagentSpawnDepth: string
   /** Workspace cache in S3; the spec carries `cache` only when this is on. */
   cacheEnabled: boolean
   /** On: the server derives both keys from the preset and the form sends neither. */
@@ -127,11 +137,23 @@ export interface FormValues {
 
 export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess'>, string>> & { env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
 
-type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins'
-const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins'] as const
+type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins' | 'managedSettings'
+const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins', 'managedSettings'] as const
+
+/** Runaway guard limits: form value, spec key and label. */
+export const RUNAWAY_FIELDS = [
+  { field: 'runawayMaxTurnsPerTask', key: 'max_turns_per_task', label: 'Max turns per task' },
+  { field: 'runawayMaxTokensPerTask', key: 'max_tokens_per_task', label: 'Max tokens per task' },
+  { field: 'runawayMaxStopContinuations', key: 'max_stop_continuations', label: 'Max stop continuations' },
+  { field: 'runawayMaxAgentSpawns', key: 'max_agent_spawns', label: 'Max agent spawns' },
+  { field: 'runawayToolFailureRepeats', key: 'tool_failure_repeats', label: 'Tool failure repeats' },
+  { field: 'runawayMaxConcurrentSubagents', key: 'max_concurrent_subagents', label: 'Max concurrent subagents' },
+  { field: 'runawayMaxSubagentSpawnDepth', key: 'max_subagent_spawn_depth', label: 'Max subagent spawn depth' },
+] as const
+
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -162,7 +184,7 @@ export function blankValues(meta: Meta | null): FormValues {
     cpuRequest: d?.resources.requests.cpu ?? '', cpuLimit: d?.resources.limits.cpu ?? '',
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
-    agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '',
+    agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '', managedSettings: '', runawayMaxTurnsPerTask: '', runawayMaxTokensPerTask: '', runawayMaxStopContinuations: '', runawayMaxAgentSpawns: '', runawayToolFailureRepeats: '', runawayMaxConcurrentSubagents: '', runawayMaxSubagentSpawnDepth: '',
     cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
   }
 }
@@ -187,7 +209,7 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values[field] = stored
     setKeys.add(key)
   }
-  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay', stored: number | null | undefined) => {
+  const num = (key: SetKey, field: 'replicas' | 'maxReplicas' | 'maxAttempts' | 'autoCompact' | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'], stored: number | null | undefined) => {
     if (stored === null || stored === undefined) return
     values[field] = String(stored)
     setKeys.add(key)
@@ -307,7 +329,9 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     wjson('hooks', w.hooks)
     wjson('mcpServers', w.mcp_servers)
     wjson('plugins', w.plugins)
+    wjson('managedSettings', w.managed_settings)
   }
+  for (const { field, key } of RUNAWAY_FIELDS) num(field, field, spec.runaway?.[key])
   return { values, setKeys }
 }
 
@@ -449,6 +473,7 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   }
   e.quotaFiveHour = v.quotaFiveHour.trim() === '' ? undefined : intIn(v.quotaFiveHour, 1, 100, QUOTA_FIELD_LABELS.five_hour)
   e.quotaSevenDay = v.quotaSevenDay.trim() === '' ? undefined : intIn(v.quotaSevenDay, 1, 100, QUOTA_FIELD_LABELS.seven_day)
+  for (const { field, label } of RUNAWAY_FIELDS) e[field] = v[field].trim() === '' ? undefined : intIn(v[field], 0, Number.MAX_SAFE_INTEGER, label)
   e.compactMinTokens = v.compactMinTokens.trim() === '' ? undefined : intIn(v.compactMinTokens, 0, Number.MAX_SAFE_INTEGER, 'Min context tokens')
   e.maxRestarts = v.maxRestarts.trim() === '' ? undefined : intIn(v.maxRestarts, 0, 10, 'Max restarts')
   e.compactIdle = nonNegative(v.compactIdle, 'Auto-compact idle seconds')
@@ -492,11 +517,72 @@ function pairs(cpu: string, memory: string): Record<string, string> {
   return out
 }
 
+/** Spec paths each set-key owns: a save rewrites exactly these and passes every other stored key through. */
+const OWNED_PATHS: Record<SetKey, string[]> = {
+  replicas: ['replicas'], maxReplicas: ['max_replicas'], static: ['static'], model: ['model'], effort: ['effort'], peers: ['peers'], workdir: ['workdir'], pvcSize: ['pvc_size'],
+  env: ['env'], anyMcp: ['any_mcp_config'], anyMcpSources: ['any_mcp_sources'], initScripts: ['init_scripts'], startPrompt: ['start_prompt'], maxAttempts: ['max_attempts'],
+  autoCompact: ['auto_compact_pct'], resources: ['resources.requests.cpu', 'resources.requests.memory', 'resources.limits.cpu', 'resources.limits.memory'],
+  hookUrl: ['discard_hook_url'], image: ['image'], autocloseAfter: ['autoclose_after_seconds'], inactivityReminder: ['inactivity.reminder_seconds'], inactivityClose: ['inactivity.close_seconds'],
+  quotaFiveHour: ['usage_quota.five_hour_pct'], quotaSevenDay: ['usage_quota.seven_day_pct'], reuseRunningAgent: ['reuse_running_agent'], sessionMessaging: ['session_messaging'],
+  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], cache: ['cache'],
+  compactIdle: ['wrapper.auto_compact.idle_seconds'], compactInstructions: ['wrapper.auto_compact.instructions'], compactMinTokens: ['wrapper.auto_compact.min_context_tokens'],
+  systemAppend: ['wrapper.system_append'], restartPrompt: ['wrapper.restart_continue_prompt'], turnStall: ['wrapper.turn_stall_seconds'], maxRestarts: ['wrapper.max_restarts'],
+  turnMax: ['wrapper.turn_max_seconds'], agentCommands: ['wrapper.agent_commands'], permAllow: ['wrapper.permissions.allow'], permDeny: ['wrapper.permissions.deny'],
+  permissionMode: ['wrapper.permission_mode'], hooks: ['wrapper.hooks'], mcpServers: ['wrapper.mcp_servers'], plugins: ['wrapper.plugins'], managedSettings: ['wrapper.managed_settings'],
+  ...(Object.fromEntries(RUNAWAY_FIELDS.map(({ field, key }) => [field, [`runaway.${key}`]])) as Record<(typeof RUNAWAY_FIELDS)[number]['field'], string[]>),
+}
+
+type Tree = Record<string, unknown>
+const isTree = (x: unknown): x is Tree => x !== null && typeof x === 'object' && !Array.isArray(x)
+
+/** Removes the leaf at the path, then the parent objects that this removal emptied; false when there was no such leaf. */
+function deletePath(root: Tree, path: string[]): boolean {
+  const [head, ...rest] = path
+  if (rest.length === 0) {
+    if (!(head in root)) return false
+    delete root[head]
+    return true
+  }
+  const child = root[head]
+  if (!isTree(child) || !deletePath(child, rest)) return false
+  if (Object.keys(child).length === 0) delete root[head]
+  return true
+}
+
+function setPath(root: Tree, path: string[], value: unknown): void {
+  const [head, ...rest] = path
+  if (rest.length === 0) {
+    root[head] = value
+    return
+  }
+  const child = isTree(root[head]) ? root[head] : {}
+  root[head] = child
+  setPath(child, rest, value)
+}
+
+const getPath = (root: Tree, path: string[]): unknown => path.reduce<unknown>((node, key) => (isTree(node) ? node[key] : undefined), root)
+
 /**
- * Maps validated form values to a sparse preset spec: only the set fields, as SessionSpec keys.
- * A set field that is empty is omitted (clearing means unset), so no key is ever null.
+ * Maps validated form values to a preset spec. Without `original` (a new preset) it is sparse: only the set
+ * fields, as SessionSpec keys, a set field that is empty omitted (clearing means unset), so no key is ever null.
+ * With `original` (an edit or copy) it starts from a deep copy of it and rewrites every path the set fields own
+ * (a cleared one is removed), so keys the form does not model pass through unchanged.
  */
-export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<SessionSpec> {
+export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>, original?: Partial<SessionSpec>): Partial<SessionSpec> {
+  const sparse = sparsePresetSpec(v, setKeys) as Tree
+  if (original === undefined) return sparse as Partial<SessionSpec>
+  const merged = structuredClone(original) as Tree
+  for (const key of setKeys) {
+    for (const path of OWNED_PATHS[key].map((p) => p.split('.'))) {
+      deletePath(merged, path)
+      const value = getPath(sparse, path)
+      if (value !== undefined) setPath(merged, path, value)
+    }
+  }
+  return merged as Partial<SessionSpec>
+}
+
+function sparsePresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<SessionSpec> {
   const spec: Record<string, unknown> = {}
   const str = (s: string): string | undefined => (s.trim() === '' ? undefined : s.trim())
   const int = (s: string): number | undefined => (s.trim() === '' ? undefined : Number(s))
@@ -537,6 +623,12 @@ export function toPresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Parti
     ...(sevenDay !== undefined && { seven_day_pct: sevenDay }),
   }
   if (Object.keys(quota).length > 0) spec.usage_quota = quota
+  const runaway: Record<string, number> = {}
+  for (const { field, key } of RUNAWAY_FIELDS) {
+    const n = setKeys.has(field) ? int(v[field]) : undefined
+    if (n !== undefined) runaway[key] = n
+  }
+  if (Object.keys(runaway).length > 0) spec.runaway = runaway
   if (setKeys.has('reuseRunningAgent')) spec.reuse_running_agent = v.reuseRunningAgent
   if (setKeys.has('sessionMessaging') && v.sessionMessaging) spec.session_messaging = true
   if (setKeys.has('kubeClusterAccess') && v.kubeClusterAccess) spec.kube_cluster_access = true
@@ -592,6 +684,7 @@ function wrapperFromValues(v: FormValues, setKeys: ReadonlySet<SetKey>): Record<
     ['hooks', json('hooks')],
     ['mcp_servers', json('mcpServers')],
     ['plugins', json('plugins')],
+    ['managed_settings', json('managedSettings')],
   ]))
   return w
 }

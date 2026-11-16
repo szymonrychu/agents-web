@@ -1523,3 +1523,86 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0]).not.toHaveProperty('labels')
   })
 })
+
+const RUNAWAY = { max_turns_per_task: 10, max_tokens_per_task: 20, max_stop_continuations: 3, max_agent_spawns: 4, tool_failure_repeats: 5, max_concurrent_subagents: 6, max_subagent_spawn_depth: 2 }
+const FULL_SPEC = {
+  replicas: 2, max_replicas: 3, static: false, model: 'opus', effort: 'high', peers: false, workdir: 'wd', pvc_size: '20Gi',
+  env: { A: { value: '1', expand: true } }, any_mcp_config: { plugins: ['x'] }, any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo hi'], start_prompt: 'go',
+  max_attempts: 3, auto_compact_pct: 70,
+  resources: { requests: { cpu: '1', memory: '2Gi', 'ephemeral-storage': '5Gi' }, limits: { cpu: '2', memory: '4Gi' } },
+  discard_hook_url: 'https://x.test/h', image: 'img', autoclose_after_seconds: 600, inactivity: { reminder_seconds: 600, close_seconds: 1200 },
+  usage_quota: { five_hour_pct: 50, seven_day_pct: 60 }, reuse_running_agent: true, session_messaging: true, kube_cluster_access: true,
+  kube_namespace_access: { media: ['read', 'edit'] }, docker: true, docker_storage: '30Gi', docker_cpu: '2', docker_memory: '4Gi',
+  cache: { restore_key: 'r', save_key: 's', exclude: ['*.tmp'] }, runaway: RUNAWAY,
+  wrapper: {
+    auto_compact: { idle_seconds: 30, instructions: 'i', min_context_tokens: 1000 }, system_append: 'sa', restart_continue_prompt: 'rc', turn_stall_seconds: 60, max_restarts: 2, turn_max_seconds: 900,
+    permission_mode: 'auto', agent_commands: ['compact'], permissions: { allow: ['Bash'], deny: ['Edit'] }, hooks: { onTurn: [{ type: 'command', run: 'true' }] },
+    mcp_servers: { srv: { type: 'http', url: 'https://m.test' } }, plugins: { marketplaces: [] }, managed_settings: { a: { b: 1 } },
+  },
+}
+
+describe('PresetForm lossless save', () => {
+  test('round-trips a fully populated preset unchanged', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const p = preset({ name: 'full', labels: ['l1'], project: 'default', superleader_manageable: true, spec: FULL_SPEC as unknown as PresetView['spec'] })
+    wrap(<PresetForm open preset={p} {...noop} />)
+    await screen.findByText('Empty uses the default (100%)')
+    await editorView('Start prompt')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    const body = api.updatePreset.mock.calls[0][1]
+    expect(body.spec).toEqual(FULL_SPEC)
+    expect(body).toMatchObject({ name: 'full', superleader_manageable: true })
+  })
+
+  test('keeps keys the form does not model and drops a cleared one', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    const spec = { model: 'opus', future_key: { x: 1 }, resources: { requests: { cpu: '1', 'ephemeral-storage': '5Gi' }, limits: {} } }
+    wrap(<PresetForm open preset={preset({ spec: spec as unknown as PresetView['spec'] })} {...noop} />)
+    await ready()
+    await replace('CPU request', '')
+    await pick('Model', 'default')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ future_key: { x: 1 }, resources: { requests: { 'ephemeral-storage': '5Gi' }, limits: {} } })
+  })
+
+  test('runaway: editing sends the value, clearing removes the key, a bad value blocks save', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { runaway: { max_turns_per_task: 10, max_agent_spawns: 4 } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Max turns per task').value).toBe('10')
+    await replace('Max turns per task', '50')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec.runaway).toEqual({ max_turns_per_task: 50, max_agent_spawns: 4 })
+    await replace('Max turns per task', '')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(2))
+    expect(api.updatePreset.mock.calls[1][1].spec.runaway).toEqual({ max_agent_spawns: 4 })
+    await replace('Max turns per task', '1.5')
+    expect(screen.getByText('Max turns per task must be a whole number')).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+  })
+
+  test('managed settings: invalid JSON shows an error and blocks save', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { wrapper: { managed_settings: { a: 1 } } } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Managed settings').value).toContain('"a": 1')
+    await replace('Managed settings', '{nope')
+    expect(screen.getByText('Must be valid JSON')).toBeTruthy()
+    expect(button('Save').disabled).toBe(true)
+  })
+
+  test('image: shows the stored image and a change is sent', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { image: 'old' } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Image').value).toBe('old')
+    await replace('Image', 'img')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset.mock.calls[0][1].spec.image).toBe('img')
+  })
+})
