@@ -1056,6 +1056,18 @@ describe('PresetForm', () => {
     expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('session_messaging')
   })
 
+  test('turning superleader off on an edit drops session_messaging from the saved spec', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { session_messaging: true } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(field('Superleader').checked).toBe(true)
+    await userEvent.click(field('Superleader'))
+    expect(field('Superleader').checked).toBe(false)
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).not.toHaveProperty('session_messaging')
+  })
+
   test('new preset starts with superleader switch off and sends false', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
