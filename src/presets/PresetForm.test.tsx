@@ -17,7 +17,7 @@ import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
-const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), getMeta: vi.fn() }))
+const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), setPresetExtraProjects: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
@@ -1604,5 +1604,102 @@ describe('PresetForm lossless save', () => {
     await userEvent.click(button('Save'))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
     expect(api.updatePreset.mock.calls[0][1].spec.image).toBe('img')
+  })
+})
+
+describe('PresetForm extra projects', () => {
+  beforeEach(() => {
+    ctx.project = null
+    ctx.projects = [{ slug: 'default', name: 'Default' }, { slug: 'infra', name: 'Infra' }, { slug: 'media', name: 'Media' }]
+  })
+  afterEach(() => { ctx.project = null; ctx.projects = [] })
+  const chips = () => Array.from((field('Extra projects').closest('.MuiAutocomplete-root') as HTMLElement).querySelectorAll('.MuiChip-label')).map((c) => c.textContent)
+  const addProject = async (name: string) => {
+    await userEvent.click(field('Extra projects'))
+    await userEvent.click(screen.getByRole('option', { name }))
+  }
+  const withExtra = (extra: string[]) => preset({ extra_projects: extra } as Partial<PresetView>)
+
+  test('an edit shows the stored extra projects and an unchanged list makes no extra call', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={withExtra(['infra'])} {...noop} />)
+    await ready()
+    expect(chips()).toEqual(['Infra'])
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledTimes(1))
+    expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
+  })
+
+  test('adding a project saves the preset then sets the list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockResolvedValue(withExtra(['infra', 'media']))
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra(['infra'])} onClose={vi.fn()} onSaved={onSaved} />)
+    await ready()
+    await addProject('Media')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledWith('p-1', ['infra', 'media']))
+    expect(api.updatePreset.mock.invocationCallOrder[0]).toBeLessThan(api.setPresetExtraProjects.mock.invocationCallOrder[0])
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(withExtra(['infra', 'media'])))
+  })
+
+  test('the home project is not offered', async () => {
+    wrap(<PresetForm open preset={preset({ project: 'default' })} {...noop} />)
+    await ready()
+    await userEvent.click(field('Extra projects'))
+    expect(within(screen.getByRole('listbox', { name: 'Extra projects' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Infra', 'Media'])
+  })
+
+  test('create sets the list after the preset exists', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    api.setPresetExtraProjects.mockResolvedValue(withExtra(['infra']))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await addProject('Infra')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledWith('new-1', ['infra']))
+  })
+
+  test('create without extra projects makes no extra call', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalledTimes(1))
+    expect(api.setPresetExtraProjects).not.toHaveBeenCalled()
+  })
+
+  test('a refused list shows the error, keeps the dialog and a retry re-sends only the list', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'project "infra" is archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} />)
+    await ready()
+    await addProject('Infra')
+    await userEvent.click(button('Save'))
+    expect((await screen.findByRole('alert')).textContent).toContain('project "infra" is archived')
+    expect(onSaved).not.toHaveBeenCalled()
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset).toHaveBeenCalledTimes(1)
+    expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2)
+  })
+
+  test('a failed create keeps the new preset and a retry does not create it again', async () => {
+    api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.type(field('Name'), 'n')
+    await addProject('Infra')
+    await userEvent.click(button('Create'))
+    await screen.findByRole('alert')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2))
+    expect(api.createPreset).toHaveBeenCalledTimes(1)
   })
 })

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -24,7 +25,7 @@ import { parseDotenv } from '../sessions/dotenv'
 import { ProjectField } from '../projects/ProjectField'
 import { useProject } from '../projects/ProjectContext'
 import { LabelEditor } from '../labels/LabelEditor'
-import { createPreset, getMeta, updatePreset } from '../api/client'
+import { createPreset, getMeta, setPresetExtraProjects, updatePreset } from '../api/client'
 import EntryList from '../common/EntryList'
 import TemplateEditor from '../editor/TemplateEditor'
 import { previewFor, type Surface } from '../sessions/previewFor'
@@ -52,6 +53,7 @@ export interface PresetFormProps {
 }
 
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
+const MAX_EXTRA_PROJECTS = 9
 const NOT_AVAILABLE = ' (not available)'
 
 const hooksOf = (text: string): Hooks | null => {
@@ -168,9 +170,13 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   const [initialLabels] = useState(() => (preset ?? copyOf)?.labels ?? [])
   const [labels, setLabels] = useState(initialLabels)
   // an edit opens on the preset's project, a copy on the source's, a new preset on the selected one
-  const { project: selectedProject } = useProject()
+  const { project: selectedProject, projects } = useProject()
   const [initialProject] = useState(() => (preset ?? copyOf)?.project ?? selectedProject ?? 'default')
   const [project, setProject] = useState(initialProject)
+  // extra projects are saved by a second request after the preset; a copy starts from the source's list
+  const [extraProjects, setExtraProjects] = useState(() => (preset ?? copyOf)?.extra_projects ?? [])
+  // the preset saved before a failed extra-projects request, so a retry after a failed extra-projects request does not save or create it again
+  const savedPreset = useRef<PresetView | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -301,16 +307,27 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setServerError(null)
     setRowErrors({})
     try {
-      const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
-      const body: PresetIn = {
-        name: values.name,
-        superleader_manageable: superleaderManageable,
-        spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
-        ...(labelsChanged ? { labels } : {}),
-        // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
-        ...(!preset || project !== initialProject ? { project } : {}),
+      let result = savedPreset.current
+      if (!result) {
+        const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
+        const body: PresetIn = {
+          name: values.name,
+          superleader_manageable: superleaderManageable,
+          spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
+          ...(labelsChanged ? { labels } : {}),
+          // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
+          ...(!preset || project !== initialProject ? { project } : {}),
+        }
+        result = preset ? await updatePreset(preset.id, body) : await createPreset(body)
       }
-      onSaved(preset ? await updatePreset(preset.id, body) : await createPreset(body))
+      // the server refuses the home project in the list
+      const extra = extraProjects.filter((slug) => slug !== project)
+      if (extra.join('\n') !== (preset?.extra_projects ?? []).join('\n')) {
+        savedPreset.current = result
+        result = await setPresetExtraProjects(result.id, extra)
+        savedPreset.current = null
+      }
+      onSaved(result)
     } catch (e) {
       setRowErrors(vaultRowErrors(e, env.filter((r) => r.vault !== null).map((r) => r.key)))
       setServerError(e instanceof Error ? e.message : String(e))
@@ -342,6 +359,17 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
           {text('name', 'Name', { disabled: preset?.is_default === true })}
           <ProjectField value={project} onChange={setProject} />
           <LabelEditor value={labels} onChange={setLabels} />
+          <Autocomplete
+            multiple
+            size="small"
+            options={projects.map((p) => p.slug).filter((slug) => slug !== project)}
+            value={extraProjects.filter((slug) => slug !== project)}
+            onChange={(_, next) => setExtraProjects(next)}
+            getOptionLabel={(slug) => projects.find((p) => p.slug === slug)?.name ?? slug}
+            filterSelectedOptions
+            getOptionDisabled={() => extraProjects.length >= MAX_EXTRA_PROJECTS}
+            renderInput={(params) => <TextField {...params} label="Extra projects" helperText={`Sessions of this preset also see these projects, at most ${MAX_EXTRA_PROJECTS}`} />}
+          />
           {text('replicas', 'Replicas')}
           {text('maxReplicas', 'Max replicas', { help: 'More than 1 makes the session a hive' })}
           <FormControlLabel control={<Switch checked={values.static} onChange={(e) => set('static', e.target.checked)} />} label="Static (scaling disabled)" />

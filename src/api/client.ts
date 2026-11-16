@@ -135,6 +135,9 @@ export const listPresets = (project?: string | null) =>
 export const getPreset = (presetId: string) => request<PresetView>('GET', `/presets/${id(presetId)}`);
 export const createPreset = (body: PresetIn) => request<PresetView>('POST', '/presets', body);
 export const updatePreset = (presetId: string, body: PresetIn) => request<PresetView>('PUT', `/presets/${id(presetId)}`, body);
+/** Sets the preset's whole list of extra projects (at most 9; the home project is refused, an archived one is 422 `project_archived`). */
+export const setPresetExtraProjects = (presetId: string, extraProjects: string[]) =>
+  request<PresetView>('PUT', `/presets/${id(presetId)}/extra-projects`, { extra_projects: extraProjects });
 export const deletePreset = (presetId: string) => request<void>('DELETE', `/presets/${id(presetId)}`);
 /** Copies a preset; the server names the copy when `body.name` is absent. */
 export const copyPreset = (presetId: string, body?: CopyPreset) => request<PresetView>('POST', `/presets/${id(presetId)}/copy`, body);
