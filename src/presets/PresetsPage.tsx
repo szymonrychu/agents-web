@@ -113,6 +113,7 @@ export function PresetsPage({ onBack }: PresetsPageProps) {
           preset={editor.mode === 'edit' ? editor.preset : undefined}
           copyOf={editor.mode === 'copy' ? editor.preset : undefined}
           onClose={() => setEditor(null)}
+          onChanged={reload}
           onSaved={() => {
             setEditor(null)
             reload()

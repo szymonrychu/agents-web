@@ -1688,6 +1688,25 @@ describe('PresetForm extra projects', () => {
     expect(api.setPresetExtraProjects).toHaveBeenCalledTimes(2)
   })
 
+  test('a retry after a refused list saves edits made since and tells the parent the preset changed', async () => {
+    api.updatePreset.mockResolvedValue(preset())
+    api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'archived'))
+    api.setPresetExtraProjects.mockResolvedValueOnce(withExtra(['infra']))
+    const onChanged = vi.fn()
+    const onSaved = vi.fn()
+    wrap(<PresetForm open preset={withExtra([])} onClose={vi.fn()} onSaved={onSaved} onChanged={onChanged} />)
+    await ready()
+    await addProject('Infra')
+    await userEvent.click(button('Save'))
+    await screen.findByRole('alert')
+    expect(onChanged).toHaveBeenCalledTimes(1)
+    await replace('Name', 'renamed')
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(api.updatePreset).toHaveBeenCalledTimes(2)
+    expect(api.updatePreset.mock.calls[1][1].name).toBe('renamed')
+  })
+
   test('a failed create keeps the new preset and a retry does not create it again', async () => {
     api.createPreset.mockResolvedValue(preset({ id: 'new-1' }))
     api.setPresetExtraProjects.mockRejectedValueOnce(new ApiError(422, 'project_archived', 'archived'))

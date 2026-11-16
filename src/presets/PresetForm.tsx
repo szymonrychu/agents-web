@@ -50,6 +50,8 @@ export interface PresetFormProps {
   copyOf?: PresetView
   onClose: () => void
   onSaved: (preset: PresetView) => void
+  /** Called once the preset itself is saved, before the extra-projects request, so a list behind the dialog can refresh even when that request fails. */
+  onChanged?: () => void
 }
 
 const AGENT_COMMANDS = ['compact', 'context', 'mcp', 'reload-plugins', 'reload-skills']
@@ -160,7 +162,7 @@ function VaultRefCell({ index, row, entries, targetLabels, serverError, onEnv }:
   )
 }
 
-function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'open'>) {
+function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFormProps, 'open'>) {
   const [source] = useState({ preset, copyOf })
   const [meta, setMeta] = useState<Meta | null>(null)
   const [state, setState] = useState<FormState>(() => initialState(null, preset, copyOf))
@@ -176,7 +178,8 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
   // extra projects are saved by a second request after the preset; a copy starts from the source's list
   const [extraProjects, setExtraProjects] = useState(() => (preset ?? copyOf)?.extra_projects ?? [])
   // the preset saved before a failed extra-projects request, so a retry after a failed extra-projects request does not save or create it again
-  const savedPreset = useRef<PresetView | null>(null)
+  // with the request body it was saved from, so a retry re-saves when the form changed since
+  const savedPreset = useRef<{ result: PresetView; body: string } | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [hooksInvalid, setHooksInvalid] = useState(false)
@@ -307,23 +310,29 @@ function FormBody({ preset, copyOf, onClose, onSaved }: Omit<PresetFormProps, 'o
     setServerError(null)
     setRowErrors({})
     try {
-      let result = savedPreset.current
+      const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
+      const body: PresetIn = {
+        name: values.name,
+        superleader_manageable: superleaderManageable,
+        spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
+        ...(labelsChanged ? { labels } : {}),
+        // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
+        ...(!preset || project !== initialProject ? { project } : {}),
+      }
+      const bodyKey = JSON.stringify(body)
+      let result = savedPreset.current?.result
       if (!result) {
-        const labelsChanged = preset ? labels.join('\n') !== initialLabels.join('\n') : labels.length > 0
-        const body: PresetIn = {
-          name: values.name,
-          superleader_manageable: superleaderManageable,
-          spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
-          ...(labelsChanged ? { labels } : {}),
-          // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
-          ...(!preset || project !== initialProject ? { project } : {}),
-        }
         result = preset ? await updatePreset(preset.id, body) : await createPreset(body)
+        onChanged?.()
+      } else if (savedPreset.current?.body !== bodyKey) {
+        // a retry after a failed extra-projects request: the form changed since, so save it again
+        result = await updatePreset(result.id, body)
+        onChanged?.()
       }
       // the server refuses the home project in the list
       const extra = extraProjects.filter((slug) => slug !== project)
       if (extra.join('\n') !== (preset?.extra_projects ?? []).join('\n')) {
-        savedPreset.current = result
+        savedPreset.current = { result, body: bodyKey }
         result = await setPresetExtraProjects(result.id, extra)
         savedPreset.current = null
       }
