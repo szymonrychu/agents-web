@@ -4,6 +4,8 @@ import { isVaultRef, type VaultRef } from '../vault/refs'
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import type { KubeNamespaceRow } from '../presets/KubeNamespaceAccessField'
+import { backupRowErrors, entryFromRow, rowFromEntry } from '../backups/backupEntries'
+import type { BackupRow } from '../backups/backupEntries'
 import { pluginSourceError } from '../presets/pluginSource'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
@@ -123,19 +125,15 @@ export interface FormValues {
   runawayToolFailureRepeats: string
   runawayMaxConcurrentSubagents: string
   runawayMaxSubagentSpawnDepth: string
-  /** Workspace cache in S3; the spec carries `cache` only when this is on. */
-  cacheEnabled: boolean
-  /** On: the server derives both keys from the preset and the form sends neither. */
-  cacheDerive: boolean
-  /** Jinja template (surface `archive_name`); empty is a fresh start. Used when `cacheDerive` is off. */
-  cacheRestoreKey: string
-  /** Jinja template (surface `archive_name`); empty is restore-only. Used when `cacheDerive` is off. */
-  cacheSaveKey: string
-  /** One glob per line, relative to the workdir. */
-  cacheExclude: string
+  /** Backup entries (spec.backup); each row is explicit, no entry is implied. */
+  backup: BackupRow[]
+  /** Retrospective agent (spec.retrospective): a human-only flag. */
+  retrospective: boolean
+  /** Handoff profile (`work` or `chat`); empty means unset. */
+  handoffProfile: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess'>, string>> & { env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess' | 'backup'>, string>> & { backup?: (string | undefined)[]; env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
 
 type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins' | 'managedSettings'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins', 'managedSettings'] as const
@@ -153,7 +151,7 @@ export const RUNAWAY_FIELDS = [
 
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cache'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'backup' | 'retrospective' | 'handoffProfile'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -169,11 +167,6 @@ export const MAX_NAME = 40
 export const MAX_INIT_SCRIPTS = 20
 export const MAX_INIT_SCRIPT_CHARS = 16384
 const COPY_SUFFIX = ' copy'
-/** Cache keys starting with this are derived by the server from a preset id. */
-export const CACHE_KEY_RESERVED_PREFIX = 'preset-'
-export const MAX_CACHE_KEY = 256
-export const MAX_CACHE_EXCLUDE = 50
-export const MAX_CACHE_EXCLUDE_CHARS = 256
 
 export function blankValues(meta: Meta | null): FormValues {
   const d = meta?.defaults
@@ -185,7 +178,7 @@ export function blankValues(meta: Meta | null): FormValues {
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '', managedSettings: '', runawayMaxTurnsPerTask: '', runawayMaxTokensPerTask: '', runawayMaxStopContinuations: '', runawayMaxAgentSpawns: '', runawayToolFailureRepeats: '', runawayMaxConcurrentSubagents: '', runawayMaxSubagentSpawnDepth: '',
-    cacheEnabled: false, cacheDerive: true, cacheRestoreKey: '', cacheSaveKey: '', cacheExclude: '',
+    backup: [], retrospective: false, handoffProfile: '',
   }
 }
 
@@ -193,7 +186,6 @@ export function blankValues(meta: Meta | null): FormValues {
 export function setKeyOf(field: keyof FormValues): SetKey | null {
   if (field === 'name') return null
   if (field === 'dockerStorage' || field === 'dockerCpu' || field === 'dockerMemory') return 'docker'
-  if (field === 'cacheEnabled' || field === 'cacheDerive' || field === 'cacheRestoreKey' || field === 'cacheSaveKey' || field === 'cacheExclude') return 'cache'
   return field === 'cpuRequest' || field === 'cpuLimit' || field === 'memRequest' || field === 'memLimit' ? 'resources' : field
 }
 
@@ -284,14 +276,17 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values.dockerMemory = spec.docker_memory ?? ''
     setKeys.add('docker')
   }
-  if (spec.cache) {
-    values.cacheEnabled = true
-    const { restore_key: restore, save_key: save } = spec.cache
-    values.cacheDerive = (restore ?? null) === null && (save ?? null) === null
-    values.cacheRestoreKey = restore ?? ''
-    values.cacheSaveKey = save ?? ''
-    values.cacheExclude = (spec.cache.exclude ?? []).join('\n')
-    setKeys.add('cache')
+  if (spec.backup) {
+    values.backup = spec.backup.map(rowFromEntry)
+    setKeys.add('backup')
+  }
+  if (spec.retrospective) {
+    values.retrospective = true
+    setKeys.add('retrospective')
+  }
+  if (spec.handoff_profile) {
+    values.handoffProfile = spec.handoff_profile
+    setKeys.add('handoffProfile')
   }
   const w = spec.wrapper
   if (w) {
@@ -419,24 +414,6 @@ export function initScriptErrors(scripts: string[]): (string | undefined)[] | un
   return errors.some(Boolean) ? errors : undefined
 }
 
-/** A key template; the server renders and validates it (the preview shows the result), only the length is checked here. */
-export const cacheKeyError = (label: string, key: string): string | undefined =>
-  key.length > MAX_CACHE_KEY ? `${label}: at most ${MAX_CACHE_KEY} characters` : undefined
-
-/** The exclude globs of the text: one per line, trimmed, blank lines dropped. */
-export const cacheExcludeLines = (text: string): string[] => text.split('\n').map((l) => l.trim()).filter(Boolean)
-
-/** Exclude rules of the server: at most 50 globs, each at most 256 characters, relative, no `..` segment. */
-export function cacheExcludeError(text: string): string | undefined {
-  const lines = cacheExcludeLines(text)
-  if (lines.length > MAX_CACHE_EXCLUDE) return `Exclude: at most ${MAX_CACHE_EXCLUDE} globs`
-  for (const [i, line] of lines.entries()) {
-    if (line.length > MAX_CACHE_EXCLUDE_CHARS) return `Exclude line ${i + 1}: at most ${MAX_CACHE_EXCLUDE_CHARS} characters`
-    if (line.startsWith('/') || line.split('/').includes('..')) return `Exclude line ${i + 1}: must be relative with no '..' segment`
-  }
-  return undefined
-}
-
 export function nameError(name: string): string | undefined {
   if (name === '') return 'Name is required'
   if (name.length > MAX_NAME) return `Name must be at most ${MAX_NAME} characters`
@@ -494,13 +471,8 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   if (scriptErrors) e.initScripts = scriptErrors
   const sourceErrors = v.anyMcpSources.map(pluginSourceError)
   if (sourceErrors.some(Boolean)) e.anyMcpSources = sourceErrors
-  if (v.cacheEnabled) {
-    if (!v.cacheDerive) {
-      e.cacheRestoreKey = cacheKeyError('Restore key', v.cacheRestoreKey)
-      e.cacheSaveKey = cacheKeyError('Save key', v.cacheSaveKey)
-    }
-    e.cacheExclude = cacheExcludeError(v.cacheExclude)
-  }
+  const backupErrors = backupRowErrors(v.backup)
+  if (backupErrors) e.backup = backupErrors
   for (const k of Object.keys(e) as (keyof FormErrors)[]) if (e[k] === undefined) delete e[k]
   return e
 }
@@ -524,7 +496,7 @@ const OWNED_PATHS: Record<SetKey, string[]> = {
   autoCompact: ['auto_compact_pct'], resources: ['resources.requests.cpu', 'resources.requests.memory', 'resources.limits.cpu', 'resources.limits.memory'],
   hookUrl: ['discard_hook_url'], image: ['image'], autocloseAfter: ['autoclose_after_seconds'], inactivityReminder: ['inactivity.reminder_seconds'], inactivityClose: ['inactivity.close_seconds'],
   quotaFiveHour: ['usage_quota.five_hour_pct'], quotaSevenDay: ['usage_quota.seven_day_pct'], reuseRunningAgent: ['reuse_running_agent'], sessionMessaging: ['session_messaging'],
-  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], cache: ['cache'],
+  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], backup: ['backup'], retrospective: ['retrospective'], handoffProfile: ['handoff_profile'],
   compactIdle: ['wrapper.auto_compact.idle_seconds'], compactInstructions: ['wrapper.auto_compact.instructions'], compactMinTokens: ['wrapper.auto_compact.min_context_tokens'],
   systemAppend: ['wrapper.system_append'], restartPrompt: ['wrapper.restart_continue_prompt'], turnStall: ['wrapper.turn_stall_seconds'], maxRestarts: ['wrapper.max_restarts'],
   turnMax: ['wrapper.turn_max_seconds'], agentCommands: ['wrapper.agent_commands'], permAllow: ['wrapper.permissions.allow'], permDeny: ['wrapper.permissions.deny'],
@@ -642,10 +614,9 @@ function sparsePresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<
     if (v.dockerCpu !== '') spec.docker_cpu = v.dockerCpu
     if (v.dockerMemory !== '') spec.docker_memory = v.dockerMemory
   }
-  if (setKeys.has('cache') && v.cacheEnabled) {
-    const exclude = cacheExcludeLines(v.cacheExclude)
-    spec.cache = { ...(!v.cacheDerive && { restore_key: v.cacheRestoreKey, save_key: v.cacheSaveKey }), ...(exclude.length > 0 && { exclude }) }
-  }
+  if (setKeys.has('backup') && v.backup.length > 0) spec.backup = v.backup.map(entryFromRow)
+  if (setKeys.has('retrospective') && v.retrospective) spec.retrospective = true
+  if (setKeys.has('handoffProfile') && str(v.handoffProfile) !== undefined) spec.handoff_profile = v.handoffProfile as NonNullable<SessionSpec['handoff_profile']>
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper
   return Object.fromEntries(Object.entries(spec).filter(([, value]) => value !== undefined)) as Partial<SessionSpec>

@@ -16,6 +16,7 @@ import { filterByAgents, splitSubagents } from './chatModel'
 import { useSessionChat } from './useSessionChat'
 import { CredentialNotice } from '../credential/CredentialNotice'
 import { SessionIssue } from '../ribbon/SessionIssue'
+import { BackupWarnings } from './BackupWarnings'
 import { SessionProgress } from '../ribbon/SessionProgress'
 import { sessionMarkState } from '../ribbon/sessionStatus'
 import { markLabel } from '../ribbon/stateMark'
@@ -89,6 +90,7 @@ export function ChatView({ session, agents, maxItems }: ChatViewProps) {
       )}
       <SessionProgress session={session} agents={agents} showLabel />
       <SessionIssue session={session} agents={agents} />
+      <BackupWarnings session={session} />
       <CredentialNotice />
       {chat.error ? <Alert severity="error">{chat.error}</Alert> : null}
       {chat.loading ? (

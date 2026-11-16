@@ -19,34 +19,56 @@ describe('start_prompt', () => {
   })
 })
 
-describe('cache restore_key and save_key', () => {
-  test('stored keys load and round-trip, an empty save_key stays explicit', () => {
-    const spec = { cache: { restore_key: 'team/{{ preset_name }}/', save_key: '', exclude: ['a'] } } as Partial<SessionSpec>
+describe('backup entries', () => {
+  const entries = [
+    { root: 'claude', path: 'skills', mode: 'both', name: 'skills/{{ project }}', exclude: ['*.tmp'], live: true, after_init: false },
+    { root: 'workspace', path: '.', mode: 'backup', name: 'ws/{{ slug }}', exclude: [], live: false, after_init: true },
+  ] as NonNullable<SessionSpec['backup']>
+
+  test('entries round trip spec -> form -> spec, every field explicit', () => {
+    const spec = { backup: entries } as Partial<SessionSpec>
     const { values, setKeys } = stateFromPreset(null, 'p', spec)
-    expect(values.cacheDerive).toBe(false)
-    expect(values.cacheRestoreKey).toBe('team/{{ preset_name }}/')
-    expect(values.cacheSaveKey).toBe('')
+    expect(values.backup).toHaveLength(2)
+    expect(values.backup[0]).toMatchObject({ root: 'claude', path: 'skills', exclude: '*.tmp', live: true, afterInit: false })
     expect(toPresetSpec(values, setKeys)).toEqual(spec)
   })
 
-  test('a cache without keys derives them from the preset and sends neither key', () => {
-    const { values, setKeys } = stateFromPreset(null, 'p', { cache: { exclude: [] } })
-    expect(values.cacheDerive).toBe(true)
-    expect(toPresetSpec(values, setKeys)).toEqual({ cache: {} })
+  test('no entries means no backup key and nothing implied', () => {
+    const { values, setKeys } = stateFromPreset(null, 'p', { replicas: 2 })
+    expect(values.backup).toEqual([])
+    expect(toPresetSpec(values, setKeys)).not.toHaveProperty('backup')
+    expect(Object.keys(toPresetSpec(values, setKeys))).not.toContain('cache')
   })
 
-  test('explicit keys never send the old key', () => {
-    const { values, setKeys } = stateFromPreset(null, 'p', { cache: { exclude: [] } })
-    const spec = toPresetSpec({ ...values, cacheDerive: false, cacheRestoreKey: 'a', cacheSaveKey: 'b-{{ now }}' }, setKeys)
-    expect(spec.cache).toEqual({ restore_key: 'a', save_key: 'b-{{ now }}' })
-    expect(spec.cache).not.toHaveProperty('key')
+  test('removing every entry clears the stored ones on an edit', () => {
+    const spec = { backup: entries, model: 'opus' } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(toPresetSpec({ ...values, backup: [] }, setKeys, spec)).toEqual({ model: 'opus' })
   })
 
-  test('validate caps each key at 256 characters', () => {
-    const { values } = stateFromPreset(null, 'p', { cache: { exclude: [] } })
-    const errors = validate({ ...values, cacheDerive: false, cacheRestoreKey: 'x'.repeat(257), cacheSaveKey: 'ok' }, null)
-    expect(errors.cacheRestoreKey).toBe('Restore key: at most 256 characters')
-    expect(errors.cacheSaveKey).toBeUndefined()
+  test('validate needs a relative path and a name per entry and caps the name', () => {
+    const { values } = stateFromPreset(null, 'p', { backup: entries })
+    const bad = [{ ...values.backup[0], path: '' }, { ...values.backup[0], path: '../x' }, { ...values.backup[0], name: ' ' }, { ...values.backup[0], name: 'x'.repeat(257) }, { ...values.backup[0], exclude: '/abs' }, values.backup[0]]
+    const errors = validate({ ...values, backup: bad }, null).backup
+    expect(errors?.map((e) => e !== undefined)).toEqual([true, true, true, true, true, false])
+    expect(errors?.[3]).toBe('Name: at most 256 characters')
+    expect(validate(values, null).backup).toBeUndefined()
+  })
+})
+
+describe('retrospective and handoff_profile', () => {
+  test('a stored flag and profile load and round-trip', () => {
+    const spec = { retrospective: true, handoff_profile: 'chat' } as Partial<SessionSpec>
+    const { values, setKeys } = stateFromPreset(null, 'p', spec)
+    expect(values.retrospective).toBe(true)
+    expect(values.handoffProfile).toBe('chat')
+    expect(toPresetSpec(values, setKeys)).toEqual(spec)
+  })
+
+  test('off stays out of the spec and clears a stored flag on an edit', () => {
+    const { values, setKeys } = stateFromPreset(null, 'p', { retrospective: true })
+    expect(toPresetSpec({ ...values, retrospective: false }, setKeys)).toEqual({})
+    expect(toPresetSpec({ ...values, retrospective: false }, setKeys, { retrospective: true, model: 'x' })).toEqual({ model: 'x' })
   })
 })
 
