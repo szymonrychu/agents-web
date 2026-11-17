@@ -1498,6 +1498,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The backup status of the caller's session
+         * @description `status.backup` of the caller's session with each entry's spec fields (root, path, mode,
+         *     name, live, after_init) beside its last restore, save and live delivery results, and the
+         *     pending on-demand save request, if any.
+         */
+        get: operations["backup_status_agent_v1_backup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/backup/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save one backup entry of the caller's session now
+         * @description Any agent of the session (leader or member). 404 `no_entry` when no entry that is saved
+         *     (mode backup or both) names this root and path, 409 `save_running` while another on-demand
+         *     save is queued or running, 409 `session_deleting`. The reconciler runs one save Job for the
+         *     entry and records the outcome like a discard save; the answer is the entry index and the
+         *     Job's name. 503 `cache_unavailable` when no cache is configured (nothing could run the save).
+         */
+        post: operations["backup_save_agent_v1_backup_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/chat/attachments": {
         parameters: {
             query?: never;
@@ -3417,6 +3463,23 @@ export interface components {
              * Format: date-time
              */
             finished_at: string;
+        };
+        /** BackupSaveAccepted */
+        BackupSaveAccepted: {
+            /** Entry Index */
+            entry_index: number;
+            /** Job */
+            job: string;
+        };
+        /** BackupSaveIn */
+        BackupSaveIn: {
+            /** Path */
+            path: string;
+            /**
+             * Root
+             * @enum {string}
+             */
+            root: "workspace" | "claude";
         };
         /** BackupVersionPage */
         BackupVersionPage: {
@@ -9606,6 +9669,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    backup_status_agent_v1_backup_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_save_agent_v1_backup_save_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupSaveAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
