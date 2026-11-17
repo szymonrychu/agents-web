@@ -39,4 +39,16 @@ describe('BackupWarnings', () => {
     none.unmount()
     expect(mount(session([{ index: 0, restore: rec('missing') }], { desired: 'deleting' })).container.textContent).toBe('')
   })
+
+  test('shows a failed restore with its reason', () => {
+    mount(session([
+      { index: 0, restore: { ...rec('failed', 'skills/infra'), reason: 'storage unavailable' } },
+      { index: 1, restore: rec('failed', 'b') },
+      { index: 2, restore: rec('missing', 'c') },
+    ]))
+    const text = screen.getByRole('status').textContent ?? ''
+    expect(text).toContain('Entry 1 (skills/infra): the restore failed (storage unavailable), the directory was left as it is')
+    expect(text).toContain('Entry 2 (b): the restore failed, the directory was left as it is')
+    expect(text).toContain('Entry 3 (c): no backup of this name exists yet')
+  })
 })
