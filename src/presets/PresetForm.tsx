@@ -582,7 +582,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
           </Box>
           <Box>
             <TextField select size="small" label="Handoff profile" value={values.handoffProfile} onChange={(e) => set('handoffProfile', e.target.value)} fullWidth slotProps={{ select: { displayEmpty: true } }}>
-              <MenuItem value="">default</MenuItem>
+              <MenuItem value="">auto-detect</MenuItem>
               <MenuItem value="work">work</MenuItem>
               <MenuItem value="chat">chat</MenuItem>
             </TextField>
