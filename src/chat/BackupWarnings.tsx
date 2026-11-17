@@ -1,4 +1,4 @@
-/** Backup warnings of a running session: a restore that found nothing or could not be read, a live delivery skipped for unsaved changes, a save refused for a secret. */
+/** Backup warnings of a running session: a restore that found nothing, could not be read or failed, a live delivery skipped for unsaved changes, a save refused for a secret. */
 import Alert from '@mui/material/Alert'
 import type { SessionView } from '../api/client'
 
@@ -9,6 +9,7 @@ const RESTORE: Record<string, string> = {
   missing: 'no backup of this name exists yet, the directory was left as it is',
   unreadable: 'the backup could not be read, the directory was left as it is',
 }
+const RESTORE_FAILED = 'the restore failed, the directory was left as it is'
 const LIVE: Record<string, string> = {
   skipped_dirty: 'a new version was not delivered because this session has unsaved changes; save them (orchestrator_backup_save) or the next save makes yours current',
   missing: 'the new version is missing, the directory was left as it is',
@@ -26,7 +27,8 @@ export function backupWarnings(session: SessionView): string[] {
     return ([['restore', RESTORE], ['live_delivery', LIVE], ['save', SAVE]] as const).flatMap(([key, texts]) => {
       const record = obj(entry[key])
       const state = typeof record.state === 'string' ? record.state : ''
-      const text = texts[state]
+      const reason = typeof record.reason === 'string' && record.reason !== '' ? record.reason : ''
+      const text = key === 'restore' && state === 'failed' ? RESTORE_FAILED.replace('failed', reason === '' ? 'failed' : `failed (${reason})`) : texts[state]
       if (text === undefined) return []
       const name = typeof record.name === 'string' && record.name !== '' ? ` (${record.name})` : ''
       return [`Entry ${index + 1}${name}: ${text}`]
