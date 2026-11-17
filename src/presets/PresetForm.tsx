@@ -33,9 +33,11 @@ import HooksEditor from '../hooks/HooksEditor'
 import type { Hooks } from '../hooks/types'
 import PluginsEditor, { type PluginsValue } from '../plugins/PluginsEditor'
 import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
-import { CACHE_KEY_RESERVED_PREFIX, RUNAWAY_FIELDS, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
+import { RUNAWAY_FIELDS, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
+import { PresetBackupsPanel } from './PresetBackupsPanel'
+import { BackupEntriesEditor } from '../backups/BackupEntriesEditor'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
 import { useVaultEntries } from '../vault/useVaultEntries'
@@ -82,14 +84,6 @@ const inactivityHelp = (defaultSeconds: number | undefined): string =>
 
 const stored = (p?: PresetView) => (p?.spec ?? {}) as Partial<SessionSpec>
 
-/** The copy's spec: preset-derived cache keys belong to the source, the copy derives its own. */
-function copiedSpec(source: PresetView): Partial<SessionSpec> {
-  const spec = stored(source)
-  const { restore_key: restore, save_key: save } = spec.cache ?? {}
-  if (!restore?.startsWith(CACHE_KEY_RESERVED_PREFIX) && !save?.startsWith(CACHE_KEY_RESERVED_PREFIX)) return spec
-  return { ...spec, cache: { ...spec.cache, restore_key: null, save_key: null, exclude: spec.cache?.exclude ?? [] } }
-}
-
 type PasteMerge = { errors: string[] } | { errors: null; rows: EnvRow[] | null }
 
 /**
@@ -108,7 +102,7 @@ function mergePaste(text: string, current: EnvRow[]): PasteMerge {
 
 function initialState(meta: Meta | null, preset?: PresetView, copyOf?: PresetView): FormState {
   if (preset) return stateFromPreset(meta, preset.name, stored(preset))
-  if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), copiedSpec(copyOf))
+  if (copyOf) return stateFromPreset(meta, copyName(copyOf.name), stored(copyOf))
   return stateFromPreset(meta, '', {})
 }
 
@@ -222,14 +216,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
   }, [source])
 
   const errors = validate(values, meta)
-  const cacheAvailable = meta?.cache.available === true
-  // the restore key's last rendered preview, kept with its template so a stale one never shows
-  const [restoreRendered, setRestoreRendered] = useState<{ template: string; rendered: string } | null>(null)
-  const previewRestoreKey = async (template: string) => {
-    const result = await previewFor('archive_name')(template)
-    setRestoreRendered(result.rendered === null ? null : { template, rendered: result.rendered })
-    return result
-  }
+  const backupAvailable = meta?.cache.available === true
   const dockerAvailable = meta?.docker.available === true
   const kubeClusterAccessAvailable = meta?.kube_cluster_access.available === true
   const kubeNamespaceAvailable = meta?.kube_namespace_access.available === true
@@ -242,7 +229,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'cacheEnabled' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'backup' | 'retrospective' | 'handoffProfile' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -314,7 +301,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
       const body: PresetIn = {
         name: values.name,
         superleader_manageable: superleaderManageable,
-        spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? copiedSpec(copyOf) : undefined) as PresetIn['spec'],
+        spec: toPresetSpec({ ...values, env }, keys, preset ? stored(preset) : copyOf ? stored(copyOf) : undefined) as PresetIn['spec'],
         ...(labelsChanged ? { labels } : {}),
         // an edit sends the project only when the user moved the preset (the server keeps it when omitted)
         ...(!preset || project !== initialProject ? { project } : {}),
@@ -584,38 +571,21 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
               )}
             </Box>
           )}
-          <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }} disabled={!cacheAvailable}>
-            <FormLabel component="legend">Workspace cache</FormLabel>
-            <FormControlLabel control={<Switch checked={values.cacheEnabled} onChange={(e) => set('cacheEnabled', e.target.checked)} />} label="Cache the workspace in S3" disabled={!cacheAvailable} />
-            {meta && !cacheAvailable && <FormHelperText>Workspace cache is not configured on the orchestrator</FormHelperText>}
-            <FormControlLabel control={<Switch checked={values.cacheDerive} onChange={(e) => set('cacheDerive', e.target.checked)} />} label="Derive the keys from the preset" disabled={!cacheAvailable || !values.cacheEnabled} />
-            {values.cacheEnabled && !values.cacheDerive && (
-              <>
-                <Box>
-                  <TemplateEditor label="Restore key" value={values.cacheRestoreKey} onChange={(v) => set('cacheRestoreKey', v)} preview={previewRestoreKey} disabled={!cacheAvailable} />
-                  {errors.cacheRestoreKey && <FormHelperText error>{errors.cacheRestoreKey}</FormHelperText>}
-                  {values.cacheRestoreKey === '' && <FormHelperText>Empty: fresh start, nothing is restored</FormHelperText>}
-                  {restoreRendered?.template === values.cacheRestoreKey && restoreRendered.rendered.endsWith('/') && <FormHelperText>Restores the newest archive under this prefix</FormHelperText>}
-                </Box>
-                <Box>
-                  <TemplateEditor label="Save key" value={values.cacheSaveKey} onChange={(v) => set('cacheSaveKey', v)} preview={previewFor('archive_name')} disabled={!cacheAvailable} />
-                  {errors.cacheSaveKey && <FormHelperText error>{errors.cacheSaveKey}</FormHelperText>}
-                  {values.cacheSaveKey === '' && <FormHelperText>Empty: restore only, nothing is saved</FormHelperText>}
-                </Box>
-              </>
-            )}
-            <TextField
-              size="small"
-              label="Exclude (one glob per line)"
-              value={values.cacheExclude}
-              onChange={(e) => set('cacheExclude', e.target.value)}
-              error={Boolean(errors.cacheExclude)}
-              helperText={errors.cacheExclude}
-              disabled={!cacheAvailable || !values.cacheEnabled}
-              multiline
-              minRows={2}
-              fullWidth
-            />
+          <Box>
+            <BackupEntriesEditor rows={values.backup} onChange={(rows) => set('backup', rows)} errors={errors.backup} disabled={!backupAvailable} />
+            {meta && !backupAvailable && <FormHelperText>Backups are not configured on the orchestrator</FormHelperText>}
+          </Box>
+          {preset && <PresetBackupsPanel entries={stored(preset).backup ?? []} />}
+          <Box>
+            <FormControlLabel control={<Switch checked={values.retrospective} onChange={(e) => set('retrospective', e.target.checked)} />} label="Retrospective agent" />
+            <FormHelperText>Sessions of this preset read histories, handoffs, chats, presets and backups to find improvements; they write only backups, scoped room notes, mind map, spec and task entries</FormHelperText>
+          </Box>
+          <Box>
+            <TextField select size="small" label="Handoff profile" value={values.handoffProfile} onChange={(e) => set('handoffProfile', e.target.value)} fullWidth slotProps={{ select: { displayEmpty: true } }}>
+              <MenuItem value="">auto-detect</MenuItem>
+              <MenuItem value="work">work</MenuItem>
+              <MenuItem value="chat">chat</MenuItem>
+            </TextField>
           </Box>
           {text('compactIdle', 'Auto-compact idle seconds')}
           {template('compactInstructions', 'Auto-compact instructions', 'preset_text')}

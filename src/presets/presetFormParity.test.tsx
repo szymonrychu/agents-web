@@ -47,6 +47,11 @@ describe('preset form parity with the orchestrator schema', () => {
     expect(mapped.filter((k) => !expected.includes(k) && !(readOnly.includes(k) && PRESET_FORM_FIELDS[k] === READ_ONLY)).sort()).toEqual([])
   })
 
+  test('preset parity includes backup and retrospective', () => {
+    expect(PRESET_FORM_FIELDS).toMatchObject({ backup: 'Entry 1 path', retrospective: 'Retrospective agent', handoff_profile: 'Handoff profile' })
+    expect(Object.keys(PRESET_FORM_FIELDS).filter((k) => k === 'cache' || k.startsWith('cache.'))).toEqual([])
+  })
+
   describe('every mapped label is a control of the form', () => {
     const meta = {
       agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: true, max_bytes: 1 }, kube_cluster_access: { available: true },
@@ -58,7 +63,7 @@ describe('preset form parity with the orchestrator schema', () => {
     const full = {
       id: 'p-1', name: 'full', is_default: false, project: 'default', labels: ['l'], extra_projects: ['infra'], created_at: 'x', updated_at: 'x',
       spec: {
-        any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo'], docker: true, cache: { restore_key: 'r', save_key: 's' }, kube_namespace_access: { media: ['read'] },
+        any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo'], docker: true, backup: [{ root: 'claude', path: 'skills', mode: 'both', name: 'skills', exclude: [], live: false, after_init: false }], retrospective: true, handoff_profile: 'work', kube_namespace_access: { media: ['read'] },
         wrapper: { plugins: { marketplaces: [{ name: 'm', source: 'o/r' }], install: [{ plugin: 'p@m' }] } },
       },
     } as unknown as PresetView
@@ -72,7 +77,7 @@ describe('preset form parity with the orchestrator schema', () => {
       render(<ThemeProvider theme={theme}><PresetForm open preset={full} onClose={vi.fn()} onSaved={vi.fn()} /></ThemeProvider>)
       await waitFor(() => expect(screen.getByLabelText('Max attempts')).toBeTruthy())
       await screen.findByLabelText('Hook event')
-      await screen.findByLabelText('Restore key')
+      await screen.findByLabelText('Entry 1 path')
       const missing = Object.entries(PRESET_FORM_FIELDS).filter(([, label]) => label !== READ_ONLY && screen.queryAllByLabelText(label).length === 0).map(([key]) => key)
       expect(missing).toEqual([])
     })

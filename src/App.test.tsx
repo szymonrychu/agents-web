@@ -45,7 +45,7 @@ const summary = (o: Partial<SessionView['summary']> = {}): SessionView['summary'
   auto_compact_pct: 80, context_pct_max: 40, attention_agents: 0, auth_failed_agents: 0, bootstrap_failed_agents: 0, bootstrap_failures: [], start_state: 'ready', permission_unavailable_agents: 0, failed: 0, oldest_queued_at: null, queued: 0, ready: 2, ready_with_session: 2, replicas: 3, state: 'working', ...o,
 })
 const session = (id: string, slug: string, s: Partial<SessionView['summary']> = {}): SessionView =>
-  ({ backup: { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as SessionView
+  ({ backup: { entries: [], workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id, observed_generation: 1, slug, spec: {} as SessionView['spec'], status: {}, summary: summary(s) }) as unknown as SessionView
 const agent = (id: string, ordinal: number): AgentView => ({
   context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', attention: null, bootstrap: null, bootstrap_failure: null,
 })
@@ -372,6 +372,14 @@ describe('App', () => {
     expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second', 'Projects'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
+  })
+
+  test('/?view=<entry> opens that settings entry', async () => {
+    BACKEND_MENUS.second = [{ id: 'second', label: 'Second', order: 50, backend: 'second', render: () => <p>second page</p> }]
+    const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
+    await loadConfig((async () => ({ ok: true, json: async () => ({ backends }) })) as unknown as typeof fetch)
+    mount('/?view=second&name=x')
+    expect(await within(screen.getByRole('main')).findByText('second page')).toBeTruthy()
   })
 
   test('unregistered_backend_warns_once_across_rerenders', async () => {

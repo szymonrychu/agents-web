@@ -27,19 +27,27 @@ export function backupReasonText(reason: string | null): string {
   switch (reason) {
     case null:
     case 'no_session_cache':
-      return 'the session has no session cache'
+      return 'no backup entry lists the workspace'
     case 'cache_not_configured':
     case 'not_configured':
-      return 'no S3 cache is configured on this orchestrator'
+      return 'no S3 backup storage is configured on this orchestrator'
     case 'restore_running':
-      return 'the cache restore has not finished'
+      return 'the backup restore has not finished'
     case 'restore_failed':
-      return 'the cache restore failed, so the stored copy is not overwritten'
+      return 'the backup restore failed, so the stored copy is not overwritten'
     case 'restore_skipped':
-      return 'the cache restore was skipped, so the stored copy is not overwritten'
+      return 'the backup restore was skipped, so the stored copy is not overwritten'
     default:
       return `skipped (${reason})`
   }
+}
+
+/** One entry's outcome of a discard: where it is saved, that it goes with the session, or why it is skipped. */
+export function entryOutcome(e: SessionView['backup']['entries'][number]): string {
+  const label = `Entry ${e.index + 1}`
+  if (e.action === 'save') return `${label}: saved as ${e.name_template}`
+  if (e.action === 'discard') return `${label} (${e.name_template}): discarded`
+  return `${label} (${e.name_template}): not saved, ${e.reason === null ? 'no reason given' : backupReasonText(e.reason)}`
 }
 
 function formatBytes(bytes: number): string {
@@ -89,17 +97,9 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
 
   const target = hookTarget(session, meta)
   const { backup } = session
-  const cache = session.spec.cache
-  const resolved = (session.status.cache as { save_resolved?: unknown } | undefined)?.save_resolved
-  const saveResolved = typeof resolved === 'string' && resolved !== '' ? resolved : null
-  // an explicit empty save_key is a restore-only cache, unless a save already resolved
-  const restoreOnly = saveResolved === null && cache?.save_key === ''
-  const workdirSaved = backup.workdir && !restoreOnly
-  const nothingSaved = !workdirSaved && !backup.transcripts
-  const saveTarget = saveResolved ?? (cache?.save_key ? `${cache.save_key} (rendered when it is saved)` : '(the key derived from the preset)')
-  const nothingSavedText = restoreOnly
-    ? `Nothing is backed up: the cache is restore-only and the Claude transcripts are not backed up${backup.reason === null ? '' : ` (${backupReasonText(backup.reason)})`}.`
-    : `Nothing is backed up: ${backupReasonText(backup.reason)}.`
+  const workdirSaved = backup.workdir
+  const nothingSaved = !workdirSaved && !backup.transcripts && !backup.entries.some((e) => e.action === 'save')
+  const nothingSavedText = `Nothing is backed up: ${backupReasonText(backup.reason)}.`
   const deleted = [
     'The agents',
     'The workspace PVC',
@@ -109,9 +109,10 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
   ]
   const restored = 'restored when a session with the same slug is created'
   const saved = [
-    ...(workdirSaved ? [`Workspace files: saved to the S3 cache as ${saveTarget}, ${restored}`] : []),
-    ...(backup.transcripts ? [`Claude transcripts: saved to the S3 cache, ${restored}`] : []),
+    ...(workdirSaved ? [`Workspace files: saved by a backup entry, ${restored}`] : []),
+    ...(backup.transcripts ? [`Claude transcripts: saved to the S3 backup storage, ${restored}`] : []),
   ]
+  const entryLines = backup.entries.map(entryOutcome)
   const lastBackup = backup.last_transcripts_backup
   const hookFailed = Boolean(session.status.discard_hook_failed)
 
@@ -137,7 +138,7 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
     >
       <ItemList label="Deleted" items={deleted} />
       {saved.length > 0 && <ItemList label="Backed up" items={saved} />}
-      {restoreOnly && !nothingSaved && <Typography sx={{ mt: 2 }}>Restore-only cache: nothing is saved to it</Typography>}
+      {entryLines.length > 0 && <ItemList label="Backup entries" items={entryLines} />}
       {nothingSaved && <Typography sx={{ mt: 2 }}>{nothingSavedText}</Typography>}
       {!nothingSaved && backup.reason !== null && (
         <Typography sx={{ mt: 2 }}>
