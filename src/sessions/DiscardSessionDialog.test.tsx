@@ -12,14 +12,14 @@ const api = vi.hoisted(() => ({ deleteSession: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: false, max_bytes: 0 }, kube_cluster_access: { available: false }, kube_namespace_access: { available: false, namespaces: [], tiers: [] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: false, max_bytes: 0 }, kube_cluster_access: { available: false }, kube_namespace_access: { available: false, namespaces: [], tiers: [] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16, volume_default_size: '10Gi', volume_max_per_preset: 4, volume_max_size: '500Gi', volume_storage_class: 'rook-ceph-rwx' },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
   },
   discard_hook: 'none', hook_events: HOOK_EVENTS_FIXTURE, mindmap: false, usage: { configured: false, quota_default_pct: 100 }, inactivity: { reminder_seconds: 0, close_seconds: 0, handoff_seconds: 300 }, models: ['opus', 'sonnet', 'haiku'], efforts: ['low', 'medium', 'high', 'max'], ...o,
 })
-const NO_BACKUP: SessionView['backup'] = { entries: [], workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
+const NO_BACKUP: SessionView['backup'] = { workdir: false, transcripts: false, reason: 'no_session_cache', last_transcripts_backup: null }
 const existing = (o: Partial<SessionView['spec']> = {}, backup: Partial<SessionView['backup']> = {}): SessionView =>
   ({ backup: { ...NO_BACKUP, ...backup }, created_at: '2026-01-01T00:00:00Z', desired: 'active', generation: 1, id: 'c-1', observed_generation: 1, slug: 'alpha', status: {},
     spec: { env: { A: 'b' }, max_attempts: 5, peers: true, replicas: 2, workdir: 'work', pvc_size: '20Gi', model: 'opus', ...o },
@@ -66,27 +66,6 @@ describe('DiscardSessionDialog', () => {
     wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
     await waitFor(() => expect(api.getMeta).toHaveBeenCalledTimes(3))
     expect(screen.queryByText(/exported to/)).toBeNull()
-  })
-
-  test('discard dialog lists per-entry outcome', () => {
-    const entries = [
-      { index: 0, name_template: 'skills/{{ project }}', action: 'save', reason: null },
-      { index: 1, name_template: 'scratch', action: 'discard', reason: null },
-      { index: 2, name_template: 'rules', action: 'skip', reason: 'restore_failed' },
-      { index: 3, name_template: 'odd', action: 'skip', reason: null },
-    ] as SessionView['backup']['entries']
-    wrap(<DiscardSessionDialog open session={existing({}, { entries, workdir: false, reason: null })} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    const list = within(screen.getByRole('list', { name: 'Backup entries' }))
-    expect(list.getByText('Entry 1: saved as skills/{{ project }}')).toBeTruthy()
-    expect(list.getByText('Entry 2 (scratch): discarded')).toBeTruthy()
-    expect(list.getByText('Entry 3 (rules): not saved, the backup restore failed, so the stored copy is not overwritten')).toBeTruthy()
-    expect(list.getByText('Entry 4 (odd): not saved, no reason given')).toBeTruthy()
-    expect(screen.queryByText(/Nothing is backed up/)).toBeNull()
-  })
-
-  test('no entries list when the session has none', () => {
-    wrap(<DiscardSessionDialog open session={existing()} onClose={vi.fn()} onDiscarded={vi.fn()} />)
-    expect(screen.queryByRole('list', { name: 'Backup entries' })).toBeNull()
   })
 
   test('states what is backed up when an entry lists the workspace', () => {

@@ -36,8 +36,10 @@ import type { SessionSpec, Meta, PresetIn, PresetView } from '../api/client'
 import { RUNAWAY_FIELDS, canonicalTiers, copyName, envKeyError, envRow, humanizeSeconds, mergeEnvRows, setKeyOf, stateFromPreset, toPresetSpec, validate } from '../sessions/sessionSpecForm'
 import type { EnvRow, FormState, FormValues } from '../sessions/sessionSpecForm'
 import { KubeNamespaceAccessField } from './KubeNamespaceAccessField'
-import { PresetBackupsPanel } from './PresetBackupsPanel'
-import { BackupEntriesEditor } from '../backups/BackupEntriesEditor'
+import { VolumePicker } from './VolumePicker'
+import { volumeRowErrors } from './volumeRows'
+import { listVolumes } from '../volumes/api'
+import type { VolumeView } from '../volumes/api'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 import { entryAllowed, effectiveLabels, projectScope, refText } from '../vault/refs'
 import { useVaultEntries } from '../vault/useVaultEntries'
@@ -184,9 +186,14 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
   // server row errors by preset env key; a row's error clears when the row changes, all clear on the next save
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const vaultEntries = useVaultEntries()
+  const [volumes, setVolumes] = useState<VolumeView[]>([])
   const touched = useRef(new Set<keyof FormValues>())
   const { values, setKeys } = state
   const editing = preset !== undefined
+
+  useEffect(() => {
+    listVolumes().then(setVolumes, () => setVolumes([]))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -216,12 +223,11 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
   }, [source])
 
   const errors = validate(values, meta)
-  const backupAvailable = meta?.cache.available === true
   const dockerAvailable = meta?.docker.available === true
   const kubeClusterAccessAvailable = meta?.kube_cluster_access.available === true
   const kubeNamespaceAvailable = meta?.kube_namespace_access.available === true
   const permissionModes = meta?.permission_modes ?? [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }]
-  const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid
+  const invalid = Object.keys(errors).length > 0 || hooksInvalid || pluginsInvalid || volumeRowErrors(values.volumes, new Map(volumes.map((v) => [v.id, v.name]))) !== undefined
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setState((s) => {
       touched.current.add(key)
@@ -229,7 +235,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'backup' | 'retrospective' | 'handoffProfile' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'retrospective' | 'handoffProfile' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -571,11 +577,14 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
               )}
             </Box>
           )}
-          <Box>
-            <BackupEntriesEditor rows={values.backup} onChange={(rows) => set('backup', rows)} errors={errors.backup} disabled={!backupAvailable} />
-            {meta && !backupAvailable && <FormHelperText>Backups are not configured on the orchestrator</FormHelperText>}
-          </Box>
-          {preset && <PresetBackupsPanel entries={stored(preset).backup ?? []} />}
+          <VolumePicker
+            rows={values.volumes}
+            onChange={(rows) => set('volumes', rows)}
+            volumes={volumes}
+            scope={[project, ...extraProjects]}
+            max={meta?.caps.volume_max_per_preset}
+            privileged={values.docker || values.kubeClusterAccess || values.kubeNamespaceAccess.length > 0}
+          />
           <Box>
             <FormControlLabel control={<Switch checked={values.retrospective} onChange={(e) => set('retrospective', e.target.checked)} />} label="Retrospective agent" />
             <FormHelperText>Sessions of this preset read histories, handoffs, chats, presets and backups to find improvements; they write only backups, scoped room notes, mind map, spec and task entries</FormHelperText>

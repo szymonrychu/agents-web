@@ -619,6 +619,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/presets/{ref}/volumes/{volume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach Volume
+         * @description Attach a volume to a manageable preset (replacing an earlier attachment of it). Free
+         *     unless the volume would be shared with a privileged preset or attached read-write to one;
+         *     then the preset is unchanged and the answer is 202 with the filed proposal.
+         */
+        post: operations["attach_volume_agent_v1_admin_presets__ref__volumes__volume_id__post"];
+        /**
+         * Detach Volume
+         * @description Detach a volume from a manageable preset at once (toward safe); running sessions keep
+         *     their mount.
+         */
+        delete: operations["detach_volume_agent_v1_admin_presets__ref__volumes__volume_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/projects": {
         parameters: {
             query?: never;
@@ -1326,6 +1353,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/v1/admin/volumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Volumes
+         * @description The volumes that share a project with the caller, name order.
+         */
+        get: operations["list_volumes_agent_v1_admin_volumes_get"];
+        put?: never;
+        /**
+         * Create Volume
+         * @description File a request to create a volume as a `volume_create` proposal; nothing is created until
+         *     the user approves it. 200 with the first proposal on a `client_key` replay.
+         */
+        post: operations["create_volume_agent_v1_admin_volumes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/volumes/{volume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Volume
+         * @description One volume of the caller's projects with the presets that attach it.
+         */
+        get: operations["get_volume_agent_v1_admin_volumes__volume_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/v1/admin/webhooks/endpoints": {
         parameters: {
             query?: never;
@@ -1492,52 +1564,6 @@ export interface paths {
         get: operations["approvals_agent_v1_approvals_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/v1/backup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The backup status of the caller's session
-         * @description `status.backup` of the caller's session with each entry's spec fields (root, path, mode,
-         *     name, live, after_init) beside its last restore, save and live delivery results, and the
-         *     pending on-demand save request, if any.
-         */
-        get: operations["backup_status_agent_v1_backup_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/v1/backup/save": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Save one backup entry of the caller's session now
-         * @description Any agent of the session (leader or member). 404 `no_entry` when no entry that is saved
-         *     (mode backup or both) names this root and path, 409 `save_running` while another on-demand
-         *     save is queued or running, 409 `session_deleting`. The reconciler runs one save Job for the
-         *     entry and records the outcome like a discard save; the answer is the entry index and the
-         *     Job's name. 503 `cache_unavailable` when no cache is configured (nothing could run the save).
-         */
-        post: operations["backup_save_agent_v1_backup_save_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2130,6 +2156,50 @@ export interface paths {
         head?: never;
         /** Taskboard task, comments, todo and decisions as the caller's session */
         patch: operations["item_agent_v1_tasks__path__patch"];
+        trace?: never;
+    };
+    "/agent/v1/volumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The volumes the caller's session mounts
+         * @description The attachments of the caller's session (its own spec, set from the preset when it was
+         *     created) joined with each volume's state, current version and last save time. Another
+         *     session's volumes, and a deleted volume, never appear.
+         */
+        get: operations["volumes_status_agent_v1_volumes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/volumes/{name}/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save a volume of the caller's session now
+         * @description On-demand save of a volume the session mounts, only when that attachment has
+         *     `backup_restore` (Q12: any mounter with backup on). The save is recorded under the volume
+         *     row lock and run by the volume reconciler; a volume that is not `ready` is 409.
+         */
+        post: operations["volume_save_agent_v1_volumes__name__save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/agents/{agent_id}/compact": {
@@ -3322,6 +3392,68 @@ export interface components {
             /** Previous */
             previous: string | null;
         };
+        /** AdminVolumeDetail */
+        AdminVolumeDetail: {
+            /** Attachments */
+            attachments: number;
+            /** Content Version */
+            content_version: string | null;
+            /** Current Version */
+            current_version: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Save At */
+            last_save_at: string | null;
+            /** Mounted */
+            mounted: number;
+            /** Name */
+            name: string;
+            /** Presets */
+            presets: components["schemas"]["VolumeAttachmentView"][];
+            /** Projects */
+            projects: string[];
+            /** Size */
+            size: string;
+            /** State */
+            state: string;
+            /** Storage Class */
+            storage_class: string;
+        };
+        /**
+         * AdminVolumeView
+         * @description What a superleader or retrospective session sees of a volume: names, ids, sizes, states
+         *     and counts, never description, labels, exclusions or backup manifests.
+         */
+        AdminVolumeView: {
+            /** Attachments */
+            attachments: number;
+            /** Content Version */
+            content_version: string | null;
+            /** Current Version */
+            current_version: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Save At */
+            last_save_at: string | null;
+            /** Mounted */
+            mounted: number;
+            /** Name */
+            name: string;
+            /** Projects */
+            projects: string[];
+            /** Size */
+            size: string;
+            /** State */
+            state: string;
+            /** Storage Class */
+            storage_class: string;
+        };
         /**
          * AgentAttention
          * @description The agent's claude is waiting on a person; `state` is unchanged by it.
@@ -3419,6 +3551,31 @@ export interface components {
             /** State */
             state: string;
         };
+        /**
+         * AgentVolumeView
+         * @description One volume the calling session mounts, joined with the volume's state.
+         */
+        AgentVolumeView: {
+            /** Backup Restore */
+            backup_restore: boolean;
+            /** Current Version */
+            current_version: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Save At */
+            last_save_at: string | null;
+            /** Mode */
+            mode: string;
+            /** Mount Path */
+            mount_path: string;
+            /** Name */
+            name: string;
+            /** State */
+            state: string;
+        };
         /** AutoCompact */
         AutoCompact: {
             /** Idle Seconds */
@@ -3455,45 +3612,6 @@ export interface components {
             session_slug: string | null;
             /** Size */
             size: number;
-        };
-        /**
-         * BackupEntry
-         * @description One named directory of a session that is restored at start and or saved at discard.
-         *
-         *     `root` picks the tree (`workspace` is the session workdir, `claude` the session PVC subPath
-         *     shared by all pods); `path` is relative to it (`.` is the whole root). `name` is a Jinja
-         *     template (surface `archive_name`) naming the backup in the object store.
-         */
-        BackupEntry: {
-            /**
-             * After Init
-             * @default false
-             */
-            after_init: boolean;
-            /**
-             * Exclude
-             * @default []
-             */
-            exclude: string[];
-            /**
-             * Live
-             * @default false
-             */
-            live: boolean;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "backup" | "restore" | "both";
-            /** Name */
-            name: string;
-            /** Path */
-            path: string;
-            /**
-             * Root
-             * @enum {string}
-             */
-            root: "workspace" | "claude";
         };
         /** BackupManifestView */
         BackupManifestView: {
@@ -3540,23 +3658,6 @@ export interface components {
              * Format: date-time
              */
             finished_at: string;
-        };
-        /** BackupSaveAccepted */
-        BackupSaveAccepted: {
-            /** Entry Index */
-            entry_index: number;
-            /** Job */
-            job: string;
-        };
-        /** BackupSaveIn */
-        BackupSaveIn: {
-            /** Path */
-            path: string;
-            /**
-             * Root
-             * @enum {string}
-             */
-            root: "workspace" | "claude";
         };
         /** BackupVersionPage */
         BackupVersionPage: {
@@ -3891,25 +3992,6 @@ export interface components {
             since?: string | null;
             /** Tail */
             tail?: string | null;
-        };
-        /**
-         * EntryPlanView
-         * @description What the discard does with one backup entry (`index` -1: the workspace root itself).
-         *
-         *     `action` is `save`, `discard` (the directory goes with the session) or `skip` (with `reason`).
-         */
-        EntryPlanView: {
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "save" | "discard" | "skip";
-            /** Index */
-            index: number;
-            /** Name Template */
-            name_template: string;
-            /** Reason */
-            reason: string | null;
         };
         /**
          * EnvVar
@@ -5171,7 +5253,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "preset" | "schedule" | "session" | "session_projects" | "preset_projects" | "preset_manageable";
+            kind: "preset" | "schedule" | "session" | "session_projects" | "preset_projects" | "preset_manageable" | "volume_create";
             /** Proposer Slug */
             proposer_slug: string;
             /** Proposer Superleader */
@@ -5280,16 +5362,11 @@ export interface components {
          * SessionBackup
          * @description What a discard would save now; each flag is true only when that save would really run.
          *
-         *     `reason` is null when both run, else `no_session_cache` (no workspace backup entry),
-         *     `cache_not_configured` (no S3 cache configured) or the save's skip reason, the workdir's first.
-         *     `entries` is the per-entry plan the discard dialog shows.
+         *     `workdir` is true when a read-write backup_restore volume is mounted at the workdir or below it.
+         *     `reason` is null when the transcripts save runs, else `no_session_cache` (no backup_restore
+         *     volume), `cache_not_configured` (no S3 cache configured) or the save's skip reason.
          */
         SessionBackup: {
-            /**
-             * Entries
-             * @default []
-             */
-            entries: components["schemas"]["EntryPlanView"][];
             last_transcripts_backup: components["schemas"]["BackupRun"] | null;
             /** Reason */
             reason: string | null;
@@ -5371,8 +5448,6 @@ export interface components {
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
-            /** Backup */
-            backup?: components["schemas"]["BackupEntry"][] | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -5466,8 +5541,6 @@ export interface components {
             auto_compact_pct?: number | null;
             /** Autoclose After Seconds */
             autoclose_after_seconds?: number | null;
-            /** Backup */
-            backup?: components["schemas"]["BackupEntry"][] | null;
             /** Discard Hook Url */
             discard_hook_url?: string | null;
             /** Docker */
@@ -5949,6 +6022,33 @@ export interface components {
             version: number | null;
         };
         /**
+         * VolumeAttachIn
+         * @description A superleader's attach of a volume to a manageable preset (the preset's volume entry).
+         */
+        VolumeAttachIn: {
+            /**
+             * Backup Restore
+             * @default false
+             */
+            backup_restore: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "ro" | "rw";
+            /** Mount Path */
+            mount_path?: string | null;
+        };
+        /**
+         * VolumeAttachResult
+         * @description `preset` when the attach was applied (200); `proposal` when it is a security attach that
+         *     the user must approve (202), the preset unchanged.
+         */
+        VolumeAttachResult: {
+            preset?: components["schemas"]["PresetView"] | null;
+            proposal?: components["schemas"]["ProposalView"] | null;
+        };
+        /**
          * VolumeAttachment
          * @description One shared volume mounted into the session pod. `mount_path` unset means
          *     `/volumes/<volume name>`, filled at preset save. `backup_restore` opts this attachment into
@@ -6098,6 +6198,32 @@ export interface components {
             labels?: string[] | null;
             /** Projects */
             projects?: string[] | null;
+            /** Size */
+            size?: string | null;
+        };
+        /**
+         * VolumeProposalIn
+         * @description A superleader's request to create a volume (S-77 Q10): filed as a `volume_create` change
+         *     proposal; nothing is created until the user approves. `size` defaults to the deploy default.
+         */
+        VolumeProposalIn: {
+            /** Client Key */
+            client_key?: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Exclude */
+            exclude?: string[];
+            /** Labels */
+            labels?: string[];
+            /** Name */
+            name: string;
+            /** Projects */
+            projects: string[];
+            /** Reason */
+            reason: string;
             /** Size */
             size?: string | null;
         };
@@ -7860,6 +7986,129 @@ export interface operations {
             };
         };
     };
+    attach_volume_agent_v1_admin_presets__ref__volumes__volume_id__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumeAttachIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeAttachResult"];
+                };
+            };
+            /** @description a security attach: filed as a preset proposal for the user, the preset is unchanged */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeAttachResult"];
+                };
+            };
+            /** @description not_superleader; not_manageable: the preset is not superleader_manageable; volume_cross_trust: the rule judged it security only after a concurrent attach (retry files the proposal) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: unknown preset; volume_not_found: unknown volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description conflict: changed meanwhile; open_proposals: too_many_proposals: the caller's open-proposal cap is reached */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volumes_invalid: scope, path or duplicate problems */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detach_volume_agent_v1_admin_presets__ref__volumes__volume_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                ref: string;
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetView"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found, volume_not_found, or not_attached: nothing to remove */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description conflict: the preset changed meanwhile; retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_project_agent_v1_admin_projects_post: {
         parameters: {
             query?: never;
@@ -9593,6 +9842,143 @@ export interface operations {
             };
         };
     };
+    list_volumes_agent_v1_admin_volumes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminVolumeView"][];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_volume_agent_v1_admin_volumes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumeProposalIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            /** @description not_superleader; project_out_of_scope: a project the caller lacks */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_exists: a live volume has this name; too_many_proposals: the caller's open-proposal cap is reached */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_volume_agent_v1_admin_volumes__volume_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminVolumeDetail"];
+                };
+            };
+            /** @description not_superleader: the caller is not a superleader */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_not_found: no live volume of the caller's projects */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_webhook_get_endpoints: {
         parameters: {
             query?: never;
@@ -9987,76 +10373,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    backup_status_agent_v1_backup_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    backup_save_agent_v1_backup_save_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BackupSaveIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BackupSaveAccepted"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
             };
         };
     };
@@ -12747,6 +13063,93 @@ export interface operations {
             };
         };
     };
+    volumes_status_agent_v1_volumes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVolumeView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    volume_save_agent_v1_volumes__name__save_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVolumeView"];
+                };
+            };
+            /** @description backup_not_enabled: the session's attachment has backup_restore off */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_not_found: the session does not attach a volume of that name */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_busy: the volume is not ready (saving, restoring, resizing) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compact_agent_api_v1_agents__agent_id__compact_post: {
         parameters: {
             query?: never;
@@ -15131,7 +15534,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description volume_attached (a preset attaches it) or volume_mounted */
+            /** @description volume_attached (a preset attaches it), volume_mounted or volume_busy (a restore or save is running) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15180,7 +15583,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description shrink_refused, project_in_use (an attaching preset would lose its scope) or volume_busy (the volume is not ready to grow) */
+            /** @description shrink_refused, project_in_use (an attaching preset would lose its scope) or volume_busy (the volume is not ready to grow, or is being deleted) */
             409: {
                 headers: {
                     [name: string]: unknown;

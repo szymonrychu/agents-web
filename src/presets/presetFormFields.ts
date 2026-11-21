@@ -54,9 +54,7 @@ export const PRESET_FORM_FIELDS: Record<string, string> = {
   docker_storage: 'Docker storage',
   docker_cpu: 'Docker CPU limit',
   docker_memory: 'Docker memory limit',
-  backup: 'Entry 1 path',
-  // Placeholder until the VolumePicker lands in the preset form (S-77 step 14), which maps it to its label.
-  volumes: READ_ONLY,
+  volumes: 'Volume 1',
   retrospective: 'Retrospective agent',
   handoff_profile: 'Handoff profile',
   'wrapper.auto_compact.idle_seconds': 'Auto-compact idle seconds',

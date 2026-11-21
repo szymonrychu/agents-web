@@ -4,8 +4,8 @@ import { isVaultRef, type VaultRef } from '../vault/refs'
 import type { Hooks } from '../hooks/types'
 import { validateHooks } from '../hooks/validate'
 import type { KubeNamespaceRow } from '../presets/KubeNamespaceAccessField'
-import { backupRowErrors, entryFromRow, rowFromEntry } from '../backups/backupEntries'
-import type { BackupRow } from '../backups/backupEntries'
+import { volumeRowErrors, attachmentFromRow, rowFromAttachment } from '../presets/volumeRows'
+import type { VolumeRow } from '../presets/volumeRows'
 import { pluginSourceError } from '../presets/pluginSource'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 
@@ -125,15 +125,15 @@ export interface FormValues {
   runawayToolFailureRepeats: string
   runawayMaxConcurrentSubagents: string
   runawayMaxSubagentSpawnDepth: string
-  /** Backup entries (spec.backup); each row is explicit, no entry is implied. */
-  backup: BackupRow[]
+  /** Volume attachments (spec.volumes). */
+  volumes: VolumeRow[]
   /** Retrospective agent (spec.retrospective): a human-only flag. */
   retrospective: boolean
   /** Handoff profile (`work` or `chat`); empty means unset. */
   handoffProfile: string
 }
 
-export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess' | 'backup'>, string>> & { backup?: (string | undefined)[]; env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
+export type FormErrors = Partial<Record<Exclude<keyof FormValues, 'env' | 'initScripts' | 'agentCommands' | 'anyMcpSources' | 'kubeNamespaceAccess' | 'volumes'>, string>> & { volumes?: (string | undefined)[]; env?: (string | undefined)[]; envSection?: string; initScripts?: (string | undefined)[]; anyMcpSources?: (string | undefined)[]; kubeNamespaceAccess?: (string | undefined)[] }
 
 type WrapperField = 'compactIdle' | 'compactInstructions' | 'compactMinTokens' | 'systemAppend' | 'restartPrompt' | 'turnStall' | 'maxRestarts' | 'turnMax' | 'agentCommands' | 'permAllow' | 'permDeny' | 'permissionMode' | 'hooks' | 'mcpServers' | 'plugins' | 'managedSettings'
 const JSON_FIELDS = ['hooks', 'mcpServers', 'plugins', 'managedSettings'] as const
@@ -151,7 +151,7 @@ export const RUNAWAY_FIELDS = [
 
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'backup' | 'retrospective' | 'handoffProfile'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'retrospective' | 'handoffProfile'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -178,7 +178,7 @@ export function blankValues(meta: Meta | null): FormValues {
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '', managedSettings: '', runawayMaxTurnsPerTask: '', runawayMaxTokensPerTask: '', runawayMaxStopContinuations: '', runawayMaxAgentSpawns: '', runawayToolFailureRepeats: '', runawayMaxConcurrentSubagents: '', runawayMaxSubagentSpawnDepth: '',
-    backup: [], retrospective: false, handoffProfile: '',
+    volumes: [], retrospective: false, handoffProfile: '',
   }
 }
 
@@ -276,9 +276,9 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
     values.dockerMemory = spec.docker_memory ?? ''
     setKeys.add('docker')
   }
-  if (spec.backup) {
-    values.backup = spec.backup.map(rowFromEntry)
-    setKeys.add('backup')
+  if (spec.volumes) {
+    values.volumes = spec.volumes.map(rowFromAttachment)
+    setKeys.add('volumes')
   }
   if (spec.retrospective) {
     values.retrospective = true
@@ -471,8 +471,8 @@ export function validate(v: FormValues, meta: Meta | null): FormErrors {
   if (scriptErrors) e.initScripts = scriptErrors
   const sourceErrors = v.anyMcpSources.map(pluginSourceError)
   if (sourceErrors.some(Boolean)) e.anyMcpSources = sourceErrors
-  const backupErrors = backupRowErrors(v.backup)
-  if (backupErrors) e.backup = backupErrors
+  const volumeErrors = volumeRowErrors(v.volumes)
+  if (volumeErrors) e.volumes = volumeErrors
   for (const k of Object.keys(e) as (keyof FormErrors)[]) if (e[k] === undefined) delete e[k]
   return e
 }
@@ -496,7 +496,7 @@ const OWNED_PATHS: Record<SetKey, string[]> = {
   autoCompact: ['auto_compact_pct'], resources: ['resources.requests.cpu', 'resources.requests.memory', 'resources.limits.cpu', 'resources.limits.memory'],
   hookUrl: ['discard_hook_url'], image: ['image'], autocloseAfter: ['autoclose_after_seconds'], inactivityReminder: ['inactivity.reminder_seconds'], inactivityClose: ['inactivity.close_seconds'],
   quotaFiveHour: ['usage_quota.five_hour_pct'], quotaSevenDay: ['usage_quota.seven_day_pct'], reuseRunningAgent: ['reuse_running_agent'], sessionMessaging: ['session_messaging'],
-  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], backup: ['backup'], retrospective: ['retrospective'], handoffProfile: ['handoff_profile'],
+  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], volumes: ['volumes'], retrospective: ['retrospective'], handoffProfile: ['handoff_profile'],
   compactIdle: ['wrapper.auto_compact.idle_seconds'], compactInstructions: ['wrapper.auto_compact.instructions'], compactMinTokens: ['wrapper.auto_compact.min_context_tokens'],
   systemAppend: ['wrapper.system_append'], restartPrompt: ['wrapper.restart_continue_prompt'], turnStall: ['wrapper.turn_stall_seconds'], maxRestarts: ['wrapper.max_restarts'],
   turnMax: ['wrapper.turn_max_seconds'], agentCommands: ['wrapper.agent_commands'], permAllow: ['wrapper.permissions.allow'], permDeny: ['wrapper.permissions.deny'],
@@ -614,7 +614,7 @@ function sparsePresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<
     if (v.dockerCpu !== '') spec.docker_cpu = v.dockerCpu
     if (v.dockerMemory !== '') spec.docker_memory = v.dockerMemory
   }
-  if (setKeys.has('backup') && v.backup.length > 0) spec.backup = v.backup.map(entryFromRow)
+  if (setKeys.has('volumes') && v.volumes.length > 0) spec.volumes = v.volumes.map(attachmentFromRow)
   if (setKeys.has('retrospective') && v.retrospective) spec.retrospective = true
   if (setKeys.has('handoffProfile') && str(v.handoffProfile) !== undefined) spec.handoff_profile = v.handoffProfile as NonNullable<SessionSpec['handoff_profile']>
   const wrapper = wrapperFromValues(v, setKeys)
