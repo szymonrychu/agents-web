@@ -268,8 +268,24 @@ export interface paths {
         };
         /** GET connector /rooms/{room_id}/notes */
         get: operations["admin_connector_get_rooms_room_id_notes"];
-        /** PUT connector /rooms/{room_id}/notes */
-        put: operations["admin_connector_put_rooms_room_id_notes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/rooms/{room_id}/notes/sections/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT connector /rooms/{room_id}/notes/sections/{section} */
+        put: operations["admin_connector_put_rooms_room_id_notes_sections_section"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1638,8 +1654,24 @@ export interface paths {
         };
         /** The notes of the room bound to the caller's session (leader only) */
         get: operations["notes_get_agent_v1_chat_notes_get"];
-        /** Replace the notes of the room bound to the caller's session (leader only) */
-        put: operations["notes_put_agent_v1_chat_notes_put"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/notes/sections/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace one section of the notes of the room bound to the caller's session (leader only) */
+        put: operations["notes_section_put_agent_v1_chat_notes_sections__section__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1681,42 +1713,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/chat/skills": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The skills of the room bound to the caller's session, no bodies (leader only) */
-        get: operations["skills_list_agent_v1_chat_skills_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/v1/chat/skills/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** One skill of the room bound to the caller's session (leader only) */
-        get: operations["skill_get_agent_v1_chat_skills__name__get"];
-        /** Create or replace a skill of the room bound to the caller's session (leader only) */
-        put: operations["skill_put_agent_v1_chat_skills__name__put"];
-        post?: never;
-        /** Delete a skill of the room bound to the caller's session (leader only) */
-        delete: operations["skill_delete_agent_v1_chat_skills__name__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/agent/v1/close": {
         parameters: {
             query?: never;
@@ -1733,6 +1729,26 @@ export interface paths {
          *     for `ORCH_CLOSE_GRACE_SECONDS`; a repeat call keeps the first request.
          */
         post: operations["close_agent_v1_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/envelope/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * onStop webhook: block once on chat envelopes that were not delivered
+         * @description Never fails on a body it cannot use: an unreadable one is an allow.
+         */
+        post: operations["stop_agent_v1_envelope_stop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5624,6 +5640,16 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** StopOut */
+        StopOut: {
+            /**
+             * Decision
+             * @default allow
+             */
+            decision: string;
+            /** Reason */
+            reason?: string | null;
+        };
         /**
          * SweepPolicyIn
          * @description The whole sweep policy; every field is required (a PUT replaces the saved policy).
@@ -6620,7 +6646,7 @@ export interface operations {
             };
         };
     };
-    admin_connector_put_rooms_room_id_notes: {
+    admin_connector_put_rooms_room_id_notes_sections_section: {
         parameters: {
             query?: never;
             header?: {
@@ -10069,7 +10095,10 @@ export interface operations {
     };
     notes_get_agent_v1_chat_notes_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Read only this section (the upstream validates the key) */
+                section?: string | null;
+            };
             header?: {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
@@ -10120,14 +10149,16 @@ export interface operations {
             };
         };
     };
-    notes_put_agent_v1_chat_notes_put: {
+    notes_section_put_agent_v1_chat_notes_sections__section__put: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
             };
-            path?: never;
+            path: {
+                section: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -10311,242 +10342,6 @@ export interface operations {
             };
         };
     };
-    skills_list_agent_v1_chat_skills_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_get_agent_v1_chat_skills__name__get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_put_agent_v1_chat_skills__name__put: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Body */
-                    body: string;
-                    /** Description */
-                    description: string;
-                    /** Expected Version */
-                    expected_version: number;
-                };
-            };
-        };
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_delete_agent_v1_chat_skills__name__delete: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     close_agent_v1_close_post: {
         parameters: {
             query?: never;
@@ -10570,6 +10365,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloseRequested"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_agent_v1_envelope_stop_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StopOut"];
                 };
             };
             /** @description Validation Error */

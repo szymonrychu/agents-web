@@ -7099,6 +7099,28 @@
         "title": "SkippedRecipient",
         "type": "object"
       },
+      "StopOut": {
+        "properties": {
+          "decision": {
+            "default": "allow",
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "StopOut",
+        "type": "object"
+      },
       "SweepPolicyIn": {
         "additionalProperties": false,
         "description": "The whole sweep policy; every field is required (a PUT replaces the saved policy).",
@@ -9317,9 +9339,11 @@
           "admin",
           "admin"
         ]
-      },
+      }
+    },
+    "/agent/v1/admin/chats/rooms/{room_id}/notes/sections/{section}": {
       "put": {
-        "operationId": "admin_connector_put_rooms_room_id_notes",
+        "operationId": "admin_connector_put_rooms_room_id_notes_sections_section",
         "parameters": [
           {
             "in": "path",
@@ -9378,7 +9402,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "PUT connector /rooms/{room_id}/notes",
+        "summary": "PUT connector /rooms/{room_id}/notes/sections/{section}",
         "tags": [
           "admin",
           "admin"
@@ -15981,6 +16005,24 @@
         "operationId": "notes_get_agent_v1_chat_notes_get",
         "parameters": [
           {
+            "description": "Read only this section (the upstream validates the key)",
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Read only this section (the upstream validates the key)",
+              "title": "Section"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -16046,10 +16088,21 @@
         "tags": [
           "agent"
         ]
-      },
+      }
+    },
+    "/agent/v1/chat/notes/sections/{section}": {
       "put": {
-        "operationId": "notes_put_agent_v1_chat_notes_put",
+        "operationId": "notes_section_put_agent_v1_chat_notes_sections__section__put",
         "parameters": [
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "title": "Section",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -16088,7 +16141,7 @@
             "application/json": {
               "schema": {
                 "additionalProperties": false,
-                "description": "A notes replacement as the upstream reads it (OpenAPI only; the upstream validates it).",
+                "description": "A replacement of one notes section as the upstream reads it (OpenAPI only; the upstream\nvalidates it, the section key included).",
                 "properties": {
                   "body": {
                     "title": "Body",
@@ -16103,7 +16156,7 @@
                   "body",
                   "expected_version"
                 ],
-                "title": "ChatNotesIn",
+                "title": "ChatNoteSectionIn",
                 "type": "object"
               }
             }
@@ -16142,7 +16195,7 @@
             "description": "chat_unconfigured or chat_unavailable"
           }
         },
-        "summary": "Replace the notes of the room bound to the caller's session (leader only)",
+        "summary": "Replace one section of the notes of the room bound to the caller's session (leader only)",
         "tags": [
           "agent"
         ]
@@ -16322,352 +16375,6 @@
         ]
       }
     },
-    "/agent/v1/chat/skills": {
-      "get": {
-        "operationId": "skills_list_agent_v1_chat_skills_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-orch-session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Orch-Session"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "The chat upstream's status and JSON body, unchanged"
-          },
-          "401": {
-            "description": "unauthorized: missing or invalid agent credentials"
-          },
-          "403": {
-            "description": "forbidden (not a live agent pod) or not_leader"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "503": {
-            "description": "chat_unconfigured or chat_unavailable"
-          }
-        },
-        "summary": "The skills of the room bound to the caller's session, no bodies (leader only)",
-        "tags": [
-          "agent"
-        ]
-      }
-    },
-    "/agent/v1/chat/skills/{name}": {
-      "delete": {
-        "operationId": "skill_delete_agent_v1_chat_skills__name__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-orch-session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Orch-Session"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "The chat upstream's status and JSON body, unchanged"
-          },
-          "401": {
-            "description": "unauthorized: missing or invalid agent credentials"
-          },
-          "403": {
-            "description": "forbidden (not a live agent pod) or not_leader"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "503": {
-            "description": "chat_unconfigured or chat_unavailable"
-          }
-        },
-        "summary": "Delete a skill of the room bound to the caller's session (leader only)",
-        "tags": [
-          "agent"
-        ]
-      },
-      "get": {
-        "operationId": "skill_get_agent_v1_chat_skills__name__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-orch-session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Orch-Session"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "The chat upstream's status and JSON body, unchanged"
-          },
-          "401": {
-            "description": "unauthorized: missing or invalid agent credentials"
-          },
-          "403": {
-            "description": "forbidden (not a live agent pod) or not_leader"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "503": {
-            "description": "chat_unconfigured or chat_unavailable"
-          }
-        },
-        "summary": "One skill of the room bound to the caller's session (leader only)",
-        "tags": [
-          "agent"
-        ]
-      },
-      "put": {
-        "operationId": "skill_put_agent_v1_chat_skills__name__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-orch-session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Orch-Session"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": false,
-                "description": "A skill replacement as the upstream reads it (OpenAPI only; the upstream validates it).",
-                "properties": {
-                  "body": {
-                    "title": "Body",
-                    "type": "string"
-                  },
-                  "description": {
-                    "title": "Description",
-                    "type": "string"
-                  },
-                  "expected_version": {
-                    "title": "Expected Version",
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "description",
-                  "body",
-                  "expected_version"
-                ],
-                "title": "ChatSkillIn",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "The chat upstream's status and JSON body, unchanged"
-          },
-          "401": {
-            "description": "unauthorized: missing or invalid agent credentials"
-          },
-          "403": {
-            "description": "forbidden (not a live agent pod) or not_leader"
-          },
-          "413": {
-            "description": "payload_too_large: a POST or PUT body exceeds 256 KiB"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "503": {
-            "description": "chat_unconfigured or chat_unavailable"
-          }
-        },
-        "summary": "Create or replace a skill of the room bound to the caller's session (leader only)",
-        "tags": [
-          "agent"
-        ]
-      }
-    },
     "/agent/v1/close": {
       "post": {
         "description": "Checks in order: leader (403 `not_leader`), not a superleader session (422 `own_session`),\nnot being discarded (409 `session_deleting`). The sweeper discards the session once it is idle\nfor `ORCH_CLOSE_GRACE_SECONDS`; a repeat call keeps the first request.",
@@ -16739,6 +16446,72 @@
           }
         },
         "summary": "Close the caller's session once idle (leader only)",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/v1/envelope/stop": {
+      "post": {
+        "description": "Never fails on a body it cannot use: an unreadable one is an allow.",
+        "operationId": "stop_agent_v1_envelope_stop_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-orch-session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Orch-Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "onStop webhook: block once on chat envelopes that were not delivered",
         "tags": [
           "agent"
         ]
