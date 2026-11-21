@@ -15,6 +15,7 @@
  *   43 Vault     (agents-vault, secret env entries)
  *   44 Approvals (agents-taskboard, a routed page: the entry navigates to /approvals)
  *   45 Backups   (orchestrator, named, versioned S3 backups)
+ *   46 Volumes   (orchestrator, project-labelled shared storage)
  *   50 Usage (agents-usage)
  *   55 History (agents-history)
  *   60 Devices (agents-app-connector admin API)
@@ -34,6 +35,7 @@ import { tasksMenu } from '../tasks/menu'
 import { specsMenu } from '../specs/menu'
 import { approvalsMenu } from '../approvals/menu'
 import { proposalsMenu } from '../proposals/menu'
+import { volumesMenu } from '../volumes/menu'
 import { vaultMenu } from '../vault/menu'
 import { mindmapMenu } from '../mindmap/menu'
 import { projectsMenu } from '../projects/menu'
@@ -54,6 +56,7 @@ export const BACKEND_MENUS: Record<string, MenuEntry[]> = {
     { id: 'presets', label: 'Presets', order: 40, backend: 'orchestrator', render: (onBack) => createElement(PresetsPage, { onBack }) },
     proposalsMenu,
     backupsMenu,
+    volumesMenu,
     projectsMenu,
   ],
   taskboard: [tasksMenu, specsMenu, approvalsMenu],

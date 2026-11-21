@@ -1681,42 +1681,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/v1/chat/skills": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The skills of the room bound to the caller's session, no bodies (leader only) */
-        get: operations["skills_list_agent_v1_chat_skills_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/v1/chat/skills/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** One skill of the room bound to the caller's session (leader only) */
-        get: operations["skill_get_agent_v1_chat_skills__name__get"];
-        /** Create or replace a skill of the room bound to the caller's session (leader only) */
-        put: operations["skill_put_agent_v1_chat_skills__name__put"];
-        post?: never;
-        /** Delete a skill of the room bound to the caller's session (leader only) */
-        delete: operations["skill_delete_agent_v1_chat_skills__name__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/agent/v1/close": {
         parameters: {
             query?: never;
@@ -1733,6 +1697,26 @@ export interface paths {
          *     for `ORCH_CLOSE_GRACE_SECONDS`; a repeat call keeps the first request.
          */
         post: operations["close_agent_v1_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/envelope/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * onStop webhook: block once on chat envelopes that were not delivered
+         * @description Never fails on a body it cannot use: an unreadable one is an allow.
+         */
+        post: operations["stop_agent_v1_envelope_stop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3202,6 +3186,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/volumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Volumes */
+        get: operations["list_volumes_api_v1_volumes_get"];
+        put?: never;
+        /** Create Volume */
+        post: operations["create_volume_api_v1_volumes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/volumes/{volume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Volume */
+        get: operations["get_volume_api_v1_volumes__volume_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Volume
+         * @description Mark the volume `deleting`; the reconciler removes the PVC. The checks run under the
+         *     row lock the state change takes, so an attach or claim cannot slip in between; a refusal
+         *     rolls the state change back and records `delete_refused`.
+         */
+        delete: operations["delete_volume_api_v1_volumes__volume_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Volume */
+        patch: operations["patch_volume_api_v1_volumes__volume_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/volumes/{volume_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Volume Events */
+        get: operations["volume_events_api_v1_volumes__volume_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/volumes/{volume_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Volume */
+        post: operations["restore_volume_api_v1_volumes__volume_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/volumes/{volume_id}/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Volume */
+        post: operations["save_volume_api_v1_volumes__volume_id__save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4511,6 +4588,14 @@ export interface components {
             max_replicas: number;
             /** Max Sessions */
             max_sessions: number;
+            /** Volume Default Size */
+            volume_default_size: string;
+            /** Volume Max Per Preset */
+            volume_max_per_preset: number;
+            /** Volume Max Size */
+            volume_max_size: string;
+            /** Volume Storage Class */
+            volume_storage_class: string;
         };
         /** MetaCredential */
         MetaCredential: {
@@ -5360,6 +5445,8 @@ export interface components {
              */
             static: boolean;
             usage_quota?: components["schemas"]["UsageQuota"] | null;
+            /** Volumes */
+            volumes?: components["schemas"]["VolumeAttachment"][] | null;
             /**
              * Workdir
              * @default workdir
@@ -5453,6 +5540,8 @@ export interface components {
              */
             static: boolean;
             usage_quota?: components["schemas"]["UsageQuota"] | null;
+            /** Volumes */
+            volumes?: components["schemas"]["VolumeAttachment"][] | null;
             /**
              * Workdir
              * @default workdir
@@ -5623,6 +5712,16 @@ export interface components {
             reason: "queue_full" | "session_deleting";
             /** Slug */
             slug: string;
+        };
+        /** StopOut */
+        StopOut: {
+            /**
+             * Decision
+             * @default allow
+             */
+            decision: string;
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * SweepPolicyIn
@@ -5848,6 +5947,225 @@ export interface components {
             protected: boolean;
             /** Version */
             version: number | null;
+        };
+        /**
+         * VolumeAttachment
+         * @description One shared volume mounted into the session pod. `mount_path` unset means
+         *     `/volumes/<volume name>`, filled at preset save. `backup_restore` opts this attachment into
+         *     the volume's automatic restore and save-on-last-release.
+         */
+        VolumeAttachment: {
+            /**
+             * Backup Restore
+             * @default false
+             */
+            backup_restore: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "ro" | "rw";
+            /** Mount Path */
+            mount_path?: string | null;
+            /**
+             * Volume
+             * Format: uuid
+             */
+            volume: string;
+        };
+        /** VolumeAttachmentView */
+        VolumeAttachmentView: {
+            /** Backup Restore */
+            backup_restore: boolean;
+            /** Mode */
+            mode: string;
+            /** Mount Path */
+            mount_path: string;
+            /**
+             * Preset Id
+             * Format: uuid
+             */
+            preset_id: string;
+            /** Preset Name */
+            preset_name: string;
+        };
+        /** VolumeClaimView */
+        VolumeClaimView: {
+            /** Mode */
+            mode: string;
+            /** Session Slug */
+            session_slug: string | null;
+        };
+        /** VolumeCreateIn */
+        VolumeCreateIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Exclude */
+            exclude?: string[];
+            /** Labels */
+            labels?: string[];
+            /** Name */
+            name: string;
+            /** Projects */
+            projects: string[];
+            /** Size */
+            size?: string | null;
+        };
+        /** VolumeDetail */
+        VolumeDetail: {
+            /** Attachments */
+            attachments: number;
+            /** Claims */
+            claims: components["schemas"]["VolumeClaimView"][];
+            /** Content Version */
+            content_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Version */
+            current_version: string | null;
+            /** Description */
+            description: string;
+            /** Exclude */
+            exclude: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Labels */
+            labels: string[];
+            /** Last Save At */
+            last_save_at: string | null;
+            /** Mounted */
+            mounted: number;
+            /** Name */
+            name: string;
+            /** Presets */
+            presets: components["schemas"]["VolumeAttachmentView"][];
+            /** Projects */
+            projects: string[];
+            /** Size */
+            size: string;
+            /** State */
+            state: string;
+            /** State Reason */
+            state_reason: string | null;
+            /** Storage Class */
+            storage_class: string;
+            /** Versions */
+            versions: components["schemas"]["VolumeVersionView"][];
+        };
+        /** VolumeEventPage */
+        VolumeEventPage: {
+            /** Items */
+            items: components["schemas"]["VolumeEventView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** VolumeEventView */
+        VolumeEventView: {
+            /** Actor */
+            actor: string;
+            /** Actor Kind */
+            actor_kind: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+        };
+        /** VolumePatchIn */
+        VolumePatchIn: {
+            /** Description */
+            description?: string | null;
+            /** Exclude */
+            exclude?: string[] | null;
+            /** Labels */
+            labels?: string[] | null;
+            /** Projects */
+            projects?: string[] | null;
+            /** Size */
+            size?: string | null;
+        };
+        /** VolumeRestoreIn */
+        VolumeRestoreIn: {
+            /**
+             * Version
+             * Format: uuid
+             */
+            version: string;
+        };
+        /** VolumeVersionView */
+        VolumeVersionView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Live */
+            live: boolean;
+            /** Origin */
+            origin: string;
+        };
+        /** VolumeView */
+        VolumeView: {
+            /** Attachments */
+            attachments: number;
+            /** Content Version */
+            content_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Version */
+            current_version: string | null;
+            /** Description */
+            description: string;
+            /** Exclude */
+            exclude: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Labels */
+            labels: string[];
+            /** Last Save At */
+            last_save_at: string | null;
+            /** Mounted */
+            mounted: number;
+            /** Name */
+            name: string;
+            /** Projects */
+            projects: string[];
+            /** Size */
+            size: string;
+            /** State */
+            state: string;
+            /** State Reason */
+            state_reason: string | null;
+            /** Storage Class */
+            storage_class: string;
         };
         /** WebhookHook */
         WebhookHook: {
@@ -10311,242 +10629,6 @@ export interface operations {
             };
         };
     };
-    skills_list_agent_v1_chat_skills_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_get_agent_v1_chat_skills__name__get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_put_agent_v1_chat_skills__name__put: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Body */
-                    body: string;
-                    /** Description */
-                    description: string;
-                    /** Expected Version */
-                    expected_version: number;
-                };
-            };
-        };
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description payload_too_large: a POST or PUT body exceeds 256 KiB */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    skill_delete_agent_v1_chat_skills__name__delete: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-                "x-orch-session"?: string | null;
-            };
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The chat upstream's status and JSON body, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description unauthorized: missing or invalid agent credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden (not a live agent pod) or not_leader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description chat_unconfigured or chat_unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     close_agent_v1_close_post: {
         parameters: {
             query?: never;
@@ -10570,6 +10652,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloseRequested"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_agent_v1_envelope_stop_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-orch-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StopOut"];
                 };
             };
             /** @description Validation Error */
@@ -14869,6 +14983,344 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PreviewOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_volumes_api_v1_volumes_get: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_volume_api_v1_volumes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumeCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"];
+                };
+            };
+            /** @description volume_exists: a live volume has this name */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_volume_api_v1_volumes__volume_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeDetail"];
+                };
+            };
+            /** @description Unknown or deleted volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_volume_api_v1_volumes__volume_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"];
+                };
+            };
+            /** @description Unknown or deleted volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_attached (a preset attaches it) or volume_mounted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_volume_api_v1_volumes__volume_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumePatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"];
+                };
+            };
+            /** @description Unknown or deleted volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description shrink_refused, project_in_use (an attaching preset would lose its scope) or volume_busy (the volume is not ready to grow) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    volume_events_api_v1_volumes__volume_id__events_get: {
+        parameters: {
+            query?: {
+                before?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeEventPage"];
+                };
+            };
+            /** @description Unknown or deleted volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_volume_api_v1_volumes__volume_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumeRestoreIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"];
+                };
+            };
+            /** @description volume_not_found, or version_not_found (not a version of volume-<name>) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_mounted (HARD RULE: a session has it mounted) or volume_busy */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_volume_api_v1_volumes__volume_id__save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeView"];
+                };
+            };
+            /** @description Unknown or deleted volume */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description volume_busy: the volume is not ready */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
