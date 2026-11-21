@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { DateTime } from '../common/DateTime'
 import { listProjects } from '../projects/api'
 import { FormError } from '../triggers'
+import { ConfirmDialog } from '../layout/ConfirmDialog'
 import { EXCLUDE_HINT } from './CreateVolumeDialog'
 import { backupsLink, deleteVolume, getVolume, parseLines, parseSize, patchVolume, restoreVolume, saveVolume, volumeErrorText, volumeEvents } from './api'
 import type { MetaCaps, VolumeDetail, VolumeEventView } from './api'
@@ -31,6 +32,7 @@ export function VolumeDetailDrawer({ volumeId, caps, onClose, onChanged }: Volum
   const [projects, setProjects] = useState<string[]>([])
   const [options, setOptions] = useState<string[]>([])
   const [exclude, setExclude] = useState('')
+  const [confirm, setConfirm] = useState<{ kind: 'delete' } | { kind: 'restore'; version: string }>()
 
   const [tick, setTick] = useState(0)
   const load = () => setTick((t) => t + 1)
@@ -65,6 +67,7 @@ export function VolumeDetailDrawer({ volumeId, caps, onClose, onChanged }: Volum
       else load()
     } catch (e) {
       setError(volumeErrorText(e))
+      load()
     }
   }
   const loadMore = async () => {
@@ -116,7 +119,7 @@ export function VolumeDetailDrawer({ volumeId, caps, onClose, onChanged }: Volum
             {vol.versions.map((v) => (
               <Box key={v.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Typography variant="body2" sx={{ flexGrow: 1 }}><DateTime iso={v.created_at} /> {v.origin}{v.live ? ' (live)' : ''}{v.id === vol.current_version ? ' (current)' : ''}</Typography>
-                <Button size="small" aria-label={`Restore version ${v.id}`} disabled={mounted} onClick={() => void act(() => restoreVolume(volumeId, v.id))}>Restore</Button>
+                <Button size="small" aria-label={`Restore version ${v.id}`} disabled={mounted} onClick={() => setConfirm({ kind: 'restore', version: v.id })}>Restore</Button>
               </Box>
             ))}
             {restoreReason && <Typography variant="caption" color="text.secondary">Restore is disabled: {restoreReason}.</Typography>}
@@ -141,10 +144,23 @@ export function VolumeDetailDrawer({ volumeId, caps, onClose, onChanged }: Volum
             {more && <Button size="small" onClick={() => void loadMore()}>Load more events</Button>}
           </Box>
           <Box>
-            <Button color="error" onClick={() => void act(() => deleteVolume(volumeId), 'close')}>Delete</Button>
+            <Button color="error" onClick={() => setConfirm({ kind: 'delete' })}>Delete</Button>
           </Box>
         </>
       )}
+      <ConfirmDialog
+        open={confirm !== undefined}
+        title={confirm?.kind === 'restore' ? `Restore version ${confirm.version}?` : `Delete ${vol?.name ?? 'volume'}?`}
+        body={confirm?.kind === 'restore' ? `The volume data is replaced by backup version ${confirm.version}.` : 'The volume data (PVC) is removed. The S3 backups are kept.'}
+        confirmLabel={confirm?.kind === 'restore' ? 'Restore' : 'Delete'}
+        onCancel={() => setConfirm(undefined)}
+        onConfirm={() => {
+          const c = confirm
+          setConfirm(undefined)
+          if (c?.kind === 'restore') void act(() => restoreVolume(volumeId, c.version))
+          else if (c?.kind === 'delete') void act(() => deleteVolume(volumeId), 'close')
+        }}
+      />
     </Drawer>
   )
 }

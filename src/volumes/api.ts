@@ -30,6 +30,8 @@ const REASONS: Record<string, string> = {
   project_in_use: 'A preset or session of a project you are removing still uses this volume.',
   shrink_refused: 'A volume can only grow, never shrink.',
   volume_busy: 'The volume is not ready (a restore, save or resize is running). Try again shortly.',
+  volume_not_found: 'This volume no longer exists.',
+  version_not_found: 'This backup version no longer exists.',
   volume_exists: 'A volume with this name already exists.',
 }
 export const volumeErrorText = (e: unknown): string =>

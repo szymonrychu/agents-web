@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ThemeProvider } from '@mui/material/styles'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -90,6 +90,7 @@ describe('VolumesPage', () => {
     mount()
     await openDetails(u)
     await u.click(screen.getByRole('button', { name: 'Delete' }))
+    await u.click(within(await screen.findByRole('dialog', { name: /Delete data/ })).getByRole('button', { name: 'Delete' }))
     expect(await screen.findByText(/Detach it from every preset/)).toBeTruthy()
   })
 
@@ -102,13 +103,34 @@ describe('VolumesPage', () => {
     expect(screen.getByText(/Restore is disabled: A session has this volume mounted/)).toBeTruthy()
   })
 
-  test('restore calls the API with the version when unmounted', async () => {
+  test.each([
+    ['Restore version ver-1', 'Restore', 'restoreVolume', [view().id, 'ver-1']],
+    ['Delete', 'Delete', 'deleteVolume', [view().id]],
+  ] as const)('%s asks for confirmation: cancel sends nothing, confirm calls the API', async (opener, confirmLabel, fn, args) => {
     const u = userEvent.setup()
-    api.restoreVolume.mockResolvedValue(view())
+    api[fn].mockResolvedValue(view())
     mount()
     await openDetails(u)
+    await u.click(screen.getByRole('button', { name: opener }))
+    const dialog = await screen.findByRole('dialog', { name: new RegExp(confirmLabel) })
+    await u.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull())
+    expect(api[fn]).not.toHaveBeenCalled()
+    await u.click(screen.getByRole('button', { name: opener }))
+    await u.click(within(await screen.findByRole('dialog', { name: new RegExp(confirmLabel) })).getByRole('button', { name: confirmLabel }))
+    await waitFor(() => expect(api[fn]).toHaveBeenCalledWith(...args))
+  })
+
+  test('a 409 volume_mounted on restore reloads the volume and disables Restore', async () => {
+    const u = userEvent.setup()
+    api.restoreVolume.mockRejectedValueOnce(new ApiError(409, 'volume_mounted', 'mounted'))
+    mount()
+    await openDetails(u)
+    api.getVolume.mockResolvedValue(detail({ mounted: 1, claims: [{ session_slug: 's1', mode: 'rw' }] }))
     await u.click(screen.getByRole('button', { name: 'Restore version ver-1' }))
-    await waitFor(() => expect(api.restoreVolume).toHaveBeenCalledWith(view().id, 'ver-1'))
+    await u.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Restore' }))
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Restore version ver-1' }) as HTMLButtonElement).disabled).toBe(true))
+    expect(screen.getByText(/Restore is disabled/)).toBeTruthy()
   })
 
   test('resize refuses a smaller size client-side', async () => {
