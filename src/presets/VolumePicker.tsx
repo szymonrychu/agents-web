@@ -19,7 +19,7 @@ export interface VolumePickerProps {
   scope: string[]
   /** Most attachments per preset (/meta caps volume_max_per_preset); undefined until /meta loads. */
   max?: number
-  /** The preset holds a privileged grant (docker, cluster or namespace access). */
+  /** The preset holds a privileged grant (docker, Kubernetes cluster access or namespace access). */
   privileged: boolean
   serverErrors?: (string | undefined)[]
 }
