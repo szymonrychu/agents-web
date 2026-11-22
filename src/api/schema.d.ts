@@ -268,8 +268,24 @@ export interface paths {
         };
         /** GET connector /rooms/{room_id}/notes */
         get: operations["admin_connector_get_rooms_room_id_notes"];
-        /** PUT connector /rooms/{room_id}/notes */
-        put: operations["admin_connector_put_rooms_room_id_notes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/admin/chats/rooms/{room_id}/notes/sections/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT connector /rooms/{room_id}/notes/sections/{section} */
+        put: operations["admin_connector_put_rooms_room_id_notes_sections_section"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1664,8 +1680,24 @@ export interface paths {
         };
         /** The notes of the room bound to the caller's session (leader only) */
         get: operations["notes_get_agent_v1_chat_notes_get"];
-        /** Replace the notes of the room bound to the caller's session (leader only) */
-        put: operations["notes_put_agent_v1_chat_notes_put"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/v1/chat/notes/sections/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace one section of the notes of the room bound to the caller's session (leader only) */
+        put: operations["notes_section_put_agent_v1_chat_notes_sections__section__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7064,7 +7096,7 @@ export interface operations {
             };
         };
     };
-    admin_connector_put_rooms_room_id_notes: {
+    admin_connector_put_rooms_room_id_notes_sections_section: {
         parameters: {
             query?: never;
             header?: {
@@ -10703,7 +10735,10 @@ export interface operations {
     };
     notes_get_agent_v1_chat_notes_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Read only this section (the upstream validates the key) */
+                section?: string | null;
+            };
             header?: {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
@@ -10754,14 +10789,16 @@ export interface operations {
             };
         };
     };
-    notes_put_agent_v1_chat_notes_put: {
+    notes_section_put_agent_v1_chat_notes_sections__section__put: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
             };
-            path?: never;
+            path: {
+                section: string;
+            };
             cookie?: never;
         };
         requestBody: {
