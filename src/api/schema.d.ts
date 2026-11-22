@@ -14516,6 +14516,13 @@ export interface operations {
                     "application/json": components["schemas"]["SessionView"];
                 };
             };
+            /** @description preset_migration_pending: the preset still carries the removed `backup` entries and the volume migration has not moved them yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
