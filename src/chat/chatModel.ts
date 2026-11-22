@@ -28,6 +28,8 @@ export type ChatItem =
   | (Base & { kind: 'user_message'; text: string; origin: string })
   /** An orchestrator notice (inactivity reminder, close warning or leadership handover): a system line, not a user bubble. */
   | (Base & { kind: 'notice'; text: string; notice: 'inactivity_reminder' | 'inactivity_close' | 'handover' | 'runaway_parked' })
+  /** Delivery status of a message this session sent (`<message-in channel="notice">`). */
+  | (Base & { kind: 'delivery_notice'; for: string; status: string; reason?: string; from: string })
   | (Base & { kind: 'session'; text: string; from: string; messageId: number; room?: { project: string; postId: number } })
   | (Base & { kind: 'peer'; text: string; from?: string })
   | (Base & { kind: 'assistant'; text: string })
@@ -104,7 +106,46 @@ const NOTICE_PREFIXES = [
 
 const noticeOf = (text: string): 'inactivity_reminder' | 'inactivity_close' | 'handover' | 'runaway_parked' | undefined => NOTICE_PREFIXES.find(([prefix]) => text.startsWith(prefix))?.[1];
 
-const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const unescapeBody = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+// Contract with agents-orchestrator `<message-in>` envelope: a body form with a closing tag (the trailer line after it is dropped) and a self-closing notice form. Anchored at text start so a quoted frame stays a user message.
+const MESSAGE_IN = /^<message-in((?:\s+[a-z_]+="[^"]*")*)(?:>\n([\s\S]*?)\n<\/message-in>|\s*\/>)(?:\n|$)/;
+const ATTR = /\s+([a-z_]+)="([^"]*)"/g;
+
+function messageIn(text: string): { attrs: Record<string, string>; body?: string; len: number } | null {
+  const m = MESSAGE_IN.exec(text);
+  if (!m) return null;
+  const attrs: Record<string, string> = {};
+  for (const a of m[1].matchAll(ATTR)) attrs[a[1]] = unescapeBody(a[2]);
+  return { attrs, body: m[2] === undefined ? undefined : unescapeBody(m[2]), len: m[0].length };
+}
+
+const postNo = (v: string | undefined): number | undefined => {
+  const m = v === undefined ? null : /^p(\d+)$/.exec(v);
+  return m ? Number(m[1]) : undefined;
+};
+
+function messageInItem(base: Base, text: string): ChatItem | null {
+  const f = messageIn(text);
+  if (!f) return null;
+  const { channel, from = '', id } = f.attrs;
+  if (channel === 'notice') {
+    const { for: forId, status } = f.attrs;
+    if (f.body !== undefined || !forId || !status) return null;
+    return { ...base, kind: 'delivery_notice', from, for: forId, status, ...(f.attrs.reason ? { reason: f.attrs.reason } : {}) };
+  }
+  if (f.body === undefined) return null;
+  if (channel === 'agent') return { ...base, kind: 'peer', text: f.body, from };
+  const messageId = Number(id);
+  if (!Number.isInteger(messageId)) return null;
+  if (channel === 'room') {
+    const postId = postNo(f.attrs.post);
+    const room = postId === undefined ? undefined : { project: f.attrs.project ?? '', postId };
+    return { ...base, kind: 'session', text: f.body, from, messageId, ...(room ? { room } : {}) };
+  }
+  if (channel === 'session' || channel === 'relay') return { ...base, kind: 'session', text: f.body, from, messageId };
+  return null;
+}
 
 function toolItem(base: Base, d: Record<string, unknown>, res?: ToolResult): ChatItem {
   return {
@@ -141,6 +182,8 @@ function toItem(row: EventRow, ordinals: Readonly<Record<string, number>>, orpha
     case 'user_message': {
       const origin = str(d.origin, 'user');
       const text = str(d.text ?? d.message);
+      const env = messageInItem(base, text);
+      if (env) return env;
       const m = SESSION_FRAME.exec(text);
       if (m) {
         const r = ROOM_TRAILER.exec(text.slice(m[0].length));
