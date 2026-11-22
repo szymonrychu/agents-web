@@ -107,6 +107,14 @@ export function ChatEntry({ item, subagents }: { item: ChatItem; subagents?: Sub
           </Typography>
         </Row>
       )
+    case 'delivery_notice':
+      return (
+        <Row item={item} label="delivery notice">
+          <Typography component="span" variant="caption" sx={{ ...bodyText, color: 'info.main' }}>
+            {`message ${item.for}: ${item.status}${item.reason ? ` (${item.reason})` : ''}`}
+          </Typography>
+        </Row>
+      )
     case 'session':
       return (
         <Row item={item} label={`session ${item.from}`} markdown>

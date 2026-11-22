@@ -312,3 +312,38 @@ describe('subagents', () => {
     expect(s.items[1]).toMatchObject({ kind: 'notice', text: limit, notice: 'inactivity_close' });
   });
 });
+
+const env = (attrs: string, body: string) => `<message-in ${attrs}>\n${body}\n</message-in>\nFrom a trailer line.\n`;
+const one = (text: string) => applyEvents(fresh(), [row(1, 'user_message', { text, origin: 'client' })]).items[0];
+
+describe('message-in frames', () => {
+  it('session channel becomes a session item', () => {
+    expect(one(env('channel="session" from="alpha-1" id="5"', 'a &lt; b'))).toMatchObject({ kind: 'session', from: 'alpha-1', messageId: 5, text: 'a < b' });
+  });
+
+  it('room channel carries project and post', () => {
+    const it = one(env('channel="room" from="alpha-1" id="6" post="p9" project="proj-x"', 'hi'));
+    expect(it).toMatchObject({ kind: 'session', room: { project: 'proj-x', postId: 9 } });
+  });
+
+  it('relay channel becomes a session item', () => {
+    expect(one(env('channel="relay" from="orch" id="7"', 'x'))).toMatchObject({ kind: 'session', from: 'orch', messageId: 7 });
+  });
+
+  it('agent channel becomes a peer item from the pod', () => {
+    expect(one(env('channel="agent" from="pod-1" id="8"', 'x'))).toMatchObject({ kind: 'peer', from: 'pod-1', text: 'x' });
+  });
+
+  it('attribute with &quot; is unescaped', () => {
+    expect(one(env('channel="session" from="a" id="1" send_id="s&quot;1"', 'x &amp;quot; y'))).toMatchObject({ kind: 'session', text: 'x &quot; y' });
+  });
+
+  it('notice form becomes a delivery notice', () => {
+    expect(one('<message-in channel="notice" from="a" for="a12" status="refused" reason="busy"/>\n')).toMatchObject({ kind: 'delivery_notice', for: 'a12', status: 'refused', reason: 'busy' });
+  });
+
+  it('frame not at text start stays a user message', () => {
+    const text = 'quote:\n' + env('channel="session" from="a" id="1"', 'x');
+    expect(one(text)).toMatchObject({ kind: 'user_message', text });
+  });
+});
