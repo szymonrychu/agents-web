@@ -50,7 +50,7 @@ const agent = (id: string, ordinal: number): AgentView => ({
   context: { used_percentage: 25, used_tokens: 1, window_tokens: 4 }, current_turn_id: null, free_since: null, gone: false, id, ordinal, leader: false, context_pct: null, peers: 0, pod_name: `alpha-${ordinal}`, ready: true, state: 'busy', attention: null, bootstrap: null, bootstrap_failure: null,
 })
 const meta = (): Meta => ({
-  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: false, max_bytes: 0 }, kube_cluster_access: { available: false }, kube_namespace_access: { available: false, namespaces: [], tiers: [] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: false, max_bytes: 0 }, kube_cluster_access: { available: false }, kube_namespace_access: { available: false, namespaces: [], tiers: [] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, permission_modes: [{ value: 'bypassPermissions', label: 'Allow all' }, { value: 'auto', label: 'Auto' }], caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16, volume_default_size: '10Gi', volume_max_per_preset: 4, volume_max_size: '500Gi', volume_storage_class: 'rook-ceph-rwx' },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -351,7 +351,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const list = screen.getByRole('list', { name: 'Sessions' })
     expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['alpha2/3 - ctx 40%', 'beta1/1 - ctx 10%'])
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Volumes', 'Projects'])
     fireEvent.click(within(list).getAllByRole('button')[1])
     await waitFor(() => expect(selectedTab()?.textContent).toContain('beta'))
   })
@@ -361,7 +361,7 @@ describe('App', () => {
     const settings = () => within(screen.getByRole('region', { name: 'Settings' }))
     const first = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Volumes', 'Projects'])
     first.unmount()
     cleanup()
     const backends = [{ id: 'orchestrator', label: 'O', basePath: '/api/v1' }, { id: 'second', label: 'S', basePath: '/second' }]
@@ -369,7 +369,7 @@ describe('App', () => {
     mount()
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Second', 'Projects'])
+    expect(settings().getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Volumes', 'Second', 'Projects'])
     fireEvent.click(settings().getByRole('button', { name: 'Second' }))
     expect(await within(main).findByText('second page')).toBeTruthy()
   })
@@ -399,7 +399,7 @@ describe('App', () => {
     await waitFor(() => expect(tabs()).toHaveLength(2))
     const main = screen.getByRole('main')
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Projects'])
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Sessions', 'Presets', 'Proposals', 'Backups', 'Volumes', 'Projects'])
     fireEvent.click(within(screen.getByRole('region', { name: 'Settings' })).getByRole('button', { name: 'Sessions' }))
     expect(await within(main).findByRole('heading', { name: 'Sessions' })).toBeTruthy()
     // Open selects that session and returns to its workspace.

@@ -19,40 +19,34 @@ describe('start_prompt', () => {
   })
 })
 
-describe('backup entries', () => {
-  const entries = [
-    { root: 'claude', path: 'skills', mode: 'both', name: 'skills/{{ project }}', exclude: ['*.tmp'], live: true, after_init: false },
-    { root: 'workspace', path: '.', mode: 'backup', name: 'ws/{{ slug }}', exclude: [], live: false, after_init: true },
-  ] as NonNullable<SessionSpec['backup']>
+describe('volume attachments', () => {
+  const attachments = [
+    { volume: 'v-1', mode: 'rw', backup_restore: true, mount_path: '/data' },
+    { volume: 'v-2', mode: 'ro', backup_restore: false },
+  ] as NonNullable<SessionSpec['volumes']>
 
-  test('entries round trip spec -> form -> spec, every field explicit', () => {
-    const spec = { backup: entries } as Partial<SessionSpec>
+  test('attachments round trip spec -> form -> spec, the default path stays unset', () => {
+    const spec = { volumes: attachments } as Partial<SessionSpec>
     const { values, setKeys } = stateFromPreset(null, 'p', spec)
-    expect(values.backup).toHaveLength(2)
-    expect(values.backup[0]).toMatchObject({ root: 'claude', path: 'skills', exclude: '*.tmp', live: true, afterInit: false })
+    expect(values.volumes[0]).toMatchObject({ volume: 'v-1', mountPath: '/data', mode: 'rw', backupRestore: true })
     expect(toPresetSpec(values, setKeys)).toEqual(spec)
   })
 
-  test('no entries means no backup key and nothing implied', () => {
+  test('no attachments means no volumes key, and removing all clears the stored ones on an edit', () => {
     const { values, setKeys } = stateFromPreset(null, 'p', { replicas: 2 })
-    expect(values.backup).toEqual([])
-    expect(toPresetSpec(values, setKeys)).not.toHaveProperty('backup')
-    expect(Object.keys(toPresetSpec(values, setKeys))).not.toContain('cache')
+    expect(toPresetSpec(values, setKeys)).not.toHaveProperty('volumes')
+    const spec = { volumes: attachments, model: 'opus' } as Partial<SessionSpec>
+    const loaded = stateFromPreset(null, 'p', spec)
+    expect(toPresetSpec({ ...loaded.values, volumes: [] }, loaded.setKeys, spec)).toEqual({ model: 'opus' })
   })
 
-  test('removing every entry clears the stored ones on an edit', () => {
-    const spec = { backup: entries, model: 'opus' } as Partial<SessionSpec>
-    const { values, setKeys } = stateFromPreset(null, 'p', spec)
-    expect(toPresetSpec({ ...values, backup: [] }, setKeys, spec)).toEqual({ model: 'opus' })
-  })
-
-  test('validate needs a relative path and a name per entry and caps the name', () => {
-    const { values } = stateFromPreset(null, 'p', { backup: entries })
-    const bad = [{ ...values.backup[0], path: '' }, { ...values.backup[0], path: '../x' }, { ...values.backup[0], name: ' ' }, { ...values.backup[0], name: 'x'.repeat(257) }, { ...values.backup[0], exclude: '/abs' }, values.backup[0]]
-    const errors = validate({ ...values, backup: bad }, null).backup
-    expect(errors?.map((e) => e !== undefined)).toEqual([true, true, true, true, true, false])
-    expect(errors?.[3]).toBe('Name: at most 256 characters')
-    expect(validate(values, null).backup).toBeUndefined()
+  test('validate refuses relative, .., / and // paths, a missing volume and duplicate paths', () => {
+    const { values } = stateFromPreset(null, 'p', { volumes: attachments })
+    const row = values.volumes[0]
+    const bad = [{ ...row, mountPath: 'rel' }, { ...row, mountPath: '/a/../b' }, { ...row, mountPath: '/' }, { ...row, mountPath: '//x' }, { ...row, volume: '' }, { ...row, mountPath: '/ok' }, { ...row, mountPath: '/ok' }]
+    const errors = validate({ ...values, volumes: bad }, null).volumes
+    expect(errors?.map((e) => e !== undefined)).toEqual([true, true, true, true, true, true, true])
+    expect(validate({ ...values, volumes: [{ ...row, mountPath: '/claude' }] }, null).volumes).toBeUndefined()
   })
 })
 

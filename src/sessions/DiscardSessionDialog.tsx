@@ -42,14 +42,6 @@ export function backupReasonText(reason: string | null): string {
   }
 }
 
-/** One entry's outcome of a discard: where it is saved, that it goes with the session, or why it is skipped. */
-export function entryOutcome(e: SessionView['backup']['entries'][number]): string {
-  const label = `Entry ${e.index + 1}`
-  if (e.action === 'save') return `${label}: saved as ${e.name_template}`
-  if (e.action === 'discard') return `${label} (${e.name_template}): discarded`
-  return `${label} (${e.name_template}): not saved, ${e.reason === null ? 'no reason given' : backupReasonText(e.reason)}`
-}
-
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   const units = ['KB', 'MB', 'GB', 'TB']
@@ -98,7 +90,7 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
   const target = hookTarget(session, meta)
   const { backup } = session
   const workdirSaved = backup.workdir
-  const nothingSaved = !workdirSaved && !backup.transcripts && !backup.entries.some((e) => e.action === 'save')
+  const nothingSaved = !workdirSaved && !backup.transcripts
   const nothingSavedText = `Nothing is backed up: ${backupReasonText(backup.reason)}.`
   const deleted = [
     'The agents',
@@ -112,7 +104,6 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
     ...(workdirSaved ? [`Workspace files: saved by a backup entry, ${restored}`] : []),
     ...(backup.transcripts ? [`Claude transcripts: saved to the S3 backup storage, ${restored}`] : []),
   ]
-  const entryLines = backup.entries.map(entryOutcome)
   const lastBackup = backup.last_transcripts_backup
   const hookFailed = Boolean(session.status.discard_hook_failed)
 
@@ -138,7 +129,6 @@ export function DiscardSessionDialog({ open, session, onClose, onDiscarded }: Di
     >
       <ItemList label="Deleted" items={deleted} />
       {saved.length > 0 && <ItemList label="Backed up" items={saved} />}
-      {entryLines.length > 0 && <ItemList label="Backup entries" items={entryLines} />}
       {nothingSaved && <Typography sx={{ mt: 2 }}>{nothingSavedText}</Typography>}
       {!nothingSaved && backup.reason !== null && (
         <Typography sx={{ mt: 2 }}>

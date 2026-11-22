@@ -12,16 +12,19 @@ import { theme } from '../theme'
 import { emittedInMedia } from '../test/emittedCss'
 import { QUOTA_FIELD_LABELS } from '../usage/quotaLabels'
 import { setViewport } from '../test/viewport'
+import type { VolumeView } from '../volumes/api'
 import { PresetForm } from './PresetForm'
 import { HOOK_EVENTS_FIXTURE } from '../hooks/testEvents'
 
 const ctx = vi.hoisted(() => ({ project: null as string | null, projects: [] as { slug: string; name: string }[] }))
 vi.mock('../projects/ProjectContext', () => ({ useProject: () => ({ ...ctx, setProject: () => {} }) }))
+const vols = vi.hoisted(() => ({ listVolumes: vi.fn() }))
+vi.mock('../volumes/api', async (orig) => ({ ...(await orig<typeof import('../volumes/api')>()), ...vols }))
 const api = vi.hoisted(() => ({ createPreset: vi.fn(), updatePreset: vi.fn(), setPresetExtraProjects: vi.fn(), getMeta: vi.fn() }))
 vi.mock('../api/client', async (orig) => ({ ...(await orig<typeof import('../api/client')>()), ...api }))
 
 const meta = (o: Partial<Meta> = {}): Meta => ({
-  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16 },
+  agent_image: 'img', agent_images: ['img'], credential: { expires_at: null, phase: 'unknown', refuse_hours: 24, warn_days: 7 }, cache: { available: true, max_bytes: 5368709120 }, kube_cluster_access: { available: true }, kube_namespace_access: { available: true, namespaces: ['media', 'e2e-target'], tiers: ['read', 'port-forward', 'exec', 'edit', 'admin'] }, docker: { available: false, max_cpu: '8', max_memory: '16Gi', max_storage: '100Gi', storage: '30Gi' }, caps: { max_sessions: 8, max_pvc_size: '100Gi', max_replicas: 16, volume_default_size: '10Gi', volume_max_per_preset: 4, volume_max_size: '500Gi', volume_storage_class: 'rook-ceph-rwx' },
   defaults: {
     any_mcp_config: { plugins: ['x'] }, auto_compact_pct: 80, discard_hook: 'none', effort: 'high', max_attempts: 5, model: 'opus', pvc_size: '10Gi', replicas: 1,
     resources: { limits: { cpu: '4', memory: '8Gi' }, requests: { cpu: '500m', memory: '1Gi' } }, storage_class: 'rook-ceph-rwx', workdir: 'workdir',
@@ -39,6 +42,8 @@ beforeEach(() => {
   setViewport(1440)
   Object.values(api).forEach((f) => f.mockReset())
   api.getMeta.mockResolvedValue(meta())
+  vols.listVolumes.mockReset()
+  vols.listVolumes.mockResolvedValue([])
 })
 let restoreRange: () => void = () => {}
 beforeAll(() => { restoreRange = stubRangeRects() })
@@ -1234,122 +1239,99 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ docker: true, docker_storage: '50Gi' })
   })
 
-  const previewReply = (rendered: string | null, error: { line: number | null; message: string } | null = null) => {
-    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ rendered, error, variables: ['preset_name'] }), { status: 200 }))
-    vi.stubGlobal('fetch', f)
-    return f
-  }
-  const previewOf = async (label: string) => {
-    await userEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: 'Preview' }))
+  const VOL = (o: Partial<VolumeView> = {}): VolumeView => ({ id: 'v-1', name: 'data', projects: ['default'], attachments: 0, ...o }) as VolumeView
+  const attach = async (label = 'Volume 1', name = 'data') => {
+    await userEvent.click(button('Add volume'))
+    await pick(label, name)
   }
 
-  test('a new preset has no backup entries and none are implied', async () => {
+  test('a new preset has no volumes and none are implied', async () => {
     api.createPreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
-    expect(screen.getByText('The workspace is discarded unless an entry lists it.')).toBeTruthy()
-    expect(screen.queryByRole('group', { name: 'Backup entry 1' })).toBeNull()
-    expect(screen.queryByText(/Workspace cache|Cache the workspace/)).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Volume attachment 1' })).toBeNull()
     await replace('Name', 'c')
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('backup')
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('volumes')
   })
 
-  test('entries are added, edited with the name on the archive_name surface, and saved explicitly', async () => {
-    const f = previewReply('skills/infra')
-    try {
-      api.createPreset.mockResolvedValue(preset())
-      wrap(<PresetForm open {...noop} />)
-      await ready()
-      await replace('Name', 'c')
-      await userEvent.click(button('Add entry'))
-      await replace('Entry 1 path', 'skills')
-      await pick('Entry 1 root', 'claude')
-      await setEditorText('Entry 1 name', 'skills/{{ project }}')
-      await paste('Entry 1 exclude (one glob per line)', 'node_modules/**\n\n  dist/*  \n')
-      await userEvent.click(field('Entry 1 live'))
-      await previewOf('Entry 1 name')
-      await waitFor(() => expect(within(screen.getByRole('group', { name: 'Entry 1 name' })).getByTestId('template-rendered').textContent).toBe('skills/infra'))
-      expect(JSON.parse(f.mock.calls.find((c) => String(c[0]).endsWith('/templates/preview'))?.[1].body)).toEqual({ template: 'skills/{{ project }}', surface: 'archive_name' })
-      await userEvent.click(button('Create'))
-      await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-      expect(api.createPreset.mock.calls[0][0].spec.backup).toEqual([
-        { root: 'claude', path: 'skills', mode: 'both', name: 'skills/{{ project }}', exclude: ['node_modules/**', 'dist/*'], live: true, after_init: false },
-      ])
-    } finally {
-      vi.unstubAllGlobals()
-    }
+  test('an attachment is added, edited and saved; the default path is shown and not sent', async () => {
+    vols.listVolumes.mockResolvedValue([VOL(), VOL({ id: 'v-2', name: 'other', projects: ['elsewhere'] })])
+    api.createPreset.mockResolvedValue(preset())
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await userEvent.click(button('Add volume'))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Volume 1' }))
+    expect(screen.queryByRole('option', { name: 'other' })).toBeNull()
+    await userEvent.click(screen.getByRole('option', { name: 'data' }))
+    expect((field('Mount path 1')).placeholder).toBe('/volumes/data')
+    expect(screen.getByText('Default /volumes/data')).toBeTruthy()
+    await replace('Name', 'c')
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.volumes).toEqual([{ volume: 'v-1', mode: 'ro', backup_restore: false }])
+    api.createPreset.mockClear()
+    await pick('Mode 1', 'Read write')
+    await replace('Mount path 1', '/mnt/x')
+    await userEvent.click(screen.getByRole('switch', { name: 'Back up and restore 1' }))
+    await userEvent.click(button('Create'))
+    await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
+    expect(api.createPreset.mock.calls[0][0].spec.volumes).toEqual([{ volume: 'v-1', mode: 'rw', backup_restore: true, mount_path: '/mnt/x' }])
   })
 
-  test('an entry needs a path and a name, and its excludes are validated', async () => {
+  test('removing the only attachment clears the stored one on an edit', async () => {
+    vols.listVolumes.mockResolvedValue([VOL()])
+    api.updatePreset.mockResolvedValue(preset())
+    wrap(<PresetForm open preset={preset({ spec: { volumes: [{ volume: 'v-1', mode: 'ro', backup_restore: false }] } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    await userEvent.click(button('Remove volume attachment 1'))
+    await userEvent.click(button('Save'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
+    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({})
+  })
+
+  test('a path over the config directory warns without blocking, a duplicate or relative path blocks', async () => {
+    vols.listVolumes.mockResolvedValue([VOL(), VOL({ id: 'v-2', name: 'two' })])
     wrap(<PresetForm open {...noop} />)
     await ready()
     await replace('Name', 'c')
-    await userEvent.click(button('Add entry'))
-    expect(screen.getByText('Path is required (use . for the whole root)')).toBeTruthy()
-    expect(button('Create').disabled).toBe(true)
-    await replace('Entry 1 path', '.')
-    expect(screen.getByText('Name is required')).toBeTruthy()
-    await setEditorText('Entry 1 name', 'ws')
-    await waitFor(() => expect(button('Create').disabled).toBe(false))
-    const cases: [string, string][] = [
-      ['/abs', "Exclude line 1: must be relative with no '..' segment"],
-      ['y'.repeat(257), 'Exclude line 1: at most 256 characters'],
-      [Array.from({ length: 51 }, (_, i) => `g${i}`).join('\n'), 'Exclude: at most 50 globs'],
-    ]
-    for (const [text, message] of cases) {
-      await replace('Entry 1 exclude (one glob per line)', text)
-      expect(screen.getByText(message)).toBeTruthy()
-      expect(button('Create').disabled).toBe(true)
-    }
-    await replace('Entry 1 exclude (one glob per line)', 'fine/**')
+    await attach()
+    await replace('Mount path 1', '/claude/skills')
+    expect(screen.getByText(/shadows existing content/)).toBeTruthy()
     expect(button('Create').disabled).toBe(false)
-    expect(api.createPreset).not.toHaveBeenCalled()
+    await replace('Mount path 1', 'rel')
+    expect(screen.getByText('Mount path must be absolute')).toBeTruthy()
+    expect(button('Create').disabled).toBe(true)
+    await replace('Mount path 1', '/volumes/two')
+    await attach('Volume 2', 'two')
+    expect(screen.getAllByText('Mount path is used by another attachment').length).toBe(2)
+    expect(button('Create').disabled).toBe(true)
+  })
+
+  test('attachments stop at the /meta cap', async () => {
+    vols.listVolumes.mockResolvedValue([VOL()])
+    api.getMeta.mockResolvedValue(meta({ caps: { ...meta().caps, volume_max_per_preset: 1 } }))
+    wrap(<PresetForm open {...noop} />)
+    await ready()
+    await attach()
+    expect(button('Add volume').disabled).toBe(true)
+  })
+
+  test('a privileged preset warns about a volume that other presets use', async () => {
+    vols.listVolumes.mockResolvedValue([VOL({ attachments: 1 })])
+    wrap(<PresetForm open preset={preset({ spec: { docker: true, volumes: [{ volume: 'v-1', mode: 'ro', backup_restore: false }] } as PresetView['spec'] })} {...noop} />)
+    await ready()
+    expect(await screen.findByText(/shared with other presets/)).toBeTruthy()
   })
 
   test('shows the server message when a save is refused', async () => {
-    const message = 'backup[0].path must be relative'
-    api.updatePreset.mockRejectedValueOnce(new ApiError(422, 'invalid', message))
-    wrap(<PresetForm open preset={preset({ spec: { backup: [ENTRY] } as PresetView['spec'] })} {...noop} />)
+    const message = 'volume_cross_trust: volume shared with a privileged preset'
+    api.updatePreset.mockRejectedValueOnce(new ApiError(403, 'volume_cross_trust', message))
+    wrap(<PresetForm open preset={preset({ spec: { volumes: [{ volume: 'v-1', mode: 'ro', backup_restore: false }] } as PresetView['spec'] })} {...noop} />)
     await ready()
     await userEvent.click(button('Save'))
     expect((await screen.findByRole('alert')).textContent).toBe(message)
-  })
-
-  test('disables the entries editor when the orchestrator has no backup storage', async () => {
-    api.getMeta.mockResolvedValue(meta({ cache: { available: false, max_bytes: 0 } }))
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    expect(screen.getByText('Backups are not configured on the orchestrator')).toBeTruthy()
-    expect(button('Add entry').disabled).toBe(true)
-    cleanup()
-    api.getMeta.mockResolvedValue(meta())
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    expect(screen.queryByText('Backups are not configured on the orchestrator')).toBeNull()
-    expect(button('Add entry').disabled).toBe(false)
-  })
-
-  test('loads stored entries, saves them unchanged and shows the backups panel with filtered links', async () => {
-    const stored = { backup: [ENTRY, { ...ENTRY, root: 'workspace', path: '.', mode: 'backup', name: 'chat/{{ slug }}', exclude: ['*.log'], after_init: true }] }
-    api.updatePreset.mockResolvedValue(preset())
-    wrap(<PresetForm open preset={preset({ spec: stored as PresetView['spec'] })} {...noop} />)
-    await ready()
-    expect((field('Entry 1 path')).value).toBe('skills')
-    expect(await editorText('Entry 2 name')).toBe('chat/{{ slug }}')
-    expect(field('Entry 2 exclude (one glob per line)').value).toBe('*.log')
-    expect(screen.getByRole('link', { name: 'skills/infra' }).getAttribute('href')).toBe('/?view=backups&name=skills%2Finfra')
-    expect(within(screen.getByRole('list', { name: 'Backups of this preset' })).getByText('chat/{{ slug }}')).toBeTruthy()
-    await userEvent.click(button('Save'))
-    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec).toEqual(stored)
-  })
-
-  test('a new preset has no backups panel', async () => {
-    wrap(<PresetForm open {...noop} />)
-    await ready()
-    expect(screen.queryByText('Backups of this preset')).toBeNull()
   })
 
   test('the retrospective toggle is saved and cleared', async () => {
@@ -1383,13 +1365,13 @@ describe('PresetForm', () => {
     expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ handoff_profile: 'work' })
   })
 
-  test('a copy keeps the source entries', async () => {
+  test('a copy keeps the source attachments', async () => {
     api.createPreset.mockResolvedValue(preset())
-    wrap(<PresetForm open copyOf={preset({ spec: { backup: [ENTRY] } as PresetView['spec'] })} {...noop} />)
+    wrap(<PresetForm open copyOf={preset({ spec: { volumes: [ATTACH] } as PresetView['spec'] })} {...noop} />)
     await ready()
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ backup: [ENTRY] })
+    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ volumes: [ATTACH] })
   })
 
   describe('any-mcp plugins', () => {
@@ -1507,7 +1489,7 @@ describe('PresetForm', () => {
   })
 })
 
-const ENTRY = { root: 'claude', path: 'skills', mode: 'both', name: 'skills/infra', exclude: [], live: false, after_init: false }
+const ATTACH = { volume: 'v-1', mode: 'rw', backup_restore: true, mount_path: '/data' }
 const RUNAWAY = { max_turns_per_task: 10, max_tokens_per_task: 20, max_stop_continuations: 3, max_agent_spawns: 4, tool_failure_repeats: 5, max_concurrent_subagents: 6, max_subagent_spawn_depth: 2 }
 const FULL_SPEC = {
   replicas: 2, max_replicas: 3, static: false, model: 'opus', effort: 'high', peers: false, workdir: 'wd', pvc_size: '20Gi',
@@ -1517,7 +1499,7 @@ const FULL_SPEC = {
   discard_hook_url: 'https://x.test/h', image: 'img', autoclose_after_seconds: 600, inactivity: { reminder_seconds: 600, close_seconds: 1200 },
   usage_quota: { five_hour_pct: 50, seven_day_pct: 60 }, reuse_running_agent: true, session_messaging: true, kube_cluster_access: true,
   kube_namespace_access: { media: ['read', 'edit'] }, docker: true, docker_storage: '30Gi', docker_cpu: '2', docker_memory: '4Gi',
-  backup: [{ root: 'claude', path: 'skills', mode: 'both', name: 'skills/{{ project }}', exclude: ['*.tmp'], live: true, after_init: false }], retrospective: true, handoff_profile: 'work', runaway: RUNAWAY,
+  volumes: [ATTACH], retrospective: true, handoff_profile: 'work', runaway: RUNAWAY,
   wrapper: {
     auto_compact: { idle_seconds: 30, instructions: 'i', min_context_tokens: 1000 }, system_append: 'sa', restart_continue_prompt: 'rc', turn_stall_seconds: 60, max_restarts: 2, turn_max_seconds: 900,
     permission_mode: 'auto', agent_commands: ['compact'], permissions: { allow: ['Bash'], deny: ['Edit'] }, hooks: { onTurn: [{ type: 'command', run: 'true' }] },

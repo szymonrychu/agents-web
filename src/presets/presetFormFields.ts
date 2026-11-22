@@ -54,7 +54,7 @@ export const PRESET_FORM_FIELDS: Record<string, string> = {
   docker_storage: 'Docker storage',
   docker_cpu: 'Docker CPU limit',
   docker_memory: 'Docker memory limit',
-  backup: 'Entry 1 path',
+  volumes: 'Volume 1',
   retrospective: 'Retrospective agent',
   handoff_profile: 'Handoff profile',
   'wrapper.auto_compact.idle_seconds': 'Auto-compact idle seconds',

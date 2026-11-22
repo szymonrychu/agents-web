@@ -46,7 +46,7 @@ const FUTURE = '2030-01-01T09:00:00Z'
 // ---------------------------------------------------------------- orchestrator
 
 const session = (id: string, slug: string): O['SessionView'] => ({
-  backup: { entries: [], last_transcripts_backup: null, reason: null, transcripts: false, workdir: false },
+  backup: { last_transcripts_backup: null, reason: null, transcripts: false, workdir: false },
   closes_at: null,
   created_at: T0,
   desired: 'active',
