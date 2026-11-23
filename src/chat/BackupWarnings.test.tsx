@@ -27,7 +27,7 @@ describe('BackupWarnings', () => {
     ]))
     const text = screen.getByRole('status').textContent ?? ''
     expect(text).toContain('Entry 1 (a): the backup could not be read, the directory was left as it is')
-    expect(text).toContain('Entry 2 (b): a new version was not delivered because this session has unsaved changes; save them (orchestrator_backup_save) or the next save makes yours current')
+    expect(text).toContain('Entry 2 (b): a new version was not delivered because this session has unsaved changes; save them (orchestrator_volume_save) or the next save makes yours current')
     expect(text).toContain('Entry 3 (c): not saved, it holds a secret')
   })
 

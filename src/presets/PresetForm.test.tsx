@@ -1334,25 +1334,15 @@ describe('PresetForm', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(message)
   })
 
-  test('the retrospective toggle is saved and cleared', async () => {
+  test('the form has no retrospective control and the saved spec has no retrospective key', async () => {
     api.createPreset.mockResolvedValue(preset())
-    api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
-    expect(field('Retrospective agent').checked).toBe(false)
+    expect(screen.queryByLabelText('Retrospective agent')).toBeNull()
     await replace('Name', 'r')
-    await userEvent.click(field('Retrospective agent'))
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ retrospective: true })
-    cleanup()
-    wrap(<PresetForm open preset={preset({ spec: { retrospective: true, replicas: 2 } as PresetView['spec'] })} {...noop} />)
-    await ready()
-    expect(field('Retrospective agent').checked).toBe(true)
-    await userEvent.click(field('Retrospective agent'))
-    await userEvent.click(button('Save'))
-    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('retrospective')
   })
 
   test('the handoff profile is a select with a default', async () => {

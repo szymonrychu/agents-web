@@ -50,19 +50,13 @@ describe('volume attachments', () => {
   })
 })
 
-describe('retrospective and handoff_profile', () => {
-  test('a stored flag and profile load and round-trip', () => {
-    const spec = { retrospective: true, handoff_profile: 'chat' } as Partial<SessionSpec>
+describe('handoff_profile', () => {
+  test('a stored profile loads and round-trips with no retrospective key', () => {
+    const spec = { handoff_profile: 'chat' } as Partial<SessionSpec>
     const { values, setKeys } = stateFromPreset(null, 'p', spec)
-    expect(values.retrospective).toBe(true)
     expect(values.handoffProfile).toBe('chat')
+    expect(values).not.toHaveProperty('retrospective')
     expect(toPresetSpec(values, setKeys)).toEqual(spec)
-  })
-
-  test('off stays out of the spec and clears a stored flag on an edit', () => {
-    const { values, setKeys } = stateFromPreset(null, 'p', { retrospective: true })
-    expect(toPresetSpec({ ...values, retrospective: false }, setKeys)).toEqual({})
-    expect(toPresetSpec({ ...values, retrospective: false }, setKeys, { retrospective: true, model: 'x' })).toEqual({ model: 'x' })
   })
 })
 

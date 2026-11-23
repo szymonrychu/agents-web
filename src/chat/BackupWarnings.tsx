@@ -11,7 +11,7 @@ const RESTORE: Record<string, string> = {
 }
 const RESTORE_FAILED = 'the restore failed, the directory was left as it is'
 const LIVE: Record<string, string> = {
-  skipped_dirty: 'a new version was not delivered because this session has unsaved changes; save them (orchestrator_backup_save) or the next save makes yours current',
+  skipped_dirty: 'a new version was not delivered because this session has unsaved changes; save them (orchestrator_volume_save) or the next save makes yours current',
   missing: 'the new version is missing, the directory was left as it is',
   unreadable: 'the new version could not be read, the directory was left as it is',
 }
