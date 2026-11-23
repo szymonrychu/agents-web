@@ -1489,7 +1489,7 @@ const FULL_SPEC = {
   discard_hook_url: 'https://x.test/h', image: 'img', autoclose_after_seconds: 600, inactivity: { reminder_seconds: 600, close_seconds: 1200 },
   usage_quota: { five_hour_pct: 50, seven_day_pct: 60 }, reuse_running_agent: true, session_messaging: true, kube_cluster_access: true,
   kube_namespace_access: { media: ['read', 'edit'] }, docker: true, docker_storage: '30Gi', docker_cpu: '2', docker_memory: '4Gi',
-  volumes: [ATTACH], retrospective: true, handoff_profile: 'work', runaway: RUNAWAY,
+  volumes: [ATTACH], handoff_profile: 'work', runaway: RUNAWAY,
   wrapper: {
     auto_compact: { idle_seconds: 30, instructions: 'i', min_context_tokens: 1000 }, system_append: 'sa', restart_continue_prompt: 'rc', turn_stall_seconds: 60, max_restarts: 2, turn_max_seconds: 900,
     permission_mode: 'auto', agent_commands: ['compact'], permissions: { allow: ['Bash'], deny: ['Edit'] }, hooks: { onTurn: [{ type: 'command', run: 'true' }] },
