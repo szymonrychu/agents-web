@@ -1334,25 +1334,15 @@ describe('PresetForm', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(message)
   })
 
-  test('the retrospective toggle is saved and cleared', async () => {
+  test('the form has no retrospective control and the saved spec has no retrospective key', async () => {
     api.createPreset.mockResolvedValue(preset())
-    api.updatePreset.mockResolvedValue(preset())
     wrap(<PresetForm open {...noop} />)
     await ready()
-    expect(field('Retrospective agent').checked).toBe(false)
+    expect(screen.queryByLabelText('Retrospective agent')).toBeNull()
     await replace('Name', 'r')
-    await userEvent.click(field('Retrospective agent'))
     await userEvent.click(button('Create'))
     await waitFor(() => expect(api.createPreset).toHaveBeenCalled())
-    expect(api.createPreset.mock.calls[0][0].spec).toEqual({ retrospective: true })
-    cleanup()
-    wrap(<PresetForm open preset={preset({ spec: { retrospective: true, replicas: 2 } as PresetView['spec'] })} {...noop} />)
-    await ready()
-    expect(field('Retrospective agent').checked).toBe(true)
-    await userEvent.click(field('Retrospective agent'))
-    await userEvent.click(button('Save'))
-    await waitFor(() => expect(api.updatePreset).toHaveBeenCalled())
-    expect(api.updatePreset.mock.calls[0][1].spec).toEqual({ replicas: 2 })
+    expect(api.createPreset.mock.calls[0][0].spec).not.toHaveProperty('retrospective')
   })
 
   test('the handoff profile is a select with a default', async () => {
@@ -1499,7 +1489,7 @@ const FULL_SPEC = {
   discard_hook_url: 'https://x.test/h', image: 'img', autoclose_after_seconds: 600, inactivity: { reminder_seconds: 600, close_seconds: 1200 },
   usage_quota: { five_hour_pct: 50, seven_day_pct: 60 }, reuse_running_agent: true, session_messaging: true, kube_cluster_access: true,
   kube_namespace_access: { media: ['read', 'edit'] }, docker: true, docker_storage: '30Gi', docker_cpu: '2', docker_memory: '4Gi',
-  volumes: [ATTACH], retrospective: true, handoff_profile: 'work', runaway: RUNAWAY,
+  volumes: [ATTACH], handoff_profile: 'work', runaway: RUNAWAY,
   wrapper: {
     auto_compact: { idle_seconds: 30, instructions: 'i', min_context_tokens: 1000 }, system_append: 'sa', restart_continue_prompt: 'rc', turn_stall_seconds: 60, max_restarts: 2, turn_max_seconds: 900,
     permission_mode: 'auto', agent_commands: ['compact'], permissions: { allow: ['Bash'], deny: ['Edit'] }, hooks: { onTurn: [{ type: 'command', run: 'true' }] },

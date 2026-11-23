@@ -47,8 +47,9 @@ describe('preset form parity with the orchestrator schema', () => {
     expect(mapped.filter((k) => !expected.includes(k) && !(readOnly.includes(k) && PRESET_FORM_FIELDS[k] === READ_ONLY)).sort()).toEqual([])
   })
 
-  test('preset parity includes volumes and retrospective', () => {
-    expect(PRESET_FORM_FIELDS).toMatchObject({ volumes: 'Volume 1', retrospective: 'Retrospective agent', handoff_profile: 'Handoff profile' })
+  test('preset parity includes volumes and omits retrospective', () => {
+    expect(PRESET_FORM_FIELDS).toMatchObject({ volumes: 'Volume 1', handoff_profile: 'Handoff profile' })
+    expect(PRESET_FORM_FIELDS).not.toHaveProperty('retrospective')
     expect(Object.keys(PRESET_FORM_FIELDS).filter((k) => k === 'cache' || k.startsWith('cache.'))).toEqual([])
   })
 
@@ -63,7 +64,7 @@ describe('preset form parity with the orchestrator schema', () => {
     const full = {
       id: 'p-1', name: 'full', is_default: false, project: 'default', labels: ['l'], extra_projects: ['infra'], created_at: 'x', updated_at: 'x',
       spec: {
-        any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo'], docker: true, volumes: [{ volume: 'v-1', mode: 'ro', backup_restore: false }], retrospective: true, handoff_profile: 'work', kube_namespace_access: { media: ['read'] },
+        any_mcp_sources: ['github.com/o/r'], init_scripts: ['echo'], docker: true, volumes: [{ volume: 'v-1', mode: 'ro', backup_restore: false }], handoff_profile: 'work', kube_namespace_access: { media: ['read'] },
         wrapper: { plugins: { marketplaces: [{ name: 'm', source: 'o/r' }], install: [{ plugin: 'p@m' }] } },
       },
     } as unknown as PresetView

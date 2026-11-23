@@ -512,7 +512,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Preset */
+        /**
+         * Get Preset
+         * @description One preset, redacted as the main port answers it. A superleader reads any; any other
+         *     leader a preset whose project or extra projects overlap its own, else 403
+         *     `project_forbidden`.
+         */
         get: operations["get_preset_agent_v1_admin_presets__ref__get"];
         /** Replace Preset */
         put: operations["replace_preset_agent_v1_admin_presets__ref__put"];
@@ -673,8 +678,8 @@ export interface paths {
         put?: never;
         /**
          * Create Project
-         * @description Create a project, same body, answer and errors as the main-port route. The audit row
-         *     carries the field names only.
+         * @description Create a project, same body and errors as the main-port route, answered as a `WriteAck`.
+         *     The audit row carries the field names only.
          */
         post: operations["create_project_agent_v1_admin_projects_post"];
         delete?: never;
@@ -698,9 +703,9 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Rename, describe, archive or unarchive a project, same body, answer and errors as the
-         *     main-port route. An explicit null keeps the stored value and is still listed in the audit
-         *     row, which carries the set field names only.
+         * @description Rename, describe, archive or unarchive a project, same body and errors as the main-port
+         *     route, answered as a `WriteAck`. An explicit null keeps the stored value and is still listed
+         *     in the audit row, which carries the set field names only.
          */
         patch: operations["update_project_agent_v1_admin_projects__slug__patch"];
         trace?: never;
@@ -714,14 +719,14 @@ export interface paths {
         };
         /**
          * List Own Proposals
-         * @description A superleader: every proposal. A regular leader: its own, newest first, current revision
-         *     only.
+         * @description A superleader: every proposal. A regular leader: its own plus the preset proposals on
+         *     presets of its projects. Newest first, current revision only.
          */
         get: operations["list_own_proposals_agent_v1_admin_proposals_get"];
         put?: never;
         /**
          * Create Proposal
-         * @description 201 with the new proposal; 200 with the first one on a `client_key` replay.
+         * @description 201 with the ack of the new proposal; 200 with the first one's on a `client_key` replay.
          */
         post: operations["create_proposal_agent_v1_admin_proposals_post"];
         delete?: never;
@@ -739,7 +744,8 @@ export interface paths {
         };
         /**
          * Get Own Proposal
-         * @description A superleader reads any proposal (404 only when unknown); a regular leader its own.
+         * @description A superleader reads any proposal (404 only when unknown); a regular leader its own, or a
+         *     preset proposal on a preset of its projects.
          */
         get: operations["get_own_proposal_agent_v1_admin_proposals__proposal_id__get"];
         put?: never;
@@ -915,8 +921,9 @@ export interface paths {
         };
         /**
          * List Sessions
-         * @description Every session, raw-spec and unmanageable ones included, as the redacted `SessionView`;
-         *     the main port's filters and errors. The slug filter is `session_slug`: the editor gate
+         * @description The sessions of the caller's projects (home or extra; every session for a superleader),
+         *     raw-spec and unmanageable ones included, as the redacted `SessionView`; the main port's
+         *     filters and errors narrow it further. The slug filter is `session_slug`: the editor gate
          *     invariant keeps a parameter named `slug` path-only.
          */
         get: operations["list_sessions_agent_v1_admin_sessions_get"];
@@ -924,7 +931,8 @@ export interface paths {
         /**
          * Create Session
          * @description Same body and rules as the main port, usage gate included; the caller's session is
-         *     recorded as the creator and `created_by_service` stays empty.
+         *     recorded as the creator and `created_by_service` stays empty. Answers the slug as a
+         *     `WriteAck`.
          */
         post: operations["create_session_agent_v1_admin_sessions_post"];
         delete?: never;
@@ -942,15 +950,18 @@ export interface paths {
         };
         /**
          * Get Session
-         * @description A superleader or a retrospective session reads any session; any other leader its own.
+         * @description A superleader reads any session; any other leader its own and every session its
+         *     `sessions_list` shows (decision 863), else 403 `project_forbidden`.
          */
         get: operations["get_session_agent_v1_admin_sessions__slug__get"];
         put?: never;
         post?: never;
         /**
          * Discard Session
-         * @description `?force=true` abandons the target's owed pre-discard hooks, also when it is already
-         *     deleting (a discard stuck on a hook receiver that is down).
+         * @description A superleader discards any session it may manage (`_writable_target`); `?force=true`
+         *     abandons the target's owed pre-discard hooks, also when it is already deleting (a discard
+         *     stuck on a hook receiver that is down). Any other leader discards an idle or finished
+         *     session of its projects (`_leader_discard`), without `force`.
          */
         delete: operations["discard_session_agent_v1_admin_sessions__slug__delete"];
         options?: never;
@@ -1032,7 +1043,8 @@ export interface paths {
         };
         /**
          * Session Events
-         * @description One page of any session's stored events, as the main port's events route (no SSE).
+         * @description One page of the stored events of a session in the caller's projects, as the main port's
+         *     events route (no SSE).
          */
         get: operations["session_events_agent_v1_admin_sessions__slug__events_get"];
         put?: never;
@@ -1771,7 +1783,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * onStop webhook: block once on chat envelopes that were not delivered
+         * onStop webhook: block once on envelopes that were not delivered
          * @description Never fails on a body it cannot use: an unreadable one is an allow.
          */
         post: operations["stop_agent_v1_envelope_stop_post"];
@@ -1814,7 +1826,7 @@ export interface paths {
         };
         /** Init scripts and last init run of the caller's session */
         get: operations["init_scripts_get_agent_v1_init_scripts_get"];
-        /** Replace the init scripts of the caller's session and its source preset */
+        /** Replace the init scripts of the caller's session and its source preset (leader only) */
         put: operations["init_scripts_put_agent_v1_init_scripts_put"];
         post?: never;
         delete?: never;
@@ -2062,7 +2074,7 @@ export interface paths {
         get?: never;
         /**
          * Set Own Labels
-         * @description Replace the calling session's labels.
+         * @description Replace the calling session's labels; the answer is a `WriteAck` with its slug.
          */
         put: operations["set_own_labels_agent_v1_session_labels_put"];
         post?: never;
@@ -3456,7 +3468,7 @@ export interface components {
         };
         /**
          * AdminVolumeView
-         * @description What a superleader or retrospective session sees of a volume: names, ids, sizes, states
+         * @description What a superleader sees of a volume: names, ids, sizes, states
          *     and counts, never description, labels, exclusions or backup manifests.
          */
         AdminVolumeView: {
@@ -3923,6 +3935,7 @@ export interface components {
         };
         /** CreateSession */
         CreateSession: {
+            overrides?: components["schemas"]["SessionOverrides"] | null;
             /** Preset Id */
             preset_id?: string | null;
             /** Project */
@@ -4833,16 +4846,6 @@ export interface components {
             /** Quota Default Pct */
             quota_default_pct: number;
         };
-        /** OwnLabelsView */
-        OwnLabelsView: {
-            /** Labels */
-            labels: string[];
-            /**
-             * Session Id
-             * Format: uuid
-             */
-            session_id: string;
-        };
         /** PermissionModeIn */
         PermissionModeIn: {
             /**
@@ -5435,6 +5438,18 @@ export interface components {
             /** Message Id */
             message_id: number;
         };
+        /**
+         * SessionOverrides
+         * @description What a trigger service may change on the preset's spec of one session (agents-common
+         *     `PresetBinding.overrides`): the replica count (within the preset's max_replicas) and the
+         *     start prompt (empty: no start message).
+         */
+        SessionOverrides: {
+            /** Replicas */
+            replicas?: number | null;
+            /** Start Prompt */
+            start_prompt?: string | null;
+        };
         /** SessionPeer */
         SessionPeer: {
             /** Leader Present */
@@ -5537,8 +5552,6 @@ export interface components {
              */
             replicas: number;
             resources?: components["schemas"]["Resources"] | null;
-            /** Retrospective */
-            retrospective?: boolean | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
             runaway?: components["schemas"]["RunawayLimits"] | null;
@@ -5630,8 +5643,6 @@ export interface components {
              */
             replicas: number;
             resources?: components["schemas"]["Resources"] | null;
-            /** Retrospective */
-            retrospective?: boolean | null;
             /** Reuse Running Agent */
             reuse_running_agent?: boolean | null;
             runaway?: components["schemas"]["RunawayLimits"] | null;
@@ -6401,6 +6412,22 @@ export interface components {
             turn_stall_seconds?: number | null;
         };
         /**
+         * WriteAck
+         * @description The short answer an agent-port write gets instead of the full view (decision 926): the
+         *     target's id (a session by slug, a project by slug, a preset and a proposal by id), its new
+         *     version when it has one (proposal revision, session generation, relayed version) and its
+         *     status when it has one. The id keeps its JSON type (a proposal or relayed numeric id is a
+         *     number). The web routes keep the full views.
+         */
+        WriteAck: {
+            /** Id */
+            id: string | number;
+            /** Status */
+            status?: string | null;
+            /** Version */
+            version?: number | null;
+        };
+        /**
          * WriteFile
          * @description Body of a file save: both keys required; `expected: null` overwrites unconditionally.
          *
@@ -7103,9 +7130,7 @@ export interface operations {
                 authorization?: string | null;
                 "x-orch-session"?: string | null;
             };
-            path: {
-                room_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -7337,13 +7362,6 @@ export interface operations {
                     "application/json": components["schemas"]["HandoffPage"];
                 };
             };
-            /** @description not_superleader: the caller is not a superleader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description not_found: no such session or handoff */
             404: {
                 headers: {
@@ -7384,13 +7402,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HandoffDetail"];
                 };
-            };
-            /** @description not_superleader: the caller is not a superleader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description not_found: no such session or handoff */
             404: {
@@ -7595,7 +7606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -7632,6 +7643,20 @@ export interface operations {
                     "application/json": components["schemas"]["PresetView"];
                 };
             };
+            /** @description project_forbidden: the preset is outside your projects */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not_found: no preset has that name or id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7667,7 +7692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -7737,7 +7762,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
@@ -7796,7 +7821,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -7834,7 +7859,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader: the caller is not a superleader */
@@ -7893,7 +7918,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -7928,7 +7953,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8004,7 +8029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8106,7 +8131,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PresetView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
@@ -8163,7 +8188,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8201,7 +8226,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader: the caller is not a superleader */
@@ -8294,7 +8319,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8366,7 +8391,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8400,7 +8425,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8740,13 +8765,6 @@ export interface operations {
                     "application/json": components["schemas"]["SessionView"][];
                 };
             };
-            /** @description not_superleader: the caller is not a superleader */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8780,7 +8798,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8851,7 +8869,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -8889,7 +8907,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -9075,7 +9093,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description not_superleader: the caller is not a superleader */
+            /** @description project_forbidden: the session is outside your projects */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -9124,7 +9142,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnLabelsView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader: the caller is not a superleader; not_manageable: the target is not superleader_manageable (needs the user's approval) */
@@ -9424,7 +9442,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -9459,7 +9477,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */
@@ -9935,7 +9953,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProposalView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description not_superleader; project_out_of_scope: a project the caller lacks */
@@ -11928,7 +11946,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnLabelsView"];
+                    "application/json": components["schemas"]["WriteAck"];
                 };
             };
             /** @description Validation Error */

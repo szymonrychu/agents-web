@@ -127,8 +127,6 @@ export interface FormValues {
   runawayMaxSubagentSpawnDepth: string
   /** Volume attachments (spec.volumes). */
   volumes: VolumeRow[]
-  /** Retrospective agent (spec.retrospective): a human-only flag. */
-  retrospective: boolean
   /** Handoff profile (`work` or `chat`); empty means unset. */
   handoffProfile: string
 }
@@ -151,7 +149,7 @@ export const RUNAWAY_FIELDS = [
 
 
 /** What the user set: a spec key, with the four resource fields counting as one `resources` key. */
-export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'retrospective' | 'handoffProfile'
+export type SetKey = 'replicas' | 'maxReplicas' | 'static' | 'model' | 'effort' | 'peers' | 'workdir' | 'pvcSize' | 'env' | 'anyMcp' | 'anyMcpSources' | 'initScripts' | 'startPrompt' | 'maxAttempts' | 'autoCompact' | 'resources' | 'hookUrl' | 'image' | WrapperField | 'autocloseAfter' | 'inactivityReminder' | 'inactivityClose' | 'quotaFiveHour' | 'quotaSevenDay' | (typeof RUNAWAY_FIELDS)[number]['field'] | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'handoffProfile'
 
 /** Form values together with the fields that are set (the ones a save writes to the preset). */
 export interface FormState {
@@ -178,7 +176,7 @@ export function blankValues(meta: Meta | null): FormValues {
     memRequest: d?.resources.requests.memory ?? '', memLimit: d?.resources.limits.memory ?? '', hookUrl: '', image: '',
     autocloseAfter: '', inactivityReminder: '', inactivityClose: '', quotaFiveHour: '', quotaSevenDay: '', reuseRunningAgent: false, sessionMessaging: false, kubeClusterAccess: false, kubeNamespaceAccess: [], docker: false, dockerStorage: '', dockerCpu: '', dockerMemory: '', compactIdle: '', compactInstructions: '', compactMinTokens: '', systemAppend: '', restartPrompt: '', turnStall: '', maxRestarts: '', turnMax: '',
     agentCommands: [], permAllow: '', permDeny: '', permissionMode: '', hooks: '', mcpServers: '', plugins: '', managedSettings: '', runawayMaxTurnsPerTask: '', runawayMaxTokensPerTask: '', runawayMaxStopContinuations: '', runawayMaxAgentSpawns: '', runawayToolFailureRepeats: '', runawayMaxConcurrentSubagents: '', runawayMaxSubagentSpawnDepth: '',
-    volumes: [], retrospective: false, handoffProfile: '',
+    volumes: [], handoffProfile: '',
   }
 }
 
@@ -279,10 +277,6 @@ export function stateFromPreset(meta: Meta | null, name: string, spec: Partial<S
   if (spec.volumes) {
     values.volumes = spec.volumes.map(rowFromAttachment)
     setKeys.add('volumes')
-  }
-  if (spec.retrospective) {
-    values.retrospective = true
-    setKeys.add('retrospective')
   }
   if (spec.handoff_profile) {
     values.handoffProfile = spec.handoff_profile
@@ -496,7 +490,7 @@ const OWNED_PATHS: Record<SetKey, string[]> = {
   autoCompact: ['auto_compact_pct'], resources: ['resources.requests.cpu', 'resources.requests.memory', 'resources.limits.cpu', 'resources.limits.memory'],
   hookUrl: ['discard_hook_url'], image: ['image'], autocloseAfter: ['autoclose_after_seconds'], inactivityReminder: ['inactivity.reminder_seconds'], inactivityClose: ['inactivity.close_seconds'],
   quotaFiveHour: ['usage_quota.five_hour_pct'], quotaSevenDay: ['usage_quota.seven_day_pct'], reuseRunningAgent: ['reuse_running_agent'], sessionMessaging: ['session_messaging'],
-  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], volumes: ['volumes'], retrospective: ['retrospective'], handoffProfile: ['handoff_profile'],
+  kubeClusterAccess: ['kube_cluster_access'], kubeNamespaceAccess: ['kube_namespace_access'], docker: ['docker', 'docker_storage', 'docker_cpu', 'docker_memory'], volumes: ['volumes'], handoffProfile: ['handoff_profile'],
   compactIdle: ['wrapper.auto_compact.idle_seconds'], compactInstructions: ['wrapper.auto_compact.instructions'], compactMinTokens: ['wrapper.auto_compact.min_context_tokens'],
   systemAppend: ['wrapper.system_append'], restartPrompt: ['wrapper.restart_continue_prompt'], turnStall: ['wrapper.turn_stall_seconds'], maxRestarts: ['wrapper.max_restarts'],
   turnMax: ['wrapper.turn_max_seconds'], agentCommands: ['wrapper.agent_commands'], permAllow: ['wrapper.permissions.allow'], permDeny: ['wrapper.permissions.deny'],
@@ -615,7 +609,6 @@ function sparsePresetSpec(v: FormValues, setKeys: ReadonlySet<SetKey>): Partial<
     if (v.dockerMemory !== '') spec.docker_memory = v.dockerMemory
   }
   if (setKeys.has('volumes') && v.volumes.length > 0) spec.volumes = v.volumes.map(attachmentFromRow)
-  if (setKeys.has('retrospective') && v.retrospective) spec.retrospective = true
   if (setKeys.has('handoffProfile') && str(v.handoffProfile) !== undefined) spec.handoff_profile = v.handoffProfile as NonNullable<SessionSpec['handoff_profile']>
   const wrapper = wrapperFromValues(v, setKeys)
   if (Object.keys(wrapper).length > 0) spec.wrapper = wrapper

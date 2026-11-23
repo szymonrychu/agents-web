@@ -235,7 +235,7 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
       return { values: { ...s.values, [key]: value }, setKeys: setKey ? new Set(s.setKeys).add(setKey) : s.setKeys }
     })
   }
-  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'retrospective' | 'handoffProfile' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
+  const text = (key: Exclude<keyof FormValues, 'peers' | 'static' | 'reuseRunningAgent' | 'sessionMessaging' | 'kubeClusterAccess' | 'kubeNamespaceAccess' | 'docker' | 'volumes' | 'handoffProfile' | 'env' | 'anyMcpSources' | 'initScripts' | 'agentCommands' | 'compactInstructions' | 'systemAppend' | 'restartPrompt' | 'hooks' | 'plugins' | 'startPrompt'>, label: string, extra: { disabled?: boolean; multiline?: boolean; help?: string } = {}) => (
     <TextField
       size="small"
       label={label}
@@ -586,7 +586,6 @@ function FormBody({ preset, copyOf, onClose, onSaved, onChanged }: Omit<PresetFo
             privileged={values.docker || values.kubeClusterAccess || values.kubeNamespaceAccess.length > 0}
           />
           <Box>
-            <FormControlLabel control={<Switch checked={values.retrospective} onChange={(e) => set('retrospective', e.target.checked)} />} label="Retrospective agent" />
             <FormHelperText>Sessions of this preset read histories, handoffs, chats, presets and backups to find improvements; they write only backups, scoped room notes, mind map, spec and task entries</FormHelperText>
           </Box>
           <Box>
