@@ -4644,7 +4644,7 @@ export interface components {
              * Lane
              * @enum {string}
              */
-            lane: "idle" | "regular" | "priority";
+            lane: "idle" | "regular" | "interrupt";
             /** Max Attempts */
             max_attempts: number;
             /** Next Attempt At */
@@ -4921,7 +4921,7 @@ export interface components {
              * @default regular
              * @enum {string}
              */
-            lane: "idle" | "regular" | "priority";
+            lane: "idle" | "regular" | "interrupt";
             /** Target Agent Id */
             target_agent_id?: string | null;
             /** Text */
@@ -5424,7 +5424,7 @@ export interface components {
              * @default regular
              * @enum {string}
              */
-            lane: "idle" | "regular" | "priority";
+            lane: "idle" | "regular" | "interrupt";
             /** Text */
             text: string;
         };

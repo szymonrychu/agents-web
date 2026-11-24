@@ -30,9 +30,9 @@ const ANY = ''
 
 type Lane = PostMessage['lane']
 const LANES: { value: Lane; label: string; hint: string }[] = [
-  { value: 'idle', label: 'Idle', hint: 'Idle: waits until the agent is free.' },
-  { value: 'regular', label: 'Regular', hint: 'Regular: delivered at the next tool boundary of a running turn.' },
-  { value: 'priority', label: 'Priority (interrupts the agent)', hint: 'Priority: interrupts the agent right now.' },
+  { value: 'regular', label: 'Regular', hint: 'Regular: sent now with Enter; the agent queues it without being interrupted.' },
+  { value: 'interrupt', label: 'Interrupt', hint: 'Interrupt: sent now with Ctrl+Enter; the agent takes it right away.' },
+  { value: 'idle', label: 'Idle', hint: 'Idle: waits for a tool boundary.' },
 ]
 
 export function Composer({ sessionId, agents, deleting }: ComposerProps) {
