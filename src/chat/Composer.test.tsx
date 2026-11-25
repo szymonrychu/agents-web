@@ -78,17 +78,17 @@ describe('Composer', () => {
     await waitFor(() => expect(api.postMessage).toHaveBeenCalledWith('c1', { text: 'hi', lane: 'regular', target_agent_id: 'a1' }))
   })
 
-  test('lane defaults to regular and the options are idle, regular and priority', () => {
+  test('lane defaults to regular and the options are regular, interrupt and idle', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
     const lane = screen.getByRole('combobox', { name: 'Lane' })
     expect(lane.textContent).toBe('Regular')
     fireEvent.mouseDown(lane)
-    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Idle', 'Regular', 'Priority (interrupts the agent)'])
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Regular', 'Interrupt', 'Idle'])
   })
 
   test.each([
     ['Idle', 'idle'],
-    ['Priority (interrupts the agent)', 'priority'],
+    ['Interrupt', 'interrupt'],
   ])('sends in the %s lane', async (option, lane) => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
@@ -100,13 +100,13 @@ describe('Composer', () => {
 
   test('the hint follows the lane', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
-    expect(screen.getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
+    expect(screen.getByText('Regular: sent now with Enter; the agent queues it without being interrupted.')).toBeTruthy()
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
-    fireEvent.click(within(screen.getByRole('listbox')).getByText('Priority (interrupts the agent)'))
-    expect(screen.getByText('Priority: interrupts the agent right now.')).toBeTruthy()
+    fireEvent.click(within(screen.getByRole('listbox')).getByText('Interrupt'))
+    expect(screen.getByText('Interrupt: sent now with Ctrl+Enter; the agent takes it right away.')).toBeTruthy()
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
     fireEvent.click(within(screen.getByRole('listbox')).getByText('Idle'))
-    expect(screen.getByText('Idle: waits until the agent is free.')).toBeTruthy()
+    expect(screen.getByText('Idle: waits for a tool boundary.')).toBeTruthy()
   })
 
   test('disables send when empty or deleting', () => {
@@ -143,7 +143,7 @@ describe('Composer on a desktop with a mouse', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
     expect(screen.queryByTestId('composer-row-options')).toBeNull()
     expect(screen.getByRole('button', { name: 'Send' }).textContent).toBe('Send')
-    expect(screen.getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
+    expect(screen.getByText('Regular: sent now with Enter; the agent queues it without being interrupted.')).toBeTruthy()
     expect(input().getAttribute('enterkeyhint')).toBe('send')
     fireEvent.change(input(), { target: { value: 'go' } })
     expect(fireEvent.keyDown(input(), { key: 'Enter' })).toBe(false)
@@ -170,12 +170,12 @@ describe.each([
 
   test('moves the lane hint into the lane menu', () => {
     wrap(<Composer sessionId="c1" agents={agents} deleting={false} />)
-    expect(screen.queryByText('Regular: delivered at the next tool boundary of a running turn.')).toBeNull()
+    expect(screen.queryByText('Regular: sent now with Enter; the agent queues it without being interrupted.')).toBeNull()
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lane' }))
     const listbox = screen.getByRole('listbox')
-    expect(within(listbox).getByText('Idle: waits until the agent is free.')).toBeTruthy()
-    expect(within(listbox).getByText('Regular: delivered at the next tool boundary of a running turn.')).toBeTruthy()
-    expect(within(listbox).getByText('Priority: interrupts the agent right now.')).toBeTruthy()
+    expect(within(listbox).getByText('Idle: waits for a tool boundary.')).toBeTruthy()
+    expect(within(listbox).getByText('Regular: sent now with Enter; the agent queues it without being interrupted.')).toBeTruthy()
+    expect(within(listbox).getByText('Interrupt: sent now with Ctrl+Enter; the agent takes it right away.')).toBeTruthy()
   })
 
   test('Return inserts a newline and only the Send button sends', async () => {
