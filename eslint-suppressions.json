@@ -1,0 +1,748 @@
+{
+  "src/App.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/App.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/api/backups.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/api/history-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/matrix-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/mindmap-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/schedules-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/taskboard-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/usage-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/vault-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/api/webhooks-schema.d.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "src/attention/DecisionsPreviewDialog.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/backends/registry.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/backups/BackupsPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/backups/BackupsPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/backups/CleanupSettingsCard.test.tsx": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/backups/CleanupSettingsCard.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/AgentsStrip.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "src/chat/AgentsStrip.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/ChatLog.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/Composer.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/Composer.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/DialogPanel.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/DialogPanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/QueueStrip.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/chatModel.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/chat/chatModel.ts": {
+    "complexity": {
+      "count": 4
+    }
+  },
+  "src/chat/entries.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/chat/useSessionChat.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/devices/DevicesPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/devices/DevicesPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/editor/CodeEditor.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/editor/TemplateEditor.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/editor/languages.test.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "src/editor/syntaxCheck.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/files/FileTabs.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/files/FilesPanel.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "src/files/FilesPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/files/fileEvents.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/files/useFileTabs.test.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/files/useFileTabs.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/files/useFileTree.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/history/HistoryPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/history/HistoryPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/history/HistorySessionView.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/history/HistorySessionView.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/history/RetentionCard.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/hooks/HooksEditor.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/hooks/validate.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/layout/TopBar.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/layout/TopBar.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/layout/Workspace.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/layout/designRules.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/layout/designRules.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/markdown/Markdown.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/matrix/Access.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/matrix/ChatsPage.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/matrix/RoomDrawer.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/matrix/RulesPanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/mindmap/GraphView.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/mindmap/MindmapsPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/mindmap/MindmapsPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/mindmap/NodePanel.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/mindmap/NodePanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/plugins/PluginsEditor.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/PresetForm.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "src/presets/PresetForm.tsx": {
+    "complexity": {
+      "count": 3
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/PresetFormEnv.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/PresetsPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/PresetsPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/VaultPicker.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/presets/VolumePicker.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/presets/pluginSource.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/projects/ProjectsPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/projects/ProjectsPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/projects/SpecQueuePanel.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/projects/SpecQueuePanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/ItemCard.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/ItemCard.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/ProposalReviewDialog.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/ProposalReviewDialog.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/ValueDiff.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/proposals/useActiveProposals.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/ribbon/ContextGauge.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/ribbon/sessionStatus.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/ribbon/useSessions.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/schedules/ScheduleForm.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/schedules/SchedulesPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/schedules/SchedulesPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/sessions/DiscardSessionDialog.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/sessions/InitScriptsDialog.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/sessions/NewSessionDialog.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/sessions/SessionsPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/sessions/SessionsPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/sessions/sessionSpecForm.ts": {
+    "complexity": {
+      "count": 5
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/specs/Comments.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/specs/PlanTab.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/specs/SpecPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/specs/SpecPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/specs/SpecsPage.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/specs/StepEditor.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/tasks/DecisionCard.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/tasks/TaskDetail.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/tasks/TasksPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/tasks/TasksPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/terminal/TerminalPanel.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/terminal/TerminalPanel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/terminal/terminalSocket.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/terminal/terminalSocket.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/triggers/triggers.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/usage/UsageHistory.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/usage/UsagePage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/usage/UsagePage.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/vault/EditDialog.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/vault/EntryDialog.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/vault/VaultPage.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/vault/VaultPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/volumes/CreateVolumeDialog.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/volumes/VolumeDetailDrawer.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/volumes/VolumesPage.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/webhooks/EndpointFormDialog.tsx": {
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/webhooks/Endpoints.test.tsx": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/webhooks/EndpointsList.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/webhooks/FiltersDialog.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/webhooks/FiltersEditor.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/webhooks/authPresets.ts": {
+    "max-params": {
+      "count": 1
+    }
+  }
+}
