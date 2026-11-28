@@ -168,7 +168,7 @@ test("test_release_job_computes_version_with_script", () => {
   // A bare assignment fails the step (bash -e) when the script fails; inside echo it would not.
   assert.equal(steps[version].shell, undefined);
   assert.deepEqual(steps[version].run.trim().split("\n"), [
-    'version="$(python3 scripts/next_version.py)"',
+    "version=\"$(pipx run --spec 'git+https://github.com/szymonrychu/agents-common@v0.23.0' next-version)\"",
     'echo "version=$version" >> "$GITHUB_OUTPUT"',
   ]);
   const later = steps.slice(version + 1);
